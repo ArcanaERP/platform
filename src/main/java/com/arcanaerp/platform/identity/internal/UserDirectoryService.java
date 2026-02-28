@@ -1,0 +1,101 @@
+package com.arcanaerp.platform.identity.internal;
+
+import com.arcanaerp.platform.identity.RegisterUserCommand;
+import com.arcanaerp.platform.identity.UserDirectory;
+import com.arcanaerp.platform.identity.UserView;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@Transactional
+@RequiredArgsConstructor
+class UserDirectoryService implements UserDirectory {
+
+    private final TenantRepository tenantRepository;
+    private final RoleRepository roleRepository;
+    private final UserAccountRepository userAccountRepository;
+    private final Clock clock;
+
+    @Override
+    public UserView registerUser(RegisterUserCommand command) {
+        String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
+        String tenantName = normalizeRequired(command.tenantName(), "tenantName");
+        String roleCode = normalizeRequired(command.roleCode(), "roleCode").toUpperCase();
+        String roleName = normalizeRequired(command.roleName(), "roleName");
+        String normalizedEmail = normalizeEmail(command.email());
+        String displayName = normalizeRequired(command.displayName(), "displayName");
+        Instant now = Instant.now(clock);
+
+        Tenant tenant = tenantRepository.findByCode(tenantCode)
+            .orElseGet(() -> tenantRepository.save(Tenant.create(tenantCode, tenantName, now)));
+
+        Role role = roleRepository.findByTenantIdAndCode(tenant.getId(), roleCode)
+            .orElseGet(() -> roleRepository.save(Role.create(tenant.getId(), roleCode, roleName, now)));
+
+        if (userAccountRepository.findByTenantIdAndEmail(tenant.getId(), normalizedEmail).isPresent()) {
+            throw new IllegalArgumentException("User email already exists in tenant: " + normalizedEmail);
+        }
+
+        UserAccount user = userAccountRepository.save(
+            UserAccount.create(tenant.getId(), role.getId(), normalizedEmail, displayName, now)
+        );
+        return toView(user, tenant, role);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserView> listUsers() {
+        List<UserAccount> users = userAccountRepository.findAllByOrderByCreatedAtDesc();
+        if (users.isEmpty()) {
+            return List.of();
+        }
+
+        Set<UUID> tenantIds = users.stream().map(UserAccount::getTenantId).collect(java.util.stream.Collectors.toSet());
+        Set<UUID> roleIds = users.stream().map(UserAccount::getRoleId).collect(java.util.stream.Collectors.toSet());
+        Map<UUID, Tenant> tenantsById = new HashMap<>();
+        Map<UUID, Role> rolesById = new HashMap<>();
+        tenantRepository.findAllById(tenantIds).forEach(tenant -> tenantsById.put(tenant.getId(), tenant));
+        roleRepository.findAllById(roleIds).forEach(role -> rolesById.put(role.getId(), role));
+
+        return users.stream().map(user -> toView(user, tenantsById.get(user.getTenantId()), rolesById.get(user.getRoleId()))).toList();
+    }
+
+    private UserView toView(UserAccount user, Tenant tenant, Role role) {
+        return new UserView(
+            user.getId(),
+            user.getTenantId(),
+            tenant == null ? null : tenant.getCode(),
+            tenant == null ? null : tenant.getName(),
+            user.getRoleId(),
+            role == null ? null : role.getCode(),
+            role == null ? null : role.getName(),
+            user.getEmail(),
+            user.getDisplayName(),
+            user.isActive(),
+            user.getCreatedAt()
+        );
+    }
+
+    private static String normalizeRequired(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " is required");
+        }
+        return value.trim();
+    }
+
+    private static String normalizeEmail(String email) {
+        String normalized = normalizeRequired(email, "email").toLowerCase();
+        if (!normalized.contains("@")) {
+            throw new IllegalArgumentException("email is invalid");
+        }
+        return normalized;
+    }
+}
