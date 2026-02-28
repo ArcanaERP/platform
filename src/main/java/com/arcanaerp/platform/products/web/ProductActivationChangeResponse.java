@@ -9,6 +9,7 @@ public record ProductActivationChangeResponse(
     boolean previousActive,
     boolean currentActive,
     String reason,
+    String changedBy,
     Instant changedAt
 ) {
 }

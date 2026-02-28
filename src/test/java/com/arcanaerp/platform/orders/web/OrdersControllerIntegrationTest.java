@@ -228,7 +228,8 @@ class OrdersControllerIntegrationTest {
         String payload = """
             {
               "active": %s,
-              "reason": "Order test activation toggle"
+              "reason": "Order test activation toggle",
+              "changedBy": "orders-test@arcanaerp.com"
             }
             """.formatted(active);
 

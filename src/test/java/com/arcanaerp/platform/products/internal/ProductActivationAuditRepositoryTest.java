@@ -23,6 +23,7 @@ class ProductActivationAuditRepositoryTest {
                 true,
                 false,
                 "Discontinued",
+                "product-admin@arcanaerp.com",
                 Instant.parse("2026-02-28T00:00:00Z")
             )
         );
@@ -32,6 +33,7 @@ class ProductActivationAuditRepositoryTest {
                 false,
                 true,
                 "Reactivated for customer demand",
+                "operations@arcanaerp.com",
                 Instant.parse("2026-02-28T01:00:00Z")
             )
         );
@@ -42,5 +44,6 @@ class ProductActivationAuditRepositoryTest {
 
         assertThat(latest.isCurrentActive()).isTrue();
         assertThat(latest.getReason()).isEqualTo("Reactivated for customer demand");
+        assertThat(latest.getChangedBy()).isEqualTo("operations@arcanaerp.com");
     }
 }

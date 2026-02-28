@@ -85,6 +85,7 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
     public ProductView changeProductActivation(ChangeProductActivationCommand command) {
         String normalizedSku = normalizeRequired(command.sku(), "sku").toUpperCase();
         String reason = normalizeRequired(command.reason(), "reason");
+        String changedBy = normalizeRequired(command.changedBy(), "changedBy");
         Product product = productRepository.findBySku(normalizedSku)
             .orElseThrow(() -> new NoSuchElementException("Product not found: " + normalizedSku));
 
@@ -98,7 +99,7 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
         product.changeActivation(targetActive, changedAt);
         Product saved = productRepository.save(product);
         ProductActivationAudit audit = productActivationAuditRepository.save(
-            ProductActivationAudit.create(saved.getId(), previousActive, targetActive, reason, changedAt)
+            ProductActivationAudit.create(saved.getId(), previousActive, targetActive, reason, changedBy, changedAt)
         );
         Category category = categoryRepository.findById(saved.getCategoryId()).orElse(null);
         Price price = priceRepository.findTopByProductIdOrderByEffectiveFromDesc(saved.getId()).orElse(null);
@@ -129,6 +130,7 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
                 audit.isPreviousActive(),
                 audit.isCurrentActive(),
                 audit.getReason(),
+                audit.getChangedBy(),
                 audit.getChangedAt()
             ));
     }

@@ -58,7 +58,7 @@ public class ProductsController {
         @Valid @RequestBody ChangeProductActivationRequest request
     ) {
         ProductView updated = productCatalog.changeProductActivation(
-            new ChangeProductActivationCommand(sku, request.active(), request.reason())
+            new ChangeProductActivationCommand(sku, request.active(), request.reason(), request.changedBy())
         );
         return toResponse(updated);
     }
@@ -98,6 +98,7 @@ public class ProductsController {
             view.previousActive(),
             view.currentActive(),
             view.reason(),
+            view.changedBy(),
             view.changedAt()
         );
     }

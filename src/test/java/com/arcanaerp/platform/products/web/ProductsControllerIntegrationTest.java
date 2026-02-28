@@ -72,7 +72,8 @@ class ProductsControllerIntegrationTest {
         String deactivatePayload = """
             {
               "active": false,
-              "reason": "Discontinued by product team"
+              "reason": "Discontinued by product team",
+              "changedBy": "product-team@arcanaerp.com"
             }
             """;
 
@@ -116,7 +117,8 @@ class ProductsControllerIntegrationTest {
         String deactivatePayload = """
             {
               "active": false,
-              "reason": "Retired in filter test"
+              "reason": "Retired in filter test",
+              "changedBy": "catalog-admin@arcanaerp.com"
             }
             """;
 
@@ -155,13 +157,15 @@ class ProductsControllerIntegrationTest {
         String deactivatePayload = """
             {
               "active": false,
-              "reason": "Initial retirement"
+              "reason": "Initial retirement",
+              "changedBy": "ops@arcanaerp.com"
             }
             """;
         String reactivatePayload = """
             {
               "active": true,
-              "reason": "Customer demand rebound"
+              "reason": "Customer demand rebound",
+              "changedBy": "sales@arcanaerp.com"
             }
             """;
 
@@ -187,6 +191,8 @@ class ProductsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].previousActive").value(false))
             .andExpect(jsonPath("$.items[0].currentActive").value(true))
             .andExpect(jsonPath("$.items[0].reason").value("Customer demand rebound"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("sales@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].changedBy").value("ops@arcanaerp.com"))
             .andExpect(jsonPath("$.items[1].reason").value("Initial retirement"));
     }
 
