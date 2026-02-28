@@ -2,6 +2,7 @@ package com.arcanaerp.platform.products;
 
 public record ChangeProductActivationCommand(
     String sku,
-    boolean active
+    boolean active,
+    String reason
 ) {
 }

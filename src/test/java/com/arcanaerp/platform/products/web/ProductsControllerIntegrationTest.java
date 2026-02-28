@@ -42,6 +42,8 @@ class ProductsControllerIntegrationTest {
             .andExpect(jsonPath("$.active").value(true))
             .andExpect(jsonPath("$.activatedAt").isNotEmpty())
             .andExpect(jsonPath("$.deactivatedAt").value(nullValue()))
+            .andExpect(jsonPath("$.lastActivationChangeReason").value(nullValue()))
+            .andExpect(jsonPath("$.lastActivationChangedAt").value(nullValue()))
             .andExpect(jsonPath("$.categoryCode").value("KITS"))
             .andExpect(jsonPath("$.currentPrice").value(19.99))
             .andExpect(jsonPath("$.currencyCode").value("USD"));
@@ -68,7 +70,8 @@ class ProductsControllerIntegrationTest {
             """;
         String deactivatePayload = """
             {
-              "active": false
+              "active": false,
+              "reason": "Discontinued by product team"
             }
             """;
 
@@ -82,7 +85,9 @@ class ProductsControllerIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.sku").value("ARC-3000"))
             .andExpect(jsonPath("$.active").value(false))
-            .andExpect(jsonPath("$.deactivatedAt").isNotEmpty());
+            .andExpect(jsonPath("$.deactivatedAt").isNotEmpty())
+            .andExpect(jsonPath("$.lastActivationChangeReason").value("Discontinued by product team"))
+            .andExpect(jsonPath("$.lastActivationChangedAt").isNotEmpty());
     }
 
     @Test
@@ -109,7 +114,8 @@ class ProductsControllerIntegrationTest {
             """;
         String deactivatePayload = """
             {
-              "active": false
+              "active": false,
+              "reason": "Retired in filter test"
             }
             """;
 

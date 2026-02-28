@@ -11,6 +11,8 @@ public record ProductView(
     boolean active,
     Instant activatedAt,
     Instant deactivatedAt,
+    String lastActivationChangeReason,
+    Instant lastActivationChangedAt,
     UUID categoryId,
     String categoryCode,
     String categoryName,

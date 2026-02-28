@@ -227,7 +227,8 @@ class OrdersControllerIntegrationTest {
     private void setProductActive(String sku, boolean active) throws Exception {
         String payload = """
             {
-              "active": %s
+              "active": %s,
+              "reason": "Order test activation toggle"
             }
             """.formatted(active);
 

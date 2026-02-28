@@ -29,6 +29,7 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
     private final PriceRepository priceRepository;
+    private final ProductActivationAuditRepository productActivationAuditRepository;
     private final Clock clock;
 
     @Override
@@ -51,7 +52,7 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
             Price.create(product.getId(), command.amount(), command.currencyCode(), now)
         );
 
-        return toView(product, category, price);
+        return toView(product, category, price, null);
     }
 
     @Override
@@ -61,28 +62,45 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
             ? productRepository.findAll(pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt")))
             : productRepository.findByActive(active, pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt")));
 
+        Set<UUID> productIds = products.stream().map(Product::getId).collect(java.util.stream.Collectors.toSet());
         Set<UUID> categoryIds = products.stream().map(Product::getCategoryId).collect(java.util.stream.Collectors.toSet());
         Map<UUID, Category> categoryById = new HashMap<>();
         categoryRepository.findAllById(categoryIds).forEach(category -> categoryById.put(category.getId(), category));
+        Map<UUID, ProductActivationAudit> latestAuditByProductId = new HashMap<>();
+        if (!productIds.isEmpty()) {
+            productActivationAuditRepository.findByProductIdInOrderByChangedAtDesc(productIds)
+                .forEach(audit -> latestAuditByProductId.putIfAbsent(audit.getProductId(), audit));
+        }
 
         return PageResult.from(products).map(product -> {
                 Category category = categoryById.get(product.getCategoryId());
                 Price price = priceRepository.findTopByProductIdOrderByEffectiveFromDesc(product.getId()).orElse(null);
-                return toView(product, category, price);
+                return toView(product, category, price, latestAuditByProductId.get(product.getId()));
             });
     }
 
     @Override
     public ProductView changeProductActivation(ChangeProductActivationCommand command) {
         String normalizedSku = normalizeRequired(command.sku(), "sku").toUpperCase();
+        String reason = normalizeRequired(command.reason(), "reason");
         Product product = productRepository.findBySku(normalizedSku)
             .orElseThrow(() -> new NoSuchElementException("Product not found: " + normalizedSku));
 
-        product.changeActivation(command.active(), Instant.now(clock));
+        boolean targetActive = command.active();
+        if (product.isActive() == targetActive) {
+            throw new IllegalArgumentException("Product active flag is already " + targetActive);
+        }
+
+        Instant changedAt = Instant.now(clock);
+        boolean previousActive = product.isActive();
+        product.changeActivation(targetActive, changedAt);
         Product saved = productRepository.save(product);
+        ProductActivationAudit audit = productActivationAuditRepository.save(
+            ProductActivationAudit.create(saved.getId(), previousActive, targetActive, reason, changedAt)
+        );
         Category category = categoryRepository.findById(saved.getCategoryId()).orElse(null);
         Price price = priceRepository.findTopByProductIdOrderByEffectiveFromDesc(saved.getId()).orElse(null);
-        return toView(saved, category, price);
+        return toView(saved, category, price, audit);
     }
 
     @Override
@@ -94,7 +112,7 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
             .orElse(ProductOrderability.UNKNOWN);
     }
 
-    private ProductView toView(Product product, Category category, Price price) {
+    private ProductView toView(Product product, Category category, Price price, ProductActivationAudit latestAudit) {
         return new ProductView(
             product.getId(),
             product.getSku(),
@@ -102,6 +120,8 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
             product.isActive(),
             product.getActivatedAt(),
             product.getDeactivatedAt(),
+            latestAudit == null ? null : latestAudit.getReason(),
+            latestAudit == null ? null : latestAudit.getChangedAt(),
             product.getCategoryId(),
             category == null ? null : category.getCode(),
             category == null ? null : category.getName(),
