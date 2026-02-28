@@ -9,6 +9,7 @@ import com.arcanaerp.platform.orders.OrderLineView;
 import com.arcanaerp.platform.orders.OrderManagement;
 import com.arcanaerp.platform.orders.OrderStatus;
 import com.arcanaerp.platform.orders.OrderView;
+import com.arcanaerp.platform.products.ProductLookup;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -31,6 +32,7 @@ class OrderManagementService implements OrderManagement {
 
     private final SalesOrderRepository salesOrderRepository;
     private final SalesOrderLineRepository salesOrderLineRepository;
+    private final ProductLookup productLookup;
     private final Clock clock;
 
     @Override
@@ -107,7 +109,7 @@ class OrderManagementService implements OrderManagement {
         return toView(saved, lines);
     }
 
-    private static List<CreateOrderLineCommand> normalizeLineCommands(List<CreateOrderLineCommand> lines) {
+    private List<CreateOrderLineCommand> normalizeLineCommands(List<CreateOrderLineCommand> lines) {
         if (lines == null || lines.isEmpty()) {
             throw new IllegalArgumentException("lines must contain at least one line");
         }
@@ -116,6 +118,11 @@ class OrderManagementService implements OrderManagement {
                 throw new IllegalArgumentException("line is required");
             }
             normalizeRequired(line.productSku(), "productSku");
+            if (!productLookup.productExists(line.productSku())) {
+                throw new IllegalArgumentException(
+                    "Unknown product SKU: " + line.productSku().trim().toUpperCase()
+                );
+            }
             if (line.quantity() == null || line.quantity().signum() <= 0) {
                 throw new IllegalArgumentException("quantity must be greater than zero");
             }

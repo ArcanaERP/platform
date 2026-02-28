@@ -25,14 +25,17 @@ class OrdersControllerIntegrationTest {
 
     @Test
     void createsAndListsOrder() throws Exception {
+        registerProduct("arc-5100");
+        registerProduct("arc-5200");
+
         String payload = """
             {
               "orderNumber": "so-5000",
               "customerEmail": "BUYER@ACME.COM",
               "currencyCode": "usd",
               "lines": [
-                { "productSku": "arc-1000", "quantity": 2, "unitPrice": 10.00 },
-                { "productSku": "arc-2000", "quantity": 1, "unitPrice": 5.50 }
+                { "productSku": "arc-5100", "quantity": 2, "unitPrice": 10.00 },
+                { "productSku": "arc-5200", "quantity": 1, "unitPrice": 5.50 }
               ]
             }
             """;
@@ -58,13 +61,15 @@ class OrdersControllerIntegrationTest {
 
     @Test
     void returnsErrorEnvelopeForDuplicateOrderNumber() throws Exception {
+        registerProduct("arc-5300");
+
         String payload = """
             {
               "orderNumber": "so-5001",
               "customerEmail": "buyer@acme.com",
               "currencyCode": "USD",
               "lines": [
-                { "productSku": "arc-1000", "quantity": 1, "unitPrice": 10.00 }
+                { "productSku": "arc-5300", "quantity": 1, "unitPrice": 10.00 }
               ]
             }
             """;
@@ -81,13 +86,15 @@ class OrdersControllerIntegrationTest {
 
     @Test
     void transitionsOrderStatusFromDraftToConfirmed() throws Exception {
+        registerProduct("arc-5400");
+
         String createPayload = """
             {
               "orderNumber": "so-5002",
               "customerEmail": "buyer@acme.com",
               "currencyCode": "USD",
               "lines": [
-                { "productSku": "arc-1000", "quantity": 1, "unitPrice": 10.00 }
+                { "productSku": "arc-5400", "quantity": 1, "unitPrice": 10.00 }
               ]
             }
             """;
@@ -113,13 +120,15 @@ class OrdersControllerIntegrationTest {
 
     @Test
     void rejectsInvalidOrderStatusTransition() throws Exception {
+        registerProduct("arc-5500");
+
         String createPayload = """
             {
               "orderNumber": "so-5003",
               "customerEmail": "buyer@acme.com",
               "currencyCode": "USD",
               "lines": [
-                { "productSku": "arc-1000", "quantity": 1, "unitPrice": 10.00 }
+                { "productSku": "arc-5500", "quantity": 1, "unitPrice": 10.00 }
               ]
             }
             """;
@@ -150,5 +159,44 @@ class OrdersControllerIntegrationTest {
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.path").value("/api/orders/so-5003/status"));
+    }
+
+    @Test
+    void rejectsOrderLineWithUnknownProductSku() throws Exception {
+        String payload = """
+            {
+              "orderNumber": "so-5004",
+              "customerEmail": "buyer@acme.com",
+              "currencyCode": "USD",
+              "lines": [
+                { "productSku": "arc-missing", "quantity": 1, "unitPrice": 10.00 }
+              ]
+            }
+            """;
+
+        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(payload))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("Unknown product SKU: ARC-MISSING"))
+            .andExpect(jsonPath("$.path").value("/api/orders"));
+    }
+
+    private void registerProduct(String sku) throws Exception {
+        String normalizedSku = sku.trim().toUpperCase();
+        String categoryCode = ("CAT" + normalizedSku.replaceAll("[^A-Z0-9]", "")).substring(0, Math.min(32, ("CAT" + normalizedSku.replaceAll("[^A-Z0-9]", "")).length()));
+        String payload = """
+            {
+              "sku": "%s",
+              "name": "Product %s",
+              "categoryCode": "%s",
+              "categoryName": "Order Test Category",
+              "amount": 1.00,
+              "currencyCode": "USD"
+            }
+            """.formatted(sku, normalizedSku, categoryCode);
+
+        mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(payload))
+            .andExpect(status().isCreated());
     }
 }

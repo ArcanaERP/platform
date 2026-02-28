@@ -3,6 +3,7 @@ package com.arcanaerp.platform.products.internal;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.products.ProductCatalog;
+import com.arcanaerp.platform.products.ProductLookup;
 import com.arcanaerp.platform.products.ProductView;
 import com.arcanaerp.platform.products.RegisterProductCommand;
 import java.time.Clock;
@@ -20,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 @RequiredArgsConstructor
-class ProductCatalogService implements ProductCatalog {
+class ProductCatalogService implements ProductCatalog, ProductLookup {
 
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
@@ -66,6 +67,13 @@ class ProductCatalogService implements ProductCatalog {
                 Price price = priceRepository.findTopByProductIdOrderByEffectiveFromDesc(product.getId()).orElse(null);
                 return toView(product, category, price);
             });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean productExists(String sku) {
+        String normalizedSku = normalizeRequired(sku, "sku").toUpperCase();
+        return productRepository.findBySku(normalizedSku).isPresent();
     }
 
     private ProductView toView(Product product, Category category, Price price) {
