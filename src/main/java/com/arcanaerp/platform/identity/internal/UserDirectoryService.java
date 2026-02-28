@@ -1,16 +1,19 @@
 package com.arcanaerp.platform.identity.internal;
 
+import com.arcanaerp.platform.core.pagination.PageQuery;
+import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.RegisterUserCommand;
 import com.arcanaerp.platform.identity.UserDirectory;
 import com.arcanaerp.platform.identity.UserView;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,11 +55,10 @@ class UserDirectoryService implements UserDirectory {
 
     @Override
     @Transactional(readOnly = true)
-    public List<UserView> listUsers() {
-        List<UserAccount> users = userAccountRepository.findAllByOrderByCreatedAtDesc();
-        if (users.isEmpty()) {
-            return List.of();
-        }
+    public PageResult<UserView> listUsers(PageQuery pageQuery) {
+        Page<UserAccount> users = userAccountRepository.findAll(
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
 
         Set<UUID> tenantIds = users.stream().map(UserAccount::getTenantId).collect(java.util.stream.Collectors.toSet());
         Set<UUID> roleIds = users.stream().map(UserAccount::getRoleId).collect(java.util.stream.Collectors.toSet());
@@ -65,7 +67,8 @@ class UserDirectoryService implements UserDirectory {
         tenantRepository.findAllById(tenantIds).forEach(tenant -> tenantsById.put(tenant.getId(), tenant));
         roleRepository.findAllById(roleIds).forEach(role -> rolesById.put(role.getId(), role));
 
-        return users.stream().map(user -> toView(user, tenantsById.get(user.getTenantId()), rolesById.get(user.getRoleId()))).toList();
+        return PageResult.from(users)
+            .map(user -> toView(user, tenantsById.get(user.getTenantId()), rolesById.get(user.getRoleId())));
     }
 
     private UserView toView(UserAccount user, Tenant tenant, Role role) {

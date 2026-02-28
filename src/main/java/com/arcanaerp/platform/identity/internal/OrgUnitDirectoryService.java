@@ -1,12 +1,15 @@
 package com.arcanaerp.platform.identity.internal;
 
+import com.arcanaerp.platform.core.pagination.PageQuery;
+import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.OrgUnitDirectory;
 import com.arcanaerp.platform.identity.OrgUnitView;
 import com.arcanaerp.platform.identity.RegisterOrgUnitCommand;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,15 +43,16 @@ class OrgUnitDirectoryService implements OrgUnitDirectory {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrgUnitView> listOrgUnits(String tenantCode) {
+    public PageResult<OrgUnitView> listOrgUnits(String tenantCode, PageQuery pageQuery) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
         Tenant tenant = tenantRepository.findByCode(normalizedTenantCode)
             .orElseThrow(() -> new java.util.NoSuchElementException("Tenant not found: " + normalizedTenantCode));
 
-        return orgUnitRepository.findByTenantIdOrderByCreatedAtDesc(tenant.getId())
-            .stream()
-            .map(orgUnit -> toView(orgUnit, tenant))
-            .toList();
+        Page<OrgUnit> orgUnits = orgUnitRepository.findByTenantId(
+            tenant.getId(),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(orgUnits).map(orgUnit -> toView(orgUnit, tenant));
     }
 
     private OrgUnitView toView(OrgUnit orgUnit, Tenant tenant) {

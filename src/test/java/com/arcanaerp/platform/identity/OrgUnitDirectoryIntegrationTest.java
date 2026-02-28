@@ -3,7 +3,7 @@ package com.arcanaerp.platform.identity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.List;
+import com.arcanaerp.platform.core.pagination.PageQuery;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,11 +23,14 @@ class OrgUnitDirectoryIntegrationTest {
             new RegisterOrgUnitCommand("tenant01", "Tenant 01", "hr", "Human Resources")
         );
 
-        List<OrgUnitView> orgUnits = orgUnitDirectory.listOrgUnits("tenant01");
+        var orgUnits = orgUnitDirectory.listOrgUnits("tenant01", new PageQuery(0, 10));
 
-        assertThat(orgUnits).hasSize(2);
-        assertThat(orgUnits).extracting(OrgUnitView::code).containsExactlyInAnyOrder("OPS", "HR");
-        assertThat(orgUnits).extracting(OrgUnitView::tenantCode).containsOnly("TENANT01");
+        assertThat(orgUnits.page()).isEqualTo(0);
+        assertThat(orgUnits.size()).isEqualTo(10);
+        assertThat(orgUnits.totalItems()).isEqualTo(2);
+        assertThat(orgUnits.items()).hasSize(2);
+        assertThat(orgUnits.items()).extracting(OrgUnitView::code).containsExactlyInAnyOrder("OPS", "HR");
+        assertThat(orgUnits.items()).extracting(OrgUnitView::tenantCode).containsOnly("TENANT01");
     }
 
     @Test

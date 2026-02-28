@@ -1,16 +1,18 @@
 package com.arcanaerp.platform.identity.web;
 
+import com.arcanaerp.platform.core.pagination.PageQuery;
+import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.RegisterUserCommand;
 import com.arcanaerp.platform.identity.UserDirectory;
 import com.arcanaerp.platform.identity.UserView;
 import jakarta.validation.Valid;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -38,8 +40,11 @@ public class UsersController {
     }
 
     @GetMapping
-    public List<UserResponse> listUsers() {
-        return userDirectory.listUsers().stream().map(this::toResponse).toList();
+    public PageResult<UserResponse> listUsers(
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return userDirectory.listUsers(PageQuery.of(page, size)).map(this::toResponse);
     }
 
     private UserResponse toResponse(UserView user) {

@@ -1,16 +1,19 @@
 package com.arcanaerp.platform.products.internal;
 
+import com.arcanaerp.platform.core.pagination.PageQuery;
+import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.products.ProductCatalog;
 import com.arcanaerp.platform.products.ProductView;
 import com.arcanaerp.platform.products.RegisterProductCommand;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,23 +52,20 @@ class ProductCatalogService implements ProductCatalog {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProductView> listProducts() {
-        List<Product> products = productRepository.findAllByOrderByCreatedAtDesc();
-        if (products.isEmpty()) {
-            return List.of();
-        }
+    public PageResult<ProductView> listProducts(PageQuery pageQuery) {
+        Page<Product> products = productRepository.findAll(
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
 
         Set<UUID> categoryIds = products.stream().map(Product::getCategoryId).collect(java.util.stream.Collectors.toSet());
         Map<UUID, Category> categoryById = new HashMap<>();
         categoryRepository.findAllById(categoryIds).forEach(category -> categoryById.put(category.getId(), category));
 
-        return products.stream()
-            .map(product -> {
+        return PageResult.from(products).map(product -> {
                 Category category = categoryById.get(product.getCategoryId());
                 Price price = priceRepository.findTopByProductIdOrderByEffectiveFromDesc(product.getId()).orElse(null);
                 return toView(product, category, price);
-            })
-            .toList();
+            });
     }
 
     private ProductView toView(Product product, Category category, Price price) {

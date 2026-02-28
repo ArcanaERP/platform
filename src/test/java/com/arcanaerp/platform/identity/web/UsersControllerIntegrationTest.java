@@ -1,5 +1,7 @@
 package com.arcanaerp.platform.identity.web;
 
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -38,10 +40,12 @@ class UsersControllerIntegrationTest {
             .andExpect(jsonPath("$.roleCode").value("ADMIN"))
             .andExpect(jsonPath("$.email").value("ops01@acme.com"));
 
-        mockMvc.perform(get("/api/identity/users"))
+        mockMvc.perform(get("/api/identity/users?page=0&size=10"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].tenantCode").value("ACME01"))
-            .andExpect(jsonPath("$[0].displayName").value("Ops User"));
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(10))
+            .andExpect(jsonPath("$.totalItems", greaterThanOrEqualTo(1)))
+            .andExpect(jsonPath("$.items[?(@.tenantCode=='ACME01')].displayName", hasItem("Ops User")));
     }
 
     @Test

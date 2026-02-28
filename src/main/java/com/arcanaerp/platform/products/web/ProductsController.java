@@ -1,16 +1,18 @@
 package com.arcanaerp.platform.products.web;
 
+import com.arcanaerp.platform.core.pagination.PageQuery;
+import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.products.ProductCatalog;
 import com.arcanaerp.platform.products.ProductView;
 import com.arcanaerp.platform.products.RegisterProductCommand;
 import jakarta.validation.Valid;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -38,8 +40,11 @@ public class ProductsController {
     }
 
     @GetMapping
-    public List<ProductResponse> listProducts() {
-        return productCatalog.listProducts().stream().map(this::toResponse).toList();
+    public PageResult<ProductResponse> listProducts(
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return productCatalog.listProducts(PageQuery.of(page, size)).map(this::toResponse);
     }
 
     private ProductResponse toResponse(ProductView view) {

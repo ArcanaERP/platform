@@ -1,5 +1,7 @@
 package com.arcanaerp.platform.products.web;
 
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -39,10 +41,12 @@ class ProductsControllerIntegrationTest {
             .andExpect(jsonPath("$.currentPrice").value(19.99))
             .andExpect(jsonPath("$.currencyCode").value("USD"));
 
-        mockMvc.perform(get("/api/products"))
+        mockMvc.perform(get("/api/products?page=0&size=10"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].sku").value("ARC-1000"))
-            .andExpect(jsonPath("$[0].categoryName").value("Kits"));
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(10))
+            .andExpect(jsonPath("$.totalItems", greaterThanOrEqualTo(1)))
+            .andExpect(jsonPath("$.items[?(@.sku=='ARC-1000')].categoryName", hasItem("Kits")));
     }
 
     @Test
@@ -65,6 +69,16 @@ class ProductsControllerIntegrationTest {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.path").value("/api/products"));
+    }
+
+    @Test
+    void returnsErrorEnvelopeForInvalidPageSize() throws Exception {
+        mockMvc.perform(get("/api/products?page=0&size=0"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("size must be between 1 and 100"))
             .andExpect(jsonPath("$.path").value("/api/products"));
     }
 }

@@ -1,10 +1,11 @@
 package com.arcanaerp.platform.identity;
 
-import java.util.List;
+import com.arcanaerp.platform.core.pagination.PageQuery;
+import com.arcanaerp.platform.core.pagination.PageResult;
 
 public interface OrgUnitDirectory {
 
     OrgUnitView registerOrgUnit(RegisterOrgUnitCommand command);
 
-    List<OrgUnitView> listOrgUnits(String tenantCode);
+    PageResult<OrgUnitView> listOrgUnits(String tenantCode, PageQuery pageQuery);
 }
