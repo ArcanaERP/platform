@@ -38,15 +38,31 @@ public class Product {
     @Column(nullable = false)
     private boolean active;
 
+    @Column(nullable = false)
+    private Instant activatedAt;
+
+    private Instant deactivatedAt;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    private Product(UUID id, String sku, String name, UUID categoryId, boolean active, Instant createdAt) {
+    private Product(
+        UUID id,
+        String sku,
+        String name,
+        UUID categoryId,
+        boolean active,
+        Instant activatedAt,
+        Instant deactivatedAt,
+        Instant createdAt
+    ) {
         this.id = id;
         this.sku = sku;
         this.name = name;
         this.categoryId = categoryId;
         this.active = active;
+        this.activatedAt = activatedAt;
+        this.deactivatedAt = deactivatedAt;
         this.createdAt = createdAt;
     }
 
@@ -60,12 +76,27 @@ public class Product {
             normalizeRequired(name, "name"),
             categoryId,
             true,
+            createdAt,
+            null,
             createdAt
         );
     }
 
-    void changeActivation(boolean active) {
+    void changeActivation(boolean active, Instant transitionedAt) {
+        if (transitionedAt == null) {
+            throw new IllegalArgumentException("transitionedAt is required");
+        }
+        if (this.active == active) {
+            return;
+        }
+
         this.active = active;
+        if (active) {
+            this.activatedAt = transitionedAt;
+            this.deactivatedAt = null;
+        } else {
+            this.deactivatedAt = transitionedAt;
+        }
     }
 
     private static String normalizeRequired(String value, String fieldName) {

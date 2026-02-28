@@ -7,7 +7,7 @@ public interface ProductCatalog {
 
     ProductView registerProduct(RegisterProductCommand command);
 
-    PageResult<ProductView> listProducts(PageQuery pageQuery);
+    PageResult<ProductView> listProducts(PageQuery pageQuery, Boolean active);
 
     ProductView changeProductActivation(ChangeProductActivationCommand command);
 }

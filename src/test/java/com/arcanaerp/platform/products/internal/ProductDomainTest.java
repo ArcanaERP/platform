@@ -36,10 +36,14 @@ class ProductDomainTest {
             Instant.parse("2026-02-28T00:00:00Z")
         );
         assertThat(product.isActive()).isTrue();
+        assertThat(product.getActivatedAt()).isEqualTo(Instant.parse("2026-02-28T00:00:00Z"));
+        assertThat(product.getDeactivatedAt()).isNull();
 
-        product.changeActivation(false);
+        Instant deactivatedAt = Instant.parse("2026-02-28T01:00:00Z");
+        product.changeActivation(false, deactivatedAt);
 
         assertThat(product.isActive()).isFalse();
+        assertThat(product.getDeactivatedAt()).isEqualTo(deactivatedAt);
     }
 
     @Test

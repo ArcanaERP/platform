@@ -45,9 +45,10 @@ public class ProductsController {
     @GetMapping
     public PageResult<ProductResponse> listProducts(
         @RequestParam(required = false) Integer page,
-        @RequestParam(required = false) Integer size
+        @RequestParam(required = false) Integer size,
+        @RequestParam(required = false) Boolean active
     ) {
-        return productCatalog.listProducts(PageQuery.of(page, size)).map(this::toResponse);
+        return productCatalog.listProducts(PageQuery.of(page, size), active).map(this::toResponse);
     }
 
     @PatchMapping("/{sku}/active")
@@ -67,6 +68,8 @@ public class ProductsController {
             view.sku(),
             view.name(),
             view.active(),
+            view.activatedAt(),
+            view.deactivatedAt(),
             view.categoryId(),
             view.categoryCode(),
             view.categoryName(),

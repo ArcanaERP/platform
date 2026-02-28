@@ -2,6 +2,7 @@ package com.arcanaerp.platform.products.web;
 
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -39,6 +40,8 @@ class ProductsControllerIntegrationTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.sku").value("ARC-1000"))
             .andExpect(jsonPath("$.active").value(true))
+            .andExpect(jsonPath("$.activatedAt").isNotEmpty())
+            .andExpect(jsonPath("$.deactivatedAt").value(nullValue()))
             .andExpect(jsonPath("$.categoryCode").value("KITS"))
             .andExpect(jsonPath("$.currentPrice").value(19.99))
             .andExpect(jsonPath("$.currencyCode").value("USD"));
@@ -78,7 +81,56 @@ class ProductsControllerIntegrationTest {
             .content(deactivatePayload))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.sku").value("ARC-3000"))
-            .andExpect(jsonPath("$.active").value(false));
+            .andExpect(jsonPath("$.active").value(false))
+            .andExpect(jsonPath("$.deactivatedAt").isNotEmpty());
+    }
+
+    @Test
+    void canFilterProductsByActiveFlag() throws Exception {
+        String activePayload = """
+            {
+              "sku": "ARC-3100",
+              "name": "Active Kit",
+              "categoryCode": "kits",
+              "categoryName": "Kits",
+              "amount": 9.99,
+              "currencyCode": "USD"
+            }
+            """;
+        String inactivePayload = """
+            {
+              "sku": "ARC-3200",
+              "name": "Inactive Kit",
+              "categoryCode": "kits",
+              "categoryName": "Kits",
+              "amount": 9.99,
+              "currencyCode": "USD"
+            }
+            """;
+        String deactivatePayload = """
+            {
+              "active": false
+            }
+            """;
+
+        mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(activePayload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(inactivePayload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(patch("/api/products/arc-3200/active")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(deactivatePayload))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/products?page=0&size=20&active=true"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[?(@.sku=='ARC-3100')].active", hasItem(true)));
+
+        mockMvc.perform(get("/api/products?page=0&size=20&active=false"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[?(@.sku=='ARC-3200')].active", hasItem(false)));
     }
 
     @Test

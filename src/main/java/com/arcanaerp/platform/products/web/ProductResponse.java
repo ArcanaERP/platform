@@ -9,6 +9,8 @@ public record ProductResponse(
     String sku,
     String name,
     boolean active,
+    Instant activatedAt,
+    Instant deactivatedAt,
     UUID categoryId,
     String categoryCode,
     String categoryName,

@@ -56,10 +56,10 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<ProductView> listProducts(PageQuery pageQuery) {
-        Page<Product> products = productRepository.findAll(
-            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
-        );
+    public PageResult<ProductView> listProducts(PageQuery pageQuery, Boolean active) {
+        Page<Product> products = active == null
+            ? productRepository.findAll(pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt")))
+            : productRepository.findByActive(active, pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt")));
 
         Set<UUID> categoryIds = products.stream().map(Product::getCategoryId).collect(java.util.stream.Collectors.toSet());
         Map<UUID, Category> categoryById = new HashMap<>();
@@ -78,7 +78,7 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
         Product product = productRepository.findBySku(normalizedSku)
             .orElseThrow(() -> new NoSuchElementException("Product not found: " + normalizedSku));
 
-        product.changeActivation(command.active());
+        product.changeActivation(command.active(), Instant.now(clock));
         Product saved = productRepository.save(product);
         Category category = categoryRepository.findById(saved.getCategoryId()).orElse(null);
         Price price = priceRepository.findTopByProductIdOrderByEffectiveFromDesc(saved.getId()).orElse(null);
@@ -100,6 +100,8 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
             product.getSku(),
             product.getName(),
             product.isActive(),
+            product.getActivatedAt(),
+            product.getDeactivatedAt(),
             product.getCategoryId(),
             category == null ? null : category.getCode(),
             category == null ? null : category.getName(),
