@@ -76,7 +76,7 @@ public class ProductsController {
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
-        return productCatalog.listActivationHistory(sku, tenantCode, PageQuery.of(page, size))
+        return productCatalog.listActivationHistory(sku, normalizeOptionalTenantCode(tenantCode), PageQuery.of(page, size))
             .map(this::toActivationHistoryResponse);
     }
 
@@ -112,5 +112,15 @@ public class ProductsController {
             view.changedBy(),
             view.changedAt()
         );
+    }
+
+    private static String normalizeOptionalTenantCode(String tenantCode) {
+        if (tenantCode == null) {
+            return null;
+        }
+        if (tenantCode.isBlank()) {
+            throw new IllegalArgumentException("tenantCode query parameter must not be blank");
+        }
+        return tenantCode.trim().toUpperCase();
     }
 }

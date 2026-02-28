@@ -287,6 +287,19 @@ class ProductsControllerIntegrationTest {
     }
 
     @Test
+    void rejectsActivationHistoryFilterWhenTenantCodeBlank() throws Exception {
+        mockMvc.perform(get("/api/products/arc-3300/activation-history")
+            .param("page", "0")
+            .param("size", "10")
+            .param("tenantCode", "   "))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("tenantCode query parameter must not be blank"))
+            .andExpect(jsonPath("$.path").value("/api/products/arc-3300/activation-history"));
+    }
+
+    @Test
     void rejectsActivationChangeWhenActorUnknown() throws Exception {
         String createPayload = """
             {
