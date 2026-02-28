@@ -23,6 +23,7 @@ class ProductActivationAuditRepositoryTest {
                 true,
                 false,
                 "Discontinued",
+                "TENANT01",
                 "product-admin@arcanaerp.com",
                 Instant.parse("2026-02-28T00:00:00Z")
             )
@@ -33,6 +34,7 @@ class ProductActivationAuditRepositoryTest {
                 false,
                 true,
                 "Reactivated for customer demand",
+                "TENANT01",
                 "operations@arcanaerp.com",
                 Instant.parse("2026-02-28T01:00:00Z")
             )
@@ -44,6 +46,7 @@ class ProductActivationAuditRepositoryTest {
 
         assertThat(latest.isCurrentActive()).isTrue();
         assertThat(latest.getReason()).isEqualTo("Reactivated for customer demand");
+        assertThat(latest.getTenantCode()).isEqualTo("TENANT01");
         assertThat(latest.getChangedBy()).isEqualTo("operations@arcanaerp.com");
     }
 }

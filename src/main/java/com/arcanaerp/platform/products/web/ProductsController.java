@@ -101,6 +101,7 @@ public class ProductsController {
         return new ProductActivationChangeResponse(
             view.id(),
             view.sku(),
+            view.tenantCode(),
             view.previousActive(),
             view.currentActive(),
             view.reason(),

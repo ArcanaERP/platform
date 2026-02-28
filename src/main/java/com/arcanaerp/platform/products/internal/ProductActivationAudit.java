@@ -38,6 +38,9 @@ public class ProductActivationAudit {
     @Column(nullable = false, length = 512)
     private String reason;
 
+    @Column(nullable = false, length = 64)
+    private String tenantCode;
+
     @Column(nullable = false, length = 128)
     private String changedBy;
 
@@ -50,6 +53,7 @@ public class ProductActivationAudit {
         boolean previousActive,
         boolean currentActive,
         String reason,
+        String tenantCode,
         String changedBy,
         Instant changedAt
     ) {
@@ -58,6 +62,7 @@ public class ProductActivationAudit {
         this.previousActive = previousActive;
         this.currentActive = currentActive;
         this.reason = reason;
+        this.tenantCode = tenantCode;
         this.changedBy = changedBy;
         this.changedAt = changedAt;
     }
@@ -67,6 +72,7 @@ public class ProductActivationAudit {
         boolean previousActive,
         boolean currentActive,
         String reason,
+        String tenantCode,
         String changedBy,
         Instant changedAt
     ) {
@@ -75,6 +81,9 @@ public class ProductActivationAudit {
         }
         if (reason == null || reason.isBlank()) {
             throw new IllegalArgumentException("reason is required");
+        }
+        if (tenantCode == null || tenantCode.isBlank()) {
+            throw new IllegalArgumentException("tenantCode is required");
         }
         if (changedBy == null || changedBy.isBlank()) {
             throw new IllegalArgumentException("changedBy is required");
@@ -88,6 +97,7 @@ public class ProductActivationAudit {
             previousActive,
             currentActive,
             reason.trim(),
+            tenantCode.trim().toUpperCase(),
             changedBy.trim(),
             changedAt
         );

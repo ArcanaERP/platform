@@ -106,7 +106,7 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
         product.changeActivation(targetActive, changedAt);
         Product saved = productRepository.save(product);
         ProductActivationAudit audit = productActivationAuditRepository.save(
-            ProductActivationAudit.create(saved.getId(), previousActive, targetActive, reason, changedBy, changedAt)
+            ProductActivationAudit.create(saved.getId(), previousActive, targetActive, reason, tenantCode, changedBy, changedAt)
         );
         Category category = categoryRepository.findById(saved.getCategoryId()).orElse(null);
         Price price = priceRepository.findTopByProductIdOrderByEffectiveFromDesc(saved.getId()).orElse(null);
@@ -134,6 +134,7 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
         return PageResult.from(audits).map(audit -> new ProductActivationChangeView(
                 audit.getId(),
                 product.getSku(),
+                audit.getTenantCode(),
                 audit.isPreviousActive(),
                 audit.isCurrentActive(),
                 audit.getReason(),

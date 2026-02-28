@@ -203,10 +203,12 @@ class ProductsControllerIntegrationTest {
             .andExpect(jsonPath("$.size").value(10))
             .andExpect(jsonPath("$.totalItems").value(2))
             .andExpect(jsonPath("$.items[0].sku").value("ARC-3300"))
+            .andExpect(jsonPath("$.items[0].tenantCode").value(HISTORY_TENANT_CODE))
             .andExpect(jsonPath("$.items[0].previousActive").value(false))
             .andExpect(jsonPath("$.items[0].currentActive").value(true))
             .andExpect(jsonPath("$.items[0].reason").value("Customer demand rebound"))
             .andExpect(jsonPath("$.items[0].changedBy").value("sales@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].tenantCode").value(HISTORY_TENANT_CODE))
             .andExpect(jsonPath("$.items[1].changedBy").value("ops@arcanaerp.com"))
             .andExpect(jsonPath("$.items[1].reason").value("Initial retirement"));
     }
