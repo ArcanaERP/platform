@@ -74,12 +74,16 @@ class UserDirectoryService implements UserDirectory, IdentityActorLookup {
 
     @Override
     @Transactional(readOnly = true)
-    public boolean actorExists(String actorEmail) {
-        if (actorEmail == null || actorEmail.isBlank()) {
+    public boolean actorExists(String tenantCode, String actorEmail) {
+        if (tenantCode == null || tenantCode.isBlank() || actorEmail == null || actorEmail.isBlank()) {
             return false;
         }
         try {
-            return userAccountRepository.existsByEmail(normalizeEmail(actorEmail));
+            String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+            String normalizedEmail = normalizeEmail(actorEmail);
+            return tenantRepository.findByCode(normalizedTenantCode)
+                .map(tenant -> userAccountRepository.existsByTenantIdAndEmail(tenant.getId(), normalizedEmail))
+                .orElse(false);
         } catch (IllegalArgumentException ignored) {
             return false;
         }

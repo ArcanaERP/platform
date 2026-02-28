@@ -58,7 +58,13 @@ public class ProductsController {
         @Valid @RequestBody ChangeProductActivationRequest request
     ) {
         ProductView updated = productCatalog.changeProductActivation(
-            new ChangeProductActivationCommand(sku, request.active(), request.reason(), request.changedBy())
+            new ChangeProductActivationCommand(
+                sku,
+                request.active(),
+                request.reason(),
+                request.tenantCode(),
+                request.changedBy()
+            )
         );
         return toResponse(updated);
     }

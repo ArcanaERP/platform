@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -20,6 +19,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest
 @AutoConfigureMockMvc
 class OrdersControllerIntegrationTest {
+
+    private static final String ORDERS_ACTOR_TENANT_CODE = "TENORD01";
 
     @Autowired
     private MockMvc mockMvc;
@@ -226,14 +227,15 @@ class OrdersControllerIntegrationTest {
     }
 
     private void setProductActive(String sku, boolean active) throws Exception {
-        registerActor("orders-test@arcanaerp.com");
+        registerActor(ORDERS_ACTOR_TENANT_CODE, "orders-test@arcanaerp.com");
         String payload = """
             {
               "active": %s,
               "reason": "Order test activation toggle",
+              "tenantCode": "%s",
               "changedBy": "orders-test@arcanaerp.com"
             }
-            """.formatted(active);
+            """.formatted(active, ORDERS_ACTOR_TENANT_CODE);
 
         mockMvc.perform(patch("/api/products/" + sku + "/active")
             .contentType(MediaType.APPLICATION_JSON)
@@ -243,8 +245,7 @@ class OrdersControllerIntegrationTest {
             .andExpect(jsonPath("$.active").value(active));
     }
 
-    private void registerActor(String email) throws Exception {
-        String tenantCode = "TEN" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+    private void registerActor(String tenantCode, String email) throws Exception {
         String payload = """
             {
               "tenantCode": "%s",

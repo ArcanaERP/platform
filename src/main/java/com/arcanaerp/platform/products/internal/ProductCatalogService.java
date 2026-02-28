@@ -87,12 +87,13 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
     public ProductView changeProductActivation(ChangeProductActivationCommand command) {
         String normalizedSku = normalizeRequired(command.sku(), "sku").toUpperCase();
         String reason = normalizeRequired(command.reason(), "reason");
+        String tenantCode = normalizeTenantCode(command.tenantCode());
         String changedBy = normalizeActorEmail(command.changedBy());
         Product product = productRepository.findBySku(normalizedSku)
             .orElseThrow(() -> new NoSuchElementException("Product not found: " + normalizedSku));
 
-        if (!identityActorLookup.actorExists(changedBy)) {
-            throw new IllegalArgumentException("Activation actor not found: " + changedBy);
+        if (!identityActorLookup.actorExists(tenantCode, changedBy)) {
+            throw new IllegalArgumentException("Activation actor not found in tenant " + tenantCode + ": " + changedBy);
         }
 
         boolean targetActive = command.active();
@@ -175,5 +176,9 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
 
     private static String normalizeActorEmail(String changedBy) {
         return normalizeRequired(changedBy, "changedBy").toLowerCase();
+    }
+
+    private static String normalizeTenantCode(String tenantCode) {
+        return normalizeRequired(tenantCode, "tenantCode").toUpperCase();
     }
 }

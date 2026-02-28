@@ -9,7 +9,7 @@ interface UserAccountRepository extends JpaRepository<UserAccount, UUID> {
 
     Optional<UserAccount> findByTenantIdAndEmail(UUID tenantId, String email);
 
-    boolean existsByEmail(String email);
+    boolean existsByTenantIdAndEmail(UUID tenantId, String email);
 
     List<UserAccount> findAllByOrderByCreatedAtDesc();
 }

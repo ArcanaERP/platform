@@ -10,7 +10,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -21,6 +20,13 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest
 @AutoConfigureMockMvc
 class ProductsControllerIntegrationTest {
+
+    private static final String LEGACY_TENANT_CODE = "TEN3000";
+    private static final String FILTER_TENANT_CODE = "TEN3200";
+    private static final String HISTORY_TENANT_CODE = "TEN3300";
+    private static final String UNKNOWN_TENANT_CODE = "TEN3400";
+    private static final String MISMATCH_ACTOR_TENANT_CODE = "TEN3501";
+    private static final String MISMATCH_REQUEST_TENANT_CODE = "TEN3502";
 
     @Autowired
     private MockMvc mockMvc;
@@ -74,15 +80,16 @@ class ProductsControllerIntegrationTest {
             {
               "active": false,
               "reason": "Discontinued by product team",
+              "tenantCode": "%s",
               "changedBy": "product-team@arcanaerp.com"
             }
-            """;
+            """.formatted(LEGACY_TENANT_CODE);
 
         mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(createPayload))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.active").value(true));
 
-        registerActor("product-team@arcanaerp.com");
+        registerActor(LEGACY_TENANT_CODE, "product-team@arcanaerp.com");
         mockMvc.perform(patch("/api/products/arc-3000/active")
             .contentType(MediaType.APPLICATION_JSON)
             .content(deactivatePayload))
@@ -120,9 +127,10 @@ class ProductsControllerIntegrationTest {
             {
               "active": false,
               "reason": "Retired in filter test",
+              "tenantCode": "%s",
               "changedBy": "catalog-admin@arcanaerp.com"
             }
-            """;
+            """.formatted(FILTER_TENANT_CODE);
 
         mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(activePayload))
             .andExpect(status().isCreated());
@@ -130,7 +138,7 @@ class ProductsControllerIntegrationTest {
         mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(inactivePayload))
             .andExpect(status().isCreated());
 
-        registerActor("catalog-admin@arcanaerp.com");
+        registerActor(FILTER_TENANT_CODE, "catalog-admin@arcanaerp.com");
         mockMvc.perform(patch("/api/products/arc-3200/active")
             .contentType(MediaType.APPLICATION_JSON)
             .content(deactivatePayload))
@@ -161,27 +169,29 @@ class ProductsControllerIntegrationTest {
             {
               "active": false,
               "reason": "Initial retirement",
+              "tenantCode": "%s",
               "changedBy": "ops@arcanaerp.com"
             }
-            """;
+            """.formatted(HISTORY_TENANT_CODE);
         String reactivatePayload = """
             {
               "active": true,
               "reason": "Customer demand rebound",
+              "tenantCode": "%s",
               "changedBy": "sales@arcanaerp.com"
             }
-            """;
+            """.formatted(HISTORY_TENANT_CODE);
 
         mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(createPayload))
             .andExpect(status().isCreated());
 
-        registerActor("ops@arcanaerp.com");
+        registerActor(HISTORY_TENANT_CODE, "ops@arcanaerp.com");
         mockMvc.perform(patch("/api/products/arc-3300/active")
             .contentType(MediaType.APPLICATION_JSON)
             .content(deactivatePayload))
             .andExpect(status().isOk());
 
-        registerActor("sales@arcanaerp.com");
+        registerActor(HISTORY_TENANT_CODE, "sales@arcanaerp.com");
         mockMvc.perform(patch("/api/products/arc-3300/active")
             .contentType(MediaType.APPLICATION_JSON)
             .content(reactivatePayload))
@@ -227,9 +237,10 @@ class ProductsControllerIntegrationTest {
             {
               "active": false,
               "reason": "Unverified actor",
+              "tenantCode": "%s",
               "changedBy": "unknown@arcanaerp.com"
             }
-            """;
+            """.formatted(UNKNOWN_TENANT_CODE);
 
         mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(createPayload))
             .andExpect(status().isCreated());
@@ -240,8 +251,48 @@ class ProductsControllerIntegrationTest {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("Activation actor not found: unknown@arcanaerp.com"))
+            .andExpect(jsonPath("$.message")
+                .value("Activation actor not found in tenant " + UNKNOWN_TENANT_CODE + ": unknown@arcanaerp.com"))
             .andExpect(jsonPath("$.path").value("/api/products/arc-3400/active"));
+    }
+
+    @Test
+    void rejectsActivationChangeWhenActorExistsInDifferentTenant() throws Exception {
+        String createPayload = """
+            {
+              "sku": "ARC-3500",
+              "name": "Tenant Scoped Actor Kit",
+              "categoryCode": "kits",
+              "categoryName": "Kits",
+              "amount": 9.99,
+              "currencyCode": "USD"
+            }
+            """;
+        String deactivatePayload = """
+            {
+              "active": false,
+              "reason": "Tenant mismatch actor",
+              "tenantCode": "%s",
+              "changedBy": "tenant.actor@arcanaerp.com"
+            }
+            """.formatted(MISMATCH_REQUEST_TENANT_CODE);
+
+        mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(createPayload))
+            .andExpect(status().isCreated());
+
+        registerActor(MISMATCH_ACTOR_TENANT_CODE, "tenant.actor@arcanaerp.com");
+
+        mockMvc.perform(patch("/api/products/arc-3500/active")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(deactivatePayload))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message")
+                .value("Activation actor not found in tenant "
+                    + MISMATCH_REQUEST_TENANT_CODE
+                    + ": tenant.actor@arcanaerp.com"))
+            .andExpect(jsonPath("$.path").value("/api/products/arc-3500/active"));
     }
 
     @Test
@@ -277,8 +328,7 @@ class ProductsControllerIntegrationTest {
             .andExpect(jsonPath("$.path").value("/api/products"));
     }
 
-    private void registerActor(String email) throws Exception {
-        String tenantCode = "TEN" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+    private void registerActor(String tenantCode, String email) throws Exception {
         String payload = """
             {
               "tenantCode": "%s",
