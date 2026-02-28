@@ -3,6 +3,7 @@ package com.arcanaerp.platform.products.web;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -137,6 +138,66 @@ class ProductsControllerIntegrationTest {
         mockMvc.perform(get("/api/products?page=0&size=20&active=false"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.items[?(@.sku=='ARC-3200')].active", hasItem(false)));
+    }
+
+    @Test
+    void canListProductActivationHistory() throws Exception {
+        String createPayload = """
+            {
+              "sku": "ARC-3300",
+              "name": "History Kit",
+              "categoryCode": "kits",
+              "categoryName": "Kits",
+              "amount": 9.99,
+              "currencyCode": "USD"
+            }
+            """;
+        String deactivatePayload = """
+            {
+              "active": false,
+              "reason": "Initial retirement"
+            }
+            """;
+        String reactivatePayload = """
+            {
+              "active": true,
+              "reason": "Customer demand rebound"
+            }
+            """;
+
+        mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(createPayload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(patch("/api/products/arc-3300/active")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(deactivatePayload))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/products/arc-3300/active")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(reactivatePayload))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/products/arc-3300/activation-history?page=0&size=10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(10))
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].sku").value("ARC-3300"))
+            .andExpect(jsonPath("$.items[0].previousActive").value(false))
+            .andExpect(jsonPath("$.items[0].currentActive").value(true))
+            .andExpect(jsonPath("$.items[0].reason").value("Customer demand rebound"))
+            .andExpect(jsonPath("$.items[1].reason").value("Initial retirement"));
+    }
+
+    @Test
+    void activationHistoryReturnsNotFoundForUnknownSku() throws Exception {
+        mockMvc.perform(get("/api/products/arc-missing/activation-history?page=0&size=10"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message", startsWith("Product not found: ARC-MISSING")))
+            .andExpect(jsonPath("$.path").value("/api/products/arc-missing/activation-history"));
     }
 
     @Test

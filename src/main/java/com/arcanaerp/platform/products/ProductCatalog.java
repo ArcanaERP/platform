@@ -10,4 +10,6 @@ public interface ProductCatalog {
     PageResult<ProductView> listProducts(PageQuery pageQuery, Boolean active);
 
     ProductView changeProductActivation(ChangeProductActivationCommand command);
+
+    PageResult<ProductActivationChangeView> listActivationHistory(String sku, PageQuery pageQuery);
 }

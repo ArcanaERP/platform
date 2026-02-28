@@ -3,6 +3,7 @@ package com.arcanaerp.platform.products.internal;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.products.ChangeProductActivationCommand;
+import com.arcanaerp.platform.products.ProductActivationChangeView;
 import com.arcanaerp.platform.products.ProductCatalog;
 import com.arcanaerp.platform.products.ProductLookup;
 import com.arcanaerp.platform.products.ProductOrderability;
@@ -17,6 +18,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -110,6 +112,31 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
         return productRepository.findBySku(normalizedSku)
             .map(product -> product.isActive() ? ProductOrderability.ORDERABLE : ProductOrderability.INACTIVE)
             .orElse(ProductOrderability.UNKNOWN);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<ProductActivationChangeView> listActivationHistory(String sku, PageQuery pageQuery) {
+        Product product = findProductBySku(sku);
+        Page<ProductActivationAudit> audits = productActivationAuditRepository.findByProductId(
+            product.getId(),
+            PageRequest.of(pageQuery.page(), pageQuery.size(), Sort.by(Sort.Direction.DESC, "changedAt"))
+        );
+
+        return PageResult.from(audits).map(audit -> new ProductActivationChangeView(
+                audit.getId(),
+                product.getSku(),
+                audit.isPreviousActive(),
+                audit.isCurrentActive(),
+                audit.getReason(),
+                audit.getChangedAt()
+            ));
+    }
+
+    private Product findProductBySku(String sku) {
+        String normalizedSku = normalizeRequired(sku, "sku").toUpperCase();
+        return productRepository.findBySku(normalizedSku)
+            .orElseThrow(() -> new NoSuchElementException("Product not found: " + normalizedSku));
     }
 
     private ProductView toView(Product product, Category category, Price price, ProductActivationAudit latestAudit) {

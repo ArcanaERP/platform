@@ -3,6 +3,7 @@ package com.arcanaerp.platform.products.web;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.products.ChangeProductActivationCommand;
+import com.arcanaerp.platform.products.ProductActivationChangeView;
 import com.arcanaerp.platform.products.ProductCatalog;
 import com.arcanaerp.platform.products.ProductView;
 import com.arcanaerp.platform.products.RegisterProductCommand;
@@ -62,6 +63,15 @@ public class ProductsController {
         return toResponse(updated);
     }
 
+    @GetMapping("/{sku}/activation-history")
+    public PageResult<ProductActivationChangeResponse> listActivationHistory(
+        @PathVariable String sku,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return productCatalog.listActivationHistory(sku, PageQuery.of(page, size)).map(this::toActivationHistoryResponse);
+    }
+
     private ProductResponse toResponse(ProductView view) {
         return new ProductResponse(
             view.id(),
@@ -78,6 +88,17 @@ public class ProductsController {
             view.currentPrice(),
             view.currencyCode(),
             view.pricedAt()
+        );
+    }
+
+    private ProductActivationChangeResponse toActivationHistoryResponse(ProductActivationChangeView view) {
+        return new ProductActivationChangeResponse(
+            view.id(),
+            view.sku(),
+            view.previousActive(),
+            view.currentActive(),
+            view.reason(),
+            view.changedAt()
         );
     }
 }
