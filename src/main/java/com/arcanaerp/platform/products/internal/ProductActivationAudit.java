@@ -16,7 +16,15 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
     name = "product_activation_audits",
-    indexes = @Index(name = "idx_product_activation_audits_product_changed", columnList = "productId,changedAt")
+    indexes = {
+        @Index(name = "idx_product_activation_audits_product_changed", columnList = "productId,changedAt"),
+        @Index(name = "idx_paa_product_tenant_changed", columnList = "productId,tenantCode,changedAt"),
+        @Index(name = "idx_paa_product_actor_changed", columnList = "productId,changedBy,changedAt"),
+        @Index(
+            name = "idx_paa_product_tenant_actor_changed",
+            columnList = "productId,tenantCode,changedBy,changedAt"
+        )
+    }
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
