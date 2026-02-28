@@ -8,4 +8,6 @@ public interface OrderManagement {
     OrderView createOrder(CreateOrderCommand command);
 
     PageResult<OrderView> listOrders(PageQuery pageQuery);
+
+    OrderView changeOrderStatus(ChangeOrderStatusCommand command);
 }

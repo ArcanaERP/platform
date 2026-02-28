@@ -3,6 +3,7 @@ package com.arcanaerp.platform.orders.web;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -39,6 +40,7 @@ class OrdersControllerIntegrationTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.orderNumber").value("SO-5000"))
             .andExpect(jsonPath("$.customerEmail").value("buyer@acme.com"))
+            .andExpect(jsonPath("$.status").value("DRAFT"))
             .andExpect(jsonPath("$.currencyCode").value("USD"))
             .andExpect(jsonPath("$.totalAmount").value(25.5))
             .andExpect(jsonPath("$.lines[0].lineNo").value(1));
@@ -72,5 +74,76 @@ class OrdersControllerIntegrationTest {
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.path").value("/api/orders"));
+    }
+
+    @Test
+    void transitionsOrderStatusFromDraftToConfirmed() throws Exception {
+        String createPayload = """
+            {
+              "orderNumber": "so-5002",
+              "customerEmail": "buyer@acme.com",
+              "currencyCode": "USD",
+              "lines": [
+                { "productSku": "arc-1000", "quantity": 1, "unitPrice": 10.00 }
+              ]
+            }
+            """;
+        String statusPayload = """
+            {
+              "status": "CONFIRMED"
+            }
+            """;
+
+        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(createPayload))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.status").value("DRAFT"));
+
+        mockMvc.perform(patch("/api/orders/so-5002/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(statusPayload))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.orderNumber").value("SO-5002"))
+            .andExpect(jsonPath("$.status").value("CONFIRMED"));
+    }
+
+    @Test
+    void rejectsInvalidOrderStatusTransition() throws Exception {
+        String createPayload = """
+            {
+              "orderNumber": "so-5003",
+              "customerEmail": "buyer@acme.com",
+              "currencyCode": "USD",
+              "lines": [
+                { "productSku": "arc-1000", "quantity": 1, "unitPrice": 10.00 }
+              ]
+            }
+            """;
+        String confirmPayload = """
+            {
+              "status": "CONFIRMED"
+            }
+            """;
+        String cancelPayload = """
+            {
+              "status": "CANCELLED"
+            }
+            """;
+
+        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(createPayload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(patch("/api/orders/so-5003/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(confirmPayload))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("CONFIRMED"));
+
+        mockMvc.perform(patch("/api/orders/so-5003/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(cancelPayload))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.path").value("/api/orders/so-5003/status"));
     }
 }

@@ -9,6 +9,7 @@ public record OrderView(
     UUID id,
     String orderNumber,
     String customerEmail,
+    OrderStatus status,
     String currencyCode,
     BigDecimal totalAmount,
     Instant createdAt,

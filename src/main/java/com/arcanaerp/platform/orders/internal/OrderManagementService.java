@@ -2,10 +2,12 @@ package com.arcanaerp.platform.orders.internal;
 
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.orders.ChangeOrderStatusCommand;
 import com.arcanaerp.platform.orders.CreateOrderCommand;
 import com.arcanaerp.platform.orders.CreateOrderLineCommand;
 import com.arcanaerp.platform.orders.OrderLineView;
 import com.arcanaerp.platform.orders.OrderManagement;
+import com.arcanaerp.platform.orders.OrderStatus;
 import com.arcanaerp.platform.orders.OrderView;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -88,6 +90,23 @@ class OrderManagementService implements OrderManagement {
         return PageResult.from(orders).map(order -> toView(order, linesByOrderId.getOrDefault(order.getId(), List.of())));
     }
 
+    @Override
+    public OrderView changeOrderStatus(ChangeOrderStatusCommand command) {
+        String orderNumber = normalizeRequired(command.orderNumber(), "orderNumber").toUpperCase();
+        OrderStatus targetStatus = command.status();
+        if (targetStatus == null) {
+            throw new IllegalArgumentException("status is required");
+        }
+
+        SalesOrder order = salesOrderRepository.findByOrderNumber(orderNumber)
+            .orElseThrow(() -> new java.util.NoSuchElementException("Order not found: " + orderNumber));
+
+        order.transitionTo(targetStatus);
+        SalesOrder saved = salesOrderRepository.save(order);
+        List<SalesOrderLine> lines = salesOrderLineRepository.findBySalesOrderIdOrderByLineNoAsc(saved.getId());
+        return toView(saved, lines);
+    }
+
     private static List<CreateOrderLineCommand> normalizeLineCommands(List<CreateOrderLineCommand> lines) {
         if (lines == null || lines.isEmpty()) {
             throw new IllegalArgumentException("lines must contain at least one line");
@@ -130,6 +149,7 @@ class OrderManagementService implements OrderManagement {
             order.getId(),
             order.getOrderNumber(),
             order.getCustomerEmail(),
+            order.getStatus(),
             order.getCurrencyCode(),
             order.getTotalAmount(),
             order.getCreatedAt(),

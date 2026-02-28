@@ -3,6 +3,7 @@ package com.arcanaerp.platform.orders.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.arcanaerp.platform.orders.OrderStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -23,6 +24,7 @@ class OrderDomainTest {
         assertThat(order.getOrderNumber()).isEqualTo("SO-1000");
         assertThat(order.getCustomerEmail()).isEqualTo("customer@acme.com");
         assertThat(order.getCurrencyCode()).isEqualTo("USD");
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.DRAFT);
     }
 
     @Test
@@ -53,5 +55,23 @@ class OrderDomainTest {
 
         assertThat(line.getProductSku()).isEqualTo("ARC-1000");
         assertThat(line.getLineTotal()).isEqualByComparingTo("10.0000");
+    }
+
+    @Test
+    void salesOrderTransitionAllowsOnlyDraftToFinalStates() {
+        SalesOrder order = SalesOrder.create(
+            "SO-1002",
+            "customer@acme.com",
+            "USD",
+            new BigDecimal("10.00"),
+            Instant.parse("2026-02-28T00:00:00Z")
+        );
+        order.transitionTo(OrderStatus.CONFIRMED);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
+
+        assertThatThrownBy(() -> order.transitionTo(OrderStatus.CANCELLED))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("Order status transition not allowed: CONFIRMED -> CANCELLED");
     }
 }

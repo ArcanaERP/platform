@@ -1,7 +1,10 @@
 package com.arcanaerp.platform.orders.internal;
 
+import com.arcanaerp.platform.orders.OrderStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -36,6 +39,10 @@ public class SalesOrder {
     @Column(nullable = false, length = 3)
     private String currencyCode;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    private OrderStatus status;
+
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal totalAmount;
 
@@ -47,6 +54,7 @@ public class SalesOrder {
         String orderNumber,
         String customerEmail,
         String currencyCode,
+        OrderStatus status,
         BigDecimal totalAmount,
         Instant createdAt
     ) {
@@ -54,6 +62,7 @@ public class SalesOrder {
         this.orderNumber = orderNumber;
         this.customerEmail = customerEmail;
         this.currencyCode = currencyCode;
+        this.status = status;
         this.totalAmount = totalAmount;
         this.createdAt = createdAt;
     }
@@ -74,9 +83,26 @@ public class SalesOrder {
             normalizeRequired(orderNumber, "orderNumber").toUpperCase(),
             normalizeEmail(customerEmail),
             normalizeCurrencyCode(currencyCode),
+            OrderStatus.DRAFT,
             totalAmount,
             createdAt
         );
+    }
+
+    void transitionTo(OrderStatus targetStatus) {
+        if (targetStatus == null) {
+            throw new IllegalArgumentException("status is required");
+        }
+        if (targetStatus == this.status) {
+            return;
+        }
+        if (this.status != OrderStatus.DRAFT) {
+            throw new IllegalArgumentException("Order status transition not allowed: " + this.status + " -> " + targetStatus);
+        }
+        if (targetStatus != OrderStatus.CONFIRMED && targetStatus != OrderStatus.CANCELLED) {
+            throw new IllegalArgumentException("Order status transition not allowed: " + this.status + " -> " + targetStatus);
+        }
+        this.status = targetStatus;
     }
 
     private static String normalizeEmail(String email) {
