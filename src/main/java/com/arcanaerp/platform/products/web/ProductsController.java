@@ -2,6 +2,7 @@ package com.arcanaerp.platform.products.web;
 
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.products.ChangeProductActivationCommand;
 import com.arcanaerp.platform.products.ProductCatalog;
 import com.arcanaerp.platform.products.ProductView;
 import com.arcanaerp.platform.products.RegisterProductCommand;
@@ -9,6 +10,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -47,11 +50,23 @@ public class ProductsController {
         return productCatalog.listProducts(PageQuery.of(page, size)).map(this::toResponse);
     }
 
+    @PatchMapping("/{sku}/active")
+    public ProductResponse changeProductActivation(
+        @PathVariable String sku,
+        @Valid @RequestBody ChangeProductActivationRequest request
+    ) {
+        ProductView updated = productCatalog.changeProductActivation(
+            new ChangeProductActivationCommand(sku, request.active())
+        );
+        return toResponse(updated);
+    }
+
     private ProductResponse toResponse(ProductView view) {
         return new ProductResponse(
             view.id(),
             view.sku(),
             view.name(),
+            view.active(),
             view.categoryId(),
             view.categoryCode(),
             view.categoryName(),

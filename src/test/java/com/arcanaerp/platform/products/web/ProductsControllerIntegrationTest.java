@@ -3,6 +3,7 @@ package com.arcanaerp.platform.products.web;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -37,6 +38,7 @@ class ProductsControllerIntegrationTest {
         mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(payload))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.sku").value("ARC-1000"))
+            .andExpect(jsonPath("$.active").value(true))
             .andExpect(jsonPath("$.categoryCode").value("KITS"))
             .andExpect(jsonPath("$.currentPrice").value(19.99))
             .andExpect(jsonPath("$.currencyCode").value("USD"));
@@ -47,6 +49,36 @@ class ProductsControllerIntegrationTest {
             .andExpect(jsonPath("$.size").value(10))
             .andExpect(jsonPath("$.totalItems", greaterThanOrEqualTo(1)))
             .andExpect(jsonPath("$.items[?(@.sku=='ARC-1000')].categoryName", hasItem("Kits")));
+    }
+
+    @Test
+    void canDeactivateProduct() throws Exception {
+        String createPayload = """
+            {
+              "sku": "ARC-3000",
+              "name": "Legacy Kit",
+              "categoryCode": "kits",
+              "categoryName": "Kits",
+              "amount": 9.99,
+              "currencyCode": "USD"
+            }
+            """;
+        String deactivatePayload = """
+            {
+              "active": false
+            }
+            """;
+
+        mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(createPayload))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.active").value(true));
+
+        mockMvc.perform(patch("/api/products/arc-3000/active")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(deactivatePayload))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.sku").value("ARC-3000"))
+            .andExpect(jsonPath("$.active").value(false));
     }
 
     @Test

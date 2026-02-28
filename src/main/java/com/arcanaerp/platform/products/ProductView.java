@@ -8,6 +8,7 @@ public record ProductView(
     UUID id,
     String sku,
     String name,
+    boolean active,
     UUID categoryId,
     String categoryCode,
     String categoryName,

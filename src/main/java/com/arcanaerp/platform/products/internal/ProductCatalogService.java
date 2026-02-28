@@ -2,14 +2,17 @@ package com.arcanaerp.platform.products.internal;
 
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.products.ChangeProductActivationCommand;
 import com.arcanaerp.platform.products.ProductCatalog;
 import com.arcanaerp.platform.products.ProductLookup;
+import com.arcanaerp.platform.products.ProductOrderability;
 import com.arcanaerp.platform.products.ProductView;
 import com.arcanaerp.platform.products.RegisterProductCommand;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -70,10 +73,25 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
     }
 
     @Override
+    public ProductView changeProductActivation(ChangeProductActivationCommand command) {
+        String normalizedSku = normalizeRequired(command.sku(), "sku").toUpperCase();
+        Product product = productRepository.findBySku(normalizedSku)
+            .orElseThrow(() -> new NoSuchElementException("Product not found: " + normalizedSku));
+
+        product.changeActivation(command.active());
+        Product saved = productRepository.save(product);
+        Category category = categoryRepository.findById(saved.getCategoryId()).orElse(null);
+        Price price = priceRepository.findTopByProductIdOrderByEffectiveFromDesc(saved.getId()).orElse(null);
+        return toView(saved, category, price);
+    }
+
+    @Override
     @Transactional(readOnly = true)
-    public boolean productExists(String sku) {
+    public ProductOrderability orderabilityOf(String sku) {
         String normalizedSku = normalizeRequired(sku, "sku").toUpperCase();
-        return productRepository.findBySku(normalizedSku).isPresent();
+        return productRepository.findBySku(normalizedSku)
+            .map(product -> product.isActive() ? ProductOrderability.ORDERABLE : ProductOrderability.INACTIVE)
+            .orElse(ProductOrderability.UNKNOWN);
     }
 
     private ProductView toView(Product product, Category category, Price price) {
@@ -81,6 +99,7 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
             product.getId(),
             product.getSku(),
             product.getName(),
+            product.isActive(),
             product.getCategoryId(),
             category == null ? null : category.getCode(),
             category == null ? null : category.getName(),

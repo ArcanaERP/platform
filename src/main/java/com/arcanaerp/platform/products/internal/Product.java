@@ -64,6 +64,10 @@ public class Product {
         );
     }
 
+    void changeActivation(boolean active) {
+        this.active = active;
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");

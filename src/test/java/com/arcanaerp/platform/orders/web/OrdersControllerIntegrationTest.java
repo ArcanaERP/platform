@@ -182,6 +182,30 @@ class OrdersControllerIntegrationTest {
             .andExpect(jsonPath("$.path").value("/api/orders"));
     }
 
+    @Test
+    void rejectsOrderLineWithInactiveProductSku() throws Exception {
+        registerProduct("arc-5600");
+        setProductActive("arc-5600", false);
+
+        String payload = """
+            {
+              "orderNumber": "so-5005",
+              "customerEmail": "buyer@acme.com",
+              "currencyCode": "USD",
+              "lines": [
+                { "productSku": "arc-5600", "quantity": 1, "unitPrice": 10.00 }
+              ]
+            }
+            """;
+
+        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(payload))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("Product is not orderable: ARC-5600"))
+            .andExpect(jsonPath("$.path").value("/api/orders"));
+    }
+
     private void registerProduct(String sku) throws Exception {
         String normalizedSku = sku.trim().toUpperCase();
         String categoryCode = ("CAT" + normalizedSku.replaceAll("[^A-Z0-9]", "")).substring(0, Math.min(32, ("CAT" + normalizedSku.replaceAll("[^A-Z0-9]", "")).length()));
@@ -198,5 +222,20 @@ class OrdersControllerIntegrationTest {
 
         mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(payload))
             .andExpect(status().isCreated());
+    }
+
+    private void setProductActive(String sku, boolean active) throws Exception {
+        String payload = """
+            {
+              "active": %s
+            }
+            """.formatted(active);
+
+        mockMvc.perform(patch("/api/products/" + sku + "/active")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.sku").value(sku.trim().toUpperCase()))
+            .andExpect(jsonPath("$.active").value(active));
     }
 }

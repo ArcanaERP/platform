@@ -8,4 +8,6 @@ public interface ProductCatalog {
     ProductView registerProduct(RegisterProductCommand command);
 
     PageResult<ProductView> listProducts(PageQuery pageQuery);
+
+    ProductView changeProductActivation(ChangeProductActivationCommand command);
 }

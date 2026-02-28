@@ -10,6 +10,7 @@ import com.arcanaerp.platform.orders.OrderManagement;
 import com.arcanaerp.platform.orders.OrderStatus;
 import com.arcanaerp.platform.orders.OrderView;
 import com.arcanaerp.platform.products.ProductLookup;
+import com.arcanaerp.platform.products.ProductOrderability;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -117,11 +118,13 @@ class OrderManagementService implements OrderManagement {
             if (line == null) {
                 throw new IllegalArgumentException("line is required");
             }
-            normalizeRequired(line.productSku(), "productSku");
-            if (!productLookup.productExists(line.productSku())) {
-                throw new IllegalArgumentException(
-                    "Unknown product SKU: " + line.productSku().trim().toUpperCase()
-                );
+            String normalizedSku = normalizeRequired(line.productSku(), "productSku").toUpperCase();
+            ProductOrderability orderability = productLookup.orderabilityOf(normalizedSku);
+            if (orderability == ProductOrderability.UNKNOWN) {
+                throw new IllegalArgumentException("Unknown product SKU: " + normalizedSku);
+            }
+            if (orderability == ProductOrderability.INACTIVE) {
+                throw new IllegalArgumentException("Product is not orderable: " + normalizedSku);
             }
             if (line.quantity() == null || line.quantity().signum() <= 0) {
                 throw new IllegalArgumentException("quantity must be greater than zero");

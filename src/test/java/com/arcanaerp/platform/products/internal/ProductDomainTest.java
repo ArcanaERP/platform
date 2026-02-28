@@ -28,6 +28,21 @@ class ProductDomainTest {
     }
 
     @Test
+    void productActivationCanBeChanged() {
+        Product product = Product.create(
+            "SKU-2",
+            "Starter Kit",
+            UUID.randomUUID(),
+            Instant.parse("2026-02-28T00:00:00Z")
+        );
+        assertThat(product.isActive()).isTrue();
+
+        product.changeActivation(false);
+
+        assertThat(product.isActive()).isFalse();
+    }
+
+    @Test
     void priceCreateRejectsNonPositiveAmount() {
         assertThatThrownBy(() ->
             Price.create(UUID.randomUUID(), BigDecimal.ZERO, "USD", Instant.parse("2026-02-28T00:00:00Z"))
