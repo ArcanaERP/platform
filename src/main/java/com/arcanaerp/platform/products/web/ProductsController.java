@@ -73,10 +73,16 @@ public class ProductsController {
     public PageResult<ProductActivationChangeResponse> listActivationHistory(
         @PathVariable String sku,
         @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String changedBy,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
-        return productCatalog.listActivationHistory(sku, normalizeOptionalTenantCode(tenantCode), PageQuery.of(page, size))
+        return productCatalog.listActivationHistory(
+                sku,
+                normalizeOptionalTenantCode(tenantCode),
+                normalizeOptionalChangedBy(changedBy),
+                PageQuery.of(page, size)
+            )
             .map(this::toActivationHistoryResponse);
     }
 
@@ -122,5 +128,15 @@ public class ProductsController {
             throw new IllegalArgumentException("tenantCode query parameter must not be blank");
         }
         return tenantCode.trim().toUpperCase();
+    }
+
+    private static String normalizeOptionalChangedBy(String changedBy) {
+        if (changedBy == null) {
+            return null;
+        }
+        if (changedBy.isBlank()) {
+            throw new IllegalArgumentException("changedBy query parameter must not be blank");
+        }
+        return changedBy.trim().toLowerCase();
     }
 }

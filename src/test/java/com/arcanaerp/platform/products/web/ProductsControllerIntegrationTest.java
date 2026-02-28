@@ -274,6 +274,65 @@ class ProductsControllerIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].tenantCode").value(HISTORY_FILTER_TENANT_B))
             .andExpect(jsonPath("$.items[0].reason").value("Tenant B reactivation"));
+
+        mockMvc.perform(get("/api/products/arc-3600/activation-history?page=0&size=10&tenantCode="
+                + HISTORY_FILTER_TENANT_B
+                + "&changedBy=tenant-b@arcanaerp.com"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].tenantCode").value(HISTORY_FILTER_TENANT_B))
+            .andExpect(jsonPath("$.items[0].changedBy").value("tenant-b@arcanaerp.com"));
+    }
+
+    @Test
+    void canFilterActivationHistoryByChangedBy() throws Exception {
+        String createPayload = """
+            {
+              "sku": "ARC-3700",
+              "name": "ChangedBy Filter History Kit",
+              "categoryCode": "kits",
+              "categoryName": "Kits",
+              "amount": 9.99,
+              "currencyCode": "USD"
+            }
+            """;
+        String deactivatePayload = """
+            {
+              "active": false,
+              "reason": "First actor deactivation",
+              "tenantCode": "%s",
+              "changedBy": "actor-one@arcanaerp.com"
+            }
+            """.formatted(HISTORY_TENANT_CODE);
+        String reactivatePayload = """
+            {
+              "active": true,
+              "reason": "Second actor reactivation",
+              "tenantCode": "%s",
+              "changedBy": "actor-two@arcanaerp.com"
+            }
+            """.formatted(HISTORY_TENANT_CODE);
+
+        mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(createPayload))
+            .andExpect(status().isCreated());
+
+        registerActor(HISTORY_TENANT_CODE, "actor-one@arcanaerp.com");
+        mockMvc.perform(patch("/api/products/arc-3700/active")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(deactivatePayload))
+            .andExpect(status().isOk());
+
+        registerActor(HISTORY_TENANT_CODE, "actor-two@arcanaerp.com");
+        mockMvc.perform(patch("/api/products/arc-3700/active")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(reactivatePayload))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/products/arc-3700/activation-history?page=0&size=10&changedBy=actor-two@arcanaerp.com"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].changedBy").value("actor-two@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].reason").value("Second actor reactivation"));
     }
 
     @Test
@@ -296,6 +355,19 @@ class ProductsControllerIntegrationTest {
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.message").value("tenantCode query parameter must not be blank"))
+            .andExpect(jsonPath("$.path").value("/api/products/arc-3300/activation-history"));
+    }
+
+    @Test
+    void rejectsActivationHistoryFilterWhenChangedByBlank() throws Exception {
+        mockMvc.perform(get("/api/products/arc-3300/activation-history")
+            .param("page", "0")
+            .param("size", "10")
+            .param("changedBy", "   "))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("changedBy query parameter must not be blank"))
             .andExpect(jsonPath("$.path").value("/api/products/arc-3300/activation-history"));
     }
 

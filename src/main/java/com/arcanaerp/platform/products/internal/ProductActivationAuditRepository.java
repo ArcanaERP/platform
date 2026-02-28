@@ -17,4 +17,13 @@ interface ProductActivationAuditRepository extends JpaRepository<ProductActivati
     Page<ProductActivationAudit> findByProductId(UUID productId, Pageable pageable);
 
     Page<ProductActivationAudit> findByProductIdAndTenantCode(UUID productId, String tenantCode, Pageable pageable);
+
+    Page<ProductActivationAudit> findByProductIdAndChangedBy(UUID productId, String changedBy, Pageable pageable);
+
+    Page<ProductActivationAudit> findByProductIdAndTenantCodeAndChangedBy(
+        UUID productId,
+        String tenantCode,
+        String changedBy,
+        Pageable pageable
+    );
 }

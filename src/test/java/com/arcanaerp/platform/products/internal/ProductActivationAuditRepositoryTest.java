@@ -93,4 +93,48 @@ class ProductActivationAuditRepositoryTest {
         assertThat(tenantBPage.getTotalElements()).isEqualTo(1);
         assertThat(tenantBPage.getContent().getFirst().getReason()).isEqualTo("Tenant B reactivation");
     }
+
+    @Test
+    void filtersActivationAuditsByChangedBy() {
+        UUID productId = UUID.randomUUID();
+        productActivationAuditRepository.save(
+            ProductActivationAudit.create(
+                productId,
+                true,
+                false,
+                "Actor A deactivation",
+                "TENANTA",
+                "actor-a@arcanaerp.com",
+                Instant.parse("2026-02-28T00:00:00Z")
+            )
+        );
+        productActivationAuditRepository.save(
+            ProductActivationAudit.create(
+                productId,
+                false,
+                true,
+                "Actor B reactivation",
+                "TENANTB",
+                "actor-b@arcanaerp.com",
+                Instant.parse("2026-02-28T01:00:00Z")
+            )
+        );
+
+        var actorAPage = productActivationAuditRepository.findByProductIdAndChangedBy(
+            productId,
+            "actor-a@arcanaerp.com",
+            PageRequest.of(0, 10)
+        );
+        var combinedPage = productActivationAuditRepository.findByProductIdAndTenantCodeAndChangedBy(
+            productId,
+            "TENANTB",
+            "actor-b@arcanaerp.com",
+            PageRequest.of(0, 10)
+        );
+
+        assertThat(actorAPage.getTotalElements()).isEqualTo(1);
+        assertThat(actorAPage.getContent().getFirst().getReason()).isEqualTo("Actor A deactivation");
+        assertThat(combinedPage.getTotalElements()).isEqualTo(1);
+        assertThat(combinedPage.getContent().getFirst().getReason()).isEqualTo("Actor B reactivation");
+    }
 }

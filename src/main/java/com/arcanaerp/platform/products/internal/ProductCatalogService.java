@@ -124,16 +124,39 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<ProductActivationChangeView> listActivationHistory(String sku, String tenantCode, PageQuery pageQuery) {
+    public PageResult<ProductActivationChangeView> listActivationHistory(
+        String sku,
+        String tenantCode,
+        String changedBy,
+        PageQuery pageQuery
+    ) {
         Product product = findProductBySku(sku);
         PageRequest pageRequest = PageRequest.of(pageQuery.page(), pageQuery.size(), Sort.by(Sort.Direction.DESC, "changedAt"));
-        Page<ProductActivationAudit> audits = tenantCode == null
-            ? productActivationAuditRepository.findByProductId(product.getId(), pageRequest)
-            : productActivationAuditRepository.findByProductIdAndTenantCode(
+        String normalizedTenantCode = tenantCode == null ? null : normalizeTenantCode(tenantCode);
+        String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy);
+        Page<ProductActivationAudit> audits;
+        if (normalizedTenantCode == null && normalizedChangedBy == null) {
+            audits = productActivationAuditRepository.findByProductId(product.getId(), pageRequest);
+        } else if (normalizedTenantCode != null && normalizedChangedBy == null) {
+            audits = productActivationAuditRepository.findByProductIdAndTenantCode(
                 product.getId(),
-                normalizeTenantCode(tenantCode),
+                normalizedTenantCode,
                 pageRequest
             );
+        } else if (normalizedTenantCode == null) {
+            audits = productActivationAuditRepository.findByProductIdAndChangedBy(
+                product.getId(),
+                normalizedChangedBy,
+                pageRequest
+            );
+        } else {
+            audits = productActivationAuditRepository.findByProductIdAndTenantCodeAndChangedBy(
+                product.getId(),
+                normalizedTenantCode,
+                normalizedChangedBy,
+                pageRequest
+            );
+        }
 
         return PageResult.from(audits).map(audit -> new ProductActivationChangeView(
                 audit.getId(),
