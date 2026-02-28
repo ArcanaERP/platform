@@ -2,6 +2,7 @@ package com.arcanaerp.platform.products.internal;
 
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.identity.IdentityActorLookup;
 import com.arcanaerp.platform.products.ChangeProductActivationCommand;
 import com.arcanaerp.platform.products.ProductActivationChangeView;
 import com.arcanaerp.platform.products.ProductCatalog;
@@ -32,6 +33,7 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
     private final ProductRepository productRepository;
     private final PriceRepository priceRepository;
     private final ProductActivationAuditRepository productActivationAuditRepository;
+    private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
 
     @Override
@@ -85,9 +87,13 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
     public ProductView changeProductActivation(ChangeProductActivationCommand command) {
         String normalizedSku = normalizeRequired(command.sku(), "sku").toUpperCase();
         String reason = normalizeRequired(command.reason(), "reason");
-        String changedBy = normalizeRequired(command.changedBy(), "changedBy");
+        String changedBy = normalizeActorEmail(command.changedBy());
         Product product = productRepository.findBySku(normalizedSku)
             .orElseThrow(() -> new NoSuchElementException("Product not found: " + normalizedSku));
+
+        if (!identityActorLookup.actorExists(changedBy)) {
+            throw new IllegalArgumentException("Activation actor not found: " + changedBy);
+        }
 
         boolean targetActive = command.active();
         if (product.isActive() == targetActive) {
@@ -165,5 +171,9 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private static String normalizeActorEmail(String changedBy) {
+        return normalizeRequired(changedBy, "changedBy").toLowerCase();
     }
 }

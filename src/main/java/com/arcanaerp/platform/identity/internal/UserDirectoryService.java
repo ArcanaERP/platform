@@ -2,6 +2,7 @@ package com.arcanaerp.platform.identity.internal;
 
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.identity.IdentityActorLookup;
 import com.arcanaerp.platform.identity.RegisterUserCommand;
 import com.arcanaerp.platform.identity.UserDirectory;
 import com.arcanaerp.platform.identity.UserView;
@@ -20,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 @RequiredArgsConstructor
-class UserDirectoryService implements UserDirectory {
+class UserDirectoryService implements UserDirectory, IdentityActorLookup {
 
     private final TenantRepository tenantRepository;
     private final RoleRepository roleRepository;
@@ -69,6 +70,19 @@ class UserDirectoryService implements UserDirectory {
 
         return PageResult.from(users)
             .map(user -> toView(user, tenantsById.get(user.getTenantId()), rolesById.get(user.getRoleId())));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean actorExists(String actorEmail) {
+        if (actorEmail == null || actorEmail.isBlank()) {
+            return false;
+        }
+        try {
+            return userAccountRepository.existsByEmail(normalizeEmail(actorEmail));
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
     }
 
     private UserView toView(UserAccount user, Tenant tenant, Role role) {

@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -225,6 +226,7 @@ class OrdersControllerIntegrationTest {
     }
 
     private void setProductActive(String sku, boolean active) throws Exception {
+        registerActor("orders-test@arcanaerp.com");
         String payload = """
             {
               "active": %s,
@@ -239,5 +241,22 @@ class OrdersControllerIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.sku").value(sku.trim().toUpperCase()))
             .andExpect(jsonPath("$.active").value(active));
+    }
+
+    private void registerActor(String email) throws Exception {
+        String tenantCode = "TEN" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+        String payload = """
+            {
+              "tenantCode": "%s",
+              "tenantName": "Order Tenant %s",
+              "roleCode": "OPS",
+              "roleName": "Operations",
+              "email": "%s",
+              "displayName": "Order Actor"
+            }
+            """.formatted(tenantCode, tenantCode, email);
+
+        mockMvc.perform(post("/api/identity/users").contentType(MediaType.APPLICATION_JSON).content(payload))
+            .andExpect(status().isCreated());
     }
 }

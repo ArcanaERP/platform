@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -81,6 +82,7 @@ class ProductsControllerIntegrationTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.active").value(true));
 
+        registerActor("product-team@arcanaerp.com");
         mockMvc.perform(patch("/api/products/arc-3000/active")
             .contentType(MediaType.APPLICATION_JSON)
             .content(deactivatePayload))
@@ -128,6 +130,7 @@ class ProductsControllerIntegrationTest {
         mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(inactivePayload))
             .andExpect(status().isCreated());
 
+        registerActor("catalog-admin@arcanaerp.com");
         mockMvc.perform(patch("/api/products/arc-3200/active")
             .contentType(MediaType.APPLICATION_JSON)
             .content(deactivatePayload))
@@ -172,11 +175,13 @@ class ProductsControllerIntegrationTest {
         mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(createPayload))
             .andExpect(status().isCreated());
 
+        registerActor("ops@arcanaerp.com");
         mockMvc.perform(patch("/api/products/arc-3300/active")
             .contentType(MediaType.APPLICATION_JSON)
             .content(deactivatePayload))
             .andExpect(status().isOk());
 
+        registerActor("sales@arcanaerp.com");
         mockMvc.perform(patch("/api/products/arc-3300/active")
             .contentType(MediaType.APPLICATION_JSON)
             .content(reactivatePayload))
@@ -204,6 +209,39 @@ class ProductsControllerIntegrationTest {
             .andExpect(jsonPath("$.error").value("Not Found"))
             .andExpect(jsonPath("$.message", startsWith("Product not found: ARC-MISSING")))
             .andExpect(jsonPath("$.path").value("/api/products/arc-missing/activation-history"));
+    }
+
+    @Test
+    void rejectsActivationChangeWhenActorUnknown() throws Exception {
+        String createPayload = """
+            {
+              "sku": "ARC-3400",
+              "name": "Actor Check Kit",
+              "categoryCode": "kits",
+              "categoryName": "Kits",
+              "amount": 9.99,
+              "currencyCode": "USD"
+            }
+            """;
+        String deactivatePayload = """
+            {
+              "active": false,
+              "reason": "Unverified actor",
+              "changedBy": "unknown@arcanaerp.com"
+            }
+            """;
+
+        mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(createPayload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(patch("/api/products/arc-3400/active")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(deactivatePayload))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("Activation actor not found: unknown@arcanaerp.com"))
+            .andExpect(jsonPath("$.path").value("/api/products/arc-3400/active"));
     }
 
     @Test
@@ -237,5 +275,22 @@ class ProductsControllerIntegrationTest {
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.message").value("size must be between 1 and 100"))
             .andExpect(jsonPath("$.path").value("/api/products"));
+    }
+
+    private void registerActor(String email) throws Exception {
+        String tenantCode = "TEN" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+        String payload = """
+            {
+              "tenantCode": "%s",
+              "tenantName": "Activation Tenant %s",
+              "roleCode": "OPS",
+              "roleName": "Operations",
+              "email": "%s",
+              "displayName": "Activation Actor"
+            }
+            """.formatted(tenantCode, tenantCode, email);
+
+        mockMvc.perform(post("/api/identity/users").contentType(MediaType.APPLICATION_JSON).content(payload))
+            .andExpect(status().isCreated());
     }
 }
