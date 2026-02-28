@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.PageRequest;
 
 @DataJpaTest
 class ProductActivationAuditRepositoryTest {
@@ -48,5 +49,48 @@ class ProductActivationAuditRepositoryTest {
         assertThat(latest.getReason()).isEqualTo("Reactivated for customer demand");
         assertThat(latest.getTenantCode()).isEqualTo("TENANT01");
         assertThat(latest.getChangedBy()).isEqualTo("operations@arcanaerp.com");
+    }
+
+    @Test
+    void filtersActivationAuditsByTenantCode() {
+        UUID productId = UUID.randomUUID();
+        productActivationAuditRepository.save(
+            ProductActivationAudit.create(
+                productId,
+                true,
+                false,
+                "Tenant A deactivation",
+                "TENANTA",
+                "a@arcanaerp.com",
+                Instant.parse("2026-02-28T00:00:00Z")
+            )
+        );
+        productActivationAuditRepository.save(
+            ProductActivationAudit.create(
+                productId,
+                false,
+                true,
+                "Tenant B reactivation",
+                "TENANTB",
+                "b@arcanaerp.com",
+                Instant.parse("2026-02-28T01:00:00Z")
+            )
+        );
+
+        var tenantAPage = productActivationAuditRepository.findByProductIdAndTenantCode(
+            productId,
+            "TENANTA",
+            PageRequest.of(0, 10)
+        );
+        var tenantBPage = productActivationAuditRepository.findByProductIdAndTenantCode(
+            productId,
+            "TENANTB",
+            PageRequest.of(0, 10)
+        );
+
+        assertThat(tenantAPage.getTotalElements()).isEqualTo(1);
+        assertThat(tenantAPage.getContent().getFirst().getReason()).isEqualTo("Tenant A deactivation");
+        assertThat(tenantBPage.getTotalElements()).isEqualTo(1);
+        assertThat(tenantBPage.getContent().getFirst().getReason()).isEqualTo("Tenant B reactivation");
     }
 }

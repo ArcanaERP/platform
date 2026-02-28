@@ -124,12 +124,16 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<ProductActivationChangeView> listActivationHistory(String sku, PageQuery pageQuery) {
+    public PageResult<ProductActivationChangeView> listActivationHistory(String sku, String tenantCode, PageQuery pageQuery) {
         Product product = findProductBySku(sku);
-        Page<ProductActivationAudit> audits = productActivationAuditRepository.findByProductId(
-            product.getId(),
-            PageRequest.of(pageQuery.page(), pageQuery.size(), Sort.by(Sort.Direction.DESC, "changedAt"))
-        );
+        PageRequest pageRequest = PageRequest.of(pageQuery.page(), pageQuery.size(), Sort.by(Sort.Direction.DESC, "changedAt"));
+        Page<ProductActivationAudit> audits = tenantCode == null
+            ? productActivationAuditRepository.findByProductId(product.getId(), pageRequest)
+            : productActivationAuditRepository.findByProductIdAndTenantCode(
+                product.getId(),
+                normalizeTenantCode(tenantCode),
+                pageRequest
+            );
 
         return PageResult.from(audits).map(audit -> new ProductActivationChangeView(
                 audit.getId(),

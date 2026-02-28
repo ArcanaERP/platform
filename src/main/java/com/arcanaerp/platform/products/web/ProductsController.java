@@ -72,10 +72,12 @@ public class ProductsController {
     @GetMapping("/{sku}/activation-history")
     public PageResult<ProductActivationChangeResponse> listActivationHistory(
         @PathVariable String sku,
+        @RequestParam(required = false) String tenantCode,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
-        return productCatalog.listActivationHistory(sku, PageQuery.of(page, size)).map(this::toActivationHistoryResponse);
+        return productCatalog.listActivationHistory(sku, tenantCode, PageQuery.of(page, size))
+            .map(this::toActivationHistoryResponse);
     }
 
     private ProductResponse toResponse(ProductView view) {

@@ -15,4 +15,6 @@ interface ProductActivationAuditRepository extends JpaRepository<ProductActivati
     List<ProductActivationAudit> findByProductIdInOrderByChangedAtDesc(Set<UUID> productIds);
 
     Page<ProductActivationAudit> findByProductId(UUID productId, Pageable pageable);
+
+    Page<ProductActivationAudit> findByProductIdAndTenantCode(UUID productId, String tenantCode, Pageable pageable);
 }

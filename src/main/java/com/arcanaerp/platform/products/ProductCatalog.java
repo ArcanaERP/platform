@@ -11,5 +11,5 @@ public interface ProductCatalog {
 
     ProductView changeProductActivation(ChangeProductActivationCommand command);
 
-    PageResult<ProductActivationChangeView> listActivationHistory(String sku, PageQuery pageQuery);
+    PageResult<ProductActivationChangeView> listActivationHistory(String sku, String tenantCode, PageQuery pageQuery);
 }

@@ -24,6 +24,8 @@ class ProductsControllerIntegrationTest {
     private static final String LEGACY_TENANT_CODE = "TEN3000";
     private static final String FILTER_TENANT_CODE = "TEN3200";
     private static final String HISTORY_TENANT_CODE = "TEN3300";
+    private static final String HISTORY_FILTER_TENANT_A = "TEN3601";
+    private static final String HISTORY_FILTER_TENANT_B = "TEN3602";
     private static final String UNKNOWN_TENANT_CODE = "TEN3400";
     private static final String MISMATCH_ACTOR_TENANT_CODE = "TEN3501";
     private static final String MISMATCH_REQUEST_TENANT_CODE = "TEN3502";
@@ -215,6 +217,63 @@ class ProductsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[1].tenantCode").value(HISTORY_TENANT_CODE))
             .andExpect(jsonPath("$.items[1].changedBy").value("ops@arcanaerp.com"))
             .andExpect(jsonPath("$.items[1].reason").value("Initial retirement"));
+    }
+
+    @Test
+    void canFilterActivationHistoryByTenantCode() throws Exception {
+        String createPayload = """
+            {
+              "sku": "ARC-3600",
+              "name": "Tenant Filter History Kit",
+              "categoryCode": "kits",
+              "categoryName": "Kits",
+              "amount": 9.99,
+              "currencyCode": "USD"
+            }
+            """;
+        String deactivatePayloadTenantA = """
+            {
+              "active": false,
+              "reason": "Tenant A retirement",
+              "tenantCode": "%s",
+              "changedBy": "tenant-a@arcanaerp.com"
+            }
+            """.formatted(HISTORY_FILTER_TENANT_A);
+        String reactivatePayloadTenantB = """
+            {
+              "active": true,
+              "reason": "Tenant B reactivation",
+              "tenantCode": "%s",
+              "changedBy": "tenant-b@arcanaerp.com"
+            }
+            """.formatted(HISTORY_FILTER_TENANT_B);
+
+        mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(createPayload))
+            .andExpect(status().isCreated());
+
+        registerActor(HISTORY_FILTER_TENANT_A, "tenant-a@arcanaerp.com");
+        mockMvc.perform(patch("/api/products/arc-3600/active")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(deactivatePayloadTenantA))
+            .andExpect(status().isOk());
+
+        registerActor(HISTORY_FILTER_TENANT_B, "tenant-b@arcanaerp.com");
+        mockMvc.perform(patch("/api/products/arc-3600/active")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(reactivatePayloadTenantB))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/products/arc-3600/activation-history?page=0&size=10&tenantCode=" + HISTORY_FILTER_TENANT_A))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].tenantCode").value(HISTORY_FILTER_TENANT_A))
+            .andExpect(jsonPath("$.items[0].reason").value("Tenant A retirement"));
+
+        mockMvc.perform(get("/api/products/arc-3600/activation-history?page=0&size=10&tenantCode=" + HISTORY_FILTER_TENANT_B))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].tenantCode").value(HISTORY_FILTER_TENANT_B))
+            .andExpect(jsonPath("$.items[0].reason").value("Tenant B reactivation"));
     }
 
     @Test
