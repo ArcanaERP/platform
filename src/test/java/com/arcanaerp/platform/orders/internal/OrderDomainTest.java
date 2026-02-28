@@ -25,6 +25,8 @@ class OrderDomainTest {
         assertThat(order.getCustomerEmail()).isEqualTo("customer@acme.com");
         assertThat(order.getCurrencyCode()).isEqualTo("USD");
         assertThat(order.getStatus()).isEqualTo(OrderStatus.DRAFT);
+        assertThat(order.getConfirmedAt()).isNull();
+        assertThat(order.getCancelledAt()).isNull();
     }
 
     @Test
@@ -66,11 +68,14 @@ class OrderDomainTest {
             new BigDecimal("10.00"),
             Instant.parse("2026-02-28T00:00:00Z")
         );
-        order.transitionTo(OrderStatus.CONFIRMED);
+        Instant confirmedAt = Instant.parse("2026-02-28T01:00:00Z");
+        order.transitionTo(OrderStatus.CONFIRMED, confirmedAt);
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
+        assertThat(order.getConfirmedAt()).isEqualTo(confirmedAt);
+        assertThat(order.getCancelledAt()).isNull();
 
-        assertThatThrownBy(() -> order.transitionTo(OrderStatus.CANCELLED))
+        assertThatThrownBy(() -> order.transitionTo(OrderStatus.CANCELLED, Instant.parse("2026-02-28T02:00:00Z")))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("Order status transition not allowed: CONFIRMED -> CANCELLED");
     }

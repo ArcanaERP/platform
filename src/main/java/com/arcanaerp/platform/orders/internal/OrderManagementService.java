@@ -101,7 +101,7 @@ class OrderManagementService implements OrderManagement {
         SalesOrder order = salesOrderRepository.findByOrderNumber(orderNumber)
             .orElseThrow(() -> new java.util.NoSuchElementException("Order not found: " + orderNumber));
 
-        order.transitionTo(targetStatus);
+        order.transitionTo(targetStatus, Instant.now(clock));
         SalesOrder saved = salesOrderRepository.save(order);
         List<SalesOrderLine> lines = salesOrderLineRepository.findBySalesOrderIdOrderByLineNoAsc(saved.getId());
         return toView(saved, lines);
@@ -153,6 +153,8 @@ class OrderManagementService implements OrderManagement {
             order.getCurrencyCode(),
             order.getTotalAmount(),
             order.getCreatedAt(),
+            order.getConfirmedAt(),
+            order.getCancelledAt(),
             lineViews
         );
     }

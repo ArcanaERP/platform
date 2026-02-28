@@ -13,6 +13,8 @@ public record OrderView(
     String currencyCode,
     BigDecimal totalAmount,
     Instant createdAt,
+    Instant confirmedAt,
+    Instant cancelledAt,
     List<OrderLineView> lines
 ) {
 }

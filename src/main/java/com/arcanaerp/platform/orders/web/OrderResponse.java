@@ -14,6 +14,8 @@ public record OrderResponse(
     String currencyCode,
     BigDecimal totalAmount,
     Instant createdAt,
+    Instant confirmedAt,
+    Instant cancelledAt,
     List<OrderLineResponse> lines
 ) {
 }

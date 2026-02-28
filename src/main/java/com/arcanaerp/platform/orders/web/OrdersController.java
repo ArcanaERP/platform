@@ -85,6 +85,8 @@ public class OrdersController {
             order.currencyCode(),
             order.totalAmount(),
             order.createdAt(),
+            order.confirmedAt(),
+            order.cancelledAt(),
             lines
         );
     }

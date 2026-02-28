@@ -2,6 +2,7 @@ package com.arcanaerp.platform.orders.web;
 
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -43,6 +44,8 @@ class OrdersControllerIntegrationTest {
             .andExpect(jsonPath("$.status").value("DRAFT"))
             .andExpect(jsonPath("$.currencyCode").value("USD"))
             .andExpect(jsonPath("$.totalAmount").value(25.5))
+            .andExpect(jsonPath("$.confirmedAt").value(nullValue()))
+            .andExpect(jsonPath("$.cancelledAt").value(nullValue()))
             .andExpect(jsonPath("$.lines[0].lineNo").value(1));
 
         mockMvc.perform(get("/api/orders?page=0&size=10"))
@@ -103,7 +106,9 @@ class OrdersControllerIntegrationTest {
             .content(statusPayload))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.orderNumber").value("SO-5002"))
-            .andExpect(jsonPath("$.status").value("CONFIRMED"));
+            .andExpect(jsonPath("$.status").value("CONFIRMED"))
+            .andExpect(jsonPath("$.confirmedAt").isNotEmpty())
+            .andExpect(jsonPath("$.cancelledAt").value(nullValue()));
     }
 
     @Test

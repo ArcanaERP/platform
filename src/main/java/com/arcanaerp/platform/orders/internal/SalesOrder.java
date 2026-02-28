@@ -49,6 +49,10 @@ public class SalesOrder {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+    private Instant confirmedAt;
+
+    private Instant cancelledAt;
+
     private SalesOrder(
         UUID id,
         String orderNumber,
@@ -56,7 +60,9 @@ public class SalesOrder {
         String currencyCode,
         OrderStatus status,
         BigDecimal totalAmount,
-        Instant createdAt
+        Instant createdAt,
+        Instant confirmedAt,
+        Instant cancelledAt
     ) {
         this.id = id;
         this.orderNumber = orderNumber;
@@ -65,6 +71,8 @@ public class SalesOrder {
         this.status = status;
         this.totalAmount = totalAmount;
         this.createdAt = createdAt;
+        this.confirmedAt = confirmedAt;
+        this.cancelledAt = cancelledAt;
     }
 
     static SalesOrder create(
@@ -85,13 +93,18 @@ public class SalesOrder {
             normalizeCurrencyCode(currencyCode),
             OrderStatus.DRAFT,
             totalAmount,
-            createdAt
+            createdAt,
+            null,
+            null
         );
     }
 
-    void transitionTo(OrderStatus targetStatus) {
+    void transitionTo(OrderStatus targetStatus, Instant transitionedAt) {
         if (targetStatus == null) {
             throw new IllegalArgumentException("status is required");
+        }
+        if (transitionedAt == null) {
+            throw new IllegalArgumentException("transitionedAt is required");
         }
         if (targetStatus == this.status) {
             return;
@@ -103,6 +116,13 @@ public class SalesOrder {
             throw new IllegalArgumentException("Order status transition not allowed: " + this.status + " -> " + targetStatus);
         }
         this.status = targetStatus;
+        if (targetStatus == OrderStatus.CONFIRMED) {
+            this.confirmedAt = transitionedAt;
+            this.cancelledAt = null;
+        } else {
+            this.cancelledAt = transitionedAt;
+            this.confirmedAt = null;
+        }
     }
 
     private static String normalizeEmail(String email) {
