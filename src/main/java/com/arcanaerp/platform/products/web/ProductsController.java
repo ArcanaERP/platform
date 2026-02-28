@@ -87,6 +87,8 @@ public class ProductsController {
             view.activatedAt(),
             view.deactivatedAt(),
             view.lastActivationChangeReason(),
+            view.lastActivationChangedBy(),
+            view.lastActivationTenantCode(),
             view.lastActivationChangedAt(),
             view.categoryId(),
             view.categoryCode(),

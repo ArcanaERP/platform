@@ -51,6 +51,8 @@ class ProductsControllerIntegrationTest {
             .andExpect(jsonPath("$.activatedAt").isNotEmpty())
             .andExpect(jsonPath("$.deactivatedAt").value(nullValue()))
             .andExpect(jsonPath("$.lastActivationChangeReason").value(nullValue()))
+            .andExpect(jsonPath("$.lastActivationChangedBy").value(nullValue()))
+            .andExpect(jsonPath("$.lastActivationTenantCode").value(nullValue()))
             .andExpect(jsonPath("$.lastActivationChangedAt").value(nullValue()))
             .andExpect(jsonPath("$.categoryCode").value("KITS"))
             .andExpect(jsonPath("$.currentPrice").value(19.99))
@@ -98,6 +100,8 @@ class ProductsControllerIntegrationTest {
             .andExpect(jsonPath("$.active").value(false))
             .andExpect(jsonPath("$.deactivatedAt").isNotEmpty())
             .andExpect(jsonPath("$.lastActivationChangeReason").value("Discontinued by product team"))
+            .andExpect(jsonPath("$.lastActivationChangedBy").value("product-team@arcanaerp.com"))
+            .andExpect(jsonPath("$.lastActivationTenantCode").value(LEGACY_TENANT_CODE))
             .andExpect(jsonPath("$.lastActivationChangedAt").isNotEmpty());
     }
 

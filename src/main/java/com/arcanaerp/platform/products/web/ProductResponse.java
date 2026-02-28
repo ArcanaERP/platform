@@ -12,6 +12,8 @@ public record ProductResponse(
     Instant activatedAt,
     Instant deactivatedAt,
     String lastActivationChangeReason,
+    String lastActivationChangedBy,
+    String lastActivationTenantCode,
     Instant lastActivationChangedAt,
     UUID categoryId,
     String categoryCode,

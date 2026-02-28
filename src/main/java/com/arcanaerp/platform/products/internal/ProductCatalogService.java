@@ -158,6 +158,8 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
             product.getActivatedAt(),
             product.getDeactivatedAt(),
             latestAudit == null ? null : latestAudit.getReason(),
+            latestAudit == null ? null : latestAudit.getChangedBy(),
+            latestAudit == null ? null : latestAudit.getTenantCode(),
             latestAudit == null ? null : latestAudit.getChangedAt(),
             product.getCategoryId(),
             category == null ? null : category.getCode(),
