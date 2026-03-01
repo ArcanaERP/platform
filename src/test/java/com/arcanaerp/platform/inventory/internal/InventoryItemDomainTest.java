@@ -32,4 +32,33 @@ class InventoryItemDomainTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("onHandQuantity must be zero or greater");
     }
+
+    @Test
+    void applyAdjustmentUpdatesOnHandAndTimestamp() {
+        InventoryItem item = InventoryItem.create(
+            "ARC-9002",
+            new BigDecimal("5"),
+            Instant.parse("2026-03-01T00:00:00Z")
+        );
+
+        item.applyAdjustment(new BigDecimal("-2"), Instant.parse("2026-03-01T01:00:00Z"));
+
+        assertThat(item.getOnHandQuantity()).isEqualByComparingTo("3");
+        assertThat(item.getUpdatedAt()).isEqualTo(Instant.parse("2026-03-01T01:00:00Z"));
+    }
+
+    @Test
+    void applyAdjustmentRejectsNegativeResultingOnHand() {
+        InventoryItem item = InventoryItem.create(
+            "ARC-9003",
+            new BigDecimal("1"),
+            Instant.parse("2026-03-01T00:00:00Z")
+        );
+
+        assertThatThrownBy(() ->
+            item.applyAdjustment(new BigDecimal("-2"), Instant.parse("2026-03-01T01:00:00Z"))
+        )
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("onHandQuantity cannot become negative");
+    }
 }

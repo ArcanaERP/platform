@@ -66,6 +66,7 @@ Orders:
 Inventory:
 
 - `GET /api/inventory/{sku}`
+- `POST /api/inventory/{sku}/adjustments`
 
 Actuator:
 

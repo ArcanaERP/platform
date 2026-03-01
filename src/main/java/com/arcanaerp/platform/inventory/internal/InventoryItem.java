@@ -59,6 +59,26 @@ public class InventoryItem {
         );
     }
 
+    void applyAdjustment(BigDecimal quantityDelta, Instant adjustedAt) {
+        if (quantityDelta == null) {
+            throw new IllegalArgumentException("quantityDelta is required");
+        }
+        if (quantityDelta.signum() == 0) {
+            throw new IllegalArgumentException("quantityDelta must not be zero");
+        }
+        if (adjustedAt == null) {
+            throw new IllegalArgumentException("adjustedAt is required");
+        }
+
+        BigDecimal nextOnHand = onHandQuantity.add(quantityDelta);
+        if (nextOnHand.signum() < 0) {
+            throw new IllegalArgumentException("onHandQuantity cannot become negative");
+        }
+
+        this.onHandQuantity = nextOnHand;
+        this.updatedAt = adjustedAt;
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");
