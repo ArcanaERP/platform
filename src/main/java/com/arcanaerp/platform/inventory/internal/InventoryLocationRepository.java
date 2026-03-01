@@ -4,7 +4,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-interface InventoryItemRepository extends JpaRepository<InventoryItem, UUID> {
+interface InventoryLocationRepository extends JpaRepository<InventoryLocation, UUID> {
 
-    Optional<InventoryItem> findBySkuAndLocationCode(String sku, String locationCode);
+    Optional<InventoryLocation> findByCode(String code);
 }

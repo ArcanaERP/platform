@@ -25,14 +25,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class InventoryController {
 
+    private static final String DEFAULT_LOCATION_CODE = "MAIN";
+
     private final InventoryAvailability inventoryAvailability;
 
     @GetMapping("/{sku}")
-    public InventoryItemResponse inventoryBySku(@PathVariable String sku) {
-        InventoryItemView item = inventoryAvailability.inventoryForSku(sku);
+    public InventoryItemResponse inventoryBySku(
+        @PathVariable String sku,
+        @RequestParam(required = false) String locationCode
+    ) {
+        InventoryItemView item = inventoryAvailability.inventoryForSku(sku, normalizeOptionalLocationCode(locationCode));
         return new InventoryItemResponse(
             item.id(),
             item.sku(),
+            item.locationCode(),
             item.onHandQuantity(),
             item.updatedAt()
         );
@@ -41,6 +47,7 @@ public class InventoryController {
     @GetMapping("/{sku}/adjustments")
     public PageResult<InventoryAdjustmentResponse> listAdjustments(
         @PathVariable String sku,
+        @RequestParam(required = false) String locationCode,
         @RequestParam(required = false) String adjustedBy,
         @RequestParam(required = false) String adjustedAtFrom,
         @RequestParam(required = false) String adjustedAtTo,
@@ -54,6 +61,7 @@ public class InventoryController {
 
         return inventoryAvailability.listAdjustments(
                 sku,
+                normalizeOptionalLocationCode(locationCode),
                 normalizedAdjustedBy,
                 parsedAdjustedAtFrom,
                 parsedAdjustedAtTo,
@@ -66,11 +74,13 @@ public class InventoryController {
     @ResponseStatus(HttpStatus.CREATED)
     public InventoryAdjustmentResponse adjustInventory(
         @PathVariable String sku,
+        @RequestParam(required = false) String locationCode,
         @Valid @RequestBody AdjustInventoryRequest request
     ) {
         InventoryAdjustmentView adjustment = inventoryAvailability.adjustInventory(
             new AdjustInventoryCommand(
                 sku,
+                normalizeOptionalLocationCode(locationCode),
                 request.quantityDelta(),
                 request.reason(),
                 request.adjustedBy()
@@ -83,6 +93,7 @@ public class InventoryController {
         return new InventoryAdjustmentResponse(
             adjustment.id(),
             adjustment.sku(),
+            adjustment.locationCode(),
             adjustment.previousOnHandQuantity(),
             adjustment.quantityDelta(),
             adjustment.currentOnHandQuantity(),
@@ -90,6 +101,16 @@ public class InventoryController {
             adjustment.adjustedBy(),
             adjustment.adjustedAt()
         );
+    }
+
+    private static String normalizeOptionalLocationCode(String locationCode) {
+        if (locationCode == null) {
+            return DEFAULT_LOCATION_CODE;
+        }
+        if (locationCode.isBlank()) {
+            throw new IllegalArgumentException("locationCode query parameter must not be blank");
+        }
+        return locationCode.trim().toUpperCase();
     }
 
     private static String normalizeOptionalAdjustedBy(String adjustedBy) {

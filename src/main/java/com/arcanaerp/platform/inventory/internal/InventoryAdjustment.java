@@ -36,6 +36,9 @@ public class InventoryAdjustment {
     @Column(nullable = false, length = 64)
     private String sku;
 
+    @Column(nullable = false, length = 64)
+    private String locationCode;
+
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal previousOnHandQuantity;
 
@@ -58,6 +61,7 @@ public class InventoryAdjustment {
         UUID id,
         UUID inventoryItemId,
         String sku,
+        String locationCode,
         BigDecimal previousOnHandQuantity,
         BigDecimal quantityDelta,
         BigDecimal currentOnHandQuantity,
@@ -68,6 +72,7 @@ public class InventoryAdjustment {
         this.id = id;
         this.inventoryItemId = inventoryItemId;
         this.sku = sku;
+        this.locationCode = locationCode;
         this.previousOnHandQuantity = previousOnHandQuantity;
         this.quantityDelta = quantityDelta;
         this.currentOnHandQuantity = currentOnHandQuantity;
@@ -79,6 +84,7 @@ public class InventoryAdjustment {
     static InventoryAdjustment create(
         UUID inventoryItemId,
         String sku,
+        String locationCode,
         BigDecimal previousOnHandQuantity,
         BigDecimal quantityDelta,
         BigDecimal currentOnHandQuantity,
@@ -105,6 +111,7 @@ public class InventoryAdjustment {
             null,
             inventoryItemId,
             normalizeRequired(sku, "sku").toUpperCase(),
+            normalizeRequired(locationCode, "locationCode").toUpperCase(),
             previousOnHandQuantity,
             quantityDelta,
             currentOnHandQuantity,

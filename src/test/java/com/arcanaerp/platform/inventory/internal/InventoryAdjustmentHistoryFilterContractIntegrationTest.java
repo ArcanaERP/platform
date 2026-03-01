@@ -37,10 +37,14 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
     @Autowired
     private InventoryAdjustmentRepository inventoryAdjustmentRepository;
 
+    @Autowired
+    private InventoryLocationRepository inventoryLocationRepository;
+
     @BeforeEach
     void cleanInventoryTables() {
         inventoryAdjustmentRepository.deleteAll();
         inventoryItemRepository.deleteAll();
+        inventoryLocationRepository.deleteAll();
     }
 
     @Test
@@ -56,6 +60,7 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
             .param("size", "10"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].locationCode").value("MAIN"))
             .andExpect(jsonPath("$.items[0].adjustedBy").value(actorB))
             .andExpect(jsonPath("$.items[0].reason").value(ADJUSTMENT_REASON_B))
             .andExpect(jsonPath("$.items[1].adjustedBy").value(actorA))
@@ -122,6 +127,19 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
     }
 
     @Test
+    void rejectsBlankLocationCodeFilter() throws Exception {
+        mockMvc.perform(get("/api/inventory/arc-9490/adjustments")
+            .param("page", "0")
+            .param("size", "10")
+            .param("locationCode", "   "))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("locationCode query parameter must not be blank"))
+            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9490/adjustments"));
+    }
+
+    @Test
     void rejectsInvalidAdjustedAtFromFormat() throws Exception {
         mockMvc.perform(get("/api/inventory/arc-9491/adjustments")
             .param("page", "0")
@@ -156,21 +174,55 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
-            .andExpect(jsonPath("$.message").value("Inventory item not found for SKU: ARC-9493"))
+            .andExpect(jsonPath("$.message").value("Inventory item not found for SKU: ARC-9493 at location: MAIN"))
             .andExpect(jsonPath("$.path").value("/api/inventory/arc-9493/adjustments"));
+    }
+
+    @Test
+    void returnsHistoryForRequestedLocationOnly() throws Exception {
+        String sku = "ARC-9494";
+        String actorMain = "ops-main@arcanaerp.com";
+        String actorWest = "ops-west@arcanaerp.com";
+
+        inventoryItemRepository.save(
+            InventoryItem.create(sku, "main", new BigDecimal("10"), Instant.parse("2026-03-01T00:00:00Z"))
+        );
+        inventoryItemRepository.save(
+            InventoryItem.create(sku, "wh-west", new BigDecimal("10"), Instant.parse("2026-03-01T00:00:00Z"))
+        );
+        postAdjustment(sku, null, "-2", ADJUSTMENT_REASON_A, actorMain);
+        Thread.sleep(25);
+        postAdjustment(sku, "wh-west", "5", ADJUSTMENT_REASON_B, actorWest);
+
+        mockMvc.perform(get("/api/inventory/{sku}/adjustments", sku)
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].locationCode").value("MAIN"))
+            .andExpect(jsonPath("$.items[0].adjustedBy").value(actorMain));
+
+        mockMvc.perform(get("/api/inventory/{sku}/adjustments", sku)
+            .param("locationCode", "wh-west")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].locationCode").value("WH-WEST"))
+            .andExpect(jsonPath("$.items[0].adjustedBy").value(actorWest));
     }
 
     private void seedAdjustmentHistory(String sku, String actorA, String actorB) throws Exception {
         inventoryItemRepository.save(
-            InventoryItem.create(sku, new BigDecimal("10"), Instant.parse("2026-03-01T00:00:00Z"))
+            InventoryItem.create(sku, "main", new BigDecimal("10"), Instant.parse("2026-03-01T00:00:00Z"))
         );
 
-        postAdjustment(sku, "-2", ADJUSTMENT_REASON_A, actorA);
+        postAdjustment(sku, null, "-2", ADJUSTMENT_REASON_A, actorA);
         Thread.sleep(25);
-        postAdjustment(sku, "5", ADJUSTMENT_REASON_B, actorB);
+        postAdjustment(sku, null, "5", ADJUSTMENT_REASON_B, actorB);
     }
 
-    private void postAdjustment(String sku, String quantityDelta, String reason, String adjustedBy) throws Exception {
+    private void postAdjustment(String sku, String locationCode, String quantityDelta, String reason, String adjustedBy) throws Exception {
         String payload = """
             {
               "quantityDelta": %s,
@@ -179,9 +231,11 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
             }
             """.formatted(quantityDelta, reason, adjustedBy);
 
-        mockMvc.perform(post("/api/inventory/{sku}/adjustments", sku)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload))
+        var request = post("/api/inventory/{sku}/adjustments", sku);
+        if (locationCode != null) {
+            request = request.param("locationCode", locationCode);
+        }
+        mockMvc.perform(request.contentType(MediaType.APPLICATION_JSON).content(payload))
             .andExpect(status().isCreated());
     }
 }

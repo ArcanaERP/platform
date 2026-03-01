@@ -6,12 +6,13 @@ import java.time.Instant;
 
 public interface InventoryAvailability {
 
-    InventoryItemView inventoryForSku(String sku);
+    InventoryItemView inventoryForSku(String sku, String locationCode);
 
     InventoryAdjustmentView adjustInventory(AdjustInventoryCommand command);
 
     PageResult<InventoryAdjustmentView> listAdjustments(
         String sku,
+        String locationCode,
         String adjustedBy,
         Instant adjustedAtFrom,
         Instant adjustedAtTo,

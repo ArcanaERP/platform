@@ -17,7 +17,10 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
     name = "inventory_items",
-    uniqueConstraints = @UniqueConstraint(name = "uk_inventory_items_sku", columnNames = "sku")
+    uniqueConstraints = @UniqueConstraint(
+        name = "uk_inventory_items_sku_location",
+        columnNames = {"sku", "locationCode"}
+    )
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -30,20 +33,24 @@ public class InventoryItem {
     @Column(nullable = false, length = 64)
     private String sku;
 
+    @Column(nullable = false, length = 64)
+    private String locationCode;
+
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal onHandQuantity;
 
     @Column(nullable = false)
     private Instant updatedAt;
 
-    private InventoryItem(UUID id, String sku, BigDecimal onHandQuantity, Instant updatedAt) {
+    private InventoryItem(UUID id, String sku, String locationCode, BigDecimal onHandQuantity, Instant updatedAt) {
         this.id = id;
         this.sku = sku;
+        this.locationCode = locationCode;
         this.onHandQuantity = onHandQuantity;
         this.updatedAt = updatedAt;
     }
 
-    static InventoryItem create(String sku, BigDecimal onHandQuantity, Instant updatedAt) {
+    static InventoryItem create(String sku, String locationCode, BigDecimal onHandQuantity, Instant updatedAt) {
         if (onHandQuantity == null || onHandQuantity.signum() < 0) {
             throw new IllegalArgumentException("onHandQuantity must be zero or greater");
         }
@@ -54,6 +61,7 @@ public class InventoryItem {
         return new InventoryItem(
             null,
             normalizeRequired(sku, "sku").toUpperCase(),
+            normalizeRequired(locationCode, "locationCode").toUpperCase(),
             onHandQuantity,
             updatedAt
         );

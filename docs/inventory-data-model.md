@@ -6,11 +6,21 @@ Updated: 2026-03-01
 
 ```mermaid
 erDiagram
+    INVENTORY_LOCATIONS ||--o{ INVENTORY_ITEMS : stores
     INVENTORY_ITEMS ||--o{ INVENTORY_ADJUSTMENTS : records_movements
+
+    INVENTORY_LOCATIONS {
+      UUID id PK
+      STRING code UK
+      STRING name
+      BOOLEAN active
+      INSTANT createdAt
+    }
 
     INVENTORY_ITEMS {
       UUID id PK
-      STRING sku UK
+      STRING sku
+      STRING locationCode
       DECIMAL onHandQuantity
       INSTANT updatedAt
     }
@@ -19,6 +29,7 @@ erDiagram
       UUID id PK
       UUID inventoryItemId
       STRING sku
+      STRING locationCode
       DECIMAL previousOnHandQuantity
       DECIMAL quantityDelta
       DECIMAL currentOnHandQuantity
@@ -30,14 +41,16 @@ erDiagram
 
 ## Relationship Notes
 
-- `inventory_items.sku` is a business-key link to product SKU semantics (no cross-module foreign key).
+- Inventory on-hand is segmented by `sku + locationCode`.
+- `inventory_items.locationCode` aligns with `inventory_locations.code` (code-based location reference).
 - `inventory_adjustments.inventoryItemId` is a logical reference to `inventory_items.id`.
-- Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` stores latest state.
+- Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` stores latest per-location state.
 
 ## Constraint Notes
 
 - Unique constraints:
-  - `inventory_items(sku)`
+  - `inventory_locations(code)`
+  - `inventory_items(sku, locationCode)`
 - Indexes:
   - `inventory_adjustments(inventoryItemId, adjustedAt)`
   - `inventory_adjustments(inventoryItemId, adjustedBy, adjustedAt)`

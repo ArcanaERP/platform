@@ -22,18 +22,22 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 class InventoryAvailabilityService implements InventoryAvailability {
 
+    private static final String DEFAULT_LOCATION_CODE = "MAIN";
+
     private final InventoryItemRepository inventoryItemRepository;
     private final InventoryAdjustmentRepository inventoryAdjustmentRepository;
+    private final InventoryLocationRepository inventoryLocationRepository;
     private final Clock clock;
 
     @Override
     @Transactional(readOnly = true)
-    public InventoryItemView inventoryForSku(String sku) {
-        InventoryItem item = findInventoryItemBySku(sku);
+    public InventoryItemView inventoryForSku(String sku, String locationCode) {
+        InventoryItem item = findInventoryItem(sku, locationCode);
 
         return new InventoryItemView(
             item.getId(),
             item.getSku(),
+            item.getLocationCode(),
             item.getOnHandQuantity(),
             item.getUpdatedAt()
         );
@@ -46,12 +50,13 @@ class InventoryAvailabilityService implements InventoryAvailability {
         }
 
         String normalizedSku = normalizeRequired(command.sku(), "sku").toUpperCase();
+        String normalizedLocationCode = normalizeLocationCode(command.locationCode());
         BigDecimal quantityDelta = normalizeQuantityDelta(command.quantityDelta());
         String reason = normalizeRequired(command.reason(), "reason");
         String adjustedBy = normalizeRequired(command.adjustedBy(), "adjustedBy").toLowerCase();
+        ensureLocationExists(normalizedLocationCode);
 
-        InventoryItem item = inventoryItemRepository.findBySku(normalizedSku)
-            .orElseThrow(() -> new NoSuchElementException("Inventory item not found for SKU: " + normalizedSku));
+        InventoryItem item = findInventoryItem(normalizedSku, normalizedLocationCode);
 
         BigDecimal previousOnHand = item.getOnHandQuantity();
         Instant adjustedAt = Instant.now(clock);
@@ -62,6 +67,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
             InventoryAdjustment.create(
                 saved.getId(),
                 saved.getSku(),
+                saved.getLocationCode(),
                 previousOnHand,
                 quantityDelta,
                 saved.getOnHandQuantity(),
@@ -74,6 +80,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
         return new InventoryAdjustmentView(
             adjustment.getId(),
             adjustment.getSku(),
+            adjustment.getLocationCode(),
             adjustment.getPreviousOnHandQuantity(),
             adjustment.getQuantityDelta(),
             adjustment.getCurrentOnHandQuantity(),
@@ -87,12 +94,13 @@ class InventoryAvailabilityService implements InventoryAvailability {
     @Transactional(readOnly = true)
     public PageResult<InventoryAdjustmentView> listAdjustments(
         String sku,
+        String locationCode,
         String adjustedBy,
         Instant adjustedAtFrom,
         Instant adjustedAtTo,
         PageQuery pageQuery
     ) {
-        InventoryItem item = findInventoryItemBySku(sku);
+        InventoryItem item = findInventoryItem(sku, locationCode);
         String normalizedAdjustedBy = adjustedBy == null ? null : normalizeRequired(adjustedBy, "adjustedBy").toLowerCase();
         PageRequest pageRequest = PageRequest.of(pageQuery.page(), pageQuery.size(), Sort.by(Sort.Direction.DESC, "adjustedAt"));
 
@@ -107,6 +115,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
         return PageResult.from(adjustments).map(adjustment -> new InventoryAdjustmentView(
                 adjustment.getId(),
                 adjustment.getSku(),
+                adjustment.getLocationCode(),
                 adjustment.getPreviousOnHandQuantity(),
                 adjustment.getQuantityDelta(),
                 adjustment.getCurrentOnHandQuantity(),
@@ -133,9 +142,29 @@ class InventoryAvailabilityService implements InventoryAvailability {
         return value.trim();
     }
 
-    private InventoryItem findInventoryItemBySku(String sku) {
+    private static String normalizeLocationCode(String locationCode) {
+        if (locationCode == null) {
+            return DEFAULT_LOCATION_CODE;
+        }
+        if (locationCode.isBlank()) {
+            throw new IllegalArgumentException("locationCode is required");
+        }
+        return locationCode.trim().toUpperCase();
+    }
+
+    private InventoryItem findInventoryItem(String sku, String locationCode) {
         String normalizedSku = normalizeRequired(sku, "sku").toUpperCase();
-        return inventoryItemRepository.findBySku(normalizedSku)
-            .orElseThrow(() -> new NoSuchElementException("Inventory item not found for SKU: " + normalizedSku));
+        String normalizedLocationCode = normalizeLocationCode(locationCode);
+        return inventoryItemRepository.findBySkuAndLocationCode(normalizedSku, normalizedLocationCode)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Inventory item not found for SKU: " + normalizedSku + " at location: " + normalizedLocationCode
+            ));
+    }
+
+    private void ensureLocationExists(String locationCode) {
+        inventoryLocationRepository.findByCode(locationCode)
+            .orElseGet(() -> inventoryLocationRepository.save(
+                InventoryLocation.create(locationCode, locationCode, Instant.now(clock))
+            ));
     }
 }

@@ -19,14 +19,16 @@ class InventoryItemRepositoryTest {
         inventoryItemRepository.save(
             InventoryItem.create(
                 "arc-9100",
+                "main",
                 new BigDecimal("42"),
                 Instant.parse("2026-03-01T00:00:00Z")
             )
         );
 
-        InventoryItem item = inventoryItemRepository.findBySku("ARC-9100").orElseThrow();
+        InventoryItem item = inventoryItemRepository.findBySkuAndLocationCode("ARC-9100", "MAIN").orElseThrow();
 
         assertThat(item.getSku()).isEqualTo("ARC-9100");
+        assertThat(item.getLocationCode()).isEqualTo("MAIN");
         assertThat(item.getOnHandQuantity()).isEqualByComparingTo("42");
     }
 }

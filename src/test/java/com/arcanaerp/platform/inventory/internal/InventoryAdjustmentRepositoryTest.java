@@ -24,6 +24,7 @@ class InventoryAdjustmentRepositoryTest {
         InventoryItem item = inventoryItemRepository.save(
             InventoryItem.create(
                 "arc-9300",
+                "main",
                 new BigDecimal("20"),
                 Instant.parse("2026-03-01T00:00:00Z")
             )
@@ -32,6 +33,7 @@ class InventoryAdjustmentRepositoryTest {
             InventoryAdjustment.create(
                 item.getId(),
                 item.getSku(),
+                item.getLocationCode(),
                 new BigDecimal("20"),
                 new BigDecimal("-3"),
                 new BigDecimal("17"),
@@ -44,6 +46,7 @@ class InventoryAdjustmentRepositoryTest {
             InventoryAdjustment.create(
                 item.getId(),
                 item.getSku(),
+                item.getLocationCode(),
                 new BigDecimal("17"),
                 new BigDecimal("5"),
                 new BigDecimal("22"),
@@ -67,6 +70,7 @@ class InventoryAdjustmentRepositoryTest {
         InventoryItem item = inventoryItemRepository.save(
             InventoryItem.create(
                 "arc-9301",
+                "main",
                 new BigDecimal("20"),
                 Instant.parse("2026-03-01T00:00:00Z")
             )
@@ -75,6 +79,7 @@ class InventoryAdjustmentRepositoryTest {
             InventoryAdjustment.create(
                 item.getId(),
                 item.getSku(),
+                item.getLocationCode(),
                 new BigDecimal("20"),
                 new BigDecimal("-2"),
                 new BigDecimal("18"),
@@ -87,6 +92,7 @@ class InventoryAdjustmentRepositoryTest {
             InventoryAdjustment.create(
                 item.getId(),
                 item.getSku(),
+                item.getLocationCode(),
                 new BigDecimal("18"),
                 new BigDecimal("4"),
                 new BigDecimal("22"),
