@@ -584,7 +584,7 @@ class AgreementsControllerIntegrationTest {
     }
 
     @Test
-    void rejectsInvalidAgreementStatusTransition() throws Exception {
+    void transitionsAgreementStatusFromActiveToTerminated() throws Exception {
         String createPayload = """
             {
               "agreementNumber": "agr-3003",
@@ -625,11 +625,73 @@ class AgreementsControllerIntegrationTest {
         mockMvc.perform(patch("/api/agreements/agr-3003/status")
             .contentType(MediaType.APPLICATION_JSON)
             .content(terminatePayload))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("TERMINATED"))
+            .andExpect(jsonPath("$.activatedAt").isNotEmpty())
+            .andExpect(jsonPath("$.terminatedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/agreements/agr-3003/status-history?page=0&size=10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].previousStatus").value("ACTIVE"))
+            .andExpect(jsonPath("$.items[0].currentStatus").value("TERMINATED"))
+            .andExpect(jsonPath("$.items[1].previousStatus").value("DRAFT"))
+            .andExpect(jsonPath("$.items[1].currentStatus").value("ACTIVE"));
+    }
+
+    @Test
+    void rejectsInvalidAgreementStatusTransitionFromTerminated() throws Exception {
+        String createPayload = """
+            {
+              "agreementNumber": "agr-3006",
+              "name": "Master Services Agreement",
+              "agreementType": "service",
+              "effectiveFrom": "2026-03-01T00:00:00Z"
+            }
+            """;
+        String activatePayload = """
+            {
+              "status": "ACTIVE",
+              "tenantCode": "%s",
+              "reason": "Initial activation",
+              "changedBy": "legal@arcanaerp.com"
+            }
+            """.formatted(AGREEMENTS_TENANT_CODE);
+        String terminatePayload = """
+            {
+              "status": "TERMINATED",
+              "tenantCode": "%s",
+              "reason": "Termination attempt",
+              "changedBy": "legal@arcanaerp.com"
+            }
+            """.formatted(AGREEMENTS_TENANT_CODE);
+
+        mockMvc.perform(post("/api/agreements")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(createPayload))
+            .andExpect(status().isCreated());
+
+        registerActor(AGREEMENTS_TENANT_CODE, "legal@arcanaerp.com");
+        mockMvc.perform(patch("/api/agreements/agr-3006/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(activatePayload))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ACTIVE"));
+
+        mockMvc.perform(patch("/api/agreements/agr-3006/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(terminatePayload))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("TERMINATED"));
+
+        mockMvc.perform(patch("/api/agreements/agr-3006/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(activatePayload))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("Agreement status transition not allowed: ACTIVE -> TERMINATED"))
-            .andExpect(jsonPath("$.path").value("/api/agreements/agr-3003/status"));
+            .andExpect(jsonPath("$.message").value("Agreement status transition not allowed: TERMINATED -> ACTIVE"))
+            .andExpect(jsonPath("$.path").value("/api/agreements/agr-3006/status"));
     }
 
     @Test

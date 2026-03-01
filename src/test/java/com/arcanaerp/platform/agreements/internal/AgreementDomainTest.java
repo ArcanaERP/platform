@@ -74,7 +74,7 @@ class AgreementDomainTest {
     }
 
     @Test
-    void transitionRejectsActiveToTerminated() {
+    void transitionAllowsActiveToTerminated() {
         Agreement agreement = Agreement.create(
             "AGR-1004",
             "Master Supply Agreement",
@@ -82,12 +82,31 @@ class AgreementDomainTest {
             Instant.parse("2026-03-01T00:00:00Z"),
             Instant.parse("2026-03-01T01:00:00Z")
         );
-        agreement.transitionTo(AgreementStatus.ACTIVE, Instant.parse("2026-03-01T02:00:00Z"));
+        Instant activatedAt = Instant.parse("2026-03-01T02:00:00Z");
+        Instant terminatedAt = Instant.parse("2026-03-01T03:00:00Z");
+        agreement.transitionTo(AgreementStatus.ACTIVE, activatedAt);
+        agreement.transitionTo(AgreementStatus.TERMINATED, terminatedAt);
+
+        assertThat(agreement.getStatus()).isEqualTo(AgreementStatus.TERMINATED);
+        assertThat(agreement.getActivatedAt()).isEqualTo(activatedAt);
+        assertThat(agreement.getTerminatedAt()).isEqualTo(terminatedAt);
+    }
+
+    @Test
+    void transitionRejectsTerminatedToActive() {
+        Agreement agreement = Agreement.create(
+            "AGR-1005",
+            "Master Supply Agreement",
+            "PURCHASE",
+            Instant.parse("2026-03-01T00:00:00Z"),
+            Instant.parse("2026-03-01T01:00:00Z")
+        );
+        agreement.transitionTo(AgreementStatus.TERMINATED, Instant.parse("2026-03-01T02:00:00Z"));
 
         assertThatThrownBy(() ->
-            agreement.transitionTo(AgreementStatus.TERMINATED, Instant.parse("2026-03-01T03:00:00Z"))
+            agreement.transitionTo(AgreementStatus.ACTIVE, Instant.parse("2026-03-01T03:00:00Z"))
         )
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("Agreement status transition not allowed: ACTIVE -> TERMINATED");
+            .hasMessage("Agreement status transition not allowed: TERMINATED -> ACTIVE");
     }
 }

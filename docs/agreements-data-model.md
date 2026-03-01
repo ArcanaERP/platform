@@ -36,10 +36,15 @@ erDiagram
 - `agreementNumber` is the external business identifier and is normalized to uppercase.
 - `agreementNumber` is also the direct-read lookup key for `GET /api/agreements/{agreementNumber}`.
 - `agreementType` is stored as an uppercase normalized string for consistent filtering/parity expansion.
-- `status` starts as `DRAFT` and currently supports transitions to `ACTIVE` or `TERMINATED`.
+- `status` starts as `DRAFT` and currently supports transitions:
+  - `DRAFT -> ACTIVE`
+  - `DRAFT -> TERMINATED`
+  - `ACTIVE -> TERMINATED`
+  - `TERMINATED` is final (except same-state no-op calls)
 - Transition timestamps:
   - `activatedAt` set when agreement transitions to `ACTIVE`
   - `terminatedAt` set when agreement transitions to `TERMINATED`
+  - when `ACTIVE -> TERMINATED`, `activatedAt` remains populated and `terminatedAt` is set
 - Immutable status history:
   - each successful status transition appends one row to `agreement_status_change_audits`
   - transition requests require attribution metadata (`tenantCode`, `reason`, `changedBy`)

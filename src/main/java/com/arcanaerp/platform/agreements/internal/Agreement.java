@@ -111,12 +111,10 @@ class Agreement {
         if (targetStatus == this.status) {
             return;
         }
-        if (this.status != AgreementStatus.DRAFT) {
-            throw new IllegalArgumentException(
-                "Agreement status transition not allowed: " + this.status + " -> " + targetStatus
-            );
-        }
-        if (targetStatus != AgreementStatus.ACTIVE && targetStatus != AgreementStatus.TERMINATED) {
+        boolean allowedFromDraft = this.status == AgreementStatus.DRAFT
+            && (targetStatus == AgreementStatus.ACTIVE || targetStatus == AgreementStatus.TERMINATED);
+        boolean allowedFromActive = this.status == AgreementStatus.ACTIVE && targetStatus == AgreementStatus.TERMINATED;
+        if (!allowedFromDraft && !allowedFromActive) {
             throw new IllegalArgumentException(
                 "Agreement status transition not allowed: " + this.status + " -> " + targetStatus
             );
@@ -127,7 +125,6 @@ class Agreement {
             this.terminatedAt = null;
         } else {
             this.terminatedAt = transitionedAt;
-            this.activatedAt = null;
         }
     }
 
