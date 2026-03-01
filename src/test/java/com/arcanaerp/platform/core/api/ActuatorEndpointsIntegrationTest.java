@@ -25,7 +25,8 @@ class ActuatorEndpointsIntegrationTest {
 
         mockMvc.perform(get("/actuator/info"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$").isMap());
+            .andExpect(jsonPath("$.app.name").value("ArcanaERP Platform"))
+            .andExpect(jsonPath("$.app.module").value("platform"));
     }
 
     @Test
