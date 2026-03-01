@@ -20,7 +20,7 @@ Consumer -> allowed dependency
 - `identity` -> `core::pagination`
 - `products` -> `core::pagination`, `identity`
 - `orders` -> `core::pagination`, `products`
-- `agreements` -> *(none)*
+- `agreements` -> `core::pagination`
 - `inventory` -> `core::pagination`, `core::errors`
 
 Notes:
@@ -37,7 +37,7 @@ Notes:
 | Identity | `com.arcanaerp.platform.identity` | Tenant/role/user primitives, org-unit directory, cross-module actor lookup | `UserDirectory`, `OrgUnitDirectory`, `IdentityActorLookup` | `POST /api/identity/users`, `GET /api/identity/users` |
 | Products | `com.arcanaerp.platform.products` | Product catalog, activation lifecycle, activation audit history, orderability lookup | `ProductCatalog`, `ProductLookup` | `POST /api/products`, `GET /api/products`, `PATCH /api/products/{sku}/active`, `GET /api/products/{sku}/activation-history` |
 | Orders | `com.arcanaerp.platform.orders` | Sales order creation, listing, and status transitions | `OrderManagement` | `POST /api/orders`, `GET /api/orders`, `PATCH /api/orders/{orderNumber}/status` |
-| Agreements | `com.arcanaerp.platform.agreements` | Agreement master-record creation with normalized identifiers/types and lifecycle transitions (`DRAFT -> ACTIVE/TERMINATED`) | `AgreementManagement` | `POST /api/agreements`, `PATCH /api/agreements/{agreementNumber}/status` |
+| Agreements | `com.arcanaerp.platform.agreements` | Agreement master-record creation, paged listing (optional status filtering), and lifecycle transitions (`DRAFT -> ACTIVE/TERMINATED`) | `AgreementManagement` | `POST /api/agreements`, `GET /api/agreements`, `PATCH /api/agreements/{agreementNumber}/status` |
 | Inventory | `com.arcanaerp.platform.inventory` | On-hand inventory by `sku + location`, location-scoped adjustment transactions, and location-to-location transfers with optional source-document references and idempotent reversal retries with payload-consistency, concurrent first-write conflict enforcement, and stale-claim recovery | `InventoryAvailability` | `GET /api/inventory/{sku}`, `POST /api/inventory/{sku}/adjustments`, `GET /api/inventory/{sku}/adjustments`, `POST /api/inventory/{sku}/transfers`, `GET /api/inventory/transfers/{transferId}`, `POST /api/inventory/transfers/{transferId}/reversals`, `GET /api/inventory/transfers/{transferId}/reversals`, `GET /api/inventory/{sku}/transfers` |
 
 ## Boundary Rules In Use

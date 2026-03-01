@@ -28,6 +28,9 @@ erDiagram
 - Transition timestamps:
   - `activatedAt` set when agreement transitions to `ACTIVE`
   - `terminatedAt` set when agreement transitions to `TERMINATED`
+- Listing/query behavior:
+  - agreements list endpoint supports optional `status` filter (`DRAFT`, `ACTIVE`, `TERMINATED`)
+  - list results are sorted by `createdAt DESC`
 
 ## Constraint Notes
 

@@ -5,9 +5,13 @@ import com.arcanaerp.platform.agreements.AgreementStatus;
 import com.arcanaerp.platform.agreements.AgreementView;
 import com.arcanaerp.platform.agreements.ChangeAgreementStatusCommand;
 import com.arcanaerp.platform.agreements.CreateAgreementCommand;
+import com.arcanaerp.platform.core.pagination.PageQuery;
+import com.arcanaerp.platform.core.pagination.PageResult;
 import java.time.Clock;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,6 +64,15 @@ class AgreementManagementService implements AgreementManagement {
         agreement.transitionTo(targetStatus, Instant.now(clock));
         Agreement saved = agreementRepository.save(agreement);
         return toView(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<AgreementView> listAgreements(PageQuery pageQuery, AgreementStatus status) {
+        Page<Agreement> agreements = status == null
+            ? agreementRepository.findAll(pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt")))
+            : agreementRepository.findByStatus(status, pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt")));
+        return PageResult.from(agreements).map(this::toView);
     }
 
     private static String normalizeRequired(String value, String fieldName) {

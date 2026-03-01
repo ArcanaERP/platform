@@ -1,10 +1,13 @@
 package com.arcanaerp.platform.agreements.web;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.hamcrest.Matchers.nullValue;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,6 +71,107 @@ class AgreementsControllerIntegrationTest {
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.message").value("Agreement number already exists: AGR-3001"))
+            .andExpect(jsonPath("$.path").value("/api/agreements"));
+    }
+
+    @Test
+    void listsAgreementsWithOptionalStatusFilter() throws Exception {
+        String draftPayload = """
+            {
+              "agreementNumber": "agr-3010",
+              "name": "Draft Agreement",
+              "agreementType": "service",
+              "effectiveFrom": "2026-03-01T00:00:00Z"
+            }
+            """;
+        String activePayload = """
+            {
+              "agreementNumber": "agr-3011",
+              "name": "Active Agreement",
+              "agreementType": "service",
+              "effectiveFrom": "2026-03-01T00:00:00Z"
+            }
+            """;
+        String terminatedPayload = """
+            {
+              "agreementNumber": "agr-3012",
+              "name": "Terminated Agreement",
+              "agreementType": "service",
+              "effectiveFrom": "2026-03-01T00:00:00Z"
+            }
+            """;
+        String activeStatusPayload = """
+            {
+              "status": "ACTIVE"
+            }
+            """;
+        String terminatedStatusPayload = """
+            {
+              "status": "TERMINATED"
+            }
+            """;
+
+        mockMvc.perform(post("/api/agreements")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(draftPayload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/agreements")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(activePayload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(patch("/api/agreements/agr-3011/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(activeStatusPayload))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/agreements")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(terminatedPayload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(patch("/api/agreements/agr-3012/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(terminatedStatusPayload))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/agreements?page=0&size=100"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(100))
+            .andExpect(jsonPath("$.totalItems", greaterThanOrEqualTo(3)))
+            .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3010')].status", hasItem("DRAFT")))
+            .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3011')].status", hasItem("ACTIVE")))
+            .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3012')].status", hasItem("TERMINATED")));
+
+        mockMvc.perform(get("/api/agreements?page=0&size=100&status=ACTIVE"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3011')].status", hasItem("ACTIVE")));
+
+        mockMvc.perform(get("/api/agreements?page=0&size=100&status=TERMINATED"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3012')].status", hasItem("TERMINATED")));
+
+        mockMvc.perform(get("/api/agreements?page=0&size=100&status=DRAFT"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3010')].status", hasItem("DRAFT")));
+    }
+
+    @Test
+    void rejectsInvalidStatusQueryFilter() throws Exception {
+        mockMvc.perform(get("/api/agreements?page=0&size=10&status=invalid"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("status query parameter must be one of: DRAFT, ACTIVE, TERMINATED"))
+            .andExpect(jsonPath("$.path").value("/api/agreements"));
+
+        mockMvc.perform(get("/api/agreements?page=0&size=10&status="))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("status query parameter must not be blank"))
             .andExpect(jsonPath("$.path").value("/api/agreements"));
     }
 
