@@ -41,6 +41,9 @@ class InventoryTransferReversalIdempotency {
     @Column(nullable = false, length = 128)
     private String idempotencyKey;
 
+    @Column(nullable = false, length = 64)
+    private String requestFingerprint;
+
     @Column(nullable = false)
     private UUID reversalTransferId;
 
@@ -51,12 +54,14 @@ class InventoryTransferReversalIdempotency {
         UUID id,
         UUID transferId,
         String idempotencyKey,
+        String requestFingerprint,
         UUID reversalTransferId,
         Instant createdAt
     ) {
         this.id = id;
         this.transferId = transferId;
         this.idempotencyKey = idempotencyKey;
+        this.requestFingerprint = requestFingerprint;
         this.reversalTransferId = reversalTransferId;
         this.createdAt = createdAt;
     }
@@ -64,6 +69,7 @@ class InventoryTransferReversalIdempotency {
     static InventoryTransferReversalIdempotency create(
         UUID transferId,
         String idempotencyKey,
+        String requestFingerprint,
         UUID reversalTransferId,
         Instant createdAt
     ) {
@@ -81,6 +87,7 @@ class InventoryTransferReversalIdempotency {
             null,
             transferId,
             normalizeRequired(idempotencyKey, "idempotencyKey"),
+            normalizeRequired(requestFingerprint, "requestFingerprint"),
             reversalTransferId,
             createdAt
         );

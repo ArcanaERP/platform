@@ -687,6 +687,86 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void rejectsIdempotencyKeyReuseWithDifferentReversalPayload() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9222",
+                "main",
+                new BigDecimal("10"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9222",
+                "wh-east",
+                new BigDecimal("4"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+
+        String transferPayload = """
+            {
+              "sourceLocationCode": "main",
+              "destinationLocationCode": "wh-east",
+              "quantity": 3,
+              "reason": "Original transfer",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+        String firstReversalPayload = """
+            {
+              "reason": "Reversal posted",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+        String secondReversalPayload = """
+            {
+              "reason": "Reversal posted with different reason",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+
+        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9222")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(transferPayload))
+            .andExpect(status().isCreated());
+
+        InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9222", "MAIN").orElseThrow();
+        UUID originalTransferId = inventoryAdjustmentRepository
+            .findByInventoryItemIdOrderByAdjustedAtDesc(mainItem.getId())
+            .getFirst()
+            .getTransferId();
+
+        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
+            .header("Idempotency-Key", "reverse-9222-a")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(firstReversalPayload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
+            .header("Idempotency-Key", "reverse-9222-a")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(secondReversalPayload))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.status").value(409))
+            .andExpect(jsonPath("$.error").value("Conflict"))
+            .andExpect(
+                jsonPath("$.message")
+                    .value(
+                        "Idempotency-Key already used with different reversal payload for transferId: " + originalTransferId
+                    )
+            )
+            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
+
+        mockMvc.perform(get("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1));
+    }
+
+    @Test
     void listsReversalHistoryForTransferId() throws Exception {
         inventoryItemRepository.save(
             InventoryItem.create(

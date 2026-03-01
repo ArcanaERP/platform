@@ -82,7 +82,7 @@ Inventory:
 - `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/transfers`
 - `GET /api/inventory/transfers/{transferId}`
-- `POST /api/inventory/transfers/{transferId}/reversals` (optional `Idempotency-Key` header for retry-safe replay; duplicate reversal without matching key returns `409 Conflict`)
+- `POST /api/inventory/transfers/{transferId}/reversals` (optional `Idempotency-Key` header for retry-safe replay; reusing a key with a different payload returns `409 Conflict`; duplicate reversal without a matching key also returns `409 Conflict`)
 - `GET /api/inventory/transfers/{transferId}/reversals?page=&size=`
 - `GET /api/inventory/{sku}/transfers?page=&size=&sourceLocationCode=&destinationLocationCode=&adjustedBy=&referenceType=&referenceId=&adjustedAtFrom=&adjustedAtTo=`
 - `GET /api/inventory/{sku}/adjustments?page=&size=&locationCode=&adjustedBy=&adjustedAtFrom=&adjustedAtTo=` (`locationCode` defaults to `MAIN`)

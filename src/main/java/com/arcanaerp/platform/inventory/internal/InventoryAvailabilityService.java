@@ -8,11 +8,16 @@ import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
 import com.arcanaerp.platform.inventory.ReverseInventoryTransferCommand;
+import com.arcanaerp.platform.inventory.ReversalIdempotencyPayloadConflictException;
 import com.arcanaerp.platform.inventory.InventoryTransferView;
 import com.arcanaerp.platform.inventory.TransferInventoryCommand;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
@@ -252,20 +257,22 @@ class InventoryAvailabilityService implements InventoryAvailability {
         String adjustedBy = normalizeRequired(command.adjustedBy(), "adjustedBy").toLowerCase();
         String idempotencyKey = normalizeOptionalIdempotencyKey(command.idempotencyKey());
         if (idempotencyKey != null) {
+            String requestFingerprint = fingerprintReversalRequest(reason, adjustedBy);
             return reversalIdempotencyRepository
                 .findByTransferIdAndIdempotencyKey(command.transferId(), idempotencyKey)
-                .map(record -> transferById(record.getReversalTransferId()))
-                .orElseGet(() -> createReversal(command.transferId(), reason, adjustedBy, idempotencyKey));
+                .map(record -> replayIdempotentReversal(record, command.transferId(), requestFingerprint))
+                .orElseGet(() -> createReversal(command.transferId(), reason, adjustedBy, idempotencyKey, requestFingerprint));
         }
 
-        return createReversal(command.transferId(), reason, adjustedBy, null);
+        return createReversal(command.transferId(), reason, adjustedBy, null, null);
     }
 
     private InventoryTransferView createReversal(
         UUID originalTransferId,
         String reason,
         String adjustedBy,
-        String idempotencyKey
+        String idempotencyKey,
+        String requestFingerprint
     ) {
         InventoryTransferView original = transferById(originalTransferId);
         PageResult<InventoryTransferView> existingReversals = listTransfers(
@@ -299,12 +306,26 @@ class InventoryAvailabilityService implements InventoryAvailability {
                 InventoryTransferReversalIdempotency.create(
                     originalTransferId,
                     idempotencyKey,
+                    requestFingerprint,
                     reversal.transferId(),
                     Instant.now(clock)
                 )
             );
         }
         return reversal;
+    }
+
+    private InventoryTransferView replayIdempotentReversal(
+        InventoryTransferReversalIdempotency existingIdempotency,
+        UUID transferId,
+        String requestFingerprint
+    ) {
+        if (!existingIdempotency.getRequestFingerprint().equals(requestFingerprint)) {
+            throw new ReversalIdempotencyPayloadConflictException(
+                "Idempotency-Key already used with different reversal payload for transferId: " + transferId
+            );
+        }
+        return transferById(existingIdempotency.getReversalTransferId());
     }
 
     @Override
@@ -470,6 +491,16 @@ class InventoryAvailabilityService implements InventoryAvailability {
             throw new IllegalArgumentException("Idempotency-Key header must not be blank");
         }
         return idempotencyKey.trim();
+    }
+
+    private static String fingerprintReversalRequest(String reason, String adjustedBy) {
+        String canonicalRequest = reason + "\n" + adjustedBy;
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(canonicalRequest.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 algorithm not available", exception);
+        }
     }
 
     private static void validateReferencePair(String referenceType, String referenceId) {

@@ -46,6 +46,7 @@ erDiagram
       UUID id PK
       UUID transferId
       STRING idempotencyKey
+      STRING requestFingerprint
       UUID reversalTransferId
       INSTANT createdAt
     }
@@ -61,6 +62,7 @@ erDiagram
 - Transfer rows can optionally carry source-document metadata (`referenceType`, `referenceId`) for parity traceability.
 - Transfer reversals are modeled as new transfer pairs where `referenceType = TRANSFER_REVERSAL` and `referenceId = <originalTransferId>`.
 - Reversal idempotency keys are tracked in `inventory_transfer_reversal_idempotency` for replay-safe reversal retries.
+- `requestFingerprint` stores a stable hash of normalized reversal request body fields to reject same-key reuse with divergent payloads.
 
 ## Constraint Notes
 
