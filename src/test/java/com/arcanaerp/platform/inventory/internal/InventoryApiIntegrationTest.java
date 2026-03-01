@@ -491,6 +491,67 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void rejectsDuplicateReversalForSameTransferId() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9219",
+                "main",
+                new BigDecimal("10"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9219",
+                "wh-east",
+                new BigDecimal("4"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+
+        String transferPayload = """
+            {
+              "sourceLocationCode": "main",
+              "destinationLocationCode": "wh-east",
+              "quantity": 3,
+              "reason": "Original transfer",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+        String reversalPayload = """
+            {
+              "reason": "Reversal posted",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+
+        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9219")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(transferPayload))
+            .andExpect(status().isCreated());
+
+        InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9219", "MAIN").orElseThrow();
+        UUID originalTransferId = inventoryAdjustmentRepository
+            .findByInventoryItemIdOrderByAdjustedAtDesc(mainItem.getId())
+            .getFirst()
+            .getTransferId();
+
+        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(reversalPayload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(reversalPayload))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("Inventory transfer already reversed: " + originalTransferId))
+            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
+    }
+
+    @Test
     void listsReversalHistoryForTransferId() throws Exception {
         inventoryItemRepository.save(
             InventoryItem.create(

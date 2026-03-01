@@ -249,6 +249,20 @@ class InventoryAvailabilityService implements InventoryAvailability {
         String reason = normalizeRequired(command.reason(), "reason");
         String adjustedBy = normalizeRequired(command.adjustedBy(), "adjustedBy").toLowerCase();
         InventoryTransferView original = transferById(command.transferId());
+        PageResult<InventoryTransferView> existingReversals = listTransfers(
+            original.sku(),
+            null,
+            null,
+            null,
+            TRANSFER_REVERSAL_REFERENCE_TYPE,
+            original.transferId().toString(),
+            null,
+            null,
+            PageQuery.of(0, 1)
+        );
+        if (existingReversals.totalItems() > 0) {
+            throw new IllegalArgumentException("Inventory transfer already reversed: " + original.transferId());
+        }
 
         return transferInventory(
             new TransferInventoryCommand(
