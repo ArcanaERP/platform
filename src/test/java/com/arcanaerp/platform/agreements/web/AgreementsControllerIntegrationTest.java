@@ -298,6 +298,119 @@ class AgreementsControllerIntegrationTest {
     }
 
     @Test
+    void filtersStatusHistoryByTenantAndChangedByAndChangedAtRange() throws Exception {
+        String createPayload = """
+            {
+              "agreementNumber": "agr-3025",
+              "name": "Filtered History Agreement",
+              "agreementType": "service",
+              "effectiveFrom": "2026-03-01T00:00:00Z"
+            }
+            """;
+        String activatePayload = """
+            {
+              "status": "ACTIVE",
+              "tenantCode": "%s",
+              "reason": "Initial activation",
+              "changedBy": "LEGAL@ARCANAERP.COM"
+            }
+            """.formatted(AGREEMENTS_TENANT_CODE);
+
+        mockMvc.perform(post("/api/agreements")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(createPayload))
+            .andExpect(status().isCreated());
+
+        registerActor(AGREEMENTS_TENANT_CODE, "legal@arcanaerp.com");
+        mockMvc.perform(patch("/api/agreements/agr-3025/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(activatePayload))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/agreements/agr-3025/status-history?page=0&size=10&tenantCode=" + AGREEMENTS_TENANT_CODE))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].tenantCode").value(AGREEMENTS_TENANT_CODE));
+
+        mockMvc.perform(get("/api/agreements/agr-3025/status-history?page=0&size=10&tenantCode=" + AGREEMENTS_ALT_TENANT_CODE))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(0));
+
+        mockMvc.perform(get("/api/agreements/agr-3025/status-history?page=0&size=10&changedBy=LEGAL@ARCANAERP.COM"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].changedBy").value("legal@arcanaerp.com"));
+
+        mockMvc.perform(get("/api/agreements/agr-3025/status-history?page=0&size=10&changedBy=ops@arcanaerp.com"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(0));
+
+        mockMvc.perform(get("/api/agreements/agr-3025/status-history?page=0&size=10")
+            .param("changedAtFrom", "2000-01-01T00:00:00Z")
+            .param("changedAtTo", "2100-01-01T00:00:00Z"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1));
+
+        mockMvc.perform(get("/api/agreements/agr-3025/status-history?page=0&size=10")
+            .param("changedAtFrom", "2100-01-01T00:00:00Z"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(0));
+    }
+
+    @Test
+    void rejectsStatusHistoryFilterWhenTenantCodeBlank() throws Exception {
+        mockMvc.perform(get("/api/agreements/agr-3025/status-history")
+            .param("page", "0")
+            .param("size", "10")
+            .param("tenantCode", "   "))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("tenantCode query parameter must not be blank"))
+            .andExpect(jsonPath("$.path").value("/api/agreements/agr-3025/status-history"));
+    }
+
+    @Test
+    void rejectsStatusHistoryFilterWhenChangedByBlank() throws Exception {
+        mockMvc.perform(get("/api/agreements/agr-3025/status-history")
+            .param("page", "0")
+            .param("size", "10")
+            .param("changedBy", "   "))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("changedBy query parameter must not be blank"))
+            .andExpect(jsonPath("$.path").value("/api/agreements/agr-3025/status-history"));
+    }
+
+    @Test
+    void rejectsStatusHistoryFilterWhenChangedAtFromInvalid() throws Exception {
+        mockMvc.perform(get("/api/agreements/agr-3025/status-history")
+            .param("page", "0")
+            .param("size", "10")
+            .param("changedAtFrom", "not-a-timestamp"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("changedAtFrom query parameter must be a valid ISO-8601 instant"))
+            .andExpect(jsonPath("$.path").value("/api/agreements/agr-3025/status-history"));
+    }
+
+    @Test
+    void rejectsStatusHistoryFilterWhenChangedAtRangeInvalid() throws Exception {
+        mockMvc.perform(get("/api/agreements/agr-3025/status-history")
+            .param("page", "0")
+            .param("size", "10")
+            .param("changedAtFrom", "2026-03-02T00:00:00Z")
+            .param("changedAtTo", "2026-03-01T00:00:00Z"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("changedAtFrom must be before or equal to changedAtTo"))
+            .andExpect(jsonPath("$.path").value("/api/agreements/agr-3025/status-history"));
+    }
+
+    @Test
     void statusHistoryReturnsNotFoundForUnknownAgreement() throws Exception {
         mockMvc.perform(get("/api/agreements/agr-missing-history/status-history?page=0&size=10"))
             .andExpect(status().isNotFound())

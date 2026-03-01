@@ -9,6 +9,8 @@ import com.arcanaerp.platform.agreements.CreateAgreementCommand;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import jakarta.validation.Valid;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.http.HttpStatus;
@@ -59,10 +61,25 @@ public class AgreementsController {
     @GetMapping("/{agreementNumber}/status-history")
     public PageResult<AgreementStatusChangeResponse> listStatusHistory(
         @PathVariable String agreementNumber,
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
-        return agreementManagement.listStatusHistory(agreementNumber, PageQuery.of(page, size)).map(this::toStatusHistoryResponse);
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return agreementManagement.listStatusHistory(
+                agreementNumber,
+                normalizeOptionalTenantCode(tenantCode),
+                normalizeOptionalChangedBy(changedBy),
+                parsedChangedAtFrom,
+                parsedChangedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toStatusHistoryResponse);
     }
 
     @PatchMapping("/{agreementNumber}/status")
@@ -121,6 +138,46 @@ public class AgreementsController {
             return AgreementStatus.valueOf(normalized);
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException("status query parameter must be one of: DRAFT, ACTIVE, TERMINATED");
+        }
+    }
+
+    private static String normalizeOptionalTenantCode(String tenantCode) {
+        if (tenantCode == null) {
+            return null;
+        }
+        if (tenantCode.isBlank()) {
+            throw new IllegalArgumentException("tenantCode query parameter must not be blank");
+        }
+        return tenantCode.trim().toUpperCase();
+    }
+
+    private static String normalizeOptionalChangedBy(String changedBy) {
+        if (changedBy == null) {
+            return null;
+        }
+        if (changedBy.isBlank()) {
+            throw new IllegalArgumentException("changedBy query parameter must not be blank");
+        }
+        return changedBy.trim().toLowerCase();
+    }
+
+    private static Instant parseOptionalInstant(String value, String parameterName) {
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
+            throw new IllegalArgumentException(parameterName + " query parameter must not be blank");
+        }
+        try {
+            return Instant.parse(value.trim());
+        } catch (DateTimeParseException exception) {
+            throw new IllegalArgumentException(parameterName + " query parameter must be a valid ISO-8601 instant");
+        }
+    }
+
+    private static void validateChangedAtRange(Instant changedAtFrom, Instant changedAtTo) {
+        if (changedAtFrom != null && changedAtTo != null && changedAtFrom.isAfter(changedAtTo)) {
+            throw new IllegalArgumentException("changedAtFrom must be before or equal to changedAtTo");
         }
     }
 }

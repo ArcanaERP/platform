@@ -104,7 +104,7 @@ Agreements:
 - `GET /api/agreements/{agreementNumber}`
 - `GET /api/agreements?page=&size=&status=`
 - `PATCH /api/agreements/{agreementNumber}/status` (request includes `status`, `tenantCode`, `reason`, `changedBy`)
-- `GET /api/agreements/{agreementNumber}/status-history?page=&size=`
+- `GET /api/agreements/{agreementNumber}/status-history?page=&size=&tenantCode=&changedBy=&changedAtFrom=&changedAtTo=`
 
 Inventory:
 

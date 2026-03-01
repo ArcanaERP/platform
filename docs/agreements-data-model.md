@@ -44,13 +44,17 @@ erDiagram
   - each successful status transition appends one row to `agreement_status_change_audits`
   - transition requests require attribution metadata (`tenantCode`, `reason`, `changedBy`)
   - transitions validate `changedBy` against `identity` module actor lookup within `tenantCode`
-  - history is exposed via `GET /api/agreements/{agreementNumber}/status-history?page=&size=`
+  - history is exposed via `GET /api/agreements/{agreementNumber}/status-history?page=&size=&tenantCode=&changedBy=&changedAtFrom=&changedAtTo=`
   - history rows include `tenantCode`, `reason`, and normalized-lowercase `changedBy`
   - no-op transitions (`ACTIVE -> ACTIVE`, etc.) do not append history rows
 - Listing/query behavior:
   - agreements list endpoint supports optional `status` filter (`DRAFT`, `ACTIVE`, `TERMINATED`)
   - list results are sorted by `createdAt DESC`
   - status-history results are sorted by `changedAt DESC`
+  - status-history supports optional filters:
+    - `tenantCode` (uppercase-normalized)
+    - `changedBy` (lowercase-normalized)
+    - `changedAtFrom` / `changedAtTo` (ISO-8601 instant range)
 
 ## Constraint Notes
 
@@ -58,3 +62,4 @@ erDiagram
   - `agreements(agreementNumber)`
 - Indexes:
   - `agreement_status_change_audits(agreementId, changedAt)`
+  - `agreement_status_change_audits(agreementId, tenantCode, changedAt)`

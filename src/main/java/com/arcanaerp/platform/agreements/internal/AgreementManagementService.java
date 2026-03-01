@@ -111,10 +111,23 @@ class AgreementManagementService implements AgreementManagement {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<AgreementStatusChangeView> listStatusHistory(String agreementNumber, PageQuery pageQuery) {
+    public PageResult<AgreementStatusChangeView> listStatusHistory(
+        String agreementNumber,
+        String tenantCode,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
         Agreement agreement = findAgreementByNumber(agreementNumber);
-        Page<AgreementStatusChangeAudit> audits = agreementStatusChangeAuditRepository.findByAgreementId(
+        String normalizedTenantCode = normalizeOptionalTenantCode(tenantCode);
+        String normalizedChangedBy = normalizeOptionalChangedBy(changedBy);
+        Page<AgreementStatusChangeAudit> audits = agreementStatusChangeAuditRepository.findHistoryFiltered(
             agreement.getId(),
+            normalizedTenantCode,
+            normalizedChangedBy,
+            changedAtFrom,
+            changedAtTo,
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
         );
         return PageResult.from(audits).map(audit -> new AgreementStatusChangeView(
@@ -138,6 +151,20 @@ class AgreementManagementService implements AgreementManagement {
 
     private static String normalizeTenantCode(String tenantCode) {
         return normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+    }
+
+    private static String normalizeOptionalTenantCode(String tenantCode) {
+        if (tenantCode == null) {
+            return null;
+        }
+        return normalizeTenantCode(tenantCode);
+    }
+
+    private static String normalizeOptionalChangedBy(String changedBy) {
+        if (changedBy == null) {
+            return null;
+        }
+        return normalizeRequired(changedBy, "changedBy").toLowerCase();
     }
 
     private Agreement findAgreementByNumber(String agreementNumber) {

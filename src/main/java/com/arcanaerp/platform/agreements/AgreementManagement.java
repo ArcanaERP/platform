@@ -2,6 +2,7 @@ package com.arcanaerp.platform.agreements;
 
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import java.time.Instant;
 
 public interface AgreementManagement {
 
@@ -13,5 +14,12 @@ public interface AgreementManagement {
 
     AgreementView changeAgreementStatus(ChangeAgreementStatusCommand command);
 
-    PageResult<AgreementStatusChangeView> listStatusHistory(String agreementNumber, PageQuery pageQuery);
+    PageResult<AgreementStatusChangeView> listStatusHistory(
+        String agreementNumber,
+        String tenantCode,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
 }
