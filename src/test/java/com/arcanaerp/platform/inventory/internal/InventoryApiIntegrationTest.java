@@ -491,6 +491,135 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void listsReversalHistoryForTransferId() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9217",
+                "main",
+                new BigDecimal("10"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9217",
+                "wh-east",
+                new BigDecimal("4"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+
+        String transferPayload = """
+            {
+              "sourceLocationCode": "main",
+              "destinationLocationCode": "wh-east",
+              "quantity": 3,
+              "reason": "Original transfer",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+
+        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9217")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(transferPayload))
+            .andExpect(status().isCreated());
+
+        InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9217", "MAIN").orElseThrow();
+        UUID originalTransferId = inventoryAdjustmentRepository
+            .findByInventoryItemIdOrderByAdjustedAtDesc(mainItem.getId())
+            .getFirst()
+            .getTransferId();
+
+        String reversalPayload = """
+            {
+              "reason": "Reversal posted",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+
+        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(reversalPayload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].sku").value("ARC-9217"))
+            .andExpect(jsonPath("$.items[0].sourceLocationCode").value("WH-EAST"))
+            .andExpect(jsonPath("$.items[0].destinationLocationCode").value("MAIN"))
+            .andExpect(jsonPath("$.items[0].quantity").value(3))
+            .andExpect(jsonPath("$.items[0].reason").value("Reversal posted"))
+            .andExpect(jsonPath("$.items[0].adjustedBy").value("ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].referenceType").value("TRANSFER_REVERSAL"))
+            .andExpect(jsonPath("$.items[0].referenceId").value(originalTransferId.toString()));
+    }
+
+    @Test
+    void returnsEmptyReversalHistoryWhenNoReversalExists() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9218",
+                "main",
+                new BigDecimal("10"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9218",
+                "wh-east",
+                new BigDecimal("4"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+
+        String transferPayload = """
+            {
+              "sourceLocationCode": "main",
+              "destinationLocationCode": "wh-east",
+              "quantity": 3,
+              "reason": "Original transfer",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+
+        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9218")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(transferPayload))
+            .andExpect(status().isCreated());
+
+        InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9218", "MAIN").orElseThrow();
+        UUID originalTransferId = inventoryAdjustmentRepository
+            .findByInventoryItemIdOrderByAdjustedAtDesc(mainItem.getId())
+            .getFirst()
+            .getTransferId();
+
+        mockMvc.perform(get("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(0))
+            .andExpect(jsonPath("$.items").isEmpty());
+    }
+
+    @Test
+    void returnsNotFoundForUnknownTransferReversalHistory() throws Exception {
+        UUID unknownTransferId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+
+        mockMvc.perform(get("/api/inventory/transfers/{transferId}/reversals", unknownTransferId)
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Inventory transfer not found: " + unknownTransferId))
+            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + unknownTransferId + "/reversals"));
+    }
+
+    @Test
     void rejectsTransferWhenLocationsMatch() throws Exception {
         inventoryItemRepository.save(
             InventoryItem.create(

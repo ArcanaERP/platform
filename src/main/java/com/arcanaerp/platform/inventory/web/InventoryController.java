@@ -149,6 +149,15 @@ public class InventoryController {
         );
     }
 
+    @GetMapping("/transfers/{transferId}/reversals")
+    public PageResult<InventoryTransferResponse> listReversals(
+        @PathVariable UUID transferId,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return inventoryAvailability.listReversals(transferId, PageQuery.of(page, size)).map(this::toTransferResponse);
+    }
+
     @GetMapping("/{sku}/transfers")
     public PageResult<InventoryTransferResponse> listTransfers(
         @PathVariable String sku,

@@ -266,6 +266,27 @@ class InventoryAvailabilityService implements InventoryAvailability {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<InventoryTransferView> listReversals(UUID transferId, PageQuery pageQuery) {
+        if (transferId == null) {
+            throw new IllegalArgumentException("transferId is required");
+        }
+
+        InventoryTransferView original = transferById(transferId);
+        return listTransfers(
+            original.sku(),
+            null,
+            null,
+            null,
+            TRANSFER_REVERSAL_REFERENCE_TYPE,
+            transferId.toString(),
+            null,
+            null,
+            pageQuery
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<InventoryTransferView> listTransfers(
         String sku,
         String sourceLocationCode,

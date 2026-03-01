@@ -17,6 +17,8 @@ public interface InventoryAvailability {
 
     InventoryTransferView reverseTransfer(ReverseInventoryTransferCommand command);
 
+    PageResult<InventoryTransferView> listReversals(UUID transferId, PageQuery pageQuery);
+
     PageResult<InventoryTransferView> listTransfers(
         String sku,
         String sourceLocationCode,
