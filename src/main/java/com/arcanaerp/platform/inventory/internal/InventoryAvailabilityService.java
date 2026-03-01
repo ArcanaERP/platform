@@ -6,6 +6,7 @@ import com.arcanaerp.platform.inventory.AdjustInventoryCommand;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
+import com.arcanaerp.platform.inventory.ReverseInventoryTransferCommand;
 import com.arcanaerp.platform.inventory.InventoryTransferView;
 import com.arcanaerp.platform.inventory.TransferInventoryCommand;
 import java.math.BigDecimal;
@@ -27,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 class InventoryAvailabilityService implements InventoryAvailability {
 
     private static final String DEFAULT_LOCATION_CODE = "MAIN";
+    private static final String TRANSFER_REVERSAL_REFERENCE_TYPE = "TRANSFER_REVERSAL";
 
     private final InventoryItemRepository inventoryItemRepository;
     private final InventoryAdjustmentRepository inventoryAdjustmentRepository;
@@ -232,6 +234,33 @@ class InventoryAvailabilityService implements InventoryAvailability {
             source.getReferenceType(),
             source.getReferenceId(),
             source.getAdjustedAt()
+        );
+    }
+
+    @Override
+    public InventoryTransferView reverseTransfer(ReverseInventoryTransferCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        if (command.transferId() == null) {
+            throw new IllegalArgumentException("transferId is required");
+        }
+
+        String reason = normalizeRequired(command.reason(), "reason");
+        String adjustedBy = normalizeRequired(command.adjustedBy(), "adjustedBy").toLowerCase();
+        InventoryTransferView original = transferById(command.transferId());
+
+        return transferInventory(
+            new TransferInventoryCommand(
+                original.sku(),
+                original.destinationLocationCode(),
+                original.sourceLocationCode(),
+                original.quantity(),
+                reason,
+                adjustedBy,
+                TRANSFER_REVERSAL_REFERENCE_TYPE,
+                original.transferId().toString()
+            )
         );
     }
 

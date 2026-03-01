@@ -6,6 +6,7 @@ import com.arcanaerp.platform.inventory.AdjustInventoryCommand;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
+import com.arcanaerp.platform.inventory.ReverseInventoryTransferCommand;
 import com.arcanaerp.platform.inventory.InventoryTransferView;
 import com.arcanaerp.platform.inventory.TransferInventoryCommand;
 import jakarta.validation.Valid;
@@ -129,6 +130,23 @@ public class InventoryController {
     @GetMapping("/transfers/{transferId}")
     public InventoryTransferResponse transferById(@PathVariable UUID transferId) {
         return toTransferResponse(inventoryAvailability.transferById(transferId));
+    }
+
+    @PostMapping("/transfers/{transferId}/reversals")
+    @ResponseStatus(HttpStatus.CREATED)
+    public InventoryTransferResponse reverseTransfer(
+        @PathVariable UUID transferId,
+        @Valid @RequestBody ReverseTransferRequest request
+    ) {
+        return toTransferResponse(
+            inventoryAvailability.reverseTransfer(
+                new ReverseInventoryTransferCommand(
+                    transferId,
+                    request.reason(),
+                    request.adjustedBy()
+                )
+            )
+        );
     }
 
     @GetMapping("/{sku}/transfers")

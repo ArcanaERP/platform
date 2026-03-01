@@ -50,6 +50,7 @@ erDiagram
 - Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` stores latest per-location state.
 - Location transfers write two adjustment rows with a shared `transferId` (source negative delta, destination positive delta).
 - Transfer rows can optionally carry source-document metadata (`referenceType`, `referenceId`) for parity traceability.
+- Transfer reversals are modeled as new transfer pairs where `referenceType = TRANSFER_REVERSAL` and `referenceId = <originalTransferId>`.
 
 ## Constraint Notes
 
