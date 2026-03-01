@@ -59,6 +59,8 @@ class AgreementManagementService implements AgreementManagement {
         if (targetStatus == null) {
             throw new IllegalArgumentException("status is required");
         }
+        String reason = normalizeRequired(command.reason(), "reason");
+        String changedBy = normalizeRequired(command.changedBy(), "changedBy").toLowerCase();
 
         Agreement agreement = agreementRepository.findByAgreementNumber(normalizedAgreementNumber)
             .orElseThrow(() -> new java.util.NoSuchElementException("Agreement not found: " + normalizedAgreementNumber));
@@ -69,7 +71,14 @@ class AgreementManagementService implements AgreementManagement {
         Agreement saved = agreementRepository.save(agreement);
         if (previousStatus != saved.getStatus()) {
             agreementStatusChangeAuditRepository.save(
-                AgreementStatusChangeAudit.create(saved.getId(), previousStatus, saved.getStatus(), changedAt)
+                AgreementStatusChangeAudit.create(
+                    saved.getId(),
+                    previousStatus,
+                    saved.getStatus(),
+                    reason,
+                    changedBy,
+                    changedAt
+                )
             );
         }
         return toView(saved);
@@ -103,6 +112,8 @@ class AgreementManagementService implements AgreementManagement {
                 agreement.getAgreementNumber(),
                 audit.getPreviousStatus(),
                 audit.getCurrentStatus(),
+                audit.getReason(),
+                audit.getChangedBy(),
                 audit.getChangedAt()
             ));
     }

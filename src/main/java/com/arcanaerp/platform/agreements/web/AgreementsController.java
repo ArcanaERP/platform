@@ -71,7 +71,7 @@ public class AgreementsController {
         @Valid @RequestBody ChangeAgreementStatusRequest request
     ) {
         AgreementView agreement = agreementManagement.changeAgreementStatus(
-            new ChangeAgreementStatusCommand(agreementNumber, request.status())
+            new ChangeAgreementStatusCommand(agreementNumber, request.status(), request.reason(), request.changedBy())
         );
         return toResponse(agreement);
     }
@@ -96,6 +96,8 @@ public class AgreementsController {
             change.agreementNumber(),
             change.previousStatus(),
             change.currentStatus(),
+            change.reason(),
+            change.changedBy(),
             change.changedAt()
         );
     }

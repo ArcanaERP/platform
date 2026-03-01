@@ -103,7 +103,7 @@ Agreements:
 - `POST /api/agreements`
 - `GET /api/agreements/{agreementNumber}`
 - `GET /api/agreements?page=&size=&status=`
-- `PATCH /api/agreements/{agreementNumber}/status`
+- `PATCH /api/agreements/{agreementNumber}/status` (request includes `status`, `reason`, `changedBy`)
 - `GET /api/agreements/{agreementNumber}/status-history?page=&size=`
 
 Inventory:

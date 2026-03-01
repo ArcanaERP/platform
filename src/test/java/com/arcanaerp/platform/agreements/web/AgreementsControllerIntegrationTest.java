@@ -137,12 +137,16 @@ class AgreementsControllerIntegrationTest {
             """;
         String activeStatusPayload = """
             {
-              "status": "ACTIVE"
+              "status": "ACTIVE",
+              "reason": "Initial activation",
+              "changedBy": "legal@arcanaerp.com"
             }
             """;
         String terminatedStatusPayload = """
             {
-              "status": "TERMINATED"
+              "status": "TERMINATED",
+              "reason": "Mutual termination",
+              "changedBy": "legal@arcanaerp.com"
             }
             """;
 
@@ -205,7 +209,9 @@ class AgreementsControllerIntegrationTest {
             """;
         String activatePayload = """
             {
-              "status": "ACTIVE"
+              "status": "ACTIVE",
+              "reason": "Initial activation",
+              "changedBy": "LEGAL@ARCANAERP.COM"
             }
             """;
 
@@ -227,6 +233,8 @@ class AgreementsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].agreementNumber").value("AGR-3020"))
             .andExpect(jsonPath("$.items[0].previousStatus").value("DRAFT"))
             .andExpect(jsonPath("$.items[0].currentStatus").value("ACTIVE"))
+            .andExpect(jsonPath("$.items[0].reason").value("Initial activation"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("legal@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
     }
 
@@ -242,7 +250,9 @@ class AgreementsControllerIntegrationTest {
             """;
         String activatePayload = """
             {
-              "status": "ACTIVE"
+              "status": "ACTIVE",
+              "reason": "Initial activation",
+              "changedBy": "LEGAL@ARCANAERP.COM"
             }
             """;
 
@@ -265,7 +275,9 @@ class AgreementsControllerIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].previousStatus").value("DRAFT"))
-            .andExpect(jsonPath("$.items[0].currentStatus").value("ACTIVE"));
+            .andExpect(jsonPath("$.items[0].currentStatus").value("ACTIVE"))
+            .andExpect(jsonPath("$.items[0].reason").value("Initial activation"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("legal@arcanaerp.com"));
     }
 
     @Test
@@ -296,6 +308,39 @@ class AgreementsControllerIntegrationTest {
     }
 
     @Test
+    void rejectsStatusTransitionWhenReasonBlank() throws Exception {
+        String createPayload = """
+            {
+              "agreementNumber": "agr-3022",
+              "name": "Reason Validation Agreement",
+              "agreementType": "service",
+              "effectiveFrom": "2026-03-01T00:00:00Z"
+            }
+            """;
+        String transitionPayload = """
+            {
+              "status": "ACTIVE",
+              "reason": "   ",
+              "changedBy": "legal@arcanaerp.com"
+            }
+            """;
+
+        mockMvc.perform(post("/api/agreements")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(createPayload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(patch("/api/agreements/agr-3022/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(transitionPayload))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("reason: must not be blank"))
+            .andExpect(jsonPath("$.path").value("/api/agreements/agr-3022/status"));
+    }
+
+    @Test
     void transitionsAgreementStatusFromDraftToActive() throws Exception {
         String createPayload = """
             {
@@ -307,7 +352,9 @@ class AgreementsControllerIntegrationTest {
             """;
         String statusPayload = """
             {
-              "status": "ACTIVE"
+              "status": "ACTIVE",
+              "reason": "Initial activation",
+              "changedBy": "legal@arcanaerp.com"
             }
             """;
 
@@ -339,12 +386,16 @@ class AgreementsControllerIntegrationTest {
             """;
         String activatePayload = """
             {
-              "status": "ACTIVE"
+              "status": "ACTIVE",
+              "reason": "Initial activation",
+              "changedBy": "legal@arcanaerp.com"
             }
             """;
         String terminatePayload = """
             {
-              "status": "TERMINATED"
+              "status": "TERMINATED",
+              "reason": "Termination attempt",
+              "changedBy": "legal@arcanaerp.com"
             }
             """;
 
@@ -373,7 +424,9 @@ class AgreementsControllerIntegrationTest {
     void returnsNotFoundWhenChangingStatusForUnknownAgreement() throws Exception {
         String statusPayload = """
             {
-              "status": "ACTIVE"
+              "status": "ACTIVE",
+              "reason": "Initial activation",
+              "changedBy": "legal@arcanaerp.com"
             }
             """;
 

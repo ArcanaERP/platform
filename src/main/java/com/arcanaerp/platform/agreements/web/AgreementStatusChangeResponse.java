@@ -9,6 +9,8 @@ public record AgreementStatusChangeResponse(
     String agreementNumber,
     AgreementStatus previousStatus,
     AgreementStatus currentStatus,
+    String reason,
+    String changedBy,
     Instant changedAt
 ) {
 }

@@ -40,6 +40,12 @@ class AgreementStatusChangeAudit {
     @Column(nullable = false, length = 16)
     private AgreementStatus currentStatus;
 
+    @Column(nullable = false, length = 512)
+    private String reason;
+
+    @Column(nullable = false, length = 128)
+    private String changedBy;
+
     @Column(nullable = false, updatable = false)
     private Instant changedAt;
 
@@ -48,12 +54,16 @@ class AgreementStatusChangeAudit {
         UUID agreementId,
         AgreementStatus previousStatus,
         AgreementStatus currentStatus,
+        String reason,
+        String changedBy,
         Instant changedAt
     ) {
         this.id = id;
         this.agreementId = agreementId;
         this.previousStatus = previousStatus;
         this.currentStatus = currentStatus;
+        this.reason = reason;
+        this.changedBy = changedBy;
         this.changedAt = changedAt;
     }
 
@@ -61,6 +71,8 @@ class AgreementStatusChangeAudit {
         UUID agreementId,
         AgreementStatus previousStatus,
         AgreementStatus currentStatus,
+        String reason,
+        String changedBy,
         Instant changedAt
     ) {
         if (agreementId == null) {
@@ -72,9 +84,23 @@ class AgreementStatusChangeAudit {
         if (currentStatus == null) {
             throw new IllegalArgumentException("currentStatus is required");
         }
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("reason is required");
+        }
+        if (changedBy == null || changedBy.isBlank()) {
+            throw new IllegalArgumentException("changedBy is required");
+        }
         if (changedAt == null) {
             throw new IllegalArgumentException("changedAt is required");
         }
-        return new AgreementStatusChangeAudit(null, agreementId, previousStatus, currentStatus, changedAt);
+        return new AgreementStatusChangeAudit(
+            null,
+            agreementId,
+            previousStatus,
+            currentStatus,
+            reason.trim(),
+            changedBy.trim().toLowerCase(),
+            changedAt
+        );
     }
 }

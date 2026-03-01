@@ -25,6 +25,8 @@ class AgreementStatusChangeAuditRepositoryTest {
                 agreementId,
                 AgreementStatus.DRAFT,
                 AgreementStatus.TERMINATED,
+                "Contract breach",
+                "ops@arcanaerp.com",
                 Instant.parse("2026-03-01T01:00:00Z")
             )
         );
@@ -33,6 +35,8 @@ class AgreementStatusChangeAuditRepositoryTest {
                 agreementId,
                 AgreementStatus.DRAFT,
                 AgreementStatus.ACTIVE,
+                "Initial activation",
+                "legal@arcanaerp.com",
                 Instant.parse("2026-03-01T02:00:00Z")
             )
         );
@@ -44,6 +48,8 @@ class AgreementStatusChangeAuditRepositoryTest {
 
         assertThat(page.getTotalElements()).isEqualTo(2);
         assertThat(page.getContent().get(0).getCurrentStatus()).isEqualTo(AgreementStatus.ACTIVE);
+        assertThat(page.getContent().get(0).getChangedBy()).isEqualTo("legal@arcanaerp.com");
+        assertThat(page.getContent().get(0).getReason()).isEqualTo("Initial activation");
         assertThat(page.getContent().get(1).getCurrentStatus()).isEqualTo(AgreementStatus.TERMINATED);
     }
 }
