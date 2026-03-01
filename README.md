@@ -4,7 +4,7 @@
  _______  ____ ____ _____ ____  _____    _____   _____) )_____) )
 |  ___  |/ ___) ___|____ |  _ \(____ |  |  ___) |  __  /|  ____/
 | |   | | |  ( (___/ ___ | | | / ___ |  | |_____| |  \ \| |      
-|_|   |_|_|   \____)_____|_| |_\_____|  |_______)_|   |_|_|v0.1.0-snapshot
+|_|   |_|_|   \____)_____|_| |_\_____|  |_______)_|   |_|_|v0.1.x
 
 Arcana ERP v0.1.0-snapshot
 (c) 2015 The Wizard & The Wyrd, LLC
@@ -82,7 +82,7 @@ Inventory:
 - `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/transfers`
 - `GET /api/inventory/transfers/{transferId}`
-- `POST /api/inventory/transfers/{transferId}/reversals` (duplicate reversal returns `409 Conflict`)
+- `POST /api/inventory/transfers/{transferId}/reversals` (optional `Idempotency-Key` header for retry-safe replay; duplicate reversal without matching key returns `409 Conflict`)
 - `GET /api/inventory/transfers/{transferId}/reversals?page=&size=`
 - `GET /api/inventory/{sku}/transfers?page=&size=&sourceLocationCode=&destinationLocationCode=&adjustedBy=&referenceType=&referenceId=&adjustedAtFrom=&adjustedAtTo=`
 - `GET /api/inventory/{sku}/adjustments?page=&size=&locationCode=&adjustedBy=&adjustedAtFrom=&adjustedAtTo=` (`locationCode` defaults to `MAIN`)

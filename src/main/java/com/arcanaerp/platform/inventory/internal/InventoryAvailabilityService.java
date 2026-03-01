@@ -33,6 +33,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
 
     private final InventoryItemRepository inventoryItemRepository;
     private final InventoryAdjustmentRepository inventoryAdjustmentRepository;
+    private final InventoryTransferReversalIdempotencyRepository reversalIdempotencyRepository;
     private final InventoryLocationRepository inventoryLocationRepository;
     private final Clock clock;
 
@@ -249,7 +250,24 @@ class InventoryAvailabilityService implements InventoryAvailability {
 
         String reason = normalizeRequired(command.reason(), "reason");
         String adjustedBy = normalizeRequired(command.adjustedBy(), "adjustedBy").toLowerCase();
-        InventoryTransferView original = transferById(command.transferId());
+        String idempotencyKey = normalizeOptionalIdempotencyKey(command.idempotencyKey());
+        if (idempotencyKey != null) {
+            return reversalIdempotencyRepository
+                .findByTransferIdAndIdempotencyKey(command.transferId(), idempotencyKey)
+                .map(record -> transferById(record.getReversalTransferId()))
+                .orElseGet(() -> createReversal(command.transferId(), reason, adjustedBy, idempotencyKey));
+        }
+
+        return createReversal(command.transferId(), reason, adjustedBy, null);
+    }
+
+    private InventoryTransferView createReversal(
+        UUID originalTransferId,
+        String reason,
+        String adjustedBy,
+        String idempotencyKey
+    ) {
+        InventoryTransferView original = transferById(originalTransferId);
         PageResult<InventoryTransferView> existingReversals = listTransfers(
             original.sku(),
             null,
@@ -264,8 +282,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
         if (existingReversals.totalItems() > 0) {
             throw new DuplicateTransferReversalException("Inventory transfer already reversed: " + original.transferId());
         }
-
-        return transferInventory(
+        InventoryTransferView reversal = transferInventory(
             new TransferInventoryCommand(
                 original.sku(),
                 original.destinationLocationCode(),
@@ -277,6 +294,17 @@ class InventoryAvailabilityService implements InventoryAvailability {
                 original.transferId().toString()
             )
         );
+        if (idempotencyKey != null) {
+            reversalIdempotencyRepository.save(
+                InventoryTransferReversalIdempotency.create(
+                    originalTransferId,
+                    idempotencyKey,
+                    reversal.transferId(),
+                    Instant.now(clock)
+                )
+            );
+        }
+        return reversal;
     }
 
     @Override
@@ -432,6 +460,16 @@ class InventoryAvailabilityService implements InventoryAvailability {
             throw new IllegalArgumentException("referenceId is required");
         }
         return referenceId.trim();
+    }
+
+    private static String normalizeOptionalIdempotencyKey(String idempotencyKey) {
+        if (idempotencyKey == null) {
+            return null;
+        }
+        if (idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("Idempotency-Key header must not be blank");
+        }
+        return idempotencyKey.trim();
     }
 
     private static void validateReferencePair(String referenceType, String referenceId) {

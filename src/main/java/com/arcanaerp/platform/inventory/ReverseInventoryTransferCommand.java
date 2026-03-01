@@ -5,6 +5,7 @@ import java.util.UUID;
 public record ReverseInventoryTransferCommand(
     UUID transferId,
     String reason,
-    String adjustedBy
+    String adjustedBy,
+    String idempotencyKey
 ) {
 }
