@@ -10,6 +10,7 @@ This map covers the currently implemented Spring Modulith modules under `com.arc
 - `identity`
 - `products`
 - `orders`
+- `agreements`
 - `inventory`
 
 ## Dependency Graph
@@ -19,6 +20,7 @@ Consumer -> allowed dependency
 - `identity` -> `core::pagination`
 - `products` -> `core::pagination`, `identity`
 - `orders` -> `core::pagination`, `products`
+- `agreements` -> *(none)*
 - `inventory` -> `core::pagination`, `core::errors`
 
 Notes:
@@ -35,6 +37,7 @@ Notes:
 | Identity | `com.arcanaerp.platform.identity` | Tenant/role/user primitives, org-unit directory, cross-module actor lookup | `UserDirectory`, `OrgUnitDirectory`, `IdentityActorLookup` | `POST /api/identity/users`, `GET /api/identity/users` |
 | Products | `com.arcanaerp.platform.products` | Product catalog, activation lifecycle, activation audit history, orderability lookup | `ProductCatalog`, `ProductLookup` | `POST /api/products`, `GET /api/products`, `PATCH /api/products/{sku}/active`, `GET /api/products/{sku}/activation-history` |
 | Orders | `com.arcanaerp.platform.orders` | Sales order creation, listing, and status transitions | `OrderManagement` | `POST /api/orders`, `GET /api/orders`, `PATCH /api/orders/{orderNumber}/status` |
+| Agreements | `com.arcanaerp.platform.agreements` | Agreement master-record creation with normalized identifiers/types and draft lifecycle bootstrap | `AgreementManagement` | `POST /api/agreements` |
 | Inventory | `com.arcanaerp.platform.inventory` | On-hand inventory by `sku + location`, location-scoped adjustment transactions, and location-to-location transfers with optional source-document references and idempotent reversal retries with payload-consistency, concurrent first-write conflict enforcement, and stale-claim recovery | `InventoryAvailability` | `GET /api/inventory/{sku}`, `POST /api/inventory/{sku}/adjustments`, `GET /api/inventory/{sku}/adjustments`, `POST /api/inventory/{sku}/transfers`, `GET /api/inventory/transfers/{transferId}`, `POST /api/inventory/transfers/{transferId}/reversals`, `GET /api/inventory/transfers/{transferId}/reversals`, `GET /api/inventory/{sku}/transfers` |
 
 ## Boundary Rules In Use

@@ -98,6 +98,10 @@ Orders:
 - `GET /api/orders?page=&size=`
 - `PATCH /api/orders/{orderNumber}/status`
 
+Agreements:
+
+- `POST /api/agreements`
+
 Inventory:
 
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
