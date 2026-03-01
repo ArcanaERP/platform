@@ -70,6 +70,45 @@ final class OrdersWebIntegrationTestSupport {
             .content("{\"status\":\"CONFIRMED\"}"));
     }
 
+    static ResultActions registerActor(MockMvc mockMvc, String tenantCode, String email, String displayName) throws Exception {
+        String payload = """
+            {
+              "tenantCode": "%s",
+              "tenantName": "Order Tenant %s",
+              "roleCode": "OPS",
+              "roleName": "Operations",
+              "email": "%s",
+              "displayName": "%s"
+            }
+            """.formatted(tenantCode, tenantCode, email, displayName);
+
+        return mockMvc.perform(post("/api/identity/users")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload));
+    }
+
+    static ResultActions setProductActive(
+        MockMvc mockMvc,
+        String sku,
+        boolean active,
+        String tenantCode,
+        String changedBy,
+        String reason
+    ) throws Exception {
+        String payload = """
+            {
+              "active": %s,
+              "reason": "%s",
+              "tenantCode": "%s",
+              "changedBy": "%s"
+            }
+            """.formatted(active, reason, tenantCode, changedBy);
+
+        return mockMvc.perform(patch("/api/products/" + sku + "/active")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload));
+    }
+
     static ResultActions seedConfirmedStatusHistory(
         MockMvc mockMvc,
         OrdersDeterministicClockTestSupport.AdjustableClock testClock,

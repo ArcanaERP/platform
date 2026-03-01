@@ -242,37 +242,23 @@ class OrdersControllerIntegrationTest {
     }
 
     private void setProductActive(String sku, boolean active) throws Exception {
-        registerActor(ORDERS_ACTOR_TENANT_CODE, "orders-test@arcanaerp.com");
-        String payload = """
-            {
-              "active": %s,
-              "reason": "Order test activation toggle",
-              "tenantCode": "%s",
-              "changedBy": "orders-test@arcanaerp.com"
-            }
-            """.formatted(active, ORDERS_ACTOR_TENANT_CODE);
+        OrdersWebIntegrationTestSupport.registerActor(
+            mockMvc,
+            ORDERS_ACTOR_TENANT_CODE,
+            "orders-test@arcanaerp.com",
+            "Order Actor"
+        ).andExpect(status().isCreated());
 
-        mockMvc.perform(patch("/api/products/" + sku + "/active")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload))
+        OrdersWebIntegrationTestSupport.setProductActive(
+            mockMvc,
+            sku,
+            active,
+            ORDERS_ACTOR_TENANT_CODE,
+            "orders-test@arcanaerp.com",
+            "Order test activation toggle"
+        )
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.sku").value(sku.trim().toUpperCase()))
             .andExpect(jsonPath("$.active").value(active));
-    }
-
-    private void registerActor(String tenantCode, String email) throws Exception {
-        String payload = """
-            {
-              "tenantCode": "%s",
-              "tenantName": "Order Tenant %s",
-              "roleCode": "OPS",
-              "roleName": "Operations",
-              "email": "%s",
-              "displayName": "Order Actor"
-            }
-            """.formatted(tenantCode, tenantCode, email);
-
-        mockMvc.perform(post("/api/identity/users").contentType(MediaType.APPLICATION_JSON).content(payload))
-            .andExpect(status().isCreated());
     }
 }
