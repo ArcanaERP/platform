@@ -12,6 +12,16 @@ public interface InventoryAvailability {
 
     InventoryTransferView transferInventory(TransferInventoryCommand command);
 
+    PageResult<InventoryTransferView> listTransfers(
+        String sku,
+        String sourceLocationCode,
+        String destinationLocationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<InventoryAdjustmentView> listAdjustments(
         String sku,
         String locationCode,

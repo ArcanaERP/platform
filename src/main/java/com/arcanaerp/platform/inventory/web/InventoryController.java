@@ -121,6 +121,34 @@ public class InventoryController {
         );
     }
 
+    @GetMapping("/{sku}/transfers")
+    public PageResult<InventoryTransferResponse> listTransfers(
+        @PathVariable String sku,
+        @RequestParam(required = false) String sourceLocationCode,
+        @RequestParam(required = false) String destinationLocationCode,
+        @RequestParam(required = false) String adjustedBy,
+        @RequestParam(required = false) String adjustedAtFrom,
+        @RequestParam(required = false) String adjustedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        String normalizedAdjustedBy = normalizeOptionalAdjustedBy(adjustedBy);
+        Instant parsedAdjustedAtFrom = parseOptionalInstant(adjustedAtFrom, "adjustedAtFrom");
+        Instant parsedAdjustedAtTo = parseOptionalInstant(adjustedAtTo, "adjustedAtTo");
+        validateAdjustedAtRange(parsedAdjustedAtFrom, parsedAdjustedAtTo);
+
+        return inventoryAvailability.listTransfers(
+                sku,
+                normalizeOptionalTransferLocationCode(sourceLocationCode, "sourceLocationCode"),
+                normalizeOptionalTransferLocationCode(destinationLocationCode, "destinationLocationCode"),
+                normalizedAdjustedBy,
+                parsedAdjustedAtFrom,
+                parsedAdjustedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toTransferResponse);
+    }
+
     private InventoryAdjustmentResponse toAdjustmentResponse(InventoryAdjustmentView adjustment) {
         return new InventoryAdjustmentResponse(
             adjustment.id(),
@@ -135,12 +163,37 @@ public class InventoryController {
         );
     }
 
+    private InventoryTransferResponse toTransferResponse(InventoryTransferView transfer) {
+        return new InventoryTransferResponse(
+            transfer.transferId(),
+            transfer.sku(),
+            transfer.sourceLocationCode(),
+            transfer.destinationLocationCode(),
+            transfer.quantity(),
+            transfer.sourceOnHandQuantity(),
+            transfer.destinationOnHandQuantity(),
+            transfer.reason(),
+            transfer.adjustedBy(),
+            transfer.transferredAt()
+        );
+    }
+
     private static String normalizeOptionalLocationCode(String locationCode) {
         if (locationCode == null) {
             return DEFAULT_LOCATION_CODE;
         }
         if (locationCode.isBlank()) {
             throw new IllegalArgumentException("locationCode query parameter must not be blank");
+        }
+        return locationCode.trim().toUpperCase();
+    }
+
+    private static String normalizeOptionalTransferLocationCode(String locationCode, String parameterName) {
+        if (locationCode == null) {
+            return null;
+        }
+        if (locationCode.isBlank()) {
+            throw new IllegalArgumentException(parameterName + " query parameter must not be blank");
         }
         return locationCode.trim().toUpperCase();
     }

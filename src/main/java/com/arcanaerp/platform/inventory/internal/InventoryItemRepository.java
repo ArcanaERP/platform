@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 interface InventoryItemRepository extends JpaRepository<InventoryItem, UUID> {
 
     Optional<InventoryItem> findBySkuAndLocationCode(String sku, String locationCode);
+
+    boolean existsBySku(String sku);
 }

@@ -172,6 +172,50 @@ class InventoryAvailabilityService implements InventoryAvailability {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<InventoryTransferView> listTransfers(
+        String sku,
+        String sourceLocationCode,
+        String destinationLocationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedSku = normalizeRequired(sku, "sku").toUpperCase();
+        ensureSkuExists(normalizedSku);
+        String normalizedSourceLocationCode = normalizeOptionalLocationCodeFilter(sourceLocationCode, "sourceLocationCode");
+        String normalizedDestinationLocationCode = normalizeOptionalLocationCodeFilter(
+            destinationLocationCode,
+            "destinationLocationCode"
+        );
+        String normalizedAdjustedBy = adjustedBy == null ? null : normalizeRequired(adjustedBy, "adjustedBy").toLowerCase();
+
+        Page<InventoryAdjustmentRepository.TransferHistoryProjection> transfers = inventoryAdjustmentRepository.findTransferHistoryFiltered(
+            normalizedSku,
+            normalizedSourceLocationCode,
+            normalizedDestinationLocationCode,
+            normalizedAdjustedBy,
+            adjustedAtFrom,
+            adjustedAtTo,
+            PageRequest.of(pageQuery.page(), pageQuery.size())
+        );
+
+        return PageResult.from(transfers).map(transfer -> new InventoryTransferView(
+                transfer.getTransferId(),
+                transfer.getSku(),
+                transfer.getSourceLocationCode(),
+                transfer.getDestinationLocationCode(),
+                transfer.getSourceQuantityDelta().abs(),
+                transfer.getSourceOnHandQuantity(),
+                transfer.getDestinationOnHandQuantity(),
+                transfer.getReason(),
+                transfer.getAdjustedBy(),
+                transfer.getTransferredAt()
+            ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<InventoryAdjustmentView> listAdjustments(
         String sku,
         String locationCode,
@@ -242,6 +286,16 @@ class InventoryAvailabilityService implements InventoryAvailability {
         return locationCode.trim().toUpperCase();
     }
 
+    private static String normalizeOptionalLocationCodeFilter(String locationCode, String fieldName) {
+        if (locationCode == null) {
+            return null;
+        }
+        if (locationCode.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " is required");
+        }
+        return locationCode.trim().toUpperCase();
+    }
+
     private InventoryItem findInventoryItem(String sku, String locationCode) {
         String normalizedSku = normalizeRequired(sku, "sku").toUpperCase();
         String normalizedLocationCode = normalizeLocationCode(locationCode);
@@ -249,6 +303,12 @@ class InventoryAvailabilityService implements InventoryAvailability {
             .orElseThrow(() -> new NoSuchElementException(
                 "Inventory item not found for SKU: " + normalizedSku + " at location: " + normalizedLocationCode
             ));
+    }
+
+    private void ensureSkuExists(String sku) {
+        if (!inventoryItemRepository.existsBySku(sku)) {
+            throw new NoSuchElementException("Inventory item not found for SKU: " + sku);
+        }
     }
 
     private void ensureLocationExists(String locationCode) {
