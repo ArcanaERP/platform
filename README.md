@@ -74,6 +74,10 @@ Default app URL:
 | `test` | `PT30S` (or lower for focused TTL tests) | Keeps automated stale-claim scenarios fast while still exercising recovery behavior. |
 | `prod` | `PT5M` to `PT15M` | Reduces false stale reclaims during transient latency while avoiding long-lived stuck claims. |
 
+### Full Property List
+
+- See [docs/configuration-reference.md](docs/configuration-reference.md) for all runtime properties currently defined in main and test configs.
+
 ## Current HTTP Endpoints
 
 Identity:
