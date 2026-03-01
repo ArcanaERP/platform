@@ -67,6 +67,7 @@ Inventory:
 
 - `GET /api/inventory/{sku}`
 - `POST /api/inventory/{sku}/adjustments`
+- `GET /api/inventory/{sku}/adjustments?page=&size=&adjustedBy=&adjustedAtFrom=&adjustedAtTo=`
 
 Actuator:
 

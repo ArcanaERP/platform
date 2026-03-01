@@ -1,5 +1,7 @@
 package com.arcanaerp.platform.inventory.internal;
 
+import com.arcanaerp.platform.core.pagination.PageQuery;
+import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.AdjustInventoryCommand;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
@@ -9,6 +11,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.NoSuchElementException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,9 +29,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
     @Override
     @Transactional(readOnly = true)
     public InventoryItemView inventoryForSku(String sku) {
-        String normalizedSku = normalizeRequired(sku, "sku").toUpperCase();
-        InventoryItem item = inventoryItemRepository.findBySku(normalizedSku)
-            .orElseThrow(() -> new NoSuchElementException("Inventory item not found for SKU: " + normalizedSku));
+        InventoryItem item = findInventoryItemBySku(sku);
 
         return new InventoryItemView(
             item.getId(),
@@ -80,6 +83,39 @@ class InventoryAvailabilityService implements InventoryAvailability {
         );
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<InventoryAdjustmentView> listAdjustments(
+        String sku,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    ) {
+        InventoryItem item = findInventoryItemBySku(sku);
+        String normalizedAdjustedBy = adjustedBy == null ? null : normalizeRequired(adjustedBy, "adjustedBy").toLowerCase();
+        PageRequest pageRequest = PageRequest.of(pageQuery.page(), pageQuery.size(), Sort.by(Sort.Direction.DESC, "adjustedAt"));
+
+        Page<InventoryAdjustment> adjustments = inventoryAdjustmentRepository.findHistoryFiltered(
+            item.getId(),
+            normalizedAdjustedBy,
+            adjustedAtFrom,
+            adjustedAtTo,
+            pageRequest
+        );
+
+        return PageResult.from(adjustments).map(adjustment -> new InventoryAdjustmentView(
+                adjustment.getId(),
+                adjustment.getSku(),
+                adjustment.getPreviousOnHandQuantity(),
+                adjustment.getQuantityDelta(),
+                adjustment.getCurrentOnHandQuantity(),
+                adjustment.getReason(),
+                adjustment.getAdjustedBy(),
+                adjustment.getAdjustedAt()
+            ));
+    }
+
     private static BigDecimal normalizeQuantityDelta(BigDecimal quantityDelta) {
         if (quantityDelta == null) {
             throw new IllegalArgumentException("quantityDelta is required");
@@ -95,5 +131,11 @@ class InventoryAvailabilityService implements InventoryAvailability {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private InventoryItem findInventoryItemBySku(String sku) {
+        String normalizedSku = normalizeRequired(sku, "sku").toUpperCase();
+        return inventoryItemRepository.findBySku(normalizedSku)
+            .orElseThrow(() -> new NoSuchElementException("Inventory item not found for SKU: " + normalizedSku));
     }
 }

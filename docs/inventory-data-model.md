@@ -40,3 +40,4 @@ erDiagram
   - `inventory_items(sku)`
 - Indexes:
   - `inventory_adjustments(inventoryItemId, adjustedAt)`
+  - `inventory_adjustments(inventoryItemId, adjustedBy, adjustedAt)`

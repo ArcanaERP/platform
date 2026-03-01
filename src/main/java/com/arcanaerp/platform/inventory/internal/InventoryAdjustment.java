@@ -17,7 +17,10 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
     name = "inventory_adjustments",
-    indexes = @Index(name = "idx_inventory_adjustments_item_time", columnList = "inventoryItemId,adjustedAt")
+    indexes = {
+        @Index(name = "idx_inventory_adjustments_item_time", columnList = "inventoryItemId,adjustedAt"),
+        @Index(name = "idx_inventory_adjustments_item_actor_time", columnList = "inventoryItemId,adjustedBy,adjustedAt")
+    }
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
