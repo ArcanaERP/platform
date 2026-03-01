@@ -2,6 +2,7 @@ package com.arcanaerp.platform.products;
 
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import java.time.Instant;
 
 public interface ProductCatalog {
 
@@ -15,6 +16,8 @@ public interface ProductCatalog {
         String sku,
         String tenantCode,
         String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
         PageQuery pageQuery
     );
 }

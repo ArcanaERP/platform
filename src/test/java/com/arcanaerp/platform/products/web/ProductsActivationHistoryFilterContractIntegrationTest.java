@@ -1,5 +1,7 @@
 package com.arcanaerp.platform.products.web;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -12,6 +14,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -22,6 +25,9 @@ class ProductsActivationHistoryFilterContractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Test
     void returnsUnfilteredActivationHistoryWhenNoFiltersProvided() throws Exception {
@@ -136,6 +142,72 @@ class ProductsActivationHistoryFilterContractIntegrationTest {
             .andExpect(jsonPath("$.path").value("/api/products/arc-3891/activation-history"));
     }
 
+    @Test
+    void filtersActivationHistoryByChangedAtRange() throws Exception {
+        String sku = "ARC-3892";
+        String tenantA = "TEN3892A";
+        String actorA = "actor-range-a@arcanaerp.com";
+        String tenantB = "TEN3892B";
+        String actorB = "actor-range-b@arcanaerp.com";
+
+        seedActivationHistory(sku, tenantA, actorA, tenantB, actorB);
+
+        MvcResult result = mockMvc.perform(get("/api/products/{sku}/activation-history", sku)
+                .param("page", "0")
+                .param("size", "10"))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        JsonNode items = objectMapper.readTree(result.getResponse().getContentAsString()).path("items");
+        String latestChangedAt = items.get(0).path("changedAt").asText();
+        String olderChangedAt = items.get(1).path("changedAt").asText();
+
+        mockMvc.perform(get("/api/products/{sku}/activation-history", sku)
+            .param("page", "0")
+            .param("size", "10")
+            .param("changedAtFrom", latestChangedAt)
+            .param("changedAtTo", latestChangedAt))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].changedAt").value(latestChangedAt));
+
+        mockMvc.perform(get("/api/products/{sku}/activation-history", sku)
+            .param("page", "0")
+            .param("size", "10")
+            .param("changedAtFrom", olderChangedAt)
+            .param("changedAtTo", olderChangedAt))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].changedAt").value(olderChangedAt));
+    }
+
+    @Test
+    void rejectsInvalidChangedAtFromFormat() throws Exception {
+        mockMvc.perform(get("/api/products/arc-3893/activation-history")
+            .param("page", "0")
+            .param("size", "10")
+            .param("changedAtFrom", "not-a-timestamp"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("changedAtFrom query parameter must be a valid ISO-8601 instant"))
+            .andExpect(jsonPath("$.path").value("/api/products/arc-3893/activation-history"));
+    }
+
+    @Test
+    void rejectsInvalidChangedAtRangeOrder() throws Exception {
+        mockMvc.perform(get("/api/products/arc-3894/activation-history")
+            .param("page", "0")
+            .param("size", "10")
+            .param("changedAtFrom", "2026-03-02T00:00:00Z")
+            .param("changedAtTo", "2026-03-01T00:00:00Z"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("changedAtFrom must be before or equal to changedAtTo"))
+            .andExpect(jsonPath("$.path").value("/api/products/arc-3894/activation-history"));
+    }
+
     private void seedActivationHistory(
         String sku,
         String tenantA,
@@ -146,6 +218,7 @@ class ProductsActivationHistoryFilterContractIntegrationTest {
         createProduct(sku);
         registerActor(tenantA, actorA);
         changeActivation(sku, false, tenantA, actorA, DEACTIVATION_REASON);
+        Thread.sleep(25);
         registerActor(tenantB, actorB);
         changeActivation(sku, true, tenantB, actorB, REACTIVATION_REASON);
     }

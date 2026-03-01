@@ -8,6 +8,8 @@ import com.arcanaerp.platform.products.ProductCatalog;
 import com.arcanaerp.platform.products.ProductView;
 import com.arcanaerp.platform.products.RegisterProductCommand;
 import jakarta.validation.Valid;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -74,13 +76,21 @@ public class ProductsController {
         @PathVariable String sku,
         @RequestParam(required = false) String tenantCode,
         @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+
         return productCatalog.listActivationHistory(
                 sku,
                 normalizeOptionalTenantCode(tenantCode),
                 normalizeOptionalChangedBy(changedBy),
+                parsedChangedAtFrom,
+                parsedChangedAtTo,
                 PageQuery.of(page, size)
             )
             .map(this::toActivationHistoryResponse);
@@ -138,5 +148,25 @@ public class ProductsController {
             throw new IllegalArgumentException("changedBy query parameter must not be blank");
         }
         return changedBy.trim().toLowerCase();
+    }
+
+    private static Instant parseOptionalInstant(String value, String parameterName) {
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
+            throw new IllegalArgumentException(parameterName + " query parameter must not be blank");
+        }
+        try {
+            return Instant.parse(value.trim());
+        } catch (DateTimeParseException exception) {
+            throw new IllegalArgumentException(parameterName + " query parameter must be a valid ISO-8601 instant");
+        }
+    }
+
+    private static void validateChangedAtRange(Instant changedAtFrom, Instant changedAtTo) {
+        if (changedAtFrom != null && changedAtTo != null && changedAtFrom.isAfter(changedAtTo)) {
+            throw new IllegalArgumentException("changedAtFrom must be before or equal to changedAtTo");
+        }
     }
 }

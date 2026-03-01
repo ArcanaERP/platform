@@ -128,35 +128,22 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
         String sku,
         String tenantCode,
         String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
         PageQuery pageQuery
     ) {
         Product product = findProductBySku(sku);
         PageRequest pageRequest = PageRequest.of(pageQuery.page(), pageQuery.size(), Sort.by(Sort.Direction.DESC, "changedAt"));
         String normalizedTenantCode = tenantCode == null ? null : normalizeTenantCode(tenantCode);
         String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy);
-        Page<ProductActivationAudit> audits;
-        if (normalizedTenantCode == null && normalizedChangedBy == null) {
-            audits = productActivationAuditRepository.findByProductId(product.getId(), pageRequest);
-        } else if (normalizedTenantCode != null && normalizedChangedBy == null) {
-            audits = productActivationAuditRepository.findByProductIdAndTenantCode(
-                product.getId(),
-                normalizedTenantCode,
-                pageRequest
-            );
-        } else if (normalizedTenantCode == null) {
-            audits = productActivationAuditRepository.findByProductIdAndChangedBy(
-                product.getId(),
-                normalizedChangedBy,
-                pageRequest
-            );
-        } else {
-            audits = productActivationAuditRepository.findByProductIdAndTenantCodeAndChangedBy(
-                product.getId(),
-                normalizedTenantCode,
-                normalizedChangedBy,
-                pageRequest
-            );
-        }
+        Page<ProductActivationAudit> audits = productActivationAuditRepository.findHistoryFiltered(
+            product.getId(),
+            normalizedTenantCode,
+            normalizedChangedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageRequest
+        );
 
         return PageResult.from(audits).map(audit -> new ProductActivationChangeView(
                 audit.getId(),
