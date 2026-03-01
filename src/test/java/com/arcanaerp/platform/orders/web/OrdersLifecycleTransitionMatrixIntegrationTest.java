@@ -7,12 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.orders.OrderStatus;
-import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -21,32 +16,28 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(OrdersLifecycleTransitionMatrixIntegrationTest.DeterministicClockTestConfiguration.class)
+@Import(OrdersDeterministicClockTestSupport.Configuration.class)
 class OrdersLifecycleTransitionMatrixIntegrationTest {
 
-    private static final Instant BASE_INSTANT = Instant.parse("2026-03-01T00:00:00Z");
-    private static final Instant FROM_STATUS_INSTANT = BASE_INSTANT.plusSeconds(60);
-    private static final Instant TARGET_STATUS_INSTANT = BASE_INSTANT.plusSeconds(120);
+    private static final Instant FROM_STATUS_INSTANT = OrdersDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(60);
+    private static final Instant TARGET_STATUS_INSTANT = OrdersDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(120);
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private AdjustableClock testClock;
+    private OrdersDeterministicClockTestSupport.AdjustableClock testClock;
 
     @BeforeEach
     void resetClock() {
-        testClock.setInstant(BASE_INSTANT);
+        testClock.resetToBaseInstant();
     }
 
     @ParameterizedTest(name = "{index}: {0} -> {1} allowed={2}")
@@ -194,45 +185,5 @@ class OrdersLifecycleTransitionMatrixIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(payload)
         );
-    }
-
-    @TestConfiguration
-    static class DeterministicClockTestConfiguration {
-
-        @Bean
-        @Primary
-        AdjustableClock ordersTestClock() {
-            return new AdjustableClock(BASE_INSTANT, ZoneOffset.UTC);
-        }
-    }
-
-    static final class AdjustableClock extends Clock {
-
-        private final AtomicReference<Instant> instantRef;
-        private final ZoneId zoneId;
-
-        AdjustableClock(Instant initialInstant, ZoneId zoneId) {
-            this.instantRef = new AtomicReference<>(Objects.requireNonNull(initialInstant, "initialInstant is required"));
-            this.zoneId = Objects.requireNonNull(zoneId, "zoneId is required");
-        }
-
-        void setInstant(Instant instant) {
-            instantRef.set(Objects.requireNonNull(instant, "instant is required"));
-        }
-
-        @Override
-        public ZoneId getZone() {
-            return zoneId;
-        }
-
-        @Override
-        public Clock withZone(ZoneId zone) {
-            return new AdjustableClock(instant(), zone);
-        }
-
-        @Override
-        public Instant instant() {
-            return instantRef.get();
-        }
     }
 }

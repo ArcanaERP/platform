@@ -9,21 +9,34 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Instant;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(OrdersDeterministicClockTestSupport.Configuration.class)
 class OrdersControllerIntegrationTest {
 
     private static final String ORDERS_ACTOR_TENANT_CODE = "TENORD01";
+    private static final Instant CONFIRMED_AT_INSTANT = OrdersDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(60);
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private OrdersDeterministicClockTestSupport.AdjustableClock testClock;
+
+    @BeforeEach
+    void resetClock() {
+        testClock.resetToBaseInstant();
+    }
 
     @Test
     void createsAndListsOrder() throws Exception {
@@ -110,13 +123,14 @@ class OrdersControllerIntegrationTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.status").value("DRAFT"));
 
+        testClock.setInstant(CONFIRMED_AT_INSTANT);
         mockMvc.perform(patch("/api/orders/so-5002/status")
             .contentType(MediaType.APPLICATION_JSON)
             .content(statusPayload))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.orderNumber").value("SO-5002"))
             .andExpect(jsonPath("$.status").value("CONFIRMED"))
-            .andExpect(jsonPath("$.confirmedAt").isNotEmpty())
+            .andExpect(jsonPath("$.confirmedAt").value(CONFIRMED_AT_INSTANT.toString()))
             .andExpect(jsonPath("$.cancelledAt").value(nullValue()));
     }
 
@@ -148,11 +162,14 @@ class OrdersControllerIntegrationTest {
         mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(createPayload))
             .andExpect(status().isCreated());
 
+        testClock.setInstant(CONFIRMED_AT_INSTANT);
         mockMvc.perform(patch("/api/orders/so-5003/status")
             .contentType(MediaType.APPLICATION_JSON)
             .content(confirmPayload))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("CONFIRMED"));
+            .andExpect(jsonPath("$.status").value("CONFIRMED"))
+            .andExpect(jsonPath("$.confirmedAt").value(CONFIRMED_AT_INSTANT.toString()))
+            .andExpect(jsonPath("$.cancelledAt").value(nullValue()));
 
         mockMvc.perform(patch("/api/orders/so-5003/status")
             .contentType(MediaType.APPLICATION_JSON)
