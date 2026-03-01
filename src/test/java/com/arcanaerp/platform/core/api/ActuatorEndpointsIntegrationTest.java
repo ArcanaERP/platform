@@ -33,4 +33,10 @@ class ActuatorEndpointsIntegrationTest {
         mockMvc.perform(get("/actuator/env"))
             .andExpect(status().isNotFound());
     }
+
+    @Test
+    void actuatorRootEndpointIsUnavailable() throws Exception {
+        mockMvc.perform(get("/actuator"))
+            .andExpect(status().isNotFound());
+    }
 }
