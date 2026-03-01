@@ -19,11 +19,12 @@ Consumer -> allowed dependency
 - `identity` -> `core::pagination`
 - `products` -> `core::pagination`, `identity`
 - `orders` -> `core::pagination`, `products`
-- `inventory` -> *(none)*
+- `inventory` -> `core::pagination`, `core::errors`
 
 Notes:
 
 - `core::pagination` is a named interface exported from `com.arcanaerp.platform.core.pagination`.
+- `core::errors` is a named interface exported from `com.arcanaerp.platform.core.api`.
 - No module is allowed to depend on another module's `.internal` package.
 
 ## Module Boundaries

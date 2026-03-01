@@ -3,6 +3,7 @@ package com.arcanaerp.platform.inventory.internal;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.AdjustInventoryCommand;
+import com.arcanaerp.platform.inventory.DuplicateTransferReversalException;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
@@ -261,7 +262,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
             PageQuery.of(0, 1)
         );
         if (existingReversals.totalItems() > 0) {
-            throw new IllegalArgumentException("Inventory transfer already reversed: " + original.transferId());
+            throw new DuplicateTransferReversalException("Inventory transfer already reversed: " + original.transferId());
         }
 
         return transferInventory(

@@ -544,9 +544,9 @@ class InventoryApiIntegrationTest {
         mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
             .contentType(MediaType.APPLICATION_JSON)
             .content(reversalPayload))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.status").value(409))
+            .andExpect(jsonPath("$.error").value("Conflict"))
             .andExpect(jsonPath("$.message").value("Inventory transfer already reversed: " + originalTransferId))
             .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
     }

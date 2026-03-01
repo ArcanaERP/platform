@@ -1,5 +1,5 @@
 @org.springframework.modulith.ApplicationModule(
     displayName = "Inventory",
-    allowedDependencies = {"core::pagination"}
+    allowedDependencies = {"core::pagination", "core::errors"}
 )
 package com.arcanaerp.platform.inventory;
