@@ -9,15 +9,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Duration;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(AgreementsDeterministicClockTestSupport.Configuration.class)
 class AgreementsControllerIntegrationTest {
 
     private static final String AGREEMENTS_TENANT_CODE = "TENAGR01";
@@ -28,6 +32,14 @@ class AgreementsControllerIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private AgreementsDeterministicClockTestSupport.AdjustableClock testClock;
+
+    @BeforeEach
+    void resetClock() {
+        testClock.resetToBaseInstant();
+    }
 
     @Test
     void createsAgreement() throws Exception {
@@ -621,6 +633,7 @@ class AgreementsControllerIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("ACTIVE"));
 
+        testClock.advance(Duration.ofSeconds(1));
         mockMvc.perform(patch("/api/agreements/agr-3003/status")
             .contentType(MediaType.APPLICATION_JSON)
             .content(terminatePayload))

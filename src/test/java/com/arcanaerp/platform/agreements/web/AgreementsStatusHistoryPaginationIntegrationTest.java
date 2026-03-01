@@ -5,40 +5,32 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.agreements.AgreementStatus;
-import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(AgreementsDeterministicClockTestSupport.Configuration.class)
 class AgreementsStatusHistoryPaginationIntegrationTest {
 
     private static final String TENANT_CODE = "TENHPG01";
     private static final String CHANGED_BY = "history.pagination@arcanaerp.com";
-    private static final Instant BASE_TEST_INSTANT = Instant.parse("2026-03-01T00:00:00Z");
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private AdjustableClock testClock;
+    private AgreementsDeterministicClockTestSupport.AdjustableClock testClock;
 
     @BeforeEach
     void resetClock() {
-        testClock.setInstant(BASE_TEST_INSTANT);
+        testClock.resetToBaseInstant();
     }
 
     @Test
@@ -181,50 +173,5 @@ class AgreementsStatusHistoryPaginationIntegrationTest {
             CHANGED_BY
         )
             .andExpect(status().isOk());
-    }
-
-    @TestConfiguration
-    static class DeterministicClockTestConfiguration {
-
-        @Bean
-        @Primary
-        AdjustableClock testClock() {
-            return new AdjustableClock(BASE_TEST_INSTANT, ZoneOffset.UTC);
-        }
-    }
-
-    static final class AdjustableClock extends Clock {
-
-        private final AtomicReference<Instant> instantRef;
-        private final ZoneId zoneId;
-
-        AdjustableClock(Instant initialInstant, ZoneId zoneId) {
-            this.instantRef = new AtomicReference<>(Objects.requireNonNull(initialInstant, "initialInstant is required"));
-            this.zoneId = Objects.requireNonNull(zoneId, "zoneId is required");
-        }
-
-        void setInstant(Instant instant) {
-            instantRef.set(Objects.requireNonNull(instant, "instant is required"));
-        }
-
-        void advance(Duration duration) {
-            Objects.requireNonNull(duration, "duration is required");
-            instantRef.updateAndGet(current -> current.plus(duration));
-        }
-
-        @Override
-        public ZoneId getZone() {
-            return zoneId;
-        }
-
-        @Override
-        public Clock withZone(ZoneId zone) {
-            return new AdjustableClock(instant(), zone);
-        }
-
-        @Override
-        public Instant instant() {
-            return instantRef.get();
-        }
     }
 }
