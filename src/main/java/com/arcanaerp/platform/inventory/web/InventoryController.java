@@ -11,6 +11,7 @@ import com.arcanaerp.platform.inventory.TransferInventoryCommand;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -123,6 +124,11 @@ public class InventoryController {
             transfer.referenceId(),
             transfer.transferredAt()
         );
+    }
+
+    @GetMapping("/transfers/{transferId}")
+    public InventoryTransferResponse transferById(@PathVariable UUID transferId) {
+        return toTransferResponse(inventoryAvailability.transferById(transferId));
     }
 
     @GetMapping("/{sku}/transfers")

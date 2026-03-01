@@ -11,6 +11,7 @@ import com.arcanaerp.platform.inventory.TransferInventoryCommand;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -178,6 +179,59 @@ class InventoryAvailabilityService implements InventoryAvailability {
             referenceType,
             referenceId,
             adjustedAt
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public InventoryTransferView transferById(UUID transferId) {
+        if (transferId == null) {
+            throw new IllegalArgumentException("transferId is required");
+        }
+
+        List<InventoryAdjustment> adjustments = inventoryAdjustmentRepository.findByTransferIdOrderByAdjustedAtAsc(transferId);
+        if (adjustments.isEmpty()) {
+            throw new NoSuchElementException("Inventory transfer not found: " + transferId);
+        }
+
+        InventoryAdjustment source = null;
+        InventoryAdjustment destination = null;
+        for (InventoryAdjustment adjustment : adjustments) {
+            if (adjustment.getQuantityDelta().signum() < 0) {
+                if (source != null) {
+                    throw new IllegalStateException("Inventory transfer has multiple source movements for transferId: " + transferId);
+                }
+                source = adjustment;
+                continue;
+            }
+            if (adjustment.getQuantityDelta().signum() > 0) {
+                if (destination != null) {
+                    throw new IllegalStateException("Inventory transfer has multiple destination movements for transferId: " + transferId);
+                }
+                destination = adjustment;
+            }
+        }
+
+        if (source == null || destination == null) {
+            throw new IllegalStateException("Inventory transfer data invalid for transferId: " + transferId);
+        }
+        if (!source.getSku().equals(destination.getSku())) {
+            throw new IllegalStateException("Inventory transfer locations must share the same SKU for transferId: " + transferId);
+        }
+
+        return new InventoryTransferView(
+            transferId,
+            source.getSku(),
+            source.getLocationCode(),
+            destination.getLocationCode(),
+            source.getQuantityDelta().abs(),
+            source.getCurrentOnHandQuantity(),
+            destination.getCurrentOnHandQuantity(),
+            source.getReason(),
+            source.getAdjustedBy(),
+            source.getReferenceType(),
+            source.getReferenceId(),
+            source.getAdjustedAt()
         );
     }
 

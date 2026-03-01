@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -310,6 +311,76 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.onHandQuantity").value(2));
 
         assertThat(inventoryLocationRepository.findByCode("WH-NORTH")).isPresent();
+    }
+
+    @Test
+    void returnsTransferByTransferId() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9214",
+                "main",
+                new BigDecimal("11"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9214",
+                "wh-east",
+                new BigDecimal("2"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+
+        String payload = """
+            {
+              "sourceLocationCode": "main",
+              "destinationLocationCode": "wh-east",
+              "quantity": 4,
+              "reason": "Fulfillment movement",
+              "adjustedBy": "ops@arcanaerp.com",
+              "referenceType": "fulfillment",
+              "referenceId": "FUL-9214-1"
+            }
+            """;
+
+        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9214")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        InventoryItem sourceItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9214", "MAIN").orElseThrow();
+        UUID transferId = inventoryAdjustmentRepository
+            .findByInventoryItemIdOrderByAdjustedAtDesc(sourceItem.getId())
+            .getFirst()
+            .getTransferId();
+
+        mockMvc.perform(get("/api/inventory/transfers/{transferId}", transferId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.transferId").value(transferId.toString()))
+            .andExpect(jsonPath("$.sku").value("ARC-9214"))
+            .andExpect(jsonPath("$.sourceLocationCode").value("MAIN"))
+            .andExpect(jsonPath("$.destinationLocationCode").value("WH-EAST"))
+            .andExpect(jsonPath("$.quantity").value(4))
+            .andExpect(jsonPath("$.sourceOnHandQuantity").value(7))
+            .andExpect(jsonPath("$.destinationOnHandQuantity").value(6))
+            .andExpect(jsonPath("$.reason").value("Fulfillment movement"))
+            .andExpect(jsonPath("$.adjustedBy").value("ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.referenceType").value("FULFILLMENT"))
+            .andExpect(jsonPath("$.referenceId").value("FUL-9214-1"))
+            .andExpect(jsonPath("$.transferredAt").isNotEmpty());
+    }
+
+    @Test
+    void returnsNotFoundForUnknownTransferId() throws Exception {
+        UUID unknownTransferId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+
+        mockMvc.perform(get("/api/inventory/transfers/{transferId}", unknownTransferId))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Inventory transfer not found: " + unknownTransferId))
+            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + unknownTransferId));
     }
 
     @Test

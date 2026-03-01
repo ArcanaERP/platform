@@ -3,6 +3,7 @@ package com.arcanaerp.platform.inventory;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import java.time.Instant;
+import java.util.UUID;
 
 public interface InventoryAvailability {
 
@@ -11,6 +12,8 @@ public interface InventoryAvailability {
     InventoryAdjustmentView adjustInventory(AdjustInventoryCommand command);
 
     InventoryTransferView transferInventory(TransferInventoryCommand command);
+
+    InventoryTransferView transferById(UUID transferId);
 
     PageResult<InventoryTransferView> listTransfers(
         String sku,
