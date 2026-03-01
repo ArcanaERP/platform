@@ -64,7 +64,7 @@ erDiagram
 - Reversal idempotency keys are tracked in `inventory_transfer_reversal_idempotency` for replay-safe reversal retries.
 - `requestFingerprint` stores a stable hash of normalized reversal request body fields to reject same-key reuse with divergent payloads.
 - `(transferId, idempotencyKey)` uniqueness is also used as a write-claim to prevent duplicate reversal creation under concurrent same-key requests.
-- Pending idempotency claims are treated as stale after 5 minutes; stale rows are reclaimed on retry so interrupted writes do not block the key indefinitely.
+- Pending idempotency claims are treated as stale after 5 minutes by default; this is configurable via `arcanaerp.inventory.reversal-idempotency.pending-claim-ttl`.
 
 ## Constraint Notes
 

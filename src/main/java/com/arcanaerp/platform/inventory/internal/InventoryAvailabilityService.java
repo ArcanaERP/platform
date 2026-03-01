@@ -17,7 +17,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
@@ -39,11 +38,11 @@ class InventoryAvailabilityService implements InventoryAvailability {
     private static final String DEFAULT_LOCATION_CODE = "MAIN";
     private static final String TRANSFER_REVERSAL_REFERENCE_TYPE = "TRANSFER_REVERSAL";
     private static final UUID PENDING_REVERSAL_TRANSFER_ID = new UUID(0L, 0L);
-    private static final Duration PENDING_IDEMPOTENCY_CLAIM_TTL = Duration.ofMinutes(5);
 
     private final InventoryItemRepository inventoryItemRepository;
     private final InventoryAdjustmentRepository inventoryAdjustmentRepository;
     private final InventoryTransferReversalIdempotencyRepository reversalIdempotencyRepository;
+    private final InventoryReversalIdempotencyProperties reversalIdempotencyProperties;
     private final InventoryLocationRepository inventoryLocationRepository;
     private final Clock clock;
 
@@ -399,7 +398,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
     }
 
     private boolean isStalePendingClaim(InventoryTransferReversalIdempotency existingIdempotency, Instant now) {
-        Instant staleBefore = now.minus(PENDING_IDEMPOTENCY_CLAIM_TTL);
+        Instant staleBefore = now.minus(reversalIdempotencyProperties.getPendingClaimTtl());
         return !existingIdempotency.getCreatedAt().isAfter(staleBefore);
     }
 
