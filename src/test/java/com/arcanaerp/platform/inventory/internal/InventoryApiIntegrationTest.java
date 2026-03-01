@@ -3,13 +3,18 @@ package com.arcanaerp.platform.inventory.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.reset;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -36,6 +41,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 class InventoryApiIntegrationTest {
 
+    private static final UUID PENDING_REVERSAL_TRANSFER_ID = new UUID(0L, 0L);
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -56,6 +63,7 @@ class InventoryApiIntegrationTest {
 
     @BeforeEach
     void cleanInventoryItems() {
+        reset(reversalIdempotencyRepository);
         reversalIdempotencyRepository.deleteAll();
         inventoryAdjustmentRepository.deleteAll();
         inventoryItemRepository.deleteAll();
@@ -884,6 +892,100 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void retriesAfterStalePendingClaimRecoversAndReturnsOriginalReversal() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9224",
+                "main",
+                new BigDecimal("10"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9224",
+                "wh-east",
+                new BigDecimal("4"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+
+        String transferPayload = """
+            {
+              "sourceLocationCode": "main",
+              "destinationLocationCode": "wh-east",
+              "quantity": 3,
+              "reason": "Original transfer",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+        String reversalPayload = """
+            {
+              "reason": "Reversal posted",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+
+        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9224")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(transferPayload))
+            .andExpect(status().isCreated());
+
+        InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9224", "MAIN").orElseThrow();
+        UUID originalTransferId = inventoryAdjustmentRepository
+            .findByInventoryItemIdOrderByAdjustedAtDesc(mainItem.getId())
+            .getFirst()
+            .getTransferId();
+
+        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(reversalPayload))
+            .andExpect(status().isCreated());
+
+        UUID existingReversalTransferId = inventoryAdjustmentRepository
+            .findByInventoryItemIdOrderByAdjustedAtDesc(mainItem.getId())
+            .stream()
+            .filter(adjustment ->
+                "TRANSFER_REVERSAL".equals(adjustment.getReferenceType()) &&
+                originalTransferId.toString().equals(adjustment.getReferenceId())
+            )
+            .findFirst()
+            .orElseThrow()
+            .getTransferId();
+
+        reversalIdempotencyRepository.saveAndFlush(
+            InventoryTransferReversalIdempotency.create(
+                originalTransferId,
+                "reverse-9224-stale",
+                fingerprintForReversalRequest("Reversal posted", "ops@arcanaerp.com"),
+                PENDING_REVERSAL_TRANSFER_ID,
+                Instant.parse("2025-12-01T00:00:00Z")
+            )
+        );
+
+        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
+            .header("Idempotency-Key", "reverse-9224-stale")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(reversalPayload))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.transferId").value(existingReversalTransferId.toString()))
+            .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
+            .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()));
+
+        InventoryTransferReversalIdempotency idempotency = reversalIdempotencyRepository
+            .findByTransferIdAndIdempotencyKey(originalTransferId, "reverse-9224-stale")
+            .orElseThrow();
+        assertThat(idempotency.getReversalTransferId()).isEqualTo(existingReversalTransferId);
+        assertThat(idempotency.getReversalTransferId()).isNotEqualTo(PENDING_REVERSAL_TRANSFER_ID);
+
+        mockMvc.perform(get("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1));
+    }
+
+    @Test
     void listsReversalHistoryForTransferId() throws Exception {
         inventoryItemRepository.save(
             InventoryItem.create(
@@ -1207,5 +1309,15 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.error").value("Not Found"))
             .andExpect(jsonPath("$.message").value("Inventory item not found for SKU: ARC-9206 at location: WH-WEST"))
             .andExpect(jsonPath("$.path").value("/api/inventory/arc-9206/adjustments"));
+    }
+
+    private static String fingerprintForReversalRequest(String reason, String adjustedBy) {
+        String canonicalRequest = reason + "\n" + adjustedBy.toLowerCase();
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(canonicalRequest.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 algorithm not available", exception);
+        }
     }
 }

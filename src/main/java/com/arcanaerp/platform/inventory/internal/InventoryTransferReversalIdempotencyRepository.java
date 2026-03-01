@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 interface InventoryTransferReversalIdempotencyRepository extends JpaRepository<InventoryTransferReversalIdempotency, UUID> {
 
     Optional<InventoryTransferReversalIdempotency> findByTransferIdAndIdempotencyKey(UUID transferId, String idempotencyKey);
+
+    long deleteByIdAndReversalTransferId(UUID id, UUID reversalTransferId);
 }

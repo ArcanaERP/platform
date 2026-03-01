@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
@@ -38,6 +39,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
     private static final String DEFAULT_LOCATION_CODE = "MAIN";
     private static final String TRANSFER_REVERSAL_REFERENCE_TYPE = "TRANSFER_REVERSAL";
     private static final UUID PENDING_REVERSAL_TRANSFER_ID = new UUID(0L, 0L);
+    private static final Duration PENDING_IDEMPOTENCY_CLAIM_TTL = Duration.ofMinutes(5);
 
     private final InventoryItemRepository inventoryItemRepository;
     private final InventoryAdjustmentRepository inventoryAdjustmentRepository;
@@ -261,11 +263,17 @@ class InventoryAvailabilityService implements InventoryAvailability {
         String idempotencyKey = normalizeOptionalIdempotencyKey(command.idempotencyKey());
         if (idempotencyKey != null) {
             String requestFingerprint = fingerprintReversalRequest(reason, adjustedBy);
-            return reversalIdempotencyRepository
-                .findByTransferIdAndIdempotencyKey(command.transferId(), idempotencyKey)
-                .map(record -> replayIdempotentReversal(record, command.transferId(), requestFingerprint))
+            return reversalIdempotencyRepository.findByTransferIdAndIdempotencyKey(command.transferId(), idempotencyKey)
+                .map(existingIdempotency -> handleExistingIdempotencyClaim(
+                        existingIdempotency,
+                        command.transferId(),
+                        reason,
+                        adjustedBy,
+                        idempotencyKey,
+                        requestFingerprint
+                    ))
                 .orElseGet(() ->
-                    createIdempotentReversal(command.transferId(), reason, adjustedBy, idempotencyKey, requestFingerprint)
+                    createIdempotentReversal(command.transferId(), reason, adjustedBy, idempotencyKey, requestFingerprint, false)
                 );
         }
 
@@ -277,7 +285,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
         String reason,
         String adjustedBy,
         String idempotencyKey,
-        String requestFingerprint
+        String requestFingerprint,
+        boolean recoveringFromStaleClaim
     ) {
         try {
             InventoryTransferReversalIdempotency idempotencyRecord = reversalIdempotencyRepository.saveAndFlush(
@@ -290,7 +299,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
                 )
             );
 
-            InventoryTransferView reversal = createReversal(originalTransferId, reason, adjustedBy);
+            InventoryTransferView reversal = createReversalWithStaleRecovery(originalTransferId, reason, adjustedBy, recoveringFromStaleClaim);
             idempotencyRecord.updateReversalTransferId(reversal.transferId());
             reversalIdempotencyRepository.save(idempotencyRecord);
             return reversal;
@@ -299,6 +308,59 @@ class InventoryAvailabilityService implements InventoryAvailability {
                 "Idempotency-Key is already being processed for transferId: " + originalTransferId
             );
         }
+    }
+
+    private InventoryTransferView handleExistingIdempotencyClaim(
+        InventoryTransferReversalIdempotency existingIdempotency,
+        UUID transferId,
+        String reason,
+        String adjustedBy,
+        String idempotencyKey,
+        String requestFingerprint
+    ) {
+        if (!existingIdempotency.getRequestFingerprint().equals(requestFingerprint)) {
+            throw new ReversalIdempotencyPayloadConflictException(
+                "Idempotency-Key already used with different reversal payload for transferId: " + transferId
+            );
+        }
+        if (!existingIdempotency.getReversalTransferId().equals(PENDING_REVERSAL_TRANSFER_ID)) {
+            return transferById(existingIdempotency.getReversalTransferId());
+        }
+        if (!isStalePendingClaim(existingIdempotency, Instant.now(clock))) {
+            throw new ReversalIdempotencyRaceConflictException(
+                "Idempotency-Key is already being processed for transferId: " + transferId
+            );
+        }
+        if (!releasePendingClaim(existingIdempotency)) {
+            throw new ReversalIdempotencyRaceConflictException(
+                "Idempotency-Key is already being processed for transferId: " + transferId
+            );
+        }
+        return createIdempotentReversal(transferId, reason, adjustedBy, idempotencyKey, requestFingerprint, true);
+    }
+
+    private InventoryTransferView createReversalWithStaleRecovery(
+        UUID originalTransferId,
+        String reason,
+        String adjustedBy,
+        boolean recoveringFromStaleClaim
+    ) {
+        try {
+            return createReversal(originalTransferId, reason, adjustedBy);
+        } catch (DuplicateTransferReversalException duplicateTransferReversalException) {
+            if (!recoveringFromStaleClaim) {
+                throw duplicateTransferReversalException;
+            }
+            return findLinkedReversal(originalTransferId).orElseThrow(() -> duplicateTransferReversalException);
+        }
+    }
+
+    private java.util.Optional<InventoryTransferView> findLinkedReversal(UUID originalTransferId) {
+        PageResult<InventoryTransferView> reversals = listReversals(originalTransferId, PageQuery.of(0, 1));
+        if (reversals.totalItems() == 0) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of(reversals.items().get(0));
     }
 
     private InventoryTransferView createReversal(
@@ -336,22 +398,20 @@ class InventoryAvailabilityService implements InventoryAvailability {
         return reversal;
     }
 
-    private InventoryTransferView replayIdempotentReversal(
-        InventoryTransferReversalIdempotency existingIdempotency,
-        UUID transferId,
-        String requestFingerprint
-    ) {
-        if (!existingIdempotency.getRequestFingerprint().equals(requestFingerprint)) {
-            throw new ReversalIdempotencyPayloadConflictException(
-                "Idempotency-Key already used with different reversal payload for transferId: " + transferId
-            );
+    private boolean isStalePendingClaim(InventoryTransferReversalIdempotency existingIdempotency, Instant now) {
+        Instant staleBefore = now.minus(PENDING_IDEMPOTENCY_CLAIM_TTL);
+        return !existingIdempotency.getCreatedAt().isAfter(staleBefore);
+    }
+
+    private boolean releasePendingClaim(InventoryTransferReversalIdempotency existingIdempotency) {
+        long deleted = reversalIdempotencyRepository.deleteByIdAndReversalTransferId(
+            existingIdempotency.getId(),
+            PENDING_REVERSAL_TRANSFER_ID
+        );
+        if (deleted == 1) {
+            reversalIdempotencyRepository.flush();
         }
-        if (existingIdempotency.getReversalTransferId().equals(PENDING_REVERSAL_TRANSFER_ID)) {
-            throw new ReversalIdempotencyRaceConflictException(
-                "Idempotency-Key is already being processed for transferId: " + transferId
-            );
-        }
-        return transferById(existingIdempotency.getReversalTransferId());
+        return deleted == 1;
     }
 
     @Override

@@ -13,6 +13,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 @DataJpaTest
 class InventoryTransferReversalIdempotencyRepositoryTest {
 
+    private static final UUID PENDING_REVERSAL_TRANSFER_ID = new UUID(0L, 0L);
+
     @Autowired
     private InventoryTransferReversalIdempotencyRepository repository;
 
@@ -66,5 +68,23 @@ class InventoryTransferReversalIdempotencyRepositoryTest {
                 )
             )
         ).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void deletesPendingClaimByIdAndPendingMarker() {
+        InventoryTransferReversalIdempotency claim = repository.saveAndFlush(
+            InventoryTransferReversalIdempotency.create(
+                UUID.randomUUID(),
+                "reverse-9402-a",
+                "a7f8c17084f1ebf4b2a367a077ef272f1fd8b391ac0f411ce8e530f69ecce3cd",
+                PENDING_REVERSAL_TRANSFER_ID,
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+
+        long deleted = repository.deleteByIdAndReversalTransferId(claim.getId(), PENDING_REVERSAL_TRANSFER_ID);
+
+        assertThat(deleted).isEqualTo(1);
+        assertThat(repository.findById(claim.getId())).isEmpty();
     }
 }
