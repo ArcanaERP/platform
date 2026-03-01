@@ -3,8 +3,8 @@ package com.arcanaerp.platform.products.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
+import com.arcanaerp.platform.testsupport.web.ProductCatalogWebTestSupport;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -304,20 +303,15 @@ class ProductsActivationHistoryFilterContractIntegrationTest {
     }
 
     private void createProduct(String sku) throws Exception {
-        String payload = """
-            {
-              "sku": "%s",
-              "name": "Contract Product %s",
-              "categoryCode": "kits",
-              "categoryName": "Kits",
-              "amount": 9.99,
-              "currencyCode": "USD"
-            }
-            """.formatted(sku, sku);
-
-        mockMvc.perform(post("/api/products")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload))
+        ProductCatalogWebTestSupport.createProduct(
+            mockMvc,
+            sku,
+            "Contract Product " + sku,
+            "kits",
+            "Kits",
+            "9.99",
+            "USD"
+        )
             .andExpect(status().isCreated());
     }
 

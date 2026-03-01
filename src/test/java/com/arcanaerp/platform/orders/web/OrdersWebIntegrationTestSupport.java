@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
+import com.arcanaerp.platform.testsupport.web.ProductCatalogWebTestSupport;
 import java.time.Instant;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,22 +20,14 @@ final class OrdersWebIntegrationTestSupport {
     private OrdersWebIntegrationTestSupport() {}
 
     static ResultActions registerProduct(MockMvc mockMvc, String sku, String productNamePrefix, String categoryName) throws Exception {
-        String normalizedSku = normalizeSku(sku);
-        String categoryCode = categoryCodeFromSku(normalizedSku);
-        String payload = """
-            {
-              "sku": "%s",
-              "name": "%s %s",
-              "categoryCode": "%s",
-              "categoryName": "%s",
-              "amount": 1.00,
-              "currencyCode": "USD"
-            }
-            """.formatted(sku, productNamePrefix, normalizedSku, categoryCode, categoryName);
-
-        return mockMvc.perform(post("/api/products")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload));
+        return ProductCatalogWebTestSupport.createProductWithDerivedCategory(
+            mockMvc,
+            sku,
+            productNamePrefix,
+            categoryName,
+            "1.00",
+            "USD"
+        );
     }
 
     static ResultActions createSingleLineOrder(
@@ -142,15 +135,5 @@ final class OrdersWebIntegrationTestSupport {
             request.param("changedAtTo", changedAtTo);
         }
         return request;
-    }
-
-    private static String normalizeSku(String sku) {
-        return sku.trim().toUpperCase();
-    }
-
-    private static String categoryCodeFromSku(String normalizedSku) {
-        String sanitized = normalizedSku.replaceAll("[^A-Z0-9]", "");
-        String fullCode = "CAT" + sanitized;
-        return fullCode.substring(0, Math.min(32, fullCode.length()));
     }
 }

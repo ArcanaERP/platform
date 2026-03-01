@@ -2,7 +2,6 @@ package com.arcanaerp.platform.orders.web;
 
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -135,37 +134,12 @@ class OrdersLifecycleTransitionMatrixIntegrationTest {
     }
 
     private void registerProduct(String sku) throws Exception {
-        String normalizedSku = sku.trim().toUpperCase();
-        String sanitized = normalizedSku.replaceAll("[^A-Z0-9]", "");
-        String categoryCode = ("CAT" + sanitized).substring(0, Math.min(32, ("CAT" + sanitized).length()));
-        String payload = """
-            {
-              "sku": "%s",
-              "name": "Order Matrix Product %s",
-              "categoryCode": "%s",
-              "categoryName": "Order Matrix Category",
-              "amount": 1.00,
-              "currencyCode": "USD"
-            }
-            """.formatted(sku, normalizedSku, categoryCode);
-
-        mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(payload))
+        OrdersWebIntegrationTestSupport.registerProduct(mockMvc, sku, "Order Matrix Product", "Order Matrix Category")
             .andExpect(status().isCreated());
     }
 
     private void createOrder(String orderNumber, String sku) throws Exception {
-        String payload = """
-            {
-              "orderNumber": "%s",
-              "customerEmail": "matrix@orders.arcanaerp.com",
-              "currencyCode": "USD",
-              "lines": [
-                { "productSku": "%s", "quantity": 1, "unitPrice": 10.00 }
-              ]
-            }
-            """.formatted(orderNumber, sku);
-
-        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(payload))
+        OrdersWebIntegrationTestSupport.createSingleLineOrder(mockMvc, orderNumber, sku, "matrix@orders.arcanaerp.com")
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.orderNumber").value(orderNumber.toUpperCase()))
             .andExpect(jsonPath("$.status").value("DRAFT"))
