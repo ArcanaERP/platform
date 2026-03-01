@@ -194,6 +194,232 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void transfersInventoryBetweenLocationsWithPairedAdjustmentRecords() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9207",
+                "main",
+                new BigDecimal("12"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9207",
+                "wh-east",
+                new BigDecimal("3"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+
+        String payload = """
+            {
+              "sourceLocationCode": "main",
+              "destinationLocationCode": "wh-east",
+              "quantity": 5,
+              "reason": "Rebalancing transfer",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+
+        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9207")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.transferId").isNotEmpty())
+            .andExpect(jsonPath("$.sku").value("ARC-9207"))
+            .andExpect(jsonPath("$.sourceLocationCode").value("MAIN"))
+            .andExpect(jsonPath("$.destinationLocationCode").value("WH-EAST"))
+            .andExpect(jsonPath("$.quantity").value(5))
+            .andExpect(jsonPath("$.sourceOnHandQuantity").value(7))
+            .andExpect(jsonPath("$.destinationOnHandQuantity").value(8))
+            .andExpect(jsonPath("$.reason").value("Rebalancing transfer"))
+            .andExpect(jsonPath("$.adjustedBy").value("ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.transferredAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/{sku}", "arc-9207"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.locationCode").value("MAIN"))
+            .andExpect(jsonPath("$.onHandQuantity").value(7));
+
+        mockMvc.perform(get("/api/inventory/{sku}", "arc-9207")
+            .param("locationCode", "wh-east"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.locationCode").value("WH-EAST"))
+            .andExpect(jsonPath("$.onHandQuantity").value(8));
+
+        InventoryItem sourceItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9207", "MAIN").orElseThrow();
+        InventoryItem destinationItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9207", "WH-EAST").orElseThrow();
+        InventoryAdjustment sourceAdjustment = inventoryAdjustmentRepository
+            .findByInventoryItemIdOrderByAdjustedAtDesc(sourceItem.getId())
+            .getFirst();
+        InventoryAdjustment destinationAdjustment = inventoryAdjustmentRepository
+            .findByInventoryItemIdOrderByAdjustedAtDesc(destinationItem.getId())
+            .getFirst();
+
+        assertThat(sourceAdjustment.getTransferId()).isNotNull();
+        assertThat(destinationAdjustment.getTransferId()).isEqualTo(sourceAdjustment.getTransferId());
+        assertThat(sourceAdjustment.getQuantityDelta()).isEqualByComparingTo("-5");
+        assertThat(destinationAdjustment.getQuantityDelta()).isEqualByComparingTo("5");
+
+        List<InventoryAdjustment> transferAdjustments = inventoryAdjustmentRepository
+            .findByTransferIdOrderByAdjustedAtAsc(sourceAdjustment.getTransferId());
+        assertThat(transferAdjustments).hasSize(2);
+    }
+
+    @Test
+    void transfersInventoryAndCreatesDestinationLocationStockWhenMissing() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9208",
+                "main",
+                new BigDecimal("9"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+
+        String payload = """
+            {
+              "sourceLocationCode": "main",
+              "destinationLocationCode": "wh-north",
+              "quantity": 2,
+              "reason": "Initial stocking transfer",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+
+        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9208")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.sourceOnHandQuantity").value(7))
+            .andExpect(jsonPath("$.destinationOnHandQuantity").value(2));
+
+        mockMvc.perform(get("/api/inventory/{sku}", "arc-9208")
+            .param("locationCode", "wh-north"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.locationCode").value("WH-NORTH"))
+            .andExpect(jsonPath("$.onHandQuantity").value(2));
+
+        assertThat(inventoryLocationRepository.findByCode("WH-NORTH")).isPresent();
+    }
+
+    @Test
+    void rejectsTransferWhenLocationsMatch() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9209",
+                "main",
+                new BigDecimal("5"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+
+        String payload = """
+            {
+              "sourceLocationCode": "main",
+              "destinationLocationCode": "main",
+              "quantity": 1,
+              "reason": "Invalid transfer",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+
+        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9209")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("sourceLocationCode and destinationLocationCode must be different"))
+            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9209/transfers"));
+    }
+
+    @Test
+    void rejectsTransferWithInsufficientSourceOnHand() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9210",
+                "main",
+                new BigDecimal("2"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+
+        String payload = """
+            {
+              "sourceLocationCode": "main",
+              "destinationLocationCode": "wh-west",
+              "quantity": 5,
+              "reason": "Too large transfer",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+
+        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9210")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("onHandQuantity cannot become negative"))
+            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9210/transfers"));
+    }
+
+    @Test
+    void returnsNotFoundWhenTransferringFromUnknownSourceLocation() throws Exception {
+        String payload = """
+            {
+              "sourceLocationCode": "wh-unknown",
+              "destinationLocationCode": "main",
+              "quantity": 1,
+              "reason": "Invalid transfer",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+
+        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9211")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Inventory item not found for SKU: ARC-9211 at location: WH-UNKNOWN"))
+            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9211/transfers"));
+    }
+
+    @Test
+    void rejectsTransferWhenQuantityIsZero() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9212",
+                "main",
+                new BigDecimal("5"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+
+        String payload = """
+            {
+              "sourceLocationCode": "main",
+              "destinationLocationCode": "wh-west",
+              "quantity": 0,
+              "reason": "Invalid transfer",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+
+        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9212")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("quantity must be greater than zero"))
+            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9212/transfers"));
+    }
+
+    @Test
     void rejectsAdjustmentThatWouldMakeOnHandNegative() throws Exception {
         inventoryItemRepository.save(
             InventoryItem.create(

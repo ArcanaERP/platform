@@ -13,6 +13,8 @@ interface InventoryAdjustmentRepository extends JpaRepository<InventoryAdjustmen
 
     List<InventoryAdjustment> findByInventoryItemIdOrderByAdjustedAtDesc(UUID inventoryItemId);
 
+    List<InventoryAdjustment> findByTransferIdOrderByAdjustedAtAsc(UUID transferId);
+
     Page<InventoryAdjustment> findByInventoryItemIdOrderByAdjustedAtDesc(UUID inventoryItemId, Pageable pageable);
 
     @Query(

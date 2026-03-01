@@ -28,6 +28,7 @@ erDiagram
     INVENTORY_ADJUSTMENTS {
       UUID id PK
       UUID inventoryItemId
+      UUID transferId
       STRING sku
       STRING locationCode
       DECIMAL previousOnHandQuantity
@@ -45,6 +46,7 @@ erDiagram
 - `inventory_items.locationCode` aligns with `inventory_locations.code` (code-based location reference).
 - `inventory_adjustments.inventoryItemId` is a logical reference to `inventory_items.id`.
 - Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` stores latest per-location state.
+- Location transfers write two adjustment rows with a shared `transferId` (source negative delta, destination positive delta).
 
 ## Constraint Notes
 
@@ -54,3 +56,4 @@ erDiagram
 - Indexes:
   - `inventory_adjustments(inventoryItemId, adjustedAt)`
   - `inventory_adjustments(inventoryItemId, adjustedBy, adjustedAt)`
+  - `inventory_adjustments(transferId)`

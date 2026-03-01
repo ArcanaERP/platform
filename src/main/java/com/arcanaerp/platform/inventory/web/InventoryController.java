@@ -6,6 +6,8 @@ import com.arcanaerp.platform.inventory.AdjustInventoryCommand;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
+import com.arcanaerp.platform.inventory.InventoryTransferView;
+import com.arcanaerp.platform.inventory.TransferInventoryCommand;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -87,6 +89,36 @@ public class InventoryController {
             )
         );
         return toAdjustmentResponse(adjustment);
+    }
+
+    @PostMapping("/{sku}/transfers")
+    @ResponseStatus(HttpStatus.CREATED)
+    public InventoryTransferResponse transferInventory(
+        @PathVariable String sku,
+        @Valid @RequestBody TransferInventoryRequest request
+    ) {
+        InventoryTransferView transfer = inventoryAvailability.transferInventory(
+            new TransferInventoryCommand(
+                sku,
+                request.sourceLocationCode(),
+                request.destinationLocationCode(),
+                request.quantity(),
+                request.reason(),
+                request.adjustedBy()
+            )
+        );
+        return new InventoryTransferResponse(
+            transfer.transferId(),
+            transfer.sku(),
+            transfer.sourceLocationCode(),
+            transfer.destinationLocationCode(),
+            transfer.quantity(),
+            transfer.sourceOnHandQuantity(),
+            transfer.destinationOnHandQuantity(),
+            transfer.reason(),
+            transfer.adjustedBy(),
+            transfer.transferredAt()
+        );
     }
 
     private InventoryAdjustmentResponse toAdjustmentResponse(InventoryAdjustmentView adjustment) {

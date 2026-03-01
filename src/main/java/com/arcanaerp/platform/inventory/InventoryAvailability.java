@@ -10,6 +10,8 @@ public interface InventoryAvailability {
 
     InventoryAdjustmentView adjustInventory(AdjustInventoryCommand command);
 
+    InventoryTransferView transferInventory(TransferInventoryCommand command);
+
     PageResult<InventoryAdjustmentView> listAdjustments(
         String sku,
         String locationCode,

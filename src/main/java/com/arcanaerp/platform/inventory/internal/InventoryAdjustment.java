@@ -19,7 +19,8 @@ import lombok.NoArgsConstructor;
     name = "inventory_adjustments",
     indexes = {
         @Index(name = "idx_inventory_adjustments_item_time", columnList = "inventoryItemId,adjustedAt"),
-        @Index(name = "idx_inventory_adjustments_item_actor_time", columnList = "inventoryItemId,adjustedBy,adjustedAt")
+        @Index(name = "idx_inventory_adjustments_item_actor_time", columnList = "inventoryItemId,adjustedBy,adjustedAt"),
+        @Index(name = "idx_inventory_adjustments_transfer", columnList = "transferId")
     }
 )
 @Getter
@@ -38,6 +39,8 @@ public class InventoryAdjustment {
 
     @Column(nullable = false, length = 64)
     private String locationCode;
+
+    private UUID transferId;
 
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal previousOnHandQuantity;
@@ -62,6 +65,7 @@ public class InventoryAdjustment {
         UUID inventoryItemId,
         String sku,
         String locationCode,
+        UUID transferId,
         BigDecimal previousOnHandQuantity,
         BigDecimal quantityDelta,
         BigDecimal currentOnHandQuantity,
@@ -73,6 +77,7 @@ public class InventoryAdjustment {
         this.inventoryItemId = inventoryItemId;
         this.sku = sku;
         this.locationCode = locationCode;
+        this.transferId = transferId;
         this.previousOnHandQuantity = previousOnHandQuantity;
         this.quantityDelta = quantityDelta;
         this.currentOnHandQuantity = currentOnHandQuantity;
@@ -85,6 +90,7 @@ public class InventoryAdjustment {
         UUID inventoryItemId,
         String sku,
         String locationCode,
+        UUID transferId,
         BigDecimal previousOnHandQuantity,
         BigDecimal quantityDelta,
         BigDecimal currentOnHandQuantity,
@@ -112,6 +118,7 @@ public class InventoryAdjustment {
             inventoryItemId,
             normalizeRequired(sku, "sku").toUpperCase(),
             normalizeRequired(locationCode, "locationCode").toUpperCase(),
+            transferId,
             previousOnHandQuantity,
             quantityDelta,
             currentOnHandQuantity,

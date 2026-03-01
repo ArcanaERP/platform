@@ -6,10 +6,13 @@ import com.arcanaerp.platform.inventory.AdjustInventoryCommand;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
+import com.arcanaerp.platform.inventory.InventoryTransferView;
+import com.arcanaerp.platform.inventory.TransferInventoryCommand;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.NoSuchElementException;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -68,6 +71,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
                 saved.getId(),
                 saved.getSku(),
                 saved.getLocationCode(),
+                null,
                 previousOnHand,
                 quantityDelta,
                 saved.getOnHandQuantity(),
@@ -87,6 +91,82 @@ class InventoryAvailabilityService implements InventoryAvailability {
             adjustment.getReason(),
             adjustment.getAdjustedBy(),
             adjustment.getAdjustedAt()
+        );
+    }
+
+    @Override
+    public InventoryTransferView transferInventory(TransferInventoryCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+
+        String normalizedSku = normalizeRequired(command.sku(), "sku").toUpperCase();
+        String sourceLocationCode = normalizeRequired(command.sourceLocationCode(), "sourceLocationCode").toUpperCase();
+        String destinationLocationCode = normalizeRequired(command.destinationLocationCode(), "destinationLocationCode").toUpperCase();
+        if (sourceLocationCode.equals(destinationLocationCode)) {
+            throw new IllegalArgumentException("sourceLocationCode and destinationLocationCode must be different");
+        }
+        BigDecimal quantity = normalizePositiveQuantity(command.quantity());
+        String reason = normalizeRequired(command.reason(), "reason");
+        String adjustedBy = normalizeRequired(command.adjustedBy(), "adjustedBy").toLowerCase();
+
+        ensureLocationExists(sourceLocationCode);
+        ensureLocationExists(destinationLocationCode);
+
+        InventoryItem sourceItem = findInventoryItem(normalizedSku, sourceLocationCode);
+        Instant adjustedAt = Instant.now(clock);
+        InventoryItem destinationItem = inventoryItemRepository.findBySkuAndLocationCode(normalizedSku, destinationLocationCode)
+            .orElseGet(() -> InventoryItem.create(normalizedSku, destinationLocationCode, BigDecimal.ZERO, adjustedAt));
+
+        BigDecimal sourcePreviousOnHand = sourceItem.getOnHandQuantity();
+        BigDecimal destinationPreviousOnHand = destinationItem.getOnHandQuantity();
+        sourceItem.applyAdjustment(quantity.negate(), adjustedAt);
+        destinationItem.applyAdjustment(quantity, adjustedAt);
+
+        InventoryItem savedSource = inventoryItemRepository.save(sourceItem);
+        InventoryItem savedDestination = inventoryItemRepository.save(destinationItem);
+
+        UUID transferId = UUID.randomUUID();
+        inventoryAdjustmentRepository.save(
+            InventoryAdjustment.create(
+                savedSource.getId(),
+                savedSource.getSku(),
+                savedSource.getLocationCode(),
+                transferId,
+                sourcePreviousOnHand,
+                quantity.negate(),
+                savedSource.getOnHandQuantity(),
+                reason,
+                adjustedBy,
+                adjustedAt
+            )
+        );
+        inventoryAdjustmentRepository.save(
+            InventoryAdjustment.create(
+                savedDestination.getId(),
+                savedDestination.getSku(),
+                savedDestination.getLocationCode(),
+                transferId,
+                destinationPreviousOnHand,
+                quantity,
+                savedDestination.getOnHandQuantity(),
+                reason,
+                adjustedBy,
+                adjustedAt
+            )
+        );
+
+        return new InventoryTransferView(
+            transferId,
+            normalizedSku,
+            sourceLocationCode,
+            destinationLocationCode,
+            quantity,
+            savedSource.getOnHandQuantity(),
+            savedDestination.getOnHandQuantity(),
+            reason,
+            adjustedBy,
+            adjustedAt
         );
     }
 
@@ -133,6 +213,16 @@ class InventoryAvailabilityService implements InventoryAvailability {
             throw new IllegalArgumentException("quantityDelta must not be zero");
         }
         return quantityDelta;
+    }
+
+    private static BigDecimal normalizePositiveQuantity(BigDecimal quantity) {
+        if (quantity == null) {
+            throw new IllegalArgumentException("quantity is required");
+        }
+        if (quantity.signum() <= 0) {
+            throw new IllegalArgumentException("quantity must be greater than zero");
+        }
+        return quantity;
     }
 
     private static String normalizeRequired(String value, String fieldName) {
