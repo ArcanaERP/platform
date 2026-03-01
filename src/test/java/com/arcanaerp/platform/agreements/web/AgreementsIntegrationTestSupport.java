@@ -1,11 +1,11 @@
 package com.arcanaerp.platform.agreements.web;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.agreements.AgreementStatus;
+import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -72,26 +72,12 @@ final class AgreementsIntegrationTestSupport {
         String tenantNamePrefix,
         String displayName
     ) throws Exception {
-        String payload = """
-            {
-              "tenantCode": "%s",
-              "tenantName": "%s %s",
-              "roleCode": "OPS",
-              "roleName": "Operations",
-              "email": "%s",
-              "displayName": "%s"
-            }
-            """.formatted(tenantCode, tenantNamePrefix, tenantCode, email, displayName);
-
-        var result = mockMvc.perform(post("/api/identity/users").contentType(MediaType.APPLICATION_JSON).content(payload))
-            .andReturn();
-        int statusCode = result.getResponse().getStatus();
-        if (statusCode == 400) {
-            assertThat(result.getResponse().getContentAsString()).contains("User email already exists in tenant");
-            return;
-        }
-        if (statusCode != 201) {
-            throw new AssertionError("Unexpected status while registering actor: " + statusCode);
-        }
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            tenantCode,
+            email,
+            tenantNamePrefix,
+            displayName
+        );
     }
 }

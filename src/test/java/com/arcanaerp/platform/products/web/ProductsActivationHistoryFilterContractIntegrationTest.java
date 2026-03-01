@@ -2,8 +2,8 @@ package com.arcanaerp.platform.products.web;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -328,36 +328,12 @@ class ProductsActivationHistoryFilterContractIntegrationTest {
         String changedBy,
         String reason
     ) throws Exception {
-        String payload = """
-            {
-              "active": %s,
-              "reason": "%s",
-              "tenantCode": "%s",
-              "changedBy": "%s"
-            }
-            """.formatted(active, reason, tenantCode, changedBy);
-
-        mockMvc.perform(patch("/api/products/{sku}/active", sku)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload))
+        ActorActivationWebTestSupport.setProductActive(mockMvc, sku, active, tenantCode, changedBy, reason)
             .andExpect(status().isOk());
     }
 
     private void registerActor(String tenantCode, String email) throws Exception {
-        String payload = """
-            {
-              "tenantCode": "%s",
-              "tenantName": "Contract Tenant %s",
-              "roleCode": "OPS",
-              "roleName": "Operations",
-              "email": "%s",
-              "displayName": "Activation Actor"
-            }
-            """.formatted(tenantCode, tenantCode, email);
-
-        mockMvc.perform(post("/api/identity/users")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload))
+        ActorActivationWebTestSupport.registerActor(mockMvc, tenantCode, email, "Contract Tenant", "Activation Actor")
             .andExpect(status().isCreated());
     }
 }

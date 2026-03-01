@@ -5,11 +5,11 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -80,23 +80,12 @@ class ProductsControllerIntegrationTest {
               "currencyCode": "USD"
             }
             """;
-        String deactivatePayload = """
-            {
-              "active": false,
-              "reason": "Discontinued by product team",
-              "tenantCode": "%s",
-              "changedBy": "product-team@arcanaerp.com"
-            }
-            """.formatted(LEGACY_TENANT_CODE);
-
         mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(createPayload))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.active").value(true));
 
         registerActor(LEGACY_TENANT_CODE, "product-team@arcanaerp.com");
-        mockMvc.perform(patch("/api/products/arc-3000/active")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(deactivatePayload))
+        setProductActive("arc-3000", false, LEGACY_TENANT_CODE, "product-team@arcanaerp.com", "Discontinued by product team")
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.sku").value("ARC-3000"))
             .andExpect(jsonPath("$.active").value(false))
@@ -129,15 +118,6 @@ class ProductsControllerIntegrationTest {
               "currencyCode": "USD"
             }
             """;
-        String deactivatePayload = """
-            {
-              "active": false,
-              "reason": "Retired in filter test",
-              "tenantCode": "%s",
-              "changedBy": "catalog-admin@arcanaerp.com"
-            }
-            """.formatted(FILTER_TENANT_CODE);
-
         mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(activePayload))
             .andExpect(status().isCreated());
 
@@ -145,9 +125,7 @@ class ProductsControllerIntegrationTest {
             .andExpect(status().isCreated());
 
         registerActor(FILTER_TENANT_CODE, "catalog-admin@arcanaerp.com");
-        mockMvc.perform(patch("/api/products/arc-3200/active")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(deactivatePayload))
+        setProductActive("arc-3200", false, FILTER_TENANT_CODE, "catalog-admin@arcanaerp.com", "Retired in filter test")
             .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/products?page=0&size=20&active=true"))
@@ -171,36 +149,15 @@ class ProductsControllerIntegrationTest {
               "currencyCode": "USD"
             }
             """;
-        String deactivatePayload = """
-            {
-              "active": false,
-              "reason": "Initial retirement",
-              "tenantCode": "%s",
-              "changedBy": "ops@arcanaerp.com"
-            }
-            """.formatted(HISTORY_TENANT_CODE);
-        String reactivatePayload = """
-            {
-              "active": true,
-              "reason": "Customer demand rebound",
-              "tenantCode": "%s",
-              "changedBy": "sales@arcanaerp.com"
-            }
-            """.formatted(HISTORY_TENANT_CODE);
-
         mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(createPayload))
             .andExpect(status().isCreated());
 
         registerActor(HISTORY_TENANT_CODE, "ops@arcanaerp.com");
-        mockMvc.perform(patch("/api/products/arc-3300/active")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(deactivatePayload))
+        setProductActive("arc-3300", false, HISTORY_TENANT_CODE, "ops@arcanaerp.com", "Initial retirement")
             .andExpect(status().isOk());
 
         registerActor(HISTORY_TENANT_CODE, "sales@arcanaerp.com");
-        mockMvc.perform(patch("/api/products/arc-3300/active")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reactivatePayload))
+        setProductActive("arc-3300", true, HISTORY_TENANT_CODE, "sales@arcanaerp.com", "Customer demand rebound")
             .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/products/arc-3300/activation-history?page=0&size=10"))
@@ -231,36 +188,15 @@ class ProductsControllerIntegrationTest {
               "currencyCode": "USD"
             }
             """;
-        String deactivatePayloadTenantA = """
-            {
-              "active": false,
-              "reason": "Tenant A retirement",
-              "tenantCode": "%s",
-              "changedBy": "tenant-a@arcanaerp.com"
-            }
-            """.formatted(HISTORY_FILTER_TENANT_A);
-        String reactivatePayloadTenantB = """
-            {
-              "active": true,
-              "reason": "Tenant B reactivation",
-              "tenantCode": "%s",
-              "changedBy": "tenant-b@arcanaerp.com"
-            }
-            """.formatted(HISTORY_FILTER_TENANT_B);
-
         mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(createPayload))
             .andExpect(status().isCreated());
 
         registerActor(HISTORY_FILTER_TENANT_A, "tenant-a@arcanaerp.com");
-        mockMvc.perform(patch("/api/products/arc-3600/active")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(deactivatePayloadTenantA))
+        setProductActive("arc-3600", false, HISTORY_FILTER_TENANT_A, "tenant-a@arcanaerp.com", "Tenant A retirement")
             .andExpect(status().isOk());
 
         registerActor(HISTORY_FILTER_TENANT_B, "tenant-b@arcanaerp.com");
-        mockMvc.perform(patch("/api/products/arc-3600/active")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reactivatePayloadTenantB))
+        setProductActive("arc-3600", true, HISTORY_FILTER_TENANT_B, "tenant-b@arcanaerp.com", "Tenant B reactivation")
             .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/products/arc-3600/activation-history?page=0&size=10&tenantCode=" + HISTORY_FILTER_TENANT_A))
@@ -296,36 +232,15 @@ class ProductsControllerIntegrationTest {
               "currencyCode": "USD"
             }
             """;
-        String deactivatePayload = """
-            {
-              "active": false,
-              "reason": "First actor deactivation",
-              "tenantCode": "%s",
-              "changedBy": "actor-one@arcanaerp.com"
-            }
-            """.formatted(HISTORY_TENANT_CODE);
-        String reactivatePayload = """
-            {
-              "active": true,
-              "reason": "Second actor reactivation",
-              "tenantCode": "%s",
-              "changedBy": "actor-two@arcanaerp.com"
-            }
-            """.formatted(HISTORY_TENANT_CODE);
-
         mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(createPayload))
             .andExpect(status().isCreated());
 
         registerActor(HISTORY_TENANT_CODE, "actor-one@arcanaerp.com");
-        mockMvc.perform(patch("/api/products/arc-3700/active")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(deactivatePayload))
+        setProductActive("arc-3700", false, HISTORY_TENANT_CODE, "actor-one@arcanaerp.com", "First actor deactivation")
             .andExpect(status().isOk());
 
         registerActor(HISTORY_TENANT_CODE, "actor-two@arcanaerp.com");
-        mockMvc.perform(patch("/api/products/arc-3700/active")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reactivatePayload))
+        setProductActive("arc-3700", true, HISTORY_TENANT_CODE, "actor-two@arcanaerp.com", "Second actor reactivation")
             .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/products/arc-3700/activation-history?page=0&size=10&changedBy=actor-two@arcanaerp.com"))
@@ -383,21 +298,10 @@ class ProductsControllerIntegrationTest {
               "currencyCode": "USD"
             }
             """;
-        String deactivatePayload = """
-            {
-              "active": false,
-              "reason": "Unverified actor",
-              "tenantCode": "%s",
-              "changedBy": "unknown@arcanaerp.com"
-            }
-            """.formatted(UNKNOWN_TENANT_CODE);
-
         mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(createPayload))
             .andExpect(status().isCreated());
 
-        mockMvc.perform(patch("/api/products/arc-3400/active")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(deactivatePayload))
+        setProductActive("arc-3400", false, UNKNOWN_TENANT_CODE, "unknown@arcanaerp.com", "Unverified actor")
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
@@ -418,23 +322,12 @@ class ProductsControllerIntegrationTest {
               "currencyCode": "USD"
             }
             """;
-        String deactivatePayload = """
-            {
-              "active": false,
-              "reason": "Tenant mismatch actor",
-              "tenantCode": "%s",
-              "changedBy": "tenant.actor@arcanaerp.com"
-            }
-            """.formatted(MISMATCH_REQUEST_TENANT_CODE);
-
         mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(createPayload))
             .andExpect(status().isCreated());
 
         registerActor(MISMATCH_ACTOR_TENANT_CODE, "tenant.actor@arcanaerp.com");
 
-        mockMvc.perform(patch("/api/products/arc-3500/active")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(deactivatePayload))
+        setProductActive("arc-3500", false, MISMATCH_REQUEST_TENANT_CODE, "tenant.actor@arcanaerp.com", "Tenant mismatch actor")
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
@@ -479,18 +372,17 @@ class ProductsControllerIntegrationTest {
     }
 
     private void registerActor(String tenantCode, String email) throws Exception {
-        String payload = """
-            {
-              "tenantCode": "%s",
-              "tenantName": "Activation Tenant %s",
-              "roleCode": "OPS",
-              "roleName": "Operations",
-              "email": "%s",
-              "displayName": "Activation Actor"
-            }
-            """.formatted(tenantCode, tenantCode, email);
-
-        mockMvc.perform(post("/api/identity/users").contentType(MediaType.APPLICATION_JSON).content(payload))
+        ActorActivationWebTestSupport.registerActor(mockMvc, tenantCode, email, "Activation Tenant", "Activation Actor")
             .andExpect(status().isCreated());
+    }
+
+    private org.springframework.test.web.servlet.ResultActions setProductActive(
+        String sku,
+        boolean active,
+        String tenantCode,
+        String changedBy,
+        String reason
+    ) throws Exception {
+        return ActorActivationWebTestSupport.setProductActive(mockMvc, sku, active, tenantCode, changedBy, reason);
     }
 }

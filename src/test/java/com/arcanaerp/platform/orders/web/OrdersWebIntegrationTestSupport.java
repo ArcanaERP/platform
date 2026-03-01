@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
 import java.time.Instant;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -71,20 +72,13 @@ final class OrdersWebIntegrationTestSupport {
     }
 
     static ResultActions registerActor(MockMvc mockMvc, String tenantCode, String email, String displayName) throws Exception {
-        String payload = """
-            {
-              "tenantCode": "%s",
-              "tenantName": "Order Tenant %s",
-              "roleCode": "OPS",
-              "roleName": "Operations",
-              "email": "%s",
-              "displayName": "%s"
-            }
-            """.formatted(tenantCode, tenantCode, email, displayName);
-
-        return mockMvc.perform(post("/api/identity/users")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload));
+        return ActorActivationWebTestSupport.registerActor(
+            mockMvc,
+            tenantCode,
+            email,
+            "Order Tenant",
+            displayName
+        );
     }
 
     static ResultActions setProductActive(
@@ -95,18 +89,7 @@ final class OrdersWebIntegrationTestSupport {
         String changedBy,
         String reason
     ) throws Exception {
-        String payload = """
-            {
-              "active": %s,
-              "reason": "%s",
-              "tenantCode": "%s",
-              "changedBy": "%s"
-            }
-            """.formatted(active, reason, tenantCode, changedBy);
-
-        return mockMvc.perform(patch("/api/products/" + sku + "/active")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload));
+        return ActorActivationWebTestSupport.setProductActive(mockMvc, sku, active, tenantCode, changedBy, reason);
     }
 
     static ResultActions seedConfirmedStatusHistory(
