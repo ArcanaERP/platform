@@ -9,6 +9,8 @@ public record TransferInventoryRequest(
     @NotBlank String destinationLocationCode,
     @NotNull BigDecimal quantity,
     @NotBlank String reason,
-    @NotBlank String adjustedBy
+    @NotBlank String adjustedBy,
+    String referenceType,
+    String referenceId
 ) {
 }

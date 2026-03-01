@@ -8,6 +8,8 @@ public record TransferInventoryCommand(
     String destinationLocationCode,
     BigDecimal quantity,
     String reason,
-    String adjustedBy
+    String adjustedBy,
+    String referenceType,
+    String referenceId
 ) {
 }

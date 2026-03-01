@@ -24,6 +24,10 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
 
     private static final String TRANSFER_REASON_A = "Rebalancing transfer A";
     private static final String TRANSFER_REASON_B = "Rebalancing transfer B";
+    private static final String REFERENCE_TYPE_A = "FULFILLMENT";
+    private static final String REFERENCE_ID_A = "FUL-9500-A";
+    private static final String REFERENCE_TYPE_B = "ORDER";
+    private static final String REFERENCE_ID_B = "SO-9500-B";
 
     @Autowired
     private MockMvc mockMvc;
@@ -63,10 +67,14 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
             .andExpect(jsonPath("$.items[0].destinationLocationCode").value("WH-EAST"))
             .andExpect(jsonPath("$.items[0].adjustedBy").value(actorB))
             .andExpect(jsonPath("$.items[0].reason").value(TRANSFER_REASON_B))
+            .andExpect(jsonPath("$.items[0].referenceType").value(REFERENCE_TYPE_B))
+            .andExpect(jsonPath("$.items[0].referenceId").value(REFERENCE_ID_B))
             .andExpect(jsonPath("$.items[1].sourceLocationCode").value("MAIN"))
             .andExpect(jsonPath("$.items[1].destinationLocationCode").value("WH-WEST"))
             .andExpect(jsonPath("$.items[1].adjustedBy").value(actorA))
-            .andExpect(jsonPath("$.items[1].reason").value(TRANSFER_REASON_A));
+            .andExpect(jsonPath("$.items[1].reason").value(TRANSFER_REASON_A))
+            .andExpect(jsonPath("$.items[1].referenceType").value(REFERENCE_TYPE_A))
+            .andExpect(jsonPath("$.items[1].referenceId").value(REFERENCE_ID_A));
     }
 
     @Test
@@ -123,6 +131,25 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
     }
 
     @Test
+    void filtersTransferHistoryByReferenceTypeAndReferenceId() throws Exception {
+        String sku = "ARC-9503";
+        String actorA = "ops-g@arcanaerp.com";
+        String actorB = "ops-h@arcanaerp.com";
+        seedTransferHistory(sku, actorA, actorB);
+
+        mockMvc.perform(get("/api/inventory/{sku}/transfers", sku)
+            .param("page", "0")
+            .param("size", "10")
+            .param("referenceType", "fulfillment")
+            .param("referenceId", REFERENCE_ID_A))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].referenceType").value(REFERENCE_TYPE_A))
+            .andExpect(jsonPath("$.items[0].referenceId").value(REFERENCE_ID_A))
+            .andExpect(jsonPath("$.items[0].reason").value(TRANSFER_REASON_A));
+    }
+
+    @Test
     void rejectsBlankSourceLocationCodeFilter() throws Exception {
         mockMvc.perform(get("/api/inventory/arc-9590/transfers")
             .param("page", "0")
@@ -158,6 +185,32 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.message").value("adjustedBy query parameter must not be blank"))
+            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9590/transfers"));
+    }
+
+    @Test
+    void rejectsBlankReferenceTypeFilter() throws Exception {
+        mockMvc.perform(get("/api/inventory/arc-9590/transfers")
+            .param("page", "0")
+            .param("size", "10")
+            .param("referenceType", "   "))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("referenceType query parameter must not be blank"))
+            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9590/transfers"));
+    }
+
+    @Test
+    void rejectsBlankReferenceIdFilter() throws Exception {
+        mockMvc.perform(get("/api/inventory/arc-9590/transfers")
+            .param("page", "0")
+            .param("size", "10")
+            .param("referenceId", "   "))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("referenceId query parameter must not be blank"))
             .andExpect(jsonPath("$.path").value("/api/inventory/arc-9590/transfers"));
     }
 
@@ -225,9 +278,9 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
             InventoryItem.create(sku, "wh-east", new BigDecimal("2"), Instant.parse("2026-03-01T00:00:00Z"))
         );
 
-        postTransfer(sku, "main", "wh-west", "4", TRANSFER_REASON_A, actorA);
+        postTransfer(sku, "main", "wh-west", "4", TRANSFER_REASON_A, actorA, REFERENCE_TYPE_A, REFERENCE_ID_A);
         Thread.sleep(25);
-        postTransfer(sku, "wh-west", "wh-east", "2", TRANSFER_REASON_B, actorB);
+        postTransfer(sku, "wh-west", "wh-east", "2", TRANSFER_REASON_B, actorB, REFERENCE_TYPE_B, REFERENCE_ID_B);
     }
 
     private void postTransfer(
@@ -236,7 +289,9 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
         String destinationLocationCode,
         String quantity,
         String reason,
-        String adjustedBy
+        String adjustedBy,
+        String referenceType,
+        String referenceId
     ) throws Exception {
         String payload = """
             {
@@ -244,9 +299,11 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
               "destinationLocationCode": "%s",
               "quantity": %s,
               "reason": "%s",
-              "adjustedBy": "%s"
+              "adjustedBy": "%s",
+              "referenceType": "%s",
+              "referenceId": "%s"
             }
-            """.formatted(sourceLocationCode, destinationLocationCode, quantity, reason, adjustedBy);
+            """.formatted(sourceLocationCode, destinationLocationCode, quantity, reason, adjustedBy, referenceType, referenceId);
 
         mockMvc.perform(post("/api/inventory/{sku}/transfers", sku)
                 .contentType(MediaType.APPLICATION_JSON)

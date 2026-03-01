@@ -32,6 +32,10 @@ interface InventoryAdjustmentRepository extends JpaRepository<InventoryAdjustmen
 
         String getAdjustedBy();
 
+        String getReferenceType();
+
+        String getReferenceId();
+
         Instant getTransferredAt();
     }
 
@@ -72,6 +76,8 @@ interface InventoryAdjustmentRepository extends JpaRepository<InventoryAdjustmen
             destination.currentOnHandQuantity as destinationOnHandQuantity,
             source.reason as reason,
             source.adjustedBy as adjustedBy,
+            source.referenceType as referenceType,
+            source.referenceId as referenceId,
             source.adjustedAt as transferredAt
         from InventoryAdjustment source
         join InventoryAdjustment destination
@@ -84,6 +90,8 @@ interface InventoryAdjustmentRepository extends JpaRepository<InventoryAdjustmen
           and (:sourceLocationCode is null or source.locationCode = :sourceLocationCode)
           and (:destinationLocationCode is null or destination.locationCode = :destinationLocationCode)
           and (:adjustedBy is null or source.adjustedBy = :adjustedBy)
+          and (:referenceType is null or source.referenceType = :referenceType)
+          and (:referenceId is null or source.referenceId = :referenceId)
           and (:adjustedAtFrom is null or source.adjustedAt >= :adjustedAtFrom)
           and (:adjustedAtTo is null or source.adjustedAt <= :adjustedAtTo)
         order by source.adjustedAt desc
@@ -102,6 +110,8 @@ interface InventoryAdjustmentRepository extends JpaRepository<InventoryAdjustmen
           and (:sourceLocationCode is null or source.locationCode = :sourceLocationCode)
           and (:destinationLocationCode is null or destination.locationCode = :destinationLocationCode)
           and (:adjustedBy is null or source.adjustedBy = :adjustedBy)
+          and (:referenceType is null or source.referenceType = :referenceType)
+          and (:referenceId is null or source.referenceId = :referenceId)
           and (:adjustedAtFrom is null or source.adjustedAt >= :adjustedAtFrom)
           and (:adjustedAtTo is null or source.adjustedAt <= :adjustedAtTo)
         """
@@ -111,6 +121,8 @@ interface InventoryAdjustmentRepository extends JpaRepository<InventoryAdjustmen
         @Param("sourceLocationCode") String sourceLocationCode,
         @Param("destinationLocationCode") String destinationLocationCode,
         @Param("adjustedBy") String adjustedBy,
+        @Param("referenceType") String referenceType,
+        @Param("referenceId") String referenceId,
         @Param("adjustedAtFrom") Instant adjustedAtFrom,
         @Param("adjustedAtTo") Instant adjustedAtTo,
         Pageable pageable

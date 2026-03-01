@@ -20,7 +20,8 @@ import lombok.NoArgsConstructor;
     indexes = {
         @Index(name = "idx_inventory_adjustments_item_time", columnList = "inventoryItemId,adjustedAt"),
         @Index(name = "idx_inventory_adjustments_item_actor_time", columnList = "inventoryItemId,adjustedBy,adjustedAt"),
-        @Index(name = "idx_inventory_adjustments_transfer", columnList = "transferId")
+        @Index(name = "idx_inventory_adjustments_transfer", columnList = "transferId"),
+        @Index(name = "idx_inventory_adjustments_transfer_ref", columnList = "sku,referenceType,referenceId,adjustedAt")
     }
 )
 @Getter
@@ -57,6 +58,12 @@ public class InventoryAdjustment {
     @Column(nullable = false, length = 128)
     private String adjustedBy;
 
+    @Column(length = 64)
+    private String referenceType;
+
+    @Column(length = 128)
+    private String referenceId;
+
     @Column(nullable = false, updatable = false)
     private Instant adjustedAt;
 
@@ -71,6 +78,8 @@ public class InventoryAdjustment {
         BigDecimal currentOnHandQuantity,
         String reason,
         String adjustedBy,
+        String referenceType,
+        String referenceId,
         Instant adjustedAt
     ) {
         this.id = id;
@@ -83,6 +92,8 @@ public class InventoryAdjustment {
         this.currentOnHandQuantity = currentOnHandQuantity;
         this.reason = reason;
         this.adjustedBy = adjustedBy;
+        this.referenceType = referenceType;
+        this.referenceId = referenceId;
         this.adjustedAt = adjustedAt;
     }
 
@@ -96,6 +107,8 @@ public class InventoryAdjustment {
         BigDecimal currentOnHandQuantity,
         String reason,
         String adjustedBy,
+        String referenceType,
+        String referenceId,
         Instant adjustedAt
     ) {
         if (inventoryItemId == null) {
@@ -124,6 +137,8 @@ public class InventoryAdjustment {
             currentOnHandQuantity,
             normalizeRequired(reason, "reason"),
             normalizeRequired(adjustedBy, "adjustedBy").toLowerCase(),
+            normalizeOptionalUpper(referenceType),
+            normalizeOptional(referenceId),
             adjustedAt
         );
     }
@@ -133,5 +148,14 @@ public class InventoryAdjustment {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private static String normalizeOptional(String value) {
+        return value == null ? null : value.trim();
+    }
+
+    private static String normalizeOptionalUpper(String value) {
+        String normalized = normalizeOptional(value);
+        return normalized == null ? null : normalized.toUpperCase();
     }
 }

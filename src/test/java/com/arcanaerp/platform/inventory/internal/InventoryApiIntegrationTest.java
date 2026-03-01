@@ -218,7 +218,9 @@ class InventoryApiIntegrationTest {
               "destinationLocationCode": "wh-east",
               "quantity": 5,
               "reason": "Rebalancing transfer",
-              "adjustedBy": "ops@arcanaerp.com"
+              "adjustedBy": "ops@arcanaerp.com",
+              "referenceType": "fulfillment",
+              "referenceId": "FUL-9207-1"
             }
             """;
 
@@ -235,6 +237,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.destinationOnHandQuantity").value(8))
             .andExpect(jsonPath("$.reason").value("Rebalancing transfer"))
             .andExpect(jsonPath("$.adjustedBy").value("ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.referenceType").value("FULFILLMENT"))
+            .andExpect(jsonPath("$.referenceId").value("FUL-9207-1"))
             .andExpect(jsonPath("$.transferredAt").isNotEmpty());
 
         mockMvc.perform(get("/api/inventory/{sku}", "arc-9207"))
@@ -261,6 +265,10 @@ class InventoryApiIntegrationTest {
         assertThat(destinationAdjustment.getTransferId()).isEqualTo(sourceAdjustment.getTransferId());
         assertThat(sourceAdjustment.getQuantityDelta()).isEqualByComparingTo("-5");
         assertThat(destinationAdjustment.getQuantityDelta()).isEqualByComparingTo("5");
+        assertThat(sourceAdjustment.getReferenceType()).isEqualTo("FULFILLMENT");
+        assertThat(sourceAdjustment.getReferenceId()).isEqualTo("FUL-9207-1");
+        assertThat(destinationAdjustment.getReferenceType()).isEqualTo("FULFILLMENT");
+        assertThat(destinationAdjustment.getReferenceId()).isEqualTo("FUL-9207-1");
 
         List<InventoryAdjustment> transferAdjustments = inventoryAdjustmentRepository
             .findByTransferIdOrderByAdjustedAtAsc(sourceAdjustment.getTransferId());
@@ -417,6 +425,38 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.message").value("quantity must be greater than zero"))
             .andExpect(jsonPath("$.path").value("/api/inventory/arc-9212/transfers"));
+    }
+
+    @Test
+    void rejectsTransferWhenReferenceMetadataIsPartial() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9213",
+                "main",
+                new BigDecimal("5"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+
+        String payload = """
+            {
+              "sourceLocationCode": "main",
+              "destinationLocationCode": "wh-west",
+              "quantity": 1,
+              "reason": "Invalid transfer",
+              "adjustedBy": "ops@arcanaerp.com",
+              "referenceType": "FULFILLMENT"
+            }
+            """;
+
+        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9213")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("referenceType and referenceId must both be provided together"))
+            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9213/transfers"));
     }
 
     @Test

@@ -34,7 +34,7 @@ Notes:
 | Identity | `com.arcanaerp.platform.identity` | Tenant/role/user primitives, org-unit directory, cross-module actor lookup | `UserDirectory`, `OrgUnitDirectory`, `IdentityActorLookup` | `POST /api/identity/users`, `GET /api/identity/users` |
 | Products | `com.arcanaerp.platform.products` | Product catalog, activation lifecycle, activation audit history, orderability lookup | `ProductCatalog`, `ProductLookup` | `POST /api/products`, `GET /api/products`, `PATCH /api/products/{sku}/active`, `GET /api/products/{sku}/activation-history` |
 | Orders | `com.arcanaerp.platform.orders` | Sales order creation, listing, and status transitions | `OrderManagement` | `POST /api/orders`, `GET /api/orders`, `PATCH /api/orders/{orderNumber}/status` |
-| Inventory | `com.arcanaerp.platform.inventory` | On-hand inventory by `sku + location`, location-scoped adjustment transactions, and location-to-location transfers | `InventoryAvailability` | `GET /api/inventory/{sku}`, `POST /api/inventory/{sku}/adjustments`, `GET /api/inventory/{sku}/adjustments`, `POST /api/inventory/{sku}/transfers`, `GET /api/inventory/{sku}/transfers` |
+| Inventory | `com.arcanaerp.platform.inventory` | On-hand inventory by `sku + location`, location-scoped adjustment transactions, and location-to-location transfers with optional source-document references | `InventoryAvailability` | `GET /api/inventory/{sku}`, `POST /api/inventory/{sku}/adjustments`, `GET /api/inventory/{sku}/adjustments`, `POST /api/inventory/{sku}/transfers`, `GET /api/inventory/{sku}/transfers` |
 
 ## Boundary Rules In Use
 

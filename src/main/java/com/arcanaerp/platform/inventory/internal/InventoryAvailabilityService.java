@@ -77,6 +77,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
                 saved.getOnHandQuantity(),
                 reason,
                 adjustedBy,
+                null,
+                null,
                 adjustedAt
             )
         );
@@ -109,6 +111,9 @@ class InventoryAvailabilityService implements InventoryAvailability {
         BigDecimal quantity = normalizePositiveQuantity(command.quantity());
         String reason = normalizeRequired(command.reason(), "reason");
         String adjustedBy = normalizeRequired(command.adjustedBy(), "adjustedBy").toLowerCase();
+        String referenceType = normalizeOptionalReferenceType(command.referenceType());
+        String referenceId = normalizeOptionalReferenceId(command.referenceId());
+        validateReferencePair(referenceType, referenceId);
 
         ensureLocationExists(sourceLocationCode);
         ensureLocationExists(destinationLocationCode);
@@ -138,6 +143,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
                 savedSource.getOnHandQuantity(),
                 reason,
                 adjustedBy,
+                referenceType,
+                referenceId,
                 adjustedAt
             )
         );
@@ -152,6 +159,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
                 savedDestination.getOnHandQuantity(),
                 reason,
                 adjustedBy,
+                referenceType,
+                referenceId,
                 adjustedAt
             )
         );
@@ -166,6 +175,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
             savedDestination.getOnHandQuantity(),
             reason,
             adjustedBy,
+            referenceType,
+            referenceId,
             adjustedAt
         );
     }
@@ -177,6 +188,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
         String sourceLocationCode,
         String destinationLocationCode,
         String adjustedBy,
+        String referenceType,
+        String referenceId,
         Instant adjustedAtFrom,
         Instant adjustedAtTo,
         PageQuery pageQuery
@@ -189,12 +202,16 @@ class InventoryAvailabilityService implements InventoryAvailability {
             "destinationLocationCode"
         );
         String normalizedAdjustedBy = adjustedBy == null ? null : normalizeRequired(adjustedBy, "adjustedBy").toLowerCase();
+        String normalizedReferenceType = normalizeOptionalReferenceType(referenceType);
+        String normalizedReferenceId = normalizeOptionalReferenceId(referenceId);
 
         Page<InventoryAdjustmentRepository.TransferHistoryProjection> transfers = inventoryAdjustmentRepository.findTransferHistoryFiltered(
             normalizedSku,
             normalizedSourceLocationCode,
             normalizedDestinationLocationCode,
             normalizedAdjustedBy,
+            normalizedReferenceType,
+            normalizedReferenceId,
             adjustedAtFrom,
             adjustedAtTo,
             PageRequest.of(pageQuery.page(), pageQuery.size())
@@ -210,6 +227,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
                 transfer.getDestinationOnHandQuantity(),
                 transfer.getReason(),
                 transfer.getAdjustedBy(),
+                transfer.getReferenceType(),
+                transfer.getReferenceId(),
                 transfer.getTransferredAt()
             ));
     }
@@ -274,6 +293,33 @@ class InventoryAvailabilityService implements InventoryAvailability {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private static String normalizeOptionalReferenceType(String referenceType) {
+        if (referenceType == null) {
+            return null;
+        }
+        if (referenceType.isBlank()) {
+            throw new IllegalArgumentException("referenceType is required");
+        }
+        return referenceType.trim().toUpperCase();
+    }
+
+    private static String normalizeOptionalReferenceId(String referenceId) {
+        if (referenceId == null) {
+            return null;
+        }
+        if (referenceId.isBlank()) {
+            throw new IllegalArgumentException("referenceId is required");
+        }
+        return referenceId.trim();
+    }
+
+    private static void validateReferencePair(String referenceType, String referenceId) {
+        if ((referenceType == null) == (referenceId == null)) {
+            return;
+        }
+        throw new IllegalArgumentException("referenceType and referenceId must both be provided together");
     }
 
     private static String normalizeLocationCode(String locationCode) {

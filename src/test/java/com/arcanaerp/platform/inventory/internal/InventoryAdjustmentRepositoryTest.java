@@ -40,6 +40,8 @@ class InventoryAdjustmentRepositoryTest {
                 new BigDecimal("17"),
                 "Cycle count correction",
                 "ops-a@arcanaerp.com",
+                null,
+                null,
                 Instant.parse("2026-03-01T01:00:00Z")
             )
         );
@@ -54,6 +56,8 @@ class InventoryAdjustmentRepositoryTest {
                 new BigDecimal("22"),
                 "Receiving posted",
                 "ops-b@arcanaerp.com",
+                null,
+                null,
                 Instant.parse("2026-03-01T02:00:00Z")
             )
         );
@@ -88,6 +92,8 @@ class InventoryAdjustmentRepositoryTest {
                 new BigDecimal("18"),
                 "Cycle count correction",
                 "ops-a@arcanaerp.com",
+                null,
+                null,
                 Instant.parse("2026-03-01T01:00:00Z")
             )
         );
@@ -102,6 +108,8 @@ class InventoryAdjustmentRepositoryTest {
                 new BigDecimal("22"),
                 "Receiving posted",
                 "ops-b@arcanaerp.com",
+                null,
+                null,
                 Instant.parse("2026-03-01T02:00:00Z")
             )
         );
@@ -158,6 +166,8 @@ class InventoryAdjustmentRepositoryTest {
                 new BigDecimal("16"),
                 "Inter-warehouse transfer",
                 "ops-a@arcanaerp.com",
+                "FULFILLMENT",
+                "FUL-9302-A",
                 Instant.parse("2026-03-01T01:00:00Z")
             )
         );
@@ -172,6 +182,8 @@ class InventoryAdjustmentRepositoryTest {
                 new BigDecimal("6"),
                 "Inter-warehouse transfer",
                 "ops-a@arcanaerp.com",
+                "FULFILLMENT",
+                "FUL-9302-A",
                 Instant.parse("2026-03-01T01:00:01Z")
             )
         );
@@ -224,6 +236,8 @@ class InventoryAdjustmentRepositoryTest {
                 new BigDecimal("17"),
                 "Rebalancing A",
                 "ops-a@arcanaerp.com",
+                "FULFILLMENT",
+                "FUL-9303-A",
                 Instant.parse("2026-03-01T01:00:00Z")
             )
         );
@@ -238,6 +252,8 @@ class InventoryAdjustmentRepositoryTest {
                 new BigDecimal("7"),
                 "Rebalancing A",
                 "ops-a@arcanaerp.com",
+                "FULFILLMENT",
+                "FUL-9303-A",
                 Instant.parse("2026-03-01T01:00:00Z")
             )
         );
@@ -254,6 +270,8 @@ class InventoryAdjustmentRepositoryTest {
                 new BigDecimal("5"),
                 "Rebalancing B",
                 "ops-b@arcanaerp.com",
+                "ORDER",
+                "SO-9303-B",
                 Instant.parse("2026-03-01T02:00:00Z")
             )
         );
@@ -268,6 +286,8 @@ class InventoryAdjustmentRepositoryTest {
                 new BigDecimal("3"),
                 "Rebalancing B",
                 "ops-b@arcanaerp.com",
+                "ORDER",
+                "SO-9303-B",
                 Instant.parse("2026-03-01T02:00:00Z")
             )
         );
@@ -275,6 +295,8 @@ class InventoryAdjustmentRepositoryTest {
         var filteredBySource = inventoryAdjustmentRepository.findTransferHistoryFiltered(
             "ARC-9303",
             "MAIN",
+            null,
+            null,
             null,
             null,
             null,
@@ -288,6 +310,8 @@ class InventoryAdjustmentRepositoryTest {
             "ops-b@arcanaerp.com",
             null,
             null,
+            null,
+            null,
             PageRequest.of(0, 10)
         );
         var filteredByDate = inventoryAdjustmentRepository.findTransferHistoryFiltered(
@@ -295,8 +319,21 @@ class InventoryAdjustmentRepositoryTest {
             null,
             null,
             null,
+            null,
+            null,
             Instant.parse("2026-03-01T01:30:00Z"),
             Instant.parse("2026-03-01T02:30:00Z"),
+            PageRequest.of(0, 10)
+        );
+        var filteredByReference = inventoryAdjustmentRepository.findTransferHistoryFiltered(
+            "ARC-9303",
+            null,
+            null,
+            null,
+            "FULFILLMENT",
+            "FUL-9303-A",
+            null,
+            null,
             PageRequest.of(0, 10)
         );
 
@@ -311,5 +348,10 @@ class InventoryAdjustmentRepositoryTest {
 
         assertThat(filteredByDate.getTotalElements()).isEqualTo(1);
         assertThat(filteredByDate.getContent().getFirst().getTransferId()).isEqualTo(transferB);
+
+        assertThat(filteredByReference.getTotalElements()).isEqualTo(1);
+        assertThat(filteredByReference.getContent().getFirst().getTransferId()).isEqualTo(transferA);
+        assertThat(filteredByReference.getContent().getFirst().getReferenceType()).isEqualTo("FULFILLMENT");
+        assertThat(filteredByReference.getContent().getFirst().getReferenceId()).isEqualTo("FUL-9303-A");
     }
 }

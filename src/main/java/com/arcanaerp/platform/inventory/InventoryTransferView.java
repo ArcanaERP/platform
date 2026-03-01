@@ -14,6 +14,8 @@ public record InventoryTransferView(
     BigDecimal destinationOnHandQuantity,
     String reason,
     String adjustedBy,
+    String referenceType,
+    String referenceId,
     Instant transferredAt
 ) {
 }

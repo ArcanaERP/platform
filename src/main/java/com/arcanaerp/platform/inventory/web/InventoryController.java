@@ -104,7 +104,9 @@ public class InventoryController {
                 request.destinationLocationCode(),
                 request.quantity(),
                 request.reason(),
-                request.adjustedBy()
+                request.adjustedBy(),
+                request.referenceType(),
+                request.referenceId()
             )
         );
         return new InventoryTransferResponse(
@@ -117,6 +119,8 @@ public class InventoryController {
             transfer.destinationOnHandQuantity(),
             transfer.reason(),
             transfer.adjustedBy(),
+            transfer.referenceType(),
+            transfer.referenceId(),
             transfer.transferredAt()
         );
     }
@@ -127,6 +131,8 @@ public class InventoryController {
         @RequestParam(required = false) String sourceLocationCode,
         @RequestParam(required = false) String destinationLocationCode,
         @RequestParam(required = false) String adjustedBy,
+        @RequestParam(required = false) String referenceType,
+        @RequestParam(required = false) String referenceId,
         @RequestParam(required = false) String adjustedAtFrom,
         @RequestParam(required = false) String adjustedAtTo,
         @RequestParam(required = false) Integer page,
@@ -142,6 +148,8 @@ public class InventoryController {
                 normalizeOptionalTransferLocationCode(sourceLocationCode, "sourceLocationCode"),
                 normalizeOptionalTransferLocationCode(destinationLocationCode, "destinationLocationCode"),
                 normalizedAdjustedBy,
+                normalizeOptionalReferenceType(referenceType),
+                normalizeOptionalReferenceId(referenceId),
                 parsedAdjustedAtFrom,
                 parsedAdjustedAtTo,
                 PageQuery.of(page, size)
@@ -174,6 +182,8 @@ public class InventoryController {
             transfer.destinationOnHandQuantity(),
             transfer.reason(),
             transfer.adjustedBy(),
+            transfer.referenceType(),
+            transfer.referenceId(),
             transfer.transferredAt()
         );
     }
@@ -206,6 +216,26 @@ public class InventoryController {
             throw new IllegalArgumentException("adjustedBy query parameter must not be blank");
         }
         return adjustedBy.trim().toLowerCase();
+    }
+
+    private static String normalizeOptionalReferenceType(String referenceType) {
+        if (referenceType == null) {
+            return null;
+        }
+        if (referenceType.isBlank()) {
+            throw new IllegalArgumentException("referenceType query parameter must not be blank");
+        }
+        return referenceType.trim().toUpperCase();
+    }
+
+    private static String normalizeOptionalReferenceId(String referenceId) {
+        if (referenceId == null) {
+            return null;
+        }
+        if (referenceId.isBlank()) {
+            throw new IllegalArgumentException("referenceId query parameter must not be blank");
+        }
+        return referenceId.trim();
     }
 
     private static Instant parseOptionalInstant(String value, String parameterName) {

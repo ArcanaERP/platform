@@ -36,6 +36,8 @@ erDiagram
       DECIMAL currentOnHandQuantity
       STRING reason
       STRING adjustedBy
+      STRING referenceType
+      STRING referenceId
       INSTANT adjustedAt
     }
 ```
@@ -47,6 +49,7 @@ erDiagram
 - `inventory_adjustments.inventoryItemId` is a logical reference to `inventory_items.id`.
 - Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` stores latest per-location state.
 - Location transfers write two adjustment rows with a shared `transferId` (source negative delta, destination positive delta).
+- Transfer rows can optionally carry source-document metadata (`referenceType`, `referenceId`) for parity traceability.
 
 ## Constraint Notes
 
@@ -57,3 +60,4 @@ erDiagram
   - `inventory_adjustments(inventoryItemId, adjustedAt)`
   - `inventory_adjustments(inventoryItemId, adjustedBy, adjustedAt)`
   - `inventory_adjustments(transferId)`
+  - `inventory_adjustments(sku, referenceType, referenceId, adjustedAt)`

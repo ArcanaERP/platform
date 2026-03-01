@@ -17,6 +17,8 @@ public interface InventoryAvailability {
         String sourceLocationCode,
         String destinationLocationCode,
         String adjustedBy,
+        String referenceType,
+        String referenceId,
         Instant adjustedAtFrom,
         Instant adjustedAtTo,
         PageQuery pageQuery
