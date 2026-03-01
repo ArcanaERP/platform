@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 
 public record ChangeAgreementStatusRequest(
     @NotNull AgreementStatus status,
+    @NotBlank String tenantCode,
     @NotBlank String reason,
     @NotBlank String changedBy
 ) {

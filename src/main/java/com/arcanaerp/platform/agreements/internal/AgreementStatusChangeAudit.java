@@ -19,7 +19,10 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
     name = "agreement_status_change_audits",
-    indexes = @Index(name = "idx_asca_agreement_changed", columnList = "agreementId,changedAt")
+    indexes = {
+        @Index(name = "idx_asca_agreement_changed", columnList = "agreementId,changedAt"),
+        @Index(name = "idx_asca_agreement_tenant_changed", columnList = "agreementId,tenantCode,changedAt")
+    }
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -40,6 +43,9 @@ class AgreementStatusChangeAudit {
     @Column(nullable = false, length = 16)
     private AgreementStatus currentStatus;
 
+    @Column(nullable = false, length = 64)
+    private String tenantCode;
+
     @Column(nullable = false, length = 512)
     private String reason;
 
@@ -54,6 +60,7 @@ class AgreementStatusChangeAudit {
         UUID agreementId,
         AgreementStatus previousStatus,
         AgreementStatus currentStatus,
+        String tenantCode,
         String reason,
         String changedBy,
         Instant changedAt
@@ -62,6 +69,7 @@ class AgreementStatusChangeAudit {
         this.agreementId = agreementId;
         this.previousStatus = previousStatus;
         this.currentStatus = currentStatus;
+        this.tenantCode = tenantCode;
         this.reason = reason;
         this.changedBy = changedBy;
         this.changedAt = changedAt;
@@ -71,6 +79,7 @@ class AgreementStatusChangeAudit {
         UUID agreementId,
         AgreementStatus previousStatus,
         AgreementStatus currentStatus,
+        String tenantCode,
         String reason,
         String changedBy,
         Instant changedAt
@@ -83,6 +92,9 @@ class AgreementStatusChangeAudit {
         }
         if (currentStatus == null) {
             throw new IllegalArgumentException("currentStatus is required");
+        }
+        if (tenantCode == null || tenantCode.isBlank()) {
+            throw new IllegalArgumentException("tenantCode is required");
         }
         if (reason == null || reason.isBlank()) {
             throw new IllegalArgumentException("reason is required");
@@ -98,6 +110,7 @@ class AgreementStatusChangeAudit {
             agreementId,
             previousStatus,
             currentStatus,
+            tenantCode.trim().toUpperCase(),
             reason.trim(),
             changedBy.trim().toLowerCase(),
             changedAt

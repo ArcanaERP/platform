@@ -22,6 +22,7 @@ erDiagram
       UUID agreementId
       STRING previousStatus
       STRING currentStatus
+      STRING tenantCode
       STRING reason
       STRING changedBy
       INSTANT changedAt
@@ -41,9 +42,10 @@ erDiagram
   - `terminatedAt` set when agreement transitions to `TERMINATED`
 - Immutable status history:
   - each successful status transition appends one row to `agreement_status_change_audits`
-  - transition requests require attribution metadata (`reason`, `changedBy`)
+  - transition requests require attribution metadata (`tenantCode`, `reason`, `changedBy`)
+  - transitions validate `changedBy` against `identity` module actor lookup within `tenantCode`
   - history is exposed via `GET /api/agreements/{agreementNumber}/status-history?page=&size=`
-  - history rows include `reason` and normalized-lowercase `changedBy`
+  - history rows include `tenantCode`, `reason`, and normalized-lowercase `changedBy`
   - no-op transitions (`ACTIVE -> ACTIVE`, etc.) do not append history rows
 - Listing/query behavior:
   - agreements list endpoint supports optional `status` filter (`DRAFT`, `ACTIVE`, `TERMINATED`)

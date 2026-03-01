@@ -9,6 +9,7 @@ public record AgreementStatusChangeResponse(
     String agreementNumber,
     AgreementStatus previousStatus,
     AgreementStatus currentStatus,
+    String tenantCode,
     String reason,
     String changedBy,
     Instant changedAt

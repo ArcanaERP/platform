@@ -8,6 +8,7 @@ import com.arcanaerp.platform.agreements.ChangeAgreementStatusCommand;
 import com.arcanaerp.platform.agreements.CreateAgreementCommand;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.identity.IdentityActorLookup;
 import java.time.Clock;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ class AgreementManagementService implements AgreementManagement {
 
     private final AgreementRepository agreementRepository;
     private final AgreementStatusChangeAuditRepository agreementStatusChangeAuditRepository;
+    private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
 
     @Override
@@ -59,11 +61,18 @@ class AgreementManagementService implements AgreementManagement {
         if (targetStatus == null) {
             throw new IllegalArgumentException("status is required");
         }
+        String tenantCode = normalizeTenantCode(command.tenantCode());
         String reason = normalizeRequired(command.reason(), "reason");
         String changedBy = normalizeRequired(command.changedBy(), "changedBy").toLowerCase();
 
         Agreement agreement = agreementRepository.findByAgreementNumber(normalizedAgreementNumber)
             .orElseThrow(() -> new java.util.NoSuchElementException("Agreement not found: " + normalizedAgreementNumber));
+
+        if (!identityActorLookup.actorExists(tenantCode, changedBy)) {
+            throw new IllegalArgumentException(
+                "Agreement status actor not found in tenant " + tenantCode + ": " + changedBy
+            );
+        }
 
         AgreementStatus previousStatus = agreement.getStatus();
         Instant changedAt = Instant.now(clock);
@@ -75,6 +84,7 @@ class AgreementManagementService implements AgreementManagement {
                     saved.getId(),
                     previousStatus,
                     saved.getStatus(),
+                    tenantCode,
                     reason,
                     changedBy,
                     changedAt
@@ -112,6 +122,7 @@ class AgreementManagementService implements AgreementManagement {
                 agreement.getAgreementNumber(),
                 audit.getPreviousStatus(),
                 audit.getCurrentStatus(),
+                audit.getTenantCode(),
                 audit.getReason(),
                 audit.getChangedBy(),
                 audit.getChangedAt()
@@ -123,6 +134,10 @@ class AgreementManagementService implements AgreementManagement {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private static String normalizeTenantCode(String tenantCode) {
+        return normalizeRequired(tenantCode, "tenantCode").toUpperCase();
     }
 
     private Agreement findAgreementByNumber(String agreementNumber) {

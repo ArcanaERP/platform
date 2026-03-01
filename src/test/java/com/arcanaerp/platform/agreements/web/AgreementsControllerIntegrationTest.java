@@ -1,5 +1,6 @@
 package com.arcanaerp.platform.agreements.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.nullValue;
@@ -19,6 +20,12 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest
 @AutoConfigureMockMvc
 class AgreementsControllerIntegrationTest {
+
+    private static final String AGREEMENTS_TENANT_CODE = "TENAGR01";
+    private static final String AGREEMENTS_ALT_TENANT_CODE = "TENAGR02";
+    private static final String UNKNOWN_TENANT_CODE = "TENAGR99";
+    private static final String MISMATCH_ACTOR_TENANT_CODE = "TENAGR11";
+    private static final String MISMATCH_REQUEST_TENANT_CODE = "TENAGR12";
 
     @Autowired
     private MockMvc mockMvc;
@@ -138,17 +145,19 @@ class AgreementsControllerIntegrationTest {
         String activeStatusPayload = """
             {
               "status": "ACTIVE",
+              "tenantCode": "%s",
               "reason": "Initial activation",
               "changedBy": "legal@arcanaerp.com"
             }
-            """;
+            """.formatted(AGREEMENTS_TENANT_CODE);
         String terminatedStatusPayload = """
             {
               "status": "TERMINATED",
+              "tenantCode": "%s",
               "reason": "Mutual termination",
               "changedBy": "legal@arcanaerp.com"
             }
-            """;
+            """.formatted(AGREEMENTS_ALT_TENANT_CODE);
 
         mockMvc.perform(post("/api/agreements")
             .contentType(MediaType.APPLICATION_JSON)
@@ -160,6 +169,7 @@ class AgreementsControllerIntegrationTest {
             .content(activePayload))
             .andExpect(status().isCreated());
 
+        registerActor(AGREEMENTS_TENANT_CODE, "legal@arcanaerp.com");
         mockMvc.perform(patch("/api/agreements/agr-3011/status")
             .contentType(MediaType.APPLICATION_JSON)
             .content(activeStatusPayload))
@@ -170,6 +180,7 @@ class AgreementsControllerIntegrationTest {
             .content(terminatedPayload))
             .andExpect(status().isCreated());
 
+        registerActor(AGREEMENTS_ALT_TENANT_CODE, "legal@arcanaerp.com");
         mockMvc.perform(patch("/api/agreements/agr-3012/status")
             .contentType(MediaType.APPLICATION_JSON)
             .content(terminatedStatusPayload))
@@ -210,16 +221,18 @@ class AgreementsControllerIntegrationTest {
         String activatePayload = """
             {
               "status": "ACTIVE",
+              "tenantCode": "%s",
               "reason": "Initial activation",
               "changedBy": "LEGAL@ARCANAERP.COM"
             }
-            """;
+            """.formatted(AGREEMENTS_TENANT_CODE);
 
         mockMvc.perform(post("/api/agreements")
             .contentType(MediaType.APPLICATION_JSON)
             .content(createPayload))
             .andExpect(status().isCreated());
 
+        registerActor(AGREEMENTS_TENANT_CODE, "legal@arcanaerp.com");
         mockMvc.perform(patch("/api/agreements/agr-3020/status")
             .contentType(MediaType.APPLICATION_JSON)
             .content(activatePayload))
@@ -233,6 +246,7 @@ class AgreementsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].agreementNumber").value("AGR-3020"))
             .andExpect(jsonPath("$.items[0].previousStatus").value("DRAFT"))
             .andExpect(jsonPath("$.items[0].currentStatus").value("ACTIVE"))
+            .andExpect(jsonPath("$.items[0].tenantCode").value(AGREEMENTS_TENANT_CODE))
             .andExpect(jsonPath("$.items[0].reason").value("Initial activation"))
             .andExpect(jsonPath("$.items[0].changedBy").value("legal@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
@@ -251,16 +265,18 @@ class AgreementsControllerIntegrationTest {
         String activatePayload = """
             {
               "status": "ACTIVE",
+              "tenantCode": "%s",
               "reason": "Initial activation",
               "changedBy": "LEGAL@ARCANAERP.COM"
             }
-            """;
+            """.formatted(AGREEMENTS_TENANT_CODE);
 
         mockMvc.perform(post("/api/agreements")
             .contentType(MediaType.APPLICATION_JSON)
             .content(createPayload))
             .andExpect(status().isCreated());
 
+        registerActor(AGREEMENTS_TENANT_CODE, "legal@arcanaerp.com");
         mockMvc.perform(patch("/api/agreements/agr-3021/status")
             .contentType(MediaType.APPLICATION_JSON)
             .content(activatePayload))
@@ -276,6 +292,7 @@ class AgreementsControllerIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].previousStatus").value("DRAFT"))
             .andExpect(jsonPath("$.items[0].currentStatus").value("ACTIVE"))
+            .andExpect(jsonPath("$.items[0].tenantCode").value(AGREEMENTS_TENANT_CODE))
             .andExpect(jsonPath("$.items[0].reason").value("Initial activation"))
             .andExpect(jsonPath("$.items[0].changedBy").value("legal@arcanaerp.com"));
     }
@@ -320,10 +337,11 @@ class AgreementsControllerIntegrationTest {
         String transitionPayload = """
             {
               "status": "ACTIVE",
+              "tenantCode": "%s",
               "reason": "   ",
               "changedBy": "legal@arcanaerp.com"
             }
-            """;
+            """.formatted(AGREEMENTS_TENANT_CODE);
 
         mockMvc.perform(post("/api/agreements")
             .contentType(MediaType.APPLICATION_JSON)
@@ -341,6 +359,82 @@ class AgreementsControllerIntegrationTest {
     }
 
     @Test
+    void rejectsStatusTransitionWhenActorUnknownInTenant() throws Exception {
+        String createPayload = """
+            {
+              "agreementNumber": "agr-3023",
+              "name": "Unknown Actor Agreement",
+              "agreementType": "service",
+              "effectiveFrom": "2026-03-01T00:00:00Z"
+            }
+            """;
+        String transitionPayload = """
+            {
+              "status": "ACTIVE",
+              "tenantCode": "%s",
+              "reason": "Initial activation",
+              "changedBy": "unknown@arcanaerp.com"
+            }
+            """.formatted(UNKNOWN_TENANT_CODE);
+
+        mockMvc.perform(post("/api/agreements")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(createPayload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(patch("/api/agreements/agr-3023/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(transitionPayload))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message")
+                .value("Agreement status actor not found in tenant "
+                    + UNKNOWN_TENANT_CODE
+                    + ": unknown@arcanaerp.com"))
+            .andExpect(jsonPath("$.path").value("/api/agreements/agr-3023/status"));
+    }
+
+    @Test
+    void rejectsStatusTransitionWhenActorExistsInDifferentTenant() throws Exception {
+        String createPayload = """
+            {
+              "agreementNumber": "agr-3024",
+              "name": "Mismatched Actor Agreement",
+              "agreementType": "service",
+              "effectiveFrom": "2026-03-01T00:00:00Z"
+            }
+            """;
+        String transitionPayload = """
+            {
+              "status": "ACTIVE",
+              "tenantCode": "%s",
+              "reason": "Initial activation",
+              "changedBy": "tenant.actor@arcanaerp.com"
+            }
+            """.formatted(MISMATCH_REQUEST_TENANT_CODE);
+
+        mockMvc.perform(post("/api/agreements")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(createPayload))
+            .andExpect(status().isCreated());
+
+        registerActor(MISMATCH_ACTOR_TENANT_CODE, "tenant.actor@arcanaerp.com");
+
+        mockMvc.perform(patch("/api/agreements/agr-3024/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(transitionPayload))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message")
+                .value("Agreement status actor not found in tenant "
+                    + MISMATCH_REQUEST_TENANT_CODE
+                    + ": tenant.actor@arcanaerp.com"))
+            .andExpect(jsonPath("$.path").value("/api/agreements/agr-3024/status"));
+    }
+
+    @Test
     void transitionsAgreementStatusFromDraftToActive() throws Exception {
         String createPayload = """
             {
@@ -353,10 +447,11 @@ class AgreementsControllerIntegrationTest {
         String statusPayload = """
             {
               "status": "ACTIVE",
+              "tenantCode": "%s",
               "reason": "Initial activation",
               "changedBy": "legal@arcanaerp.com"
             }
-            """;
+            """.formatted(AGREEMENTS_TENANT_CODE);
 
         mockMvc.perform(post("/api/agreements")
             .contentType(MediaType.APPLICATION_JSON)
@@ -364,6 +459,7 @@ class AgreementsControllerIntegrationTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.status").value("DRAFT"));
 
+        registerActor(AGREEMENTS_TENANT_CODE, "legal@arcanaerp.com");
         mockMvc.perform(patch("/api/agreements/agr-3002/status")
             .contentType(MediaType.APPLICATION_JSON)
             .content(statusPayload))
@@ -387,23 +483,26 @@ class AgreementsControllerIntegrationTest {
         String activatePayload = """
             {
               "status": "ACTIVE",
+              "tenantCode": "%s",
               "reason": "Initial activation",
               "changedBy": "legal@arcanaerp.com"
             }
-            """;
+            """.formatted(AGREEMENTS_TENANT_CODE);
         String terminatePayload = """
             {
               "status": "TERMINATED",
+              "tenantCode": "%s",
               "reason": "Termination attempt",
               "changedBy": "legal@arcanaerp.com"
             }
-            """;
+            """.formatted(AGREEMENTS_TENANT_CODE);
 
         mockMvc.perform(post("/api/agreements")
             .contentType(MediaType.APPLICATION_JSON)
             .content(createPayload))
             .andExpect(status().isCreated());
 
+        registerActor(AGREEMENTS_TENANT_CODE, "legal@arcanaerp.com");
         mockMvc.perform(patch("/api/agreements/agr-3003/status")
             .contentType(MediaType.APPLICATION_JSON)
             .content(activatePayload))
@@ -425,10 +524,11 @@ class AgreementsControllerIntegrationTest {
         String statusPayload = """
             {
               "status": "ACTIVE",
+              "tenantCode": "%s",
               "reason": "Initial activation",
               "changedBy": "legal@arcanaerp.com"
             }
-            """;
+            """.formatted(AGREEMENTS_TENANT_CODE);
 
         mockMvc.perform(patch("/api/agreements/agr-missing/status")
             .contentType(MediaType.APPLICATION_JSON)
@@ -438,5 +538,29 @@ class AgreementsControllerIntegrationTest {
             .andExpect(jsonPath("$.error").value("Not Found"))
             .andExpect(jsonPath("$.message").value("Agreement not found: AGR-MISSING"))
             .andExpect(jsonPath("$.path").value("/api/agreements/agr-missing/status"));
+    }
+
+    private void registerActor(String tenantCode, String email) throws Exception {
+        String payload = """
+            {
+              "tenantCode": "%s",
+              "tenantName": "Agreements Tenant %s",
+              "roleCode": "OPS",
+              "roleName": "Operations",
+              "email": "%s",
+              "displayName": "Agreements Actor"
+            }
+            """.formatted(tenantCode, tenantCode, email);
+
+        var result = mockMvc.perform(post("/api/identity/users").contentType(MediaType.APPLICATION_JSON).content(payload))
+            .andReturn();
+        int statusCode = result.getResponse().getStatus();
+        if (statusCode == 400) {
+            assertThat(result.getResponse().getContentAsString()).contains("User email already exists in tenant");
+            return;
+        }
+        if (statusCode != 201) {
+            throw new AssertionError("Unexpected status while registering actor: " + statusCode);
+        }
     }
 }
