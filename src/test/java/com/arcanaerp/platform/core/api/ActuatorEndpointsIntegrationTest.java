@@ -27,4 +27,10 @@ class ActuatorEndpointsIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$").isMap());
     }
+
+    @Test
+    void nonExposedActuatorEndpointsAreUnavailable() throws Exception {
+        mockMvc.perform(get("/actuator/env"))
+            .andExpect(status().isNotFound());
+    }
 }
