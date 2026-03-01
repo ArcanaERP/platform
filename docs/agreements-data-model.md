@@ -23,6 +23,7 @@ erDiagram
 
 - This initial `agreements` slice models a single aggregate (`Agreement`) with no external entity links.
 - `agreementNumber` is the external business identifier and is normalized to uppercase.
+- `agreementNumber` is also the direct-read lookup key for `GET /api/agreements/{agreementNumber}`.
 - `agreementType` is stored as an uppercase normalized string for consistent filtering/parity expansion.
 - `status` starts as `DRAFT` and currently supports transitions to `ACTIVE` or `TERMINATED`.
 - Transition timestamps:

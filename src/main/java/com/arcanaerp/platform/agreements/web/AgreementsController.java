@@ -41,6 +41,11 @@ public class AgreementsController {
         return toResponse(agreement);
     }
 
+    @GetMapping("/{agreementNumber}")
+    public AgreementResponse getAgreement(@PathVariable String agreementNumber) {
+        return toResponse(agreementManagement.getAgreement(agreementNumber));
+    }
+
     @GetMapping
     public PageResult<AgreementResponse> listAgreements(
         @RequestParam(required = false) Integer page,

@@ -75,6 +75,41 @@ class AgreementsControllerIntegrationTest {
     }
 
     @Test
+    void getsAgreementByAgreementNumber() throws Exception {
+        String payload = """
+            {
+              "agreementNumber": "agr-3004",
+              "name": "Read Agreement",
+              "agreementType": "service",
+              "effectiveFrom": "2026-03-01T00:00:00Z"
+            }
+            """;
+
+        mockMvc.perform(post("/api/agreements")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/agreements/agr-3004"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.agreementNumber").value("AGR-3004"))
+            .andExpect(jsonPath("$.name").value("Read Agreement"))
+            .andExpect(jsonPath("$.agreementType").value("SERVICE"))
+            .andExpect(jsonPath("$.status").value("DRAFT"))
+            .andExpect(jsonPath("$.effectiveFrom").value("2026-03-01T00:00:00Z"));
+    }
+
+    @Test
+    void returnsNotFoundWhenGettingUnknownAgreement() throws Exception {
+        mockMvc.perform(get("/api/agreements/agr-missing-read"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Agreement not found: AGR-MISSING-READ"))
+            .andExpect(jsonPath("$.path").value("/api/agreements/agr-missing-read"));
+    }
+
+    @Test
     void listsAgreementsWithOptionalStatusFilter() throws Exception {
         String draftPayload = """
             {

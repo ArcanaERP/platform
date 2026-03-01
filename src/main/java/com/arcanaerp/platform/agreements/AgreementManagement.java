@@ -7,6 +7,8 @@ public interface AgreementManagement {
 
     AgreementView createAgreement(CreateAgreementCommand command);
 
+    AgreementView getAgreement(String agreementNumber);
+
     PageResult<AgreementView> listAgreements(PageQuery pageQuery, AgreementStatus status);
 
     AgreementView changeAgreementStatus(ChangeAgreementStatusCommand command);

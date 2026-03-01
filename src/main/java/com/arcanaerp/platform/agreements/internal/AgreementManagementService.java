@@ -68,6 +68,15 @@ class AgreementManagementService implements AgreementManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public AgreementView getAgreement(String agreementNumber) {
+        String normalizedAgreementNumber = normalizeRequired(agreementNumber, "agreementNumber").toUpperCase();
+        Agreement agreement = agreementRepository.findByAgreementNumber(normalizedAgreementNumber)
+            .orElseThrow(() -> new java.util.NoSuchElementException("Agreement not found: " + normalizedAgreementNumber));
+        return toView(agreement);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<AgreementView> listAgreements(PageQuery pageQuery, AgreementStatus status) {
         Page<Agreement> agreements = status == null
             ? agreementRepository.findAll(pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt")))

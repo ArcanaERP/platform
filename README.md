@@ -101,6 +101,7 @@ Orders:
 Agreements:
 
 - `POST /api/agreements`
+- `GET /api/agreements/{agreementNumber}`
 - `GET /api/agreements?page=&size=&status=`
 - `PATCH /api/agreements/{agreementNumber}/status`
 
