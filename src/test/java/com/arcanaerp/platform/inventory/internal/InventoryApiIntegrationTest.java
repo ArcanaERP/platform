@@ -12,11 +12,21 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -34,6 +44,9 @@ class InventoryApiIntegrationTest {
 
     @Autowired
     private InventoryAdjustmentRepository inventoryAdjustmentRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @MockitoSpyBean
     private InventoryTransferReversalIdempotencyRepository reversalIdempotencyRepository;
@@ -771,7 +784,7 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
-    void returnsConflictWhenIdempotencyClaimCollides() throws Exception {
+    void concurrentFirstWriteWithSameIdempotencyKeyReturnsConflictForOneRequest() throws Exception {
         inventoryItemRepository.save(
             InventoryItem.create(
                 "arc-9223",
@@ -816,25 +829,58 @@ class InventoryApiIntegrationTest {
             .getFirst()
             .getTransferId();
 
+        CountDownLatch firstClaimBlocked = new CountDownLatch(1);
+        CountDownLatch releaseFirstClaim = new CountDownLatch(1);
+        AtomicBoolean firstInvocation = new AtomicBoolean(true);
         doAnswer(invocation -> {
-            throw new DataIntegrityViolationException("uk_inventory_reversal_idempotency_transfer_key");
+            if (firstInvocation.compareAndSet(true, false)) {
+                firstClaimBlocked.countDown();
+                if (!releaseFirstClaim.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Timed out waiting to release first idempotency claim");
+                }
+            }
+            InventoryTransferReversalIdempotency entity = invocation.getArgument(0);
+            try {
+                entityManager.persist(entity);
+                entityManager.flush();
+                return entity;
+            } catch (PersistenceException exception) {
+                throw new DataIntegrityViolationException("idempotency key claim conflict", exception);
+            }
         }).when(reversalIdempotencyRepository).saveAndFlush(any(InventoryTransferReversalIdempotency.class));
 
-        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .header("Idempotency-Key", "reverse-9223-race")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reversalPayload))
-            .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.status").value(409))
-            .andExpect(jsonPath("$.error").value("Conflict"))
-            .andExpect(jsonPath("$.message").value("Idempotency-Key is already being processed for transferId: " + originalTransferId))
-            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        Callable<Integer> reverseCall = () ->
+            mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
+                    .header("Idempotency-Key", "reverse-9223-race")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(reversalPayload))
+                .andReturn()
+                .getResponse()
+                .getStatus();
 
-        mockMvc.perform(get("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .param("page", "0")
-            .param("size", "10"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.totalItems").value(0));
+        try {
+            Future<Integer> first = executor.submit(reverseCall);
+            assertThat(firstClaimBlocked.await(10, TimeUnit.SECONDS)).isTrue();
+
+            Future<Integer> second = executor.submit(reverseCall);
+            int secondStatus = second.get(15, TimeUnit.SECONDS);
+
+            releaseFirstClaim.countDown();
+            int firstStatus = first.get(15, TimeUnit.SECONDS);
+
+            assertThat(secondStatus).isEqualTo(HttpStatus.CREATED.value());
+            assertThat(firstStatus).isEqualTo(HttpStatus.CONFLICT.value());
+
+            mockMvc.perform(get("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
+                .param("page", "0")
+                .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1));
+        } finally {
+            releaseFirstClaim.countDown();
+            executor.shutdownNow();
+        }
     }
 
     @Test
