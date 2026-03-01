@@ -128,6 +128,7 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
         String sku,
         String tenantCode,
         String changedBy,
+        Boolean currentActive,
         Instant changedAtFrom,
         Instant changedAtTo,
         PageQuery pageQuery
@@ -140,6 +141,7 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
             product.getId(),
             normalizedTenantCode,
             normalizedChangedBy,
+            currentActive,
             changedAtFrom,
             changedAtTo,
             pageRequest

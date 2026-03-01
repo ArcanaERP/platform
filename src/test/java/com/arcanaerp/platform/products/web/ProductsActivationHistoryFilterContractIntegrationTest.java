@@ -117,6 +117,60 @@ class ProductsActivationHistoryFilterContractIntegrationTest {
     }
 
     @Test
+    void filtersActivationHistoryByCurrentActive() throws Exception {
+        String sku = "ARC-3804";
+        String tenantA = "TEN3841";
+        String actorA = "actor-i@arcanaerp.com";
+        String tenantB = "TEN3842";
+        String actorB = "actor-j@arcanaerp.com";
+
+        seedActivationHistory(sku, tenantA, actorA, tenantB, actorB);
+
+        mockMvc.perform(get("/api/products/{sku}/activation-history", sku)
+            .param("page", "0")
+            .param("size", "10")
+            .param("currentActive", "true"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].tenantCode").value(tenantB))
+            .andExpect(jsonPath("$.items[0].changedBy").value(actorB))
+            .andExpect(jsonPath("$.items[0].reason").value(REACTIVATION_REASON));
+
+        mockMvc.perform(get("/api/products/{sku}/activation-history", sku)
+            .param("page", "0")
+            .param("size", "10")
+            .param("currentActive", "false"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].tenantCode").value(tenantA))
+            .andExpect(jsonPath("$.items[0].changedBy").value(actorA))
+            .andExpect(jsonPath("$.items[0].reason").value(DEACTIVATION_REASON));
+    }
+
+    @Test
+    void filtersActivationHistoryByTenantCodeChangedByAndCurrentActive() throws Exception {
+        String sku = "ARC-3805";
+        String tenantA = "TEN3851";
+        String actorA = "actor-k@arcanaerp.com";
+        String tenantB = "TEN3852";
+        String actorB = "actor-l@arcanaerp.com";
+
+        seedActivationHistory(sku, tenantA, actorA, tenantB, actorB);
+
+        mockMvc.perform(get("/api/products/{sku}/activation-history", sku)
+            .param("page", "0")
+            .param("size", "10")
+            .param("tenantCode", tenantB)
+            .param("changedBy", actorB)
+            .param("currentActive", "true"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].tenantCode").value(tenantB))
+            .andExpect(jsonPath("$.items[0].changedBy").value(actorB))
+            .andExpect(jsonPath("$.items[0].reason").value(REACTIVATION_REASON));
+    }
+
+    @Test
     void rejectsBlankTenantCodeFilter() throws Exception {
         mockMvc.perform(get("/api/products/arc-3890/activation-history")
             .param("page", "0")
@@ -140,6 +194,32 @@ class ProductsActivationHistoryFilterContractIntegrationTest {
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.message").value("changedBy query parameter must not be blank"))
             .andExpect(jsonPath("$.path").value("/api/products/arc-3891/activation-history"));
+    }
+
+    @Test
+    void rejectsBlankCurrentActiveFilter() throws Exception {
+        mockMvc.perform(get("/api/products/arc-3891a/activation-history")
+            .param("page", "0")
+            .param("size", "10")
+            .param("currentActive", "   "))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("currentActive query parameter must not be blank"))
+            .andExpect(jsonPath("$.path").value("/api/products/arc-3891a/activation-history"));
+    }
+
+    @Test
+    void rejectsInvalidCurrentActiveFilter() throws Exception {
+        mockMvc.perform(get("/api/products/arc-3891b/activation-history")
+            .param("page", "0")
+            .param("size", "10")
+            .param("currentActive", "yes"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("currentActive query parameter must be either true or false"))
+            .andExpect(jsonPath("$.path").value("/api/products/arc-3891b/activation-history"));
     }
 
     @Test

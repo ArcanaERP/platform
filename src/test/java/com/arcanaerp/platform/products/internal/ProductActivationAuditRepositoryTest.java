@@ -137,4 +137,66 @@ class ProductActivationAuditRepositoryTest {
         assertThat(combinedPage.getTotalElements()).isEqualTo(1);
         assertThat(combinedPage.getContent().getFirst().getReason()).isEqualTo("Actor B reactivation");
     }
+
+    @Test
+    void filtersActivationAuditsByCurrentActive() {
+        UUID productId = UUID.randomUUID();
+        productActivationAuditRepository.save(
+            ProductActivationAudit.create(
+                productId,
+                true,
+                false,
+                "Deactivated",
+                "TENANTA",
+                "actor-a@arcanaerp.com",
+                Instant.parse("2026-02-28T00:00:00Z")
+            )
+        );
+        productActivationAuditRepository.save(
+            ProductActivationAudit.create(
+                productId,
+                false,
+                true,
+                "Reactivated",
+                "TENANTB",
+                "actor-b@arcanaerp.com",
+                Instant.parse("2026-02-28T01:00:00Z")
+            )
+        );
+
+        var activePage = productActivationAuditRepository.findHistoryFiltered(
+            productId,
+            null,
+            null,
+            true,
+            null,
+            null,
+            PageRequest.of(0, 10)
+        );
+        var inactivePage = productActivationAuditRepository.findHistoryFiltered(
+            productId,
+            null,
+            null,
+            false,
+            null,
+            null,
+            PageRequest.of(0, 10)
+        );
+        var combinedPage = productActivationAuditRepository.findHistoryFiltered(
+            productId,
+            "TENANTB",
+            "actor-b@arcanaerp.com",
+            true,
+            null,
+            null,
+            PageRequest.of(0, 10)
+        );
+
+        assertThat(activePage.getTotalElements()).isEqualTo(1);
+        assertThat(activePage.getContent().getFirst().getReason()).isEqualTo("Reactivated");
+        assertThat(inactivePage.getTotalElements()).isEqualTo(1);
+        assertThat(inactivePage.getContent().getFirst().getReason()).isEqualTo("Deactivated");
+        assertThat(combinedPage.getTotalElements()).isEqualTo(1);
+        assertThat(combinedPage.getContent().getFirst().getReason()).isEqualTo("Reactivated");
+    }
 }

@@ -16,6 +16,7 @@ public interface ProductCatalog {
         String sku,
         String tenantCode,
         String changedBy,
+        Boolean currentActive,
         Instant changedAtFrom,
         Instant changedAtTo,
         PageQuery pageQuery

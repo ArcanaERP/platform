@@ -37,6 +37,7 @@ interface ProductActivationAuditRepository extends JpaRepository<ProductActivati
         where audit.productId = :productId
           and (:tenantCode is null or audit.tenantCode = :tenantCode)
           and (:changedBy is null or audit.changedBy = :changedBy)
+          and (:currentActive is null or audit.currentActive = :currentActive)
           and (:changedAtFrom is null or audit.changedAt >= :changedAtFrom)
           and (:changedAtTo is null or audit.changedAt <= :changedAtTo)
         """
@@ -45,6 +46,7 @@ interface ProductActivationAuditRepository extends JpaRepository<ProductActivati
         @Param("productId") UUID productId,
         @Param("tenantCode") String tenantCode,
         @Param("changedBy") String changedBy,
+        @Param("currentActive") Boolean currentActive,
         @Param("changedAtFrom") Instant changedAtFrom,
         @Param("changedAtTo") Instant changedAtTo,
         Pageable pageable

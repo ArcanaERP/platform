@@ -76,11 +76,13 @@ public class ProductsController {
         @PathVariable String sku,
         @RequestParam(required = false) String tenantCode,
         @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String currentActive,
         @RequestParam(required = false) String changedAtFrom,
         @RequestParam(required = false) String changedAtTo,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
+        Boolean parsedCurrentActive = normalizeOptionalCurrentActive(currentActive);
         Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
         Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
         validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
@@ -89,6 +91,7 @@ public class ProductsController {
                 sku,
                 normalizeOptionalTenantCode(tenantCode),
                 normalizeOptionalChangedBy(changedBy),
+                parsedCurrentActive,
                 parsedChangedAtFrom,
                 parsedChangedAtTo,
                 PageQuery.of(page, size)
@@ -148,6 +151,23 @@ public class ProductsController {
             throw new IllegalArgumentException("changedBy query parameter must not be blank");
         }
         return changedBy.trim().toLowerCase();
+    }
+
+    private static Boolean normalizeOptionalCurrentActive(String currentActive) {
+        if (currentActive == null) {
+            return null;
+        }
+        if (currentActive.isBlank()) {
+            throw new IllegalArgumentException("currentActive query parameter must not be blank");
+        }
+        String normalized = currentActive.trim().toLowerCase();
+        if ("true".equals(normalized)) {
+            return Boolean.TRUE;
+        }
+        if ("false".equals(normalized)) {
+            return Boolean.FALSE;
+        }
+        throw new IllegalArgumentException("currentActive query parameter must be either true or false");
     }
 
     private static Instant parseOptionalInstant(String value, String parameterName) {
