@@ -1,6 +1,8 @@
 package com.arcanaerp.platform.inventory.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -16,6 +18,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
@@ -31,7 +35,7 @@ class InventoryApiIntegrationTest {
     @Autowired
     private InventoryAdjustmentRepository inventoryAdjustmentRepository;
 
-    @Autowired
+    @MockitoSpyBean
     private InventoryTransferReversalIdempotencyRepository reversalIdempotencyRepository;
 
     @Autowired
@@ -764,6 +768,73 @@ class InventoryApiIntegrationTest {
             .param("size", "10"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1));
+    }
+
+    @Test
+    void returnsConflictWhenIdempotencyClaimCollides() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9223",
+                "main",
+                new BigDecimal("10"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9223",
+                "wh-east",
+                new BigDecimal("4"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+
+        String transferPayload = """
+            {
+              "sourceLocationCode": "main",
+              "destinationLocationCode": "wh-east",
+              "quantity": 3,
+              "reason": "Original transfer",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+        String reversalPayload = """
+            {
+              "reason": "Reversal posted",
+              "adjustedBy": "ops@arcanaerp.com"
+            }
+            """;
+
+        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9223")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(transferPayload))
+            .andExpect(status().isCreated());
+
+        InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9223", "MAIN").orElseThrow();
+        UUID originalTransferId = inventoryAdjustmentRepository
+            .findByInventoryItemIdOrderByAdjustedAtDesc(mainItem.getId())
+            .getFirst()
+            .getTransferId();
+
+        doAnswer(invocation -> {
+            throw new DataIntegrityViolationException("uk_inventory_reversal_idempotency_transfer_key");
+        }).when(reversalIdempotencyRepository).saveAndFlush(any(InventoryTransferReversalIdempotency.class));
+
+        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
+            .header("Idempotency-Key", "reverse-9223-race")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(reversalPayload))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.status").value(409))
+            .andExpect(jsonPath("$.error").value("Conflict"))
+            .andExpect(jsonPath("$.message").value("Idempotency-Key is already being processed for transferId: " + originalTransferId))
+            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
+
+        mockMvc.perform(get("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(0));
     }
 
     @Test

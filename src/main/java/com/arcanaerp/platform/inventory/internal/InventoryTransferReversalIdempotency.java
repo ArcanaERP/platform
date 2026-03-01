@@ -93,6 +93,13 @@ class InventoryTransferReversalIdempotency {
         );
     }
 
+    void updateReversalTransferId(UUID reversalTransferId) {
+        if (reversalTransferId == null) {
+            throw new IllegalArgumentException("reversalTransferId is required");
+        }
+        this.reversalTransferId = reversalTransferId;
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");
