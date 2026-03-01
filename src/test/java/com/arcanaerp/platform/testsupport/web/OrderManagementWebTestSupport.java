@@ -34,4 +34,44 @@ public final class OrderManagementWebTestSupport {
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload));
     }
+
+    public static ResultActions createOrder(
+        MockMvc mockMvc,
+        String orderNumber,
+        String customerEmail,
+        String currencyCode,
+        OrderLineRequest... lines
+    ) throws Exception {
+        String payload = """
+            {
+              "orderNumber": "%s",
+              "customerEmail": "%s",
+              "currencyCode": "%s",
+              "lines": [%s]
+            }
+            """.formatted(orderNumber, customerEmail, currencyCode, joinLinePayloads(lines));
+
+        return mockMvc.perform(post("/api/orders")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload));
+    }
+
+    public static OrderLineRequest line(String productSku, String quantity, String unitPrice) {
+        return new OrderLineRequest(productSku, quantity, unitPrice);
+    }
+
+    public record OrderLineRequest(String productSku, String quantity, String unitPrice) {}
+
+    private static String joinLinePayloads(OrderLineRequest[] lines) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < lines.length; i++) {
+            if (i > 0) {
+                builder.append(',');
+            }
+            builder.append("""
+                { "productSku": "%s", "quantity": %s, "unitPrice": %s }
+                """.formatted(lines[i].productSku(), lines[i].quantity(), lines[i].unitPrice()));
+        }
+        return builder.toString();
+    }
 }

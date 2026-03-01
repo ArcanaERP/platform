@@ -3,12 +3,13 @@ package com.arcanaerp.platform.orders.web;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.nullValue;
+import static com.arcanaerp.platform.testsupport.web.OrderManagementWebTestSupport.line;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.arcanaerp.platform.testsupport.web.OrderManagementWebTestSupport;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,19 +45,14 @@ class OrdersControllerIntegrationTest {
         registerProduct("arc-5100");
         registerProduct("arc-5200");
 
-        String payload = """
-            {
-              "orderNumber": "so-5000",
-              "customerEmail": "BUYER@ACME.COM",
-              "currencyCode": "usd",
-              "lines": [
-                { "productSku": "arc-5100", "quantity": 2, "unitPrice": 10.00 },
-                { "productSku": "arc-5200", "quantity": 1, "unitPrice": 5.50 }
-              ]
-            }
-            """;
-
-        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(payload))
+        OrderManagementWebTestSupport.createOrder(
+            mockMvc,
+            "so-5000",
+            "BUYER@ACME.COM",
+            "usd",
+            line("arc-5100", "2", "10.00"),
+            line("arc-5200", "1", "5.50")
+        )
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.orderNumber").value("SO-5000"))
             .andExpect(jsonPath("$.customerEmail").value("buyer@acme.com"))
