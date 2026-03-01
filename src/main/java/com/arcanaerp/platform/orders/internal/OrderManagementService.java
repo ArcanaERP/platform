@@ -8,6 +8,7 @@ import com.arcanaerp.platform.orders.CreateOrderLineCommand;
 import com.arcanaerp.platform.orders.OrderLineView;
 import com.arcanaerp.platform.orders.OrderManagement;
 import com.arcanaerp.platform.orders.OrderStatus;
+import com.arcanaerp.platform.orders.OrderStatusChangeView;
 import com.arcanaerp.platform.orders.OrderView;
 import com.arcanaerp.platform.products.ProductLookup;
 import com.arcanaerp.platform.products.ProductOrderability;
@@ -33,6 +34,7 @@ class OrderManagementService implements OrderManagement {
 
     private final SalesOrderRepository salesOrderRepository;
     private final SalesOrderLineRepository salesOrderLineRepository;
+    private final OrderStatusChangeAuditRepository orderStatusChangeAuditRepository;
     private final ProductLookup productLookup;
     private final Clock clock;
 
@@ -104,10 +106,50 @@ class OrderManagementService implements OrderManagement {
         SalesOrder order = salesOrderRepository.findByOrderNumber(orderNumber)
             .orElseThrow(() -> new java.util.NoSuchElementException("Order not found: " + orderNumber));
 
-        order.transitionTo(targetStatus, Instant.now(clock));
+        OrderStatus previousStatus = order.getStatus();
+        Instant changedAt = Instant.now(clock);
+        order.transitionTo(targetStatus, changedAt);
         SalesOrder saved = salesOrderRepository.save(order);
+        if (previousStatus != saved.getStatus()) {
+            orderStatusChangeAuditRepository.save(
+                OrderStatusChangeAudit.create(
+                    saved.getId(),
+                    previousStatus,
+                    saved.getStatus(),
+                    changedAt
+                )
+            );
+        }
         List<SalesOrderLine> lines = salesOrderLineRepository.findBySalesOrderIdOrderByLineNoAsc(saved.getId());
         return toView(saved, lines);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<OrderStatusChangeView> listStatusHistory(
+        String orderNumber,
+        OrderStatus previousStatus,
+        OrderStatus currentStatus,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        SalesOrder order = findOrderByNumber(orderNumber);
+        Page<OrderStatusChangeAudit> audits = orderStatusChangeAuditRepository.findHistoryFiltered(
+            order.getId(),
+            previousStatus,
+            currentStatus,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
+        );
+        return PageResult.from(audits).map(audit -> new OrderStatusChangeView(
+                audit.getId(),
+                order.getOrderNumber(),
+                audit.getPreviousStatus(),
+                audit.getCurrentStatus(),
+                audit.getChangedAt()
+            ));
     }
 
     private List<CreateOrderLineCommand> normalizeLineCommands(List<CreateOrderLineCommand> lines) {
@@ -141,6 +183,12 @@ class OrderManagementService implements OrderManagement {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private SalesOrder findOrderByNumber(String orderNumber) {
+        String normalizedOrderNumber = normalizeRequired(orderNumber, "orderNumber").toUpperCase();
+        return salesOrderRepository.findByOrderNumber(normalizedOrderNumber)
+            .orElseThrow(() -> new java.util.NoSuchElementException("Order not found: " + normalizedOrderNumber));
     }
 
     private OrderView toView(SalesOrder order, List<SalesOrderLine> lines) {

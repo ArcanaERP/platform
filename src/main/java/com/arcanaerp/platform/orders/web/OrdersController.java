@@ -6,8 +6,12 @@ import com.arcanaerp.platform.orders.ChangeOrderStatusCommand;
 import com.arcanaerp.platform.orders.CreateOrderCommand;
 import com.arcanaerp.platform.orders.CreateOrderLineCommand;
 import com.arcanaerp.platform.orders.OrderManagement;
+import com.arcanaerp.platform.orders.OrderStatus;
+import com.arcanaerp.platform.orders.OrderStatusChangeView;
 import com.arcanaerp.platform.orders.OrderView;
 import jakarta.validation.Valid;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -65,6 +69,30 @@ public class OrdersController {
         return toResponse(updated);
     }
 
+    @GetMapping("/{orderNumber}/status-history")
+    public PageResult<OrderStatusChangeResponse> listStatusHistory(
+        @PathVariable String orderNumber,
+        @RequestParam(required = false) String previousStatus,
+        @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return orderManagement.listStatusHistory(
+                orderNumber,
+                parseOptionalStatus(previousStatus, "previousStatus"),
+                parseOptionalStatus(currentStatus, "currentStatus"),
+                parsedChangedAtFrom,
+                parsedChangedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toStatusChangeResponse);
+    }
+
     private OrderResponse toResponse(OrderView order) {
         List<OrderLineResponse> lines = order.lines().stream()
             .map(line -> new OrderLineResponse(
@@ -89,5 +117,52 @@ public class OrdersController {
             order.cancelledAt(),
             lines
         );
+    }
+
+    private OrderStatusChangeResponse toStatusChangeResponse(OrderStatusChangeView change) {
+        return new OrderStatusChangeResponse(
+            change.id(),
+            change.orderNumber(),
+            change.previousStatus(),
+            change.currentStatus(),
+            change.changedAt()
+        );
+    }
+
+    private static OrderStatus parseOptionalStatus(String status, String parameterName) {
+        if (status == null) {
+            return null;
+        }
+        if (status.isBlank()) {
+            throw new IllegalArgumentException(parameterName + " query parameter must not be blank");
+        }
+        String normalized = status.trim().toUpperCase();
+        try {
+            return OrderStatus.valueOf(normalized);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException(
+                parameterName + " query parameter must be one of: DRAFT, CONFIRMED, CANCELLED"
+            );
+        }
+    }
+
+    private static Instant parseOptionalInstant(String value, String parameterName) {
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
+            throw new IllegalArgumentException(parameterName + " query parameter must not be blank");
+        }
+        try {
+            return Instant.parse(value.trim());
+        } catch (DateTimeParseException exception) {
+            throw new IllegalArgumentException(parameterName + " query parameter must be a valid ISO-8601 instant");
+        }
+    }
+
+    private static void validateChangedAtRange(Instant changedAtFrom, Instant changedAtTo) {
+        if (changedAtFrom != null && changedAtTo != null && changedAtFrom.isAfter(changedAtTo)) {
+            throw new IllegalArgumentException("changedAtFrom must be before or equal to changedAtTo");
+        }
     }
 }

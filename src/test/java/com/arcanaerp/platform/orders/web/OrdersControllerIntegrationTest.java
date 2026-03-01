@@ -181,6 +181,102 @@ class OrdersControllerIntegrationTest {
     }
 
     @Test
+    void listsOrderStatusHistoryForConfirmedTransition() throws Exception {
+        registerProduct("arc-5501");
+
+        String createPayload = """
+            {
+              "orderNumber": "so-5006",
+              "customerEmail": "buyer@acme.com",
+              "currencyCode": "USD",
+              "lines": [
+                { "productSku": "arc-5501", "quantity": 1, "unitPrice": 10.00 }
+              ]
+            }
+            """;
+        String confirmPayload = """
+            {
+              "status": "CONFIRMED"
+            }
+            """;
+
+        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(createPayload))
+            .andExpect(status().isCreated());
+
+        testClock.setInstant(CONFIRMED_AT_INSTANT);
+        mockMvc.perform(patch("/api/orders/so-5006/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(confirmPayload))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("CONFIRMED"));
+
+        mockMvc.perform(get("/api/orders/so-5006/status-history?page=0&size=10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(10))
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].orderNumber").value("SO-5006"))
+            .andExpect(jsonPath("$.items[0].previousStatus").value("DRAFT"))
+            .andExpect(jsonPath("$.items[0].currentStatus").value("CONFIRMED"))
+            .andExpect(jsonPath("$.items[0].changedAt").value(CONFIRMED_AT_INSTANT.toString()));
+    }
+
+    @Test
+    void statusHistoryIgnoresNoOpTransitions() throws Exception {
+        registerProduct("arc-5502");
+
+        String createPayload = """
+            {
+              "orderNumber": "so-5007",
+              "customerEmail": "buyer@acme.com",
+              "currencyCode": "USD",
+              "lines": [
+                { "productSku": "arc-5502", "quantity": 1, "unitPrice": 10.00 }
+              ]
+            }
+            """;
+        String confirmPayload = """
+            {
+              "status": "CONFIRMED"
+            }
+            """;
+
+        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(createPayload))
+            .andExpect(status().isCreated());
+
+        testClock.setInstant(CONFIRMED_AT_INSTANT);
+        mockMvc.perform(patch("/api/orders/so-5007/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(confirmPayload))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("CONFIRMED"));
+
+        testClock.setInstant(CONFIRMED_AT_INSTANT.plusSeconds(60));
+        mockMvc.perform(patch("/api/orders/so-5007/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(confirmPayload))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("CONFIRMED"));
+
+        mockMvc.perform(get("/api/orders/so-5007/status-history?page=0&size=10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].previousStatus").value("DRAFT"))
+            .andExpect(jsonPath("$.items[0].currentStatus").value("CONFIRMED"))
+            .andExpect(jsonPath("$.items[0].changedAt").value(CONFIRMED_AT_INSTANT.toString()));
+    }
+
+    @Test
+    void statusHistoryReturnsNotFoundForUnknownOrder() throws Exception {
+        mockMvc.perform(get("/api/orders/so-missing-history/status-history?page=0&size=10"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Order not found: SO-MISSING-HISTORY"))
+            .andExpect(jsonPath("$.path").value("/api/orders/so-missing-history/status-history"));
+    }
+
+    @Test
     void rejectsOrderLineWithUnknownProductSku() throws Exception {
         String payload = """
             {
