@@ -1,6 +1,5 @@
 package com.arcanaerp.platform.agreements.web;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.nullValue;
@@ -716,26 +715,12 @@ class AgreementsControllerIntegrationTest {
     }
 
     private void registerActor(String tenantCode, String email) throws Exception {
-        String payload = """
-            {
-              "tenantCode": "%s",
-              "tenantName": "Agreements Tenant %s",
-              "roleCode": "OPS",
-              "roleName": "Operations",
-              "email": "%s",
-              "displayName": "Agreements Actor"
-            }
-            """.formatted(tenantCode, tenantCode, email);
-
-        var result = mockMvc.perform(post("/api/identity/users").contentType(MediaType.APPLICATION_JSON).content(payload))
-            .andReturn();
-        int statusCode = result.getResponse().getStatus();
-        if (statusCode == 400) {
-            assertThat(result.getResponse().getContentAsString()).contains("User email already exists in tenant");
-            return;
-        }
-        if (statusCode != 201) {
-            throw new AssertionError("Unexpected status while registering actor: " + statusCode);
-        }
+        AgreementsIntegrationTestSupport.registerActor(
+            mockMvc,
+            tenantCode,
+            email,
+            "Agreements Tenant",
+            "Agreements Actor"
+        );
     }
 }

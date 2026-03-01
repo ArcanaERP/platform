@@ -1,9 +1,6 @@
 package com.arcanaerp.platform.agreements.web;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -15,7 +12,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -218,9 +214,21 @@ class AgreementsStatusHistoryFilterMatrixIntegrationTest {
     }
 
     private void seedAgreementStatusHistory(String agreementNumber) throws Exception {
-        createAgreement(agreementNumber);
-        registerActor(TENANT_ALPHA, ACTOR_ALPHA);
-        registerActor(TENANT_BETA, ACTOR_BETA);
+        AgreementsIntegrationTestSupport.createAgreement(mockMvc, agreementNumber, "History Filter Matrix Agreement");
+        AgreementsIntegrationTestSupport.registerActor(
+            mockMvc,
+            TENANT_ALPHA,
+            ACTOR_ALPHA,
+            "Agreements Status History Filter Matrix Tenant",
+            "Agreements Status History Filter Matrix Actor"
+        );
+        AgreementsIntegrationTestSupport.registerActor(
+            mockMvc,
+            TENANT_BETA,
+            ACTOR_BETA,
+            "Agreements Status History Filter Matrix Tenant",
+            "Agreements Status History Filter Matrix Actor"
+        );
 
         transition(
             agreementNumber,
@@ -241,20 +249,6 @@ class AgreementsStatusHistoryFilterMatrixIntegrationTest {
             .andExpect(status().isOk());
     }
 
-    private void createAgreement(String agreementNumber) throws Exception {
-        String payload = """
-            {
-              "agreementNumber": "%s",
-              "name": "History Filter Matrix Agreement",
-              "agreementType": "service",
-              "effectiveFrom": "2026-03-01T00:00:00Z"
-            }
-            """.formatted(agreementNumber);
-
-        mockMvc.perform(post("/api/agreements").contentType(MediaType.APPLICATION_JSON).content(payload))
-            .andExpect(status().isCreated());
-    }
-
     private ResultActions transition(
         String agreementNumber,
         AgreementStatus status,
@@ -262,19 +256,13 @@ class AgreementsStatusHistoryFilterMatrixIntegrationTest {
         String reason,
         String changedBy
     ) throws Exception {
-        String payload = """
-            {
-              "status": "%s",
-              "tenantCode": "%s",
-              "reason": "%s",
-              "changedBy": "%s"
-            }
-            """.formatted(status.name(), tenantCode, reason, changedBy);
-
-        return mockMvc.perform(
-            patch("/api/agreements/" + agreementNumber + "/status")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(payload)
+        return AgreementsIntegrationTestSupport.transitionAgreementStatus(
+            mockMvc,
+            agreementNumber,
+            status,
+            tenantCode,
+            reason,
+            changedBy
         );
     }
 
@@ -302,30 +290,6 @@ class AgreementsStatusHistoryFilterMatrixIntegrationTest {
             request.param("changedAtTo", changedAtTo);
         }
         return request;
-    }
-
-    private void registerActor(String tenantCode, String email) throws Exception {
-        String payload = """
-            {
-              "tenantCode": "%s",
-              "tenantName": "Agreements Status History Filter Matrix Tenant %s",
-              "roleCode": "OPS",
-              "roleName": "Operations",
-              "email": "%s",
-              "displayName": "Agreements Status History Filter Matrix Actor"
-            }
-            """.formatted(tenantCode, tenantCode, email);
-
-        var result = mockMvc.perform(post("/api/identity/users").contentType(MediaType.APPLICATION_JSON).content(payload))
-            .andReturn();
-        int statusCode = result.getResponse().getStatus();
-        if (statusCode == 400) {
-            assertThat(result.getResponse().getContentAsString()).contains("User email already exists in tenant");
-            return;
-        }
-        if (statusCode != 201) {
-            throw new AssertionError("Unexpected status while registering actor: " + statusCode);
-        }
     }
 
     private record HistoryFilterCase(
