@@ -56,6 +56,24 @@ Default app URL:
 - Username: `sa`
 - Password: *(blank)*
 
+## Operations
+
+### Reversal Idempotency Runtime Knob
+
+- Property: `arcanaerp.inventory.reversal-idempotency.pending-claim-ttl`
+- Type: ISO-8601 duration (for example `PT5M`, `PT30S`, `PT1H`)
+- Default: `PT5M`
+- Validation: must be strictly positive (`PT0S` and negative durations fail startup)
+- Purpose: determines when a pending reversal idempotency claim is considered stale and eligible for reclaim on retry.
+
+### Recommended Values By Environment
+
+| Environment | Recommended value | Why |
+| --- | --- | --- |
+| `dev` | `PT5M` | Good balance between retry safety and stale-claim recovery during local debugging. |
+| `test` | `PT30S` (or lower for focused TTL tests) | Keeps automated stale-claim scenarios fast while still exercising recovery behavior. |
+| `prod` | `PT5M` to `PT15M` | Reduces false stale reclaims during transient latency while avoiding long-lived stuck claims. |
+
 ## Current HTTP Endpoints
 
 Identity:
