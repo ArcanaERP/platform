@@ -2,10 +2,10 @@ package com.arcanaerp.platform.orders.web;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
+import com.arcanaerp.platform.testsupport.web.OrderManagementWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.ProductCatalogWebTestSupport;
 import java.time.Instant;
 import org.springframework.http.MediaType;
@@ -36,20 +36,15 @@ final class OrdersWebIntegrationTestSupport {
         String sku,
         String customerEmail
     ) throws Exception {
-        String payload = """
-            {
-              "orderNumber": "%s",
-              "customerEmail": "%s",
-              "currencyCode": "USD",
-              "lines": [
-                { "productSku": "%s", "quantity": 1, "unitPrice": 10.00 }
-              ]
-            }
-            """.formatted(orderNumber, customerEmail, sku);
-
-        return mockMvc.perform(post("/api/orders")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload));
+        return OrderManagementWebTestSupport.createSingleLineOrder(
+            mockMvc,
+            orderNumber,
+            customerEmail,
+            sku,
+            "1",
+            "10.00",
+            "USD"
+        );
     }
 
     static ResultActions transitionToConfirmed(

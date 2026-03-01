@@ -185,18 +185,7 @@ class OrdersControllerIntegrationTest {
 
     @Test
     void rejectsOrderLineWithUnknownProductSku() throws Exception {
-        String payload = """
-            {
-              "orderNumber": "so-5004",
-              "customerEmail": "buyer@acme.com",
-              "currencyCode": "USD",
-              "lines": [
-                { "productSku": "arc-missing", "quantity": 1, "unitPrice": 10.00 }
-              ]
-            }
-            """;
-
-        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(payload))
+        createSingleLineOrder("so-5004", "arc-missing")
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
@@ -208,19 +197,7 @@ class OrdersControllerIntegrationTest {
     void rejectsOrderLineWithInactiveProductSku() throws Exception {
         registerProduct("arc-5600");
         setProductActive("arc-5600", false);
-
-        String payload = """
-            {
-              "orderNumber": "so-5005",
-              "customerEmail": "buyer@acme.com",
-              "currencyCode": "USD",
-              "lines": [
-                { "productSku": "arc-5600", "quantity": 1, "unitPrice": 10.00 }
-              ]
-            }
-            """;
-
-        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(payload))
+        createSingleLineOrder("so-5005", "arc-5600")
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
