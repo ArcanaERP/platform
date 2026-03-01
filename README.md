@@ -62,3 +62,10 @@ Orders:
 - `POST /api/orders`
 - `GET /api/orders?page=&size=`
 - `PATCH /api/orders/{orderNumber}/status`
+
+Actuator:
+
+- `GET /actuator/health`
+- `GET /actuator/info`
+
+Actuator exposure is intentionally limited to `health` and `info`.
