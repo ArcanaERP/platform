@@ -14,6 +14,8 @@ erDiagram
       STRING status
       INSTANT effectiveFrom
       INSTANT createdAt
+      INSTANT activatedAt
+      INSTANT terminatedAt
     }
 ```
 
@@ -22,7 +24,10 @@ erDiagram
 - This initial `agreements` slice models a single aggregate (`Agreement`) with no external entity links.
 - `agreementNumber` is the external business identifier and is normalized to uppercase.
 - `agreementType` is stored as an uppercase normalized string for consistent filtering/parity expansion.
-- `status` starts as `DRAFT` in this first slice.
+- `status` starts as `DRAFT` and currently supports transitions to `ACTIVE` or `TERMINATED`.
+- Transition timestamps:
+  - `activatedAt` set when agreement transitions to `ACTIVE`
+  - `terminatedAt` set when agreement transitions to `TERMINATED`
 
 ## Constraint Notes
 

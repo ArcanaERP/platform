@@ -2,10 +2,13 @@ package com.arcanaerp.platform.agreements.web;
 
 import com.arcanaerp.platform.agreements.AgreementManagement;
 import com.arcanaerp.platform.agreements.AgreementView;
+import com.arcanaerp.platform.agreements.ChangeAgreementStatusCommand;
 import com.arcanaerp.platform.agreements.CreateAgreementCommand;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,14 +33,31 @@ public class AgreementsController {
                 request.effectiveFrom()
             )
         );
-        return new AgreementResponse(
-            agreement.id(),
-            agreement.agreementNumber(),
-            agreement.name(),
-            agreement.agreementType(),
-            agreement.status(),
-            agreement.effectiveFrom(),
-            agreement.createdAt()
+        return toResponse(agreement);
+    }
+
+    @PatchMapping("/{agreementNumber}/status")
+    public AgreementResponse changeAgreementStatus(
+        @PathVariable String agreementNumber,
+        @Valid @RequestBody ChangeAgreementStatusRequest request
+    ) {
+        AgreementView agreement = agreementManagement.changeAgreementStatus(
+            new ChangeAgreementStatusCommand(agreementNumber, request.status())
         );
+        return toResponse(agreement);
+    }
+
+    private AgreementResponse toResponse(AgreementView agreement) {
+        return new AgreementResponse(
+                agreement.id(),
+                agreement.agreementNumber(),
+                agreement.name(),
+                agreement.agreementType(),
+                agreement.status(),
+                agreement.effectiveFrom(),
+                agreement.createdAt(),
+                agreement.activatedAt(),
+                agreement.terminatedAt()
+            );
     }
 }

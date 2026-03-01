@@ -54,4 +54,40 @@ class AgreementDomainTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("name is required");
     }
+
+    @Test
+    void transitionAllowsDraftToActive() {
+        Agreement agreement = Agreement.create(
+            "AGR-1003",
+            "Master Supply Agreement",
+            "PURCHASE",
+            Instant.parse("2026-03-01T00:00:00Z"),
+            Instant.parse("2026-03-01T01:00:00Z")
+        );
+
+        Instant activatedAt = Instant.parse("2026-03-01T02:00:00Z");
+        agreement.transitionTo(AgreementStatus.ACTIVE, activatedAt);
+
+        assertThat(agreement.getStatus()).isEqualTo(AgreementStatus.ACTIVE);
+        assertThat(agreement.getActivatedAt()).isEqualTo(activatedAt);
+        assertThat(agreement.getTerminatedAt()).isNull();
+    }
+
+    @Test
+    void transitionRejectsActiveToTerminated() {
+        Agreement agreement = Agreement.create(
+            "AGR-1004",
+            "Master Supply Agreement",
+            "PURCHASE",
+            Instant.parse("2026-03-01T00:00:00Z"),
+            Instant.parse("2026-03-01T01:00:00Z")
+        );
+        agreement.transitionTo(AgreementStatus.ACTIVE, Instant.parse("2026-03-01T02:00:00Z"));
+
+        assertThatThrownBy(() ->
+            agreement.transitionTo(AgreementStatus.TERMINATED, Instant.parse("2026-03-01T03:00:00Z"))
+        )
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("Agreement status transition not allowed: ACTIVE -> TERMINATED");
+    }
 }

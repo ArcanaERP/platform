@@ -1,7 +1,9 @@
 package com.arcanaerp.platform.agreements.internal;
 
 import com.arcanaerp.platform.agreements.AgreementManagement;
+import com.arcanaerp.platform.agreements.AgreementStatus;
 import com.arcanaerp.platform.agreements.AgreementView;
+import com.arcanaerp.platform.agreements.ChangeAgreementStatusCommand;
 import com.arcanaerp.platform.agreements.CreateAgreementCommand;
 import java.time.Clock;
 import java.time.Instant;
@@ -40,6 +42,26 @@ class AgreementManagementService implements AgreementManagement {
         return toView(agreement);
     }
 
+    @Override
+    public AgreementView changeAgreementStatus(ChangeAgreementStatusCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+
+        String normalizedAgreementNumber = normalizeRequired(command.agreementNumber(), "agreementNumber").toUpperCase();
+        AgreementStatus targetStatus = command.status();
+        if (targetStatus == null) {
+            throw new IllegalArgumentException("status is required");
+        }
+
+        Agreement agreement = agreementRepository.findByAgreementNumber(normalizedAgreementNumber)
+            .orElseThrow(() -> new java.util.NoSuchElementException("Agreement not found: " + normalizedAgreementNumber));
+
+        agreement.transitionTo(targetStatus, Instant.now(clock));
+        Agreement saved = agreementRepository.save(agreement);
+        return toView(saved);
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");
@@ -55,7 +77,9 @@ class AgreementManagementService implements AgreementManagement {
             agreement.getAgreementType(),
             agreement.getStatus(),
             agreement.getEffectiveFrom(),
-            agreement.getCreatedAt()
+            agreement.getCreatedAt(),
+            agreement.getActivatedAt(),
+            agreement.getTerminatedAt()
         );
     }
 }

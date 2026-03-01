@@ -101,6 +101,7 @@ Orders:
 Agreements:
 
 - `POST /api/agreements`
+- `PATCH /api/agreements/{agreementNumber}/status`
 
 Inventory:
 

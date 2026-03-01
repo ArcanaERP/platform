@@ -48,6 +48,10 @@ class Agreement {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+    private Instant activatedAt;
+
+    private Instant terminatedAt;
+
     private Agreement(
         UUID id,
         String agreementNumber,
@@ -55,7 +59,9 @@ class Agreement {
         String agreementType,
         AgreementStatus status,
         Instant effectiveFrom,
-        Instant createdAt
+        Instant createdAt,
+        Instant activatedAt,
+        Instant terminatedAt
     ) {
         this.id = id;
         this.agreementNumber = agreementNumber;
@@ -64,6 +70,8 @@ class Agreement {
         this.status = status;
         this.effectiveFrom = effectiveFrom;
         this.createdAt = createdAt;
+        this.activatedAt = activatedAt;
+        this.terminatedAt = terminatedAt;
     }
 
     static Agreement create(
@@ -87,8 +95,40 @@ class Agreement {
             normalizeRequired(agreementType, "agreementType").toUpperCase(),
             AgreementStatus.DRAFT,
             effectiveFrom,
-            createdAt
+            createdAt,
+            null,
+            null
         );
+    }
+
+    void transitionTo(AgreementStatus targetStatus, Instant transitionedAt) {
+        if (targetStatus == null) {
+            throw new IllegalArgumentException("status is required");
+        }
+        if (transitionedAt == null) {
+            throw new IllegalArgumentException("transitionedAt is required");
+        }
+        if (targetStatus == this.status) {
+            return;
+        }
+        if (this.status != AgreementStatus.DRAFT) {
+            throw new IllegalArgumentException(
+                "Agreement status transition not allowed: " + this.status + " -> " + targetStatus
+            );
+        }
+        if (targetStatus != AgreementStatus.ACTIVE && targetStatus != AgreementStatus.TERMINATED) {
+            throw new IllegalArgumentException(
+                "Agreement status transition not allowed: " + this.status + " -> " + targetStatus
+            );
+        }
+        this.status = targetStatus;
+        if (targetStatus == AgreementStatus.ACTIVE) {
+            this.activatedAt = transitionedAt;
+            this.terminatedAt = null;
+        } else {
+            this.terminatedAt = transitionedAt;
+            this.activatedAt = null;
+        }
     }
 
     private static String normalizeRequired(String value, String fieldName) {

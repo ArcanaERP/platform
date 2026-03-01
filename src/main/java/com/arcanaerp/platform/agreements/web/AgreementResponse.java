@@ -11,6 +11,8 @@ public record AgreementResponse(
     String agreementType,
     AgreementStatus status,
     Instant effectiveFrom,
-    Instant createdAt
+    Instant createdAt,
+    Instant activatedAt,
+    Instant terminatedAt
 ) {
 }
