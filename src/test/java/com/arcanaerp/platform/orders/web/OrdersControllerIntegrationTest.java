@@ -18,6 +18,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -77,22 +78,10 @@ class OrdersControllerIntegrationTest {
     @Test
     void returnsErrorEnvelopeForDuplicateOrderNumber() throws Exception {
         registerProduct("arc-5300");
-
-        String payload = """
-            {
-              "orderNumber": "so-5001",
-              "customerEmail": "buyer@acme.com",
-              "currencyCode": "USD",
-              "lines": [
-                { "productSku": "arc-5300", "quantity": 1, "unitPrice": 10.00 }
-              ]
-            }
-            """;
-
-        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(payload))
+        createSingleLineOrder("so-5001", "arc-5300")
             .andExpect(status().isCreated());
 
-        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(payload))
+        createSingleLineOrder("so-5001", "arc-5300")
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
@@ -102,31 +91,11 @@ class OrdersControllerIntegrationTest {
     @Test
     void transitionsOrderStatusFromDraftToConfirmed() throws Exception {
         registerProduct("arc-5400");
-
-        String createPayload = """
-            {
-              "orderNumber": "so-5002",
-              "customerEmail": "buyer@acme.com",
-              "currencyCode": "USD",
-              "lines": [
-                { "productSku": "arc-5400", "quantity": 1, "unitPrice": 10.00 }
-              ]
-            }
-            """;
-        String statusPayload = """
-            {
-              "status": "CONFIRMED"
-            }
-            """;
-
-        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(createPayload))
+        createSingleLineOrder("so-5002", "arc-5400")
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.status").value("DRAFT"));
 
-        testClock.setInstant(CONFIRMED_AT_INSTANT);
-        mockMvc.perform(patch("/api/orders/so-5002/status")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(statusPayload))
+        transitionToConfirmed("so-5002", CONFIRMED_AT_INSTANT)
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.orderNumber").value("SO-5002"))
             .andExpect(jsonPath("$.status").value("CONFIRMED"))
@@ -137,35 +106,16 @@ class OrdersControllerIntegrationTest {
     @Test
     void rejectsInvalidOrderStatusTransition() throws Exception {
         registerProduct("arc-5500");
-
-        String createPayload = """
-            {
-              "orderNumber": "so-5003",
-              "customerEmail": "buyer@acme.com",
-              "currencyCode": "USD",
-              "lines": [
-                { "productSku": "arc-5500", "quantity": 1, "unitPrice": 10.00 }
-              ]
-            }
-            """;
-        String confirmPayload = """
-            {
-              "status": "CONFIRMED"
-            }
-            """;
         String cancelPayload = """
             {
               "status": "CANCELLED"
             }
             """;
 
-        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(createPayload))
+        createSingleLineOrder("so-5003", "arc-5500")
             .andExpect(status().isCreated());
 
-        testClock.setInstant(CONFIRMED_AT_INSTANT);
-        mockMvc.perform(patch("/api/orders/so-5003/status")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(confirmPayload))
+        transitionToConfirmed("so-5003", CONFIRMED_AT_INSTANT)
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("CONFIRMED"))
             .andExpect(jsonPath("$.confirmedAt").value(CONFIRMED_AT_INSTANT.toString()))
@@ -183,34 +133,14 @@ class OrdersControllerIntegrationTest {
     @Test
     void listsOrderStatusHistoryForConfirmedTransition() throws Exception {
         registerProduct("arc-5501");
-
-        String createPayload = """
-            {
-              "orderNumber": "so-5006",
-              "customerEmail": "buyer@acme.com",
-              "currencyCode": "USD",
-              "lines": [
-                { "productSku": "arc-5501", "quantity": 1, "unitPrice": 10.00 }
-              ]
-            }
-            """;
-        String confirmPayload = """
-            {
-              "status": "CONFIRMED"
-            }
-            """;
-
-        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(createPayload))
+        createSingleLineOrder("so-5006", "arc-5501")
             .andExpect(status().isCreated());
 
-        testClock.setInstant(CONFIRMED_AT_INSTANT);
-        mockMvc.perform(patch("/api/orders/so-5006/status")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(confirmPayload))
+        transitionToConfirmed("so-5006", CONFIRMED_AT_INSTANT)
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("CONFIRMED"));
 
-        mockMvc.perform(get("/api/orders/so-5006/status-history?page=0&size=10"))
+        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest("so-5006", 0, 10, null, null, null, null))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.page").value(0))
             .andExpect(jsonPath("$.size").value(10))
@@ -224,41 +154,18 @@ class OrdersControllerIntegrationTest {
     @Test
     void statusHistoryIgnoresNoOpTransitions() throws Exception {
         registerProduct("arc-5502");
-
-        String createPayload = """
-            {
-              "orderNumber": "so-5007",
-              "customerEmail": "buyer@acme.com",
-              "currencyCode": "USD",
-              "lines": [
-                { "productSku": "arc-5502", "quantity": 1, "unitPrice": 10.00 }
-              ]
-            }
-            """;
-        String confirmPayload = """
-            {
-              "status": "CONFIRMED"
-            }
-            """;
-
-        mockMvc.perform(post("/api/orders").contentType(MediaType.APPLICATION_JSON).content(createPayload))
+        createSingleLineOrder("so-5007", "arc-5502")
             .andExpect(status().isCreated());
 
-        testClock.setInstant(CONFIRMED_AT_INSTANT);
-        mockMvc.perform(patch("/api/orders/so-5007/status")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(confirmPayload))
+        transitionToConfirmed("so-5007", CONFIRMED_AT_INSTANT)
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("CONFIRMED"));
 
-        testClock.setInstant(CONFIRMED_AT_INSTANT.plusSeconds(60));
-        mockMvc.perform(patch("/api/orders/so-5007/status")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(confirmPayload))
+        transitionToConfirmed("so-5007", CONFIRMED_AT_INSTANT.plusSeconds(60))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("CONFIRMED"));
 
-        mockMvc.perform(get("/api/orders/so-5007/status-history?page=0&size=10"))
+        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest("so-5007", 0, 10, null, null, null, null))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].previousStatus").value("DRAFT"))
@@ -268,7 +175,7 @@ class OrdersControllerIntegrationTest {
 
     @Test
     void statusHistoryReturnsNotFoundForUnknownOrder() throws Exception {
-        mockMvc.perform(get("/api/orders/so-missing-history/status-history?page=0&size=10"))
+        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest("so-missing-history", 0, 10, null, null, null, null))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
@@ -322,21 +229,16 @@ class OrdersControllerIntegrationTest {
     }
 
     private void registerProduct(String sku) throws Exception {
-        String normalizedSku = sku.trim().toUpperCase();
-        String categoryCode = ("CAT" + normalizedSku.replaceAll("[^A-Z0-9]", "")).substring(0, Math.min(32, ("CAT" + normalizedSku.replaceAll("[^A-Z0-9]", "")).length()));
-        String payload = """
-            {
-              "sku": "%s",
-              "name": "Product %s",
-              "categoryCode": "%s",
-              "categoryName": "Order Test Category",
-              "amount": 1.00,
-              "currencyCode": "USD"
-            }
-            """.formatted(sku, normalizedSku, categoryCode);
-
-        mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(payload))
+        OrdersWebIntegrationTestSupport.registerProduct(mockMvc, sku, "Product", "Order Test Category")
             .andExpect(status().isCreated());
+    }
+
+    private ResultActions createSingleLineOrder(String orderNumber, String sku) throws Exception {
+        return OrdersWebIntegrationTestSupport.createSingleLineOrder(mockMvc, orderNumber, sku, "buyer@acme.com");
+    }
+
+    private ResultActions transitionToConfirmed(String orderNumber, Instant confirmedAt) throws Exception {
+        return OrdersWebIntegrationTestSupport.transitionToConfirmed(mockMvc, testClock, orderNumber, confirmedAt);
     }
 
     private void setProductActive(String sku, boolean active) throws Exception {
