@@ -63,6 +63,10 @@ Orders:
 - `GET /api/orders?page=&size=`
 - `PATCH /api/orders/{orderNumber}/status`
 
+Inventory:
+
+- `GET /api/inventory/{sku}`
+
 Actuator:
 
 - `GET /actuator/health`
