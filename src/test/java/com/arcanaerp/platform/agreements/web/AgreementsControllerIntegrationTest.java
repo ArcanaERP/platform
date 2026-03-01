@@ -194,6 +194,91 @@ class AgreementsControllerIntegrationTest {
     }
 
     @Test
+    void listsAgreementStatusHistory() throws Exception {
+        String createPayload = """
+            {
+              "agreementNumber": "agr-3020",
+              "name": "History Agreement",
+              "agreementType": "service",
+              "effectiveFrom": "2026-03-01T00:00:00Z"
+            }
+            """;
+        String activatePayload = """
+            {
+              "status": "ACTIVE"
+            }
+            """;
+
+        mockMvc.perform(post("/api/agreements")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(createPayload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(patch("/api/agreements/agr-3020/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(activatePayload))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/agreements/agr-3020/status-history?page=0&size=10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(10))
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].agreementNumber").value("AGR-3020"))
+            .andExpect(jsonPath("$.items[0].previousStatus").value("DRAFT"))
+            .andExpect(jsonPath("$.items[0].currentStatus").value("ACTIVE"))
+            .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
+    }
+
+    @Test
+    void statusHistoryIgnoresNoOpTransitions() throws Exception {
+        String createPayload = """
+            {
+              "agreementNumber": "agr-3021",
+              "name": "No-op Agreement",
+              "agreementType": "service",
+              "effectiveFrom": "2026-03-01T00:00:00Z"
+            }
+            """;
+        String activatePayload = """
+            {
+              "status": "ACTIVE"
+            }
+            """;
+
+        mockMvc.perform(post("/api/agreements")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(createPayload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(patch("/api/agreements/agr-3021/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(activatePayload))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/agreements/agr-3021/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(activatePayload))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/agreements/agr-3021/status-history?page=0&size=10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].previousStatus").value("DRAFT"))
+            .andExpect(jsonPath("$.items[0].currentStatus").value("ACTIVE"));
+    }
+
+    @Test
+    void statusHistoryReturnsNotFoundForUnknownAgreement() throws Exception {
+        mockMvc.perform(get("/api/agreements/agr-missing-history/status-history?page=0&size=10"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Agreement not found: AGR-MISSING-HISTORY"))
+            .andExpect(jsonPath("$.path").value("/api/agreements/agr-missing-history/status-history"));
+    }
+
+    @Test
     void rejectsInvalidStatusQueryFilter() throws Exception {
         mockMvc.perform(get("/api/agreements?page=0&size=10&status=invalid"))
             .andExpect(status().isBadRequest())

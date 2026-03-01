@@ -2,6 +2,7 @@ package com.arcanaerp.platform.agreements.web;
 
 import com.arcanaerp.platform.agreements.AgreementManagement;
 import com.arcanaerp.platform.agreements.AgreementStatus;
+import com.arcanaerp.platform.agreements.AgreementStatusChangeView;
 import com.arcanaerp.platform.agreements.AgreementView;
 import com.arcanaerp.platform.agreements.ChangeAgreementStatusCommand;
 import com.arcanaerp.platform.agreements.CreateAgreementCommand;
@@ -55,6 +56,15 @@ public class AgreementsController {
         return agreementManagement.listAgreements(PageQuery.of(page, size), parseOptionalStatus(status)).map(this::toResponse);
     }
 
+    @GetMapping("/{agreementNumber}/status-history")
+    public PageResult<AgreementStatusChangeResponse> listStatusHistory(
+        @PathVariable String agreementNumber,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return agreementManagement.listStatusHistory(agreementNumber, PageQuery.of(page, size)).map(this::toStatusHistoryResponse);
+    }
+
     @PatchMapping("/{agreementNumber}/status")
     public AgreementResponse changeAgreementStatus(
         @PathVariable String agreementNumber,
@@ -78,6 +88,16 @@ public class AgreementsController {
                 agreement.activatedAt(),
                 agreement.terminatedAt()
             );
+    }
+
+    private AgreementStatusChangeResponse toStatusHistoryResponse(AgreementStatusChangeView change) {
+        return new AgreementStatusChangeResponse(
+            change.id(),
+            change.agreementNumber(),
+            change.previousStatus(),
+            change.currentStatus(),
+            change.changedAt()
+        );
     }
 
     private static AgreementStatus parseOptionalStatus(String status) {

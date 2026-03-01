@@ -17,6 +17,14 @@ erDiagram
       INSTANT activatedAt
       INSTANT terminatedAt
     }
+    AGREEMENT_STATUS_CHANGE_AUDITS {
+      UUID id PK
+      UUID agreementId
+      STRING previousStatus
+      STRING currentStatus
+      INSTANT changedAt
+    }
+    AGREEMENTS ||--o{ AGREEMENT_STATUS_CHANGE_AUDITS : "status changes"
 ```
 
 ## Relationship Notes
@@ -29,11 +37,18 @@ erDiagram
 - Transition timestamps:
   - `activatedAt` set when agreement transitions to `ACTIVE`
   - `terminatedAt` set when agreement transitions to `TERMINATED`
+- Immutable status history:
+  - each successful status transition appends one row to `agreement_status_change_audits`
+  - history is exposed via `GET /api/agreements/{agreementNumber}/status-history?page=&size=`
+  - no-op transitions (`ACTIVE -> ACTIVE`, etc.) do not append history rows
 - Listing/query behavior:
   - agreements list endpoint supports optional `status` filter (`DRAFT`, `ACTIVE`, `TERMINATED`)
   - list results are sorted by `createdAt DESC`
+  - status-history results are sorted by `changedAt DESC`
 
 ## Constraint Notes
 
 - Unique constraints:
   - `agreements(agreementNumber)`
+- Indexes:
+  - `agreement_status_change_audits(agreementId, changedAt)`

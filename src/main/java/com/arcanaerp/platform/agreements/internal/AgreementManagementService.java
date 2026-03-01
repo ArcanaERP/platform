@@ -2,6 +2,7 @@ package com.arcanaerp.platform.agreements.internal;
 
 import com.arcanaerp.platform.agreements.AgreementManagement;
 import com.arcanaerp.platform.agreements.AgreementStatus;
+import com.arcanaerp.platform.agreements.AgreementStatusChangeView;
 import com.arcanaerp.platform.agreements.AgreementView;
 import com.arcanaerp.platform.agreements.ChangeAgreementStatusCommand;
 import com.arcanaerp.platform.agreements.CreateAgreementCommand;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 class AgreementManagementService implements AgreementManagement {
 
     private final AgreementRepository agreementRepository;
+    private final AgreementStatusChangeAuditRepository agreementStatusChangeAuditRepository;
     private final Clock clock;
 
     @Override
@@ -61,18 +63,22 @@ class AgreementManagementService implements AgreementManagement {
         Agreement agreement = agreementRepository.findByAgreementNumber(normalizedAgreementNumber)
             .orElseThrow(() -> new java.util.NoSuchElementException("Agreement not found: " + normalizedAgreementNumber));
 
-        agreement.transitionTo(targetStatus, Instant.now(clock));
+        AgreementStatus previousStatus = agreement.getStatus();
+        Instant changedAt = Instant.now(clock);
+        agreement.transitionTo(targetStatus, changedAt);
         Agreement saved = agreementRepository.save(agreement);
+        if (previousStatus != saved.getStatus()) {
+            agreementStatusChangeAuditRepository.save(
+                AgreementStatusChangeAudit.create(saved.getId(), previousStatus, saved.getStatus(), changedAt)
+            );
+        }
         return toView(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
     public AgreementView getAgreement(String agreementNumber) {
-        String normalizedAgreementNumber = normalizeRequired(agreementNumber, "agreementNumber").toUpperCase();
-        Agreement agreement = agreementRepository.findByAgreementNumber(normalizedAgreementNumber)
-            .orElseThrow(() -> new java.util.NoSuchElementException("Agreement not found: " + normalizedAgreementNumber));
-        return toView(agreement);
+        return toView(findAgreementByNumber(agreementNumber));
     }
 
     @Override
@@ -84,11 +90,34 @@ class AgreementManagementService implements AgreementManagement {
         return PageResult.from(agreements).map(this::toView);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<AgreementStatusChangeView> listStatusHistory(String agreementNumber, PageQuery pageQuery) {
+        Agreement agreement = findAgreementByNumber(agreementNumber);
+        Page<AgreementStatusChangeAudit> audits = agreementStatusChangeAuditRepository.findByAgreementId(
+            agreement.getId(),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
+        );
+        return PageResult.from(audits).map(audit -> new AgreementStatusChangeView(
+                audit.getId(),
+                agreement.getAgreementNumber(),
+                audit.getPreviousStatus(),
+                audit.getCurrentStatus(),
+                audit.getChangedAt()
+            ));
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private Agreement findAgreementByNumber(String agreementNumber) {
+        String normalizedAgreementNumber = normalizeRequired(agreementNumber, "agreementNumber").toUpperCase();
+        return agreementRepository.findByAgreementNumber(normalizedAgreementNumber)
+            .orElseThrow(() -> new java.util.NoSuchElementException("Agreement not found: " + normalizedAgreementNumber));
     }
 
     private AgreementView toView(Agreement agreement) {

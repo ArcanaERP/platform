@@ -104,6 +104,7 @@ Agreements:
 - `GET /api/agreements/{agreementNumber}`
 - `GET /api/agreements?page=&size=&status=`
 - `PATCH /api/agreements/{agreementNumber}/status`
+- `GET /api/agreements/{agreementNumber}/status-history?page=&size=`
 
 Inventory:
 
