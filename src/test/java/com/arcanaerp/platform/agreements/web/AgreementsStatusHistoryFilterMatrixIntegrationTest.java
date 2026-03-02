@@ -4,7 +4,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.agreements.AgreementStatus;
-import com.arcanaerp.platform.testsupport.web.StatusHistoryWebTestSupport;
+import com.arcanaerp.platform.testsupport.web.AgreementStatusHistoryWebTestSupport;
 import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -272,8 +272,8 @@ class AgreementsStatusHistoryFilterMatrixIntegrationTest {
         String changedAtFrom,
         String changedAtTo
     ) {
-        return StatusHistoryWebTestSupport.statusHistoryRequest(
-            "/api/agreements/" + agreementNumber + "/status-history",
+        return AgreementStatusHistoryWebTestSupport.statusHistoryRequest(
+            agreementNumber,
             0,
             10,
             "tenantCode",

@@ -3,14 +3,13 @@ package com.arcanaerp.platform.agreements.web;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.nullValue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.agreements.AgreementStatus;
 import com.arcanaerp.platform.testsupport.web.AgreementCatalogWebTestSupport;
-import com.arcanaerp.platform.testsupport.web.StatusHistoryWebTestSupport;
+import com.arcanaerp.platform.testsupport.web.AgreementStatusHistoryWebTestSupport;
 import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -197,11 +196,7 @@ class AgreementsControllerIntegrationTest {
         )
             .andExpect(status().isOk());
 
-        mockMvc.perform(StatusHistoryWebTestSupport.statusHistoryRequest(
-            "/api/agreements/agr-3020/status-history",
-            0,
-            10
-        ))
+        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest("agr-3020", 0, 10))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.page").value(0))
             .andExpect(jsonPath("$.size").value(10))
@@ -240,11 +235,7 @@ class AgreementsControllerIntegrationTest {
         )
             .andExpect(status().isOk());
 
-        mockMvc.perform(StatusHistoryWebTestSupport.statusHistoryRequest(
-            "/api/agreements/agr-3021/status-history",
-            0,
-            10
-        ))
+        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest("agr-3021", 0, 10))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].previousStatus").value("DRAFT"))
@@ -269,8 +260,8 @@ class AgreementsControllerIntegrationTest {
         )
             .andExpect(status().isOk());
 
-        mockMvc.perform(StatusHistoryWebTestSupport.statusHistoryRequest(
-            "/api/agreements/agr-3025/status-history",
+        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest(
+            "agr-3025",
             0,
             10,
             "tenantCode",
@@ -280,8 +271,8 @@ class AgreementsControllerIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].tenantCode").value(AGREEMENTS_TENANT_CODE));
 
-        mockMvc.perform(StatusHistoryWebTestSupport.statusHistoryRequest(
-            "/api/agreements/agr-3025/status-history",
+        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest(
+            "agr-3025",
             0,
             10,
             "tenantCode",
@@ -290,8 +281,8 @@ class AgreementsControllerIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(0));
 
-        mockMvc.perform(StatusHistoryWebTestSupport.statusHistoryRequest(
-            "/api/agreements/agr-3025/status-history",
+        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest(
+            "agr-3025",
             0,
             10,
             "changedBy",
@@ -301,8 +292,8 @@ class AgreementsControllerIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].changedBy").value("legal@arcanaerp.com"));
 
-        mockMvc.perform(StatusHistoryWebTestSupport.statusHistoryRequest(
-            "/api/agreements/agr-3025/status-history",
+        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest(
+            "agr-3025",
             0,
             10,
             "changedBy",
@@ -311,8 +302,8 @@ class AgreementsControllerIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(0));
 
-        mockMvc.perform(StatusHistoryWebTestSupport.statusHistoryRequest(
-            "/api/agreements/agr-3025/status-history",
+        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest(
+            "agr-3025",
             0,
             10,
             "changedAtFrom",
@@ -323,8 +314,8 @@ class AgreementsControllerIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1));
 
-        mockMvc.perform(StatusHistoryWebTestSupport.statusHistoryRequest(
-            "/api/agreements/agr-3025/status-history",
+        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest(
+            "agr-3025",
             0,
             10,
             "changedAtFrom",
@@ -336,8 +327,8 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void rejectsStatusHistoryFilterWhenTenantCodeBlank() throws Exception {
-        mockMvc.perform(StatusHistoryWebTestSupport.statusHistoryRequest(
-            "/api/agreements/agr-3025/status-history",
+        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest(
+            "agr-3025",
             0,
             10,
             "tenantCode",
@@ -352,8 +343,8 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void rejectsStatusHistoryFilterWhenChangedByBlank() throws Exception {
-        mockMvc.perform(StatusHistoryWebTestSupport.statusHistoryRequest(
-            "/api/agreements/agr-3025/status-history",
+        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest(
+            "agr-3025",
             0,
             10,
             "changedBy",
@@ -368,8 +359,8 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void rejectsStatusHistoryFilterWhenChangedAtFromInvalid() throws Exception {
-        mockMvc.perform(StatusHistoryWebTestSupport.statusHistoryRequest(
-            "/api/agreements/agr-3025/status-history",
+        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest(
+            "agr-3025",
             0,
             10,
             "changedAtFrom",
@@ -384,8 +375,8 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void rejectsStatusHistoryFilterWhenChangedAtRangeInvalid() throws Exception {
-        mockMvc.perform(StatusHistoryWebTestSupport.statusHistoryRequest(
-            "/api/agreements/agr-3025/status-history",
+        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest(
+            "agr-3025",
             0,
             10,
             "changedAtFrom",
@@ -402,11 +393,7 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void statusHistoryReturnsNotFoundForUnknownAgreement() throws Exception {
-        mockMvc.perform(StatusHistoryWebTestSupport.statusHistoryRequest(
-            "/api/agreements/agr-missing-history/status-history",
-            0,
-            10
-        ))
+        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest("agr-missing-history", 0, 10))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
@@ -548,11 +535,7 @@ class AgreementsControllerIntegrationTest {
             .andExpect(jsonPath("$.activatedAt").isNotEmpty())
             .andExpect(jsonPath("$.terminatedAt").isNotEmpty());
 
-        mockMvc.perform(StatusHistoryWebTestSupport.statusHistoryRequest(
-            "/api/agreements/agr-3003/status-history",
-            0,
-            10
-        ))
+        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest("agr-3003", 0, 10))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(2))
             .andExpect(jsonPath("$.items[0].previousStatus").value("ACTIVE"))
