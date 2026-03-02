@@ -44,4 +44,8 @@ public final class AgreementCatalogWebTestSupport {
         }
         return request;
     }
+
+    public static MockHttpServletRequestBuilder getAgreementRequest(String agreementNumber) {
+        return get("/api/agreements/" + agreementNumber);
+    }
 }

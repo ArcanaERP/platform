@@ -110,7 +110,7 @@ class AgreementsControllerIntegrationTest {
             .content(payload))
             .andExpect(status().isCreated());
 
-        mockMvc.perform(get("/api/agreements/agr-3004"))
+        mockMvc.perform(AgreementCatalogWebTestSupport.getAgreementRequest("agr-3004"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.agreementNumber").value("AGR-3004"))
             .andExpect(jsonPath("$.name").value("Read Agreement"))
@@ -121,7 +121,7 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void returnsNotFoundWhenGettingUnknownAgreement() throws Exception {
-        mockMvc.perform(get("/api/agreements/agr-missing-read"))
+        mockMvc.perform(AgreementCatalogWebTestSupport.getAgreementRequest("agr-missing-read"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
