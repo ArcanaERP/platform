@@ -100,24 +100,26 @@ final class OrdersWebIntegrationTestSupport {
     static MockHttpServletRequestBuilder statusHistoryRequest(
         String orderNumber,
         Integer page,
+        Integer size
+    ) {
+        return StatusHistoryWebTestSupport.statusHistoryRequest(
+            STATUS_HISTORY_PATH_FORMAT.formatted(orderNumber),
+            page,
+            size
+        );
+    }
+
+    static MockHttpServletRequestBuilder statusHistoryRequest(
+        String orderNumber,
+        Integer page,
         Integer size,
-        String previousStatus,
-        String currentStatus,
-        String changedAtFrom,
-        String changedAtTo
+        String... optionalNameValuePairs
     ) {
         return StatusHistoryWebTestSupport.statusHistoryRequest(
             STATUS_HISTORY_PATH_FORMAT.formatted(orderNumber),
             page,
             size,
-            "previousStatus",
-            previousStatus,
-            "currentStatus",
-            currentStatus,
-            "changedAtFrom",
-            changedAtFrom,
-            "changedAtTo",
-            changedAtTo
+            optionalNameValuePairs
         );
     }
 }

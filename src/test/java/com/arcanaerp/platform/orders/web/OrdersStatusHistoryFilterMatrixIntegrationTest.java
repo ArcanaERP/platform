@@ -45,9 +45,13 @@ class OrdersStatusHistoryFilterMatrixIntegrationTest {
                 orderNumber,
                 0,
                 10,
+                "previousStatus",
                 filterCase.previousStatus(),
+                "currentStatus",
                 filterCase.currentStatus(),
+                "changedAtFrom",
                 filterCase.changedAtFrom(),
+                "changedAtTo",
                 filterCase.changedAtTo()
             ))
             .andExpect(status().isOk())
@@ -63,9 +67,13 @@ class OrdersStatusHistoryFilterMatrixIntegrationTest {
                 orderNumber,
                 0,
                 10,
+                "previousStatus",
                 invalidCase.previousStatus(),
+                "currentStatus",
                 invalidCase.currentStatus(),
+                "changedAtFrom",
                 invalidCase.changedAtFrom(),
+                "changedAtTo",
                 invalidCase.changedAtTo()
             ))
             .andExpect(status().isBadRequest())

@@ -53,7 +53,7 @@ class OrdersStatusHistoryPaginationIntegrationTest {
         String orderNumber = "so-oshpg-0002";
         seedConfirmedStatusHistory(orderNumber, "arc-oshpg-0002");
 
-        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest(orderNumber, 0, 1, null, null, null, null))
+        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest(orderNumber, 0, 1))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.page").value(0))
             .andExpect(jsonPath("$.size").value(1))
@@ -63,7 +63,7 @@ class OrdersStatusHistoryPaginationIntegrationTest {
             .andExpect(jsonPath("$.hasPrevious").value(false))
             .andExpect(jsonPath("$.items[0].currentStatus").value("CONFIRMED"));
 
-        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest(orderNumber, 1, 1, null, null, null, null))
+        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest(orderNumber, 1, 1))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.page").value(1))
             .andExpect(jsonPath("$.size").value(1))
@@ -79,13 +79,13 @@ class OrdersStatusHistoryPaginationIntegrationTest {
         String orderNumber = "so-oshpg-0003";
         seedConfirmedStatusHistory(orderNumber, "arc-oshpg-0003");
 
-        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest(orderNumber, 0, 1, null, "CONFIRMED", null, null))
+        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest(orderNumber, 0, 1, "currentStatus", "CONFIRMED"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.totalPages").value(1))
             .andExpect(jsonPath("$.items[0].currentStatus").value("CONFIRMED"));
 
-        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest(orderNumber, 0, 1, null, "CANCELLED", null, null))
+        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest(orderNumber, 0, 1, "currentStatus", "CANCELLED"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(0))
             .andExpect(jsonPath("$.totalPages").value(0))

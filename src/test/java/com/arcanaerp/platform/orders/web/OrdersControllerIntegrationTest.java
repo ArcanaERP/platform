@@ -152,7 +152,7 @@ class OrdersControllerIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("CONFIRMED"));
 
-        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest("so-5006", 0, 10, null, null, null, null))
+        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest("so-5006", 0, 10))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.page").value(0))
             .andExpect(jsonPath("$.size").value(10))
@@ -177,7 +177,7 @@ class OrdersControllerIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("CONFIRMED"));
 
-        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest("so-5007", 0, 10, null, null, null, null))
+        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest("so-5007", 0, 10))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].previousStatus").value("DRAFT"))
@@ -187,7 +187,7 @@ class OrdersControllerIntegrationTest {
 
     @Test
     void statusHistoryReturnsNotFoundForUnknownOrder() throws Exception {
-        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest("so-missing-history", 0, 10, null, null, null, null))
+        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest("so-missing-history", 0, 10))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
