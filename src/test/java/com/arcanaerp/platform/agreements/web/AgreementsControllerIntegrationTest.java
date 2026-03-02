@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.agreements.AgreementStatus;
+import com.arcanaerp.platform.testsupport.web.AgreementCatalogWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.StatusHistoryWebTestSupport;
 import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
@@ -159,7 +160,7 @@ class AgreementsControllerIntegrationTest {
         )
             .andExpect(status().isOk());
 
-        mockMvc.perform(get("/api/agreements?page=0&size=100"))
+        mockMvc.perform(AgreementCatalogWebTestSupport.listAgreementsRequest(0, 100))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.page").value(0))
             .andExpect(jsonPath("$.size").value(100))
@@ -168,15 +169,15 @@ class AgreementsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3011')].status", hasItem("ACTIVE")))
             .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3012')].status", hasItem("TERMINATED")));
 
-        mockMvc.perform(get("/api/agreements?page=0&size=100&status=ACTIVE"))
+        mockMvc.perform(AgreementCatalogWebTestSupport.listAgreementsRequest(0, 100, "ACTIVE"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3011')].status", hasItem("ACTIVE")));
 
-        mockMvc.perform(get("/api/agreements?page=0&size=100&status=TERMINATED"))
+        mockMvc.perform(AgreementCatalogWebTestSupport.listAgreementsRequest(0, 100, "TERMINATED"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3012')].status", hasItem("TERMINATED")));
 
-        mockMvc.perform(get("/api/agreements?page=0&size=100&status=DRAFT"))
+        mockMvc.perform(AgreementCatalogWebTestSupport.listAgreementsRequest(0, 100, "DRAFT"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3010')].status", hasItem("DRAFT")));
     }
@@ -415,14 +416,14 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void rejectsInvalidStatusQueryFilter() throws Exception {
-        mockMvc.perform(get("/api/agreements?page=0&size=10&status=invalid"))
+        mockMvc.perform(AgreementCatalogWebTestSupport.listAgreementsRequest(0, 10, "invalid"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.message").value("status query parameter must be one of: DRAFT, ACTIVE, TERMINATED"))
             .andExpect(jsonPath("$.path").value("/api/agreements"));
 
-        mockMvc.perform(get("/api/agreements?page=0&size=10&status="))
+        mockMvc.perform(AgreementCatalogWebTestSupport.listAgreementsRequest(0, 10, ""))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
