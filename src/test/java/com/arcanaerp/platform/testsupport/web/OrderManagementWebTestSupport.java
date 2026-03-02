@@ -79,6 +79,12 @@ public final class OrderManagementWebTestSupport {
         return get("/api/orders/" + orderNumber);
     }
 
+    public static MockHttpServletRequestBuilder listOrdersRequest(int page, int size) {
+        return get("/api/orders")
+            .param("page", String.valueOf(page))
+            .param("size", String.valueOf(size));
+    }
+
     public record OrderLineRequest(String productSku, String quantity, String unitPrice) {}
 
     private static String joinLinePayloads(OrderLineRequest[] lines) {

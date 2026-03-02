@@ -4,7 +4,6 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.nullValue;
 import static com.arcanaerp.platform.testsupport.web.OrderManagementWebTestSupport.line;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -61,7 +60,7 @@ class OrdersControllerIntegrationTest {
             .andExpect(jsonPath("$.cancelledAt").value(nullValue()))
             .andExpect(jsonPath("$.lines[0].lineNo").value(1));
 
-        mockMvc.perform(get("/api/orders?page=0&size=10"))
+        mockMvc.perform(OrderManagementWebTestSupport.listOrdersRequest(0, 10))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.page").value(0))
             .andExpect(jsonPath("$.size").value(10))
