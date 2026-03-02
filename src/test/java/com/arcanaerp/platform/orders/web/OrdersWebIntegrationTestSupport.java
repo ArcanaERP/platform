@@ -1,11 +1,11 @@
 package com.arcanaerp.platform.orders.web;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.OrderManagementWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.ProductCatalogWebTestSupport;
+import com.arcanaerp.platform.testsupport.web.StatusHistoryWebTestSupport;
 import java.time.Instant;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -94,7 +94,7 @@ final class OrdersWebIntegrationTestSupport {
     }
 
     static MockHttpServletRequestBuilder statusHistoryRequest(String orderNumber) {
-        return get(STATUS_HISTORY_PATH_FORMAT.formatted(orderNumber));
+        return StatusHistoryWebTestSupport.statusHistoryRequest(STATUS_HISTORY_PATH_FORMAT.formatted(orderNumber));
     }
 
     static MockHttpServletRequestBuilder statusHistoryRequest(
@@ -106,25 +106,18 @@ final class OrdersWebIntegrationTestSupport {
         String changedAtFrom,
         String changedAtTo
     ) {
-        MockHttpServletRequestBuilder request = statusHistoryRequest(orderNumber);
-        if (page != null) {
-            request.param("page", String.valueOf(page));
-        }
-        if (size != null) {
-            request.param("size", String.valueOf(size));
-        }
-        if (previousStatus != null) {
-            request.param("previousStatus", previousStatus);
-        }
-        if (currentStatus != null) {
-            request.param("currentStatus", currentStatus);
-        }
-        if (changedAtFrom != null) {
-            request.param("changedAtFrom", changedAtFrom);
-        }
-        if (changedAtTo != null) {
-            request.param("changedAtTo", changedAtTo);
-        }
-        return request;
+        return StatusHistoryWebTestSupport.statusHistoryRequest(
+            STATUS_HISTORY_PATH_FORMAT.formatted(orderNumber),
+            page,
+            size,
+            "previousStatus",
+            previousStatus,
+            "currentStatus",
+            currentStatus,
+            "changedAtFrom",
+            changedAtFrom,
+            "changedAtTo",
+            changedAtTo
+        );
     }
 }

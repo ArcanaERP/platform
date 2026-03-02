@@ -1,10 +1,10 @@
 package com.arcanaerp.platform.agreements.web;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.agreements.AgreementStatus;
+import com.arcanaerp.platform.testsupport.web.StatusHistoryWebTestSupport;
 import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -14,7 +14,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -266,30 +265,26 @@ class AgreementsStatusHistoryFilterMatrixIntegrationTest {
         );
     }
 
-    private MockHttpServletRequestBuilder statusHistoryRequest(
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder statusHistoryRequest(
         String agreementNumber,
         String tenantCode,
         String changedBy,
         String changedAtFrom,
         String changedAtTo
     ) {
-        MockHttpServletRequestBuilder request = get("/api/agreements/" + agreementNumber + "/status-history")
-            .param("page", "0")
-            .param("size", "10");
-
-        if (tenantCode != null) {
-            request.param("tenantCode", tenantCode);
-        }
-        if (changedBy != null) {
-            request.param("changedBy", changedBy);
-        }
-        if (changedAtFrom != null) {
-            request.param("changedAtFrom", changedAtFrom);
-        }
-        if (changedAtTo != null) {
-            request.param("changedAtTo", changedAtTo);
-        }
-        return request;
+        return StatusHistoryWebTestSupport.statusHistoryRequest(
+            "/api/agreements/" + agreementNumber + "/status-history",
+            0,
+            10,
+            "tenantCode",
+            tenantCode,
+            "changedBy",
+            changedBy,
+            "changedAtFrom",
+            changedAtFrom,
+            "changedAtTo",
+            changedAtTo
+        );
     }
 
     private record HistoryFilterCase(
