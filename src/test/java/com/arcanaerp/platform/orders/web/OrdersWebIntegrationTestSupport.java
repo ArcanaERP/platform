@@ -4,16 +4,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.OrderManagementWebTestSupport;
+import com.arcanaerp.platform.testsupport.web.OrderStatusHistoryWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.ProductCatalogWebTestSupport;
-import com.arcanaerp.platform.testsupport.web.StatusHistoryWebTestSupport;
 import java.time.Instant;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 final class OrdersWebIntegrationTestSupport {
-
-    private static final String STATUS_HISTORY_PATH_FORMAT = "/api/orders/%s/status-history";
 
     private OrdersWebIntegrationTestSupport() {}
 
@@ -94,7 +92,7 @@ final class OrdersWebIntegrationTestSupport {
     }
 
     static MockHttpServletRequestBuilder statusHistoryRequest(String orderNumber) {
-        return StatusHistoryWebTestSupport.statusHistoryRequest(STATUS_HISTORY_PATH_FORMAT.formatted(orderNumber));
+        return OrderStatusHistoryWebTestSupport.statusHistoryRequest(orderNumber);
     }
 
     static MockHttpServletRequestBuilder statusHistoryRequest(
@@ -102,11 +100,7 @@ final class OrdersWebIntegrationTestSupport {
         Integer page,
         Integer size
     ) {
-        return StatusHistoryWebTestSupport.statusHistoryRequest(
-            STATUS_HISTORY_PATH_FORMAT.formatted(orderNumber),
-            page,
-            size
-        );
+        return OrderStatusHistoryWebTestSupport.statusHistoryRequest(orderNumber, page, size);
     }
 
     static MockHttpServletRequestBuilder statusHistoryRequest(
@@ -115,8 +109,8 @@ final class OrdersWebIntegrationTestSupport {
         Integer size,
         String... optionalNameValuePairs
     ) {
-        return StatusHistoryWebTestSupport.statusHistoryRequest(
-            STATUS_HISTORY_PATH_FORMAT.formatted(orderNumber),
+        return OrderStatusHistoryWebTestSupport.statusHistoryRequest(
+            orderNumber,
             page,
             size,
             optionalNameValuePairs
