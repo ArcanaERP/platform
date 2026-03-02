@@ -81,6 +81,14 @@ class OrderManagementService implements OrderManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public OrderView getOrder(String orderNumber) {
+        SalesOrder order = findOrderByNumber(orderNumber);
+        List<SalesOrderLine> lines = salesOrderLineRepository.findBySalesOrderIdOrderByLineNoAsc(order.getId());
+        return toView(order, lines);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<OrderView> listOrders(PageQuery pageQuery) {
         Page<SalesOrder> orders = salesOrderRepository.findAll(
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))

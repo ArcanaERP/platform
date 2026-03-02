@@ -50,6 +50,11 @@ public class OrdersController {
         return toResponse(created);
     }
 
+    @GetMapping("/{orderNumber}")
+    public OrderResponse getOrder(@PathVariable String orderNumber) {
+        return toResponse(orderManagement.getOrder(orderNumber));
+    }
+
     @GetMapping
     public PageResult<OrderResponse> listOrders(
         @RequestParam(required = false) Integer page,

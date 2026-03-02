@@ -70,6 +70,32 @@ class OrdersControllerIntegrationTest {
     }
 
     @Test
+    void getsOrderByOrderNumber() throws Exception {
+        registerProduct("arc-5008");
+        createSingleLineOrder("so-5008", "arc-5008")
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(OrderManagementWebTestSupport.getOrderRequest("so-5008"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.orderNumber").value("SO-5008"))
+            .andExpect(jsonPath("$.customerEmail").value("buyer@acme.com"))
+            .andExpect(jsonPath("$.status").value("DRAFT"))
+            .andExpect(jsonPath("$.currencyCode").value("USD"))
+            .andExpect(jsonPath("$.lines[0].productSku").value("ARC-5008"))
+            .andExpect(jsonPath("$.lines[0].lineNo").value(1));
+    }
+
+    @Test
+    void returnsNotFoundWhenGettingUnknownOrder() throws Exception {
+        mockMvc.perform(OrderManagementWebTestSupport.getOrderRequest("so-missing-read"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Order not found: SO-MISSING-READ"))
+            .andExpect(jsonPath("$.path").value("/api/orders/so-missing-read"));
+    }
+
+    @Test
     void returnsErrorEnvelopeForDuplicateOrderNumber() throws Exception {
         registerProduct("arc-5300");
         createSingleLineOrder("so-5001", "arc-5300")

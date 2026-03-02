@@ -1,11 +1,13 @@
 package com.arcanaerp.platform.testsupport.web;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 public final class OrderManagementWebTestSupport {
 
@@ -71,6 +73,10 @@ public final class OrderManagementWebTestSupport {
         return mockMvc.perform(patch("/api/orders/" + orderNumber + "/status")
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload));
+    }
+
+    public static MockHttpServletRequestBuilder getOrderRequest(String orderNumber) {
+        return get("/api/orders/" + orderNumber);
     }
 
     public record OrderLineRequest(String productSku, String quantity, String unitPrice) {}
