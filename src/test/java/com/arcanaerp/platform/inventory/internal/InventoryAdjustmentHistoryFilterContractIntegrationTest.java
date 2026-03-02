@@ -2,10 +2,10 @@ package com.arcanaerp.platform.inventory.internal;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.arcanaerp.platform.testsupport.web.InventoryAdjustmentHistoryWebTestSupport;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -55,9 +55,7 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
 
         seedAdjustmentHistory(sku, actorA, actorB);
 
-        mockMvc.perform(get("/api/inventory/{sku}/adjustments", sku)
-            .param("page", "0")
-            .param("size", "10"))
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(sku, 0, 10))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(2))
             .andExpect(jsonPath("$.items[0].locationCode").value("MAIN"))
@@ -75,10 +73,13 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
 
         seedAdjustmentHistory(sku, actorA, actorB);
 
-        mockMvc.perform(get("/api/inventory/{sku}/adjustments", sku)
-            .param("page", "0")
-            .param("size", "10")
-            .param("adjustedBy", actorA))
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(
+            sku,
+            0,
+            10,
+            "adjustedBy",
+            actorA
+        ))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].adjustedBy").value(actorA))
@@ -93,20 +94,23 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
 
         seedAdjustmentHistory(sku, actorA, actorB);
 
-        MvcResult result = mockMvc.perform(get("/api/inventory/{sku}/adjustments", sku)
-                .param("page", "0")
-                .param("size", "10"))
+        MvcResult result = mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(sku, 0, 10))
             .andExpect(status().isOk())
             .andReturn();
         JsonNode items = objectMapper.readTree(result.getResponse().getContentAsString()).path("items");
         String latestAdjustedAt = items.get(0).path("adjustedAt").asText();
 
-        mockMvc.perform(get("/api/inventory/{sku}/adjustments", sku)
-            .param("page", "0")
-            .param("size", "10")
-            .param("adjustedBy", actorB)
-            .param("adjustedAtFrom", latestAdjustedAt)
-            .param("adjustedAtTo", latestAdjustedAt))
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(
+            sku,
+            0,
+            10,
+            "adjustedBy",
+            actorB,
+            "adjustedAtFrom",
+            latestAdjustedAt,
+            "adjustedAtTo",
+            latestAdjustedAt
+        ))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].adjustedBy").value(actorB))
@@ -115,10 +119,13 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
 
     @Test
     void rejectsBlankAdjustedByFilter() throws Exception {
-        mockMvc.perform(get("/api/inventory/arc-9490/adjustments")
-            .param("page", "0")
-            .param("size", "10")
-            .param("adjustedBy", "   "))
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(
+            "arc-9490",
+            0,
+            10,
+            "adjustedBy",
+            "   "
+        ))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
@@ -128,10 +135,13 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
 
     @Test
     void rejectsBlankLocationCodeFilter() throws Exception {
-        mockMvc.perform(get("/api/inventory/arc-9490/adjustments")
-            .param("page", "0")
-            .param("size", "10")
-            .param("locationCode", "   "))
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(
+            "arc-9490",
+            0,
+            10,
+            "locationCode",
+            "   "
+        ))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
@@ -141,10 +151,13 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
 
     @Test
     void rejectsInvalidAdjustedAtFromFormat() throws Exception {
-        mockMvc.perform(get("/api/inventory/arc-9491/adjustments")
-            .param("page", "0")
-            .param("size", "10")
-            .param("adjustedAtFrom", "not-a-timestamp"))
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(
+            "arc-9491",
+            0,
+            10,
+            "adjustedAtFrom",
+            "not-a-timestamp"
+        ))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
@@ -154,11 +167,15 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
 
     @Test
     void rejectsInvalidAdjustedAtRangeOrder() throws Exception {
-        mockMvc.perform(get("/api/inventory/arc-9492/adjustments")
-            .param("page", "0")
-            .param("size", "10")
-            .param("adjustedAtFrom", "2026-03-02T00:00:00Z")
-            .param("adjustedAtTo", "2026-03-01T00:00:00Z"))
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(
+            "arc-9492",
+            0,
+            10,
+            "adjustedAtFrom",
+            "2026-03-02T00:00:00Z",
+            "adjustedAtTo",
+            "2026-03-01T00:00:00Z"
+        ))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
@@ -168,9 +185,7 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
 
     @Test
     void returnsNotFoundForUnknownSkuHistory() throws Exception {
-        mockMvc.perform(get("/api/inventory/arc-9493/adjustments")
-            .param("page", "0")
-            .param("size", "10"))
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest("arc-9493", 0, 10))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
@@ -194,18 +209,19 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
         Thread.sleep(25);
         postAdjustment(sku, "wh-west", "5", ADJUSTMENT_REASON_B, actorWest);
 
-        mockMvc.perform(get("/api/inventory/{sku}/adjustments", sku)
-            .param("page", "0")
-            .param("size", "10"))
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(sku, 0, 10))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].locationCode").value("MAIN"))
             .andExpect(jsonPath("$.items[0].adjustedBy").value(actorMain));
 
-        mockMvc.perform(get("/api/inventory/{sku}/adjustments", sku)
-            .param("locationCode", "wh-west")
-            .param("page", "0")
-            .param("size", "10"))
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(
+            sku,
+            0,
+            10,
+            "locationCode",
+            "wh-west"
+        ))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].locationCode").value("WH-WEST"))
