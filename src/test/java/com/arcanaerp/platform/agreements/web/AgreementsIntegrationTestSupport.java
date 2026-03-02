@@ -1,10 +1,10 @@
 package com.arcanaerp.platform.agreements.web;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.agreements.AgreementStatus;
+import com.arcanaerp.platform.testsupport.web.AgreementManagementWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -42,10 +42,13 @@ final class AgreementsIntegrationTestSupport {
         String reason,
         String changedBy
     ) throws Exception {
-        return mockMvc.perform(
-            patch("/api/agreements/" + agreementNumber + "/status")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(changeStatusPayload(status, tenantCode, reason, changedBy))
+        return AgreementManagementWebTestSupport.transitionAgreementStatus(
+            mockMvc,
+            agreementNumber,
+            status,
+            tenantCode,
+            reason,
+            changedBy
         );
     }
 
@@ -55,14 +58,7 @@ final class AgreementsIntegrationTestSupport {
         String reason,
         String changedBy
     ) {
-        return """
-            {
-              "status": "%s",
-              "tenantCode": "%s",
-              "reason": "%s",
-              "changedBy": "%s"
-            }
-            """.formatted(status.name(), tenantCode, reason, changedBy);
+        return AgreementManagementWebTestSupport.changeStatusPayload(status, tenantCode, reason, changedBy);
     }
 
     static void registerActor(
