@@ -1,11 +1,11 @@
 package com.arcanaerp.platform.orders.web;
 
 import static org.hamcrest.Matchers.nullValue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.orders.OrderStatus;
+import com.arcanaerp.platform.testsupport.web.OrderManagementWebTestSupport;
 import java.time.Instant;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -148,16 +147,6 @@ class OrdersLifecycleTransitionMatrixIntegrationTest {
     }
 
     private ResultActions transition(String orderNumber, OrderStatus statusValue) throws Exception {
-        String payload = """
-            {
-              "status": "%s"
-            }
-            """.formatted(statusValue.name());
-
-        return mockMvc.perform(
-            patch("/api/orders/" + orderNumber + "/status")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(payload)
-        );
+        return OrderManagementWebTestSupport.transitionOrderStatus(mockMvc, orderNumber, statusValue.name());
     }
 }

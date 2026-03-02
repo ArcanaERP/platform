@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.nullValue;
 import static com.arcanaerp.platform.testsupport.web.OrderManagementWebTestSupport.line;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -17,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -102,11 +100,6 @@ class OrdersControllerIntegrationTest {
     @Test
     void rejectsInvalidOrderStatusTransition() throws Exception {
         registerProduct("arc-5500");
-        String cancelPayload = """
-            {
-              "status": "CANCELLED"
-            }
-            """;
 
         createSingleLineOrder("so-5003", "arc-5500")
             .andExpect(status().isCreated());
@@ -117,9 +110,7 @@ class OrdersControllerIntegrationTest {
             .andExpect(jsonPath("$.confirmedAt").value(CONFIRMED_AT_INSTANT.toString()))
             .andExpect(jsonPath("$.cancelledAt").value(nullValue()));
 
-        mockMvc.perform(patch("/api/orders/so-5003/status")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(cancelPayload))
+        OrderManagementWebTestSupport.transitionOrderStatus(mockMvc, "so-5003", "CANCELLED")
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))

@@ -1,14 +1,12 @@
 package com.arcanaerp.platform.orders.web;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.OrderManagementWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.ProductCatalogWebTestSupport;
 import java.time.Instant;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -54,9 +52,7 @@ final class OrdersWebIntegrationTestSupport {
         Instant confirmedAt
     ) throws Exception {
         testClock.setInstant(confirmedAt);
-        return mockMvc.perform(patch("/api/orders/" + orderNumber + "/status")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"status\":\"CONFIRMED\"}"));
+        return OrderManagementWebTestSupport.transitionOrderStatus(mockMvc, orderNumber, "CONFIRMED");
     }
 
     static ResultActions registerActor(MockMvc mockMvc, String tenantCode, String email, String displayName) throws Exception {

@@ -1,5 +1,6 @@
 package com.arcanaerp.platform.testsupport.web;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import org.springframework.http.MediaType;
@@ -58,6 +59,18 @@ public final class OrderManagementWebTestSupport {
 
     public static OrderLineRequest line(String productSku, String quantity, String unitPrice) {
         return new OrderLineRequest(productSku, quantity, unitPrice);
+    }
+
+    public static ResultActions transitionOrderStatus(MockMvc mockMvc, String orderNumber, String status) throws Exception {
+        String payload = """
+            {
+              "status": "%s"
+            }
+            """.formatted(status);
+
+        return mockMvc.perform(patch("/api/orders/" + orderNumber + "/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload));
     }
 
     public record OrderLineRequest(String productSku, String quantity, String unitPrice) {}
