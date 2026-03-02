@@ -130,40 +130,10 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void listsAgreementsWithOptionalStatusFilter() throws Exception {
-        String draftPayload = """
-            {
-              "agreementNumber": "agr-3010",
-              "name": "Draft Agreement",
-              "agreementType": "service",
-              "effectiveFrom": "2026-03-01T00:00:00Z"
-            }
-            """;
-        String activePayload = """
-            {
-              "agreementNumber": "agr-3011",
-              "name": "Active Agreement",
-              "agreementType": "service",
-              "effectiveFrom": "2026-03-01T00:00:00Z"
-            }
-            """;
-        String terminatedPayload = """
-            {
-              "agreementNumber": "agr-3012",
-              "name": "Terminated Agreement",
-              "agreementType": "service",
-              "effectiveFrom": "2026-03-01T00:00:00Z"
-            }
-            """;
 
-        mockMvc.perform(post("/api/agreements")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(draftPayload))
-            .andExpect(status().isCreated());
+        AgreementsIntegrationTestSupport.createAgreement(mockMvc, "agr-3010", "Draft Agreement");
 
-        mockMvc.perform(post("/api/agreements")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(activePayload))
-            .andExpect(status().isCreated());
+        AgreementsIntegrationTestSupport.createAgreement(mockMvc, "agr-3011", "Active Agreement");
 
         registerActor(AGREEMENTS_TENANT_CODE, "legal@arcanaerp.com");
         AgreementsIntegrationTestSupport.transitionAgreementStatus(
@@ -176,10 +146,7 @@ class AgreementsControllerIntegrationTest {
         )
             .andExpect(status().isOk());
 
-        mockMvc.perform(post("/api/agreements")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(terminatedPayload))
-            .andExpect(status().isCreated());
+        AgreementsIntegrationTestSupport.createAgreement(mockMvc, "agr-3012", "Terminated Agreement");
 
         registerActor(AGREEMENTS_ALT_TENANT_CODE, "legal@arcanaerp.com");
         AgreementsIntegrationTestSupport.transitionAgreementStatus(
@@ -216,19 +183,7 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void listsAgreementStatusHistory() throws Exception {
-        String createPayload = """
-            {
-              "agreementNumber": "agr-3020",
-              "name": "History Agreement",
-              "agreementType": "service",
-              "effectiveFrom": "2026-03-01T00:00:00Z"
-            }
-            """;
-
-        mockMvc.perform(post("/api/agreements")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(createPayload))
-            .andExpect(status().isCreated());
+        AgreementsIntegrationTestSupport.createAgreement(mockMvc, "agr-3020", "History Agreement");
 
         registerActor(AGREEMENTS_TENANT_CODE, "legal@arcanaerp.com");
         AgreementsIntegrationTestSupport.transitionAgreementStatus(
@@ -261,19 +216,7 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void statusHistoryIgnoresNoOpTransitions() throws Exception {
-        String createPayload = """
-            {
-              "agreementNumber": "agr-3021",
-              "name": "No-op Agreement",
-              "agreementType": "service",
-              "effectiveFrom": "2026-03-01T00:00:00Z"
-            }
-            """;
-
-        mockMvc.perform(post("/api/agreements")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(createPayload))
-            .andExpect(status().isCreated());
+        AgreementsIntegrationTestSupport.createAgreement(mockMvc, "agr-3021", "No-op Agreement");
 
         registerActor(AGREEMENTS_TENANT_CODE, "legal@arcanaerp.com");
         AgreementsIntegrationTestSupport.transitionAgreementStatus(
@@ -312,19 +255,7 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void filtersStatusHistoryByTenantAndChangedByAndChangedAtRange() throws Exception {
-        String createPayload = """
-            {
-              "agreementNumber": "agr-3025",
-              "name": "Filtered History Agreement",
-              "agreementType": "service",
-              "effectiveFrom": "2026-03-01T00:00:00Z"
-            }
-            """;
-
-        mockMvc.perform(post("/api/agreements")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(createPayload))
-            .andExpect(status().isCreated());
+        AgreementsIntegrationTestSupport.createAgreement(mockMvc, "agr-3025", "Filtered History Agreement");
 
         registerActor(AGREEMENTS_TENANT_CODE, "legal@arcanaerp.com");
         AgreementsIntegrationTestSupport.transitionAgreementStatus(
@@ -501,19 +432,7 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void rejectsStatusTransitionWhenReasonBlank() throws Exception {
-        String createPayload = """
-            {
-              "agreementNumber": "agr-3022",
-              "name": "Reason Validation Agreement",
-              "agreementType": "service",
-              "effectiveFrom": "2026-03-01T00:00:00Z"
-            }
-            """;
-
-        mockMvc.perform(post("/api/agreements")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(createPayload))
-            .andExpect(status().isCreated());
+        AgreementsIntegrationTestSupport.createAgreement(mockMvc, "agr-3022", "Reason Validation Agreement");
 
         AgreementsIntegrationTestSupport.transitionAgreementStatus(
             mockMvc,
@@ -532,19 +451,7 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void rejectsStatusTransitionWhenActorUnknownInTenant() throws Exception {
-        String createPayload = """
-            {
-              "agreementNumber": "agr-3023",
-              "name": "Unknown Actor Agreement",
-              "agreementType": "service",
-              "effectiveFrom": "2026-03-01T00:00:00Z"
-            }
-            """;
-
-        mockMvc.perform(post("/api/agreements")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(createPayload))
-            .andExpect(status().isCreated());
+        AgreementsIntegrationTestSupport.createAgreement(mockMvc, "agr-3023", "Unknown Actor Agreement");
 
         AgreementsIntegrationTestSupport.transitionAgreementStatus(
             mockMvc,
@@ -566,19 +473,7 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void rejectsStatusTransitionWhenActorExistsInDifferentTenant() throws Exception {
-        String createPayload = """
-            {
-              "agreementNumber": "agr-3024",
-              "name": "Mismatched Actor Agreement",
-              "agreementType": "service",
-              "effectiveFrom": "2026-03-01T00:00:00Z"
-            }
-            """;
-
-        mockMvc.perform(post("/api/agreements")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(createPayload))
-            .andExpect(status().isCreated());
+        AgreementsIntegrationTestSupport.createAgreement(mockMvc, "agr-3024", "Mismatched Actor Agreement");
 
         registerActor(MISMATCH_ACTOR_TENANT_CODE, "tenant.actor@arcanaerp.com");
 
@@ -602,18 +497,7 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void transitionsAgreementStatusFromDraftToActive() throws Exception {
-        String createPayload = """
-            {
-              "agreementNumber": "agr-3002",
-              "name": "Master Services Agreement",
-              "agreementType": "service",
-              "effectiveFrom": "2026-03-01T00:00:00Z"
-            }
-            """;
-
-        mockMvc.perform(post("/api/agreements")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(createPayload))
+        AgreementsIntegrationTestSupport.createAgreement(mockMvc, "agr-3002", "Master Services Agreement")
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.status").value("DRAFT"));
 
@@ -635,19 +519,7 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void transitionsAgreementStatusFromActiveToTerminated() throws Exception {
-        String createPayload = """
-            {
-              "agreementNumber": "agr-3003",
-              "name": "Master Services Agreement",
-              "agreementType": "service",
-              "effectiveFrom": "2026-03-01T00:00:00Z"
-            }
-            """;
-
-        mockMvc.perform(post("/api/agreements")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(createPayload))
-            .andExpect(status().isCreated());
+        AgreementsIntegrationTestSupport.createAgreement(mockMvc, "agr-3003", "Master Services Agreement");
 
         registerActor(AGREEMENTS_TENANT_CODE, "legal@arcanaerp.com");
         AgreementsIntegrationTestSupport.transitionAgreementStatus(
@@ -690,19 +562,7 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void rejectsInvalidAgreementStatusTransitionFromTerminated() throws Exception {
-        String createPayload = """
-            {
-              "agreementNumber": "agr-3006",
-              "name": "Master Services Agreement",
-              "agreementType": "service",
-              "effectiveFrom": "2026-03-01T00:00:00Z"
-            }
-            """;
-
-        mockMvc.perform(post("/api/agreements")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(createPayload))
-            .andExpect(status().isCreated());
+        AgreementsIntegrationTestSupport.createAgreement(mockMvc, "agr-3006", "Master Services Agreement");
 
         registerActor(AGREEMENTS_TENANT_CODE, "legal@arcanaerp.com");
         AgreementsIntegrationTestSupport.transitionAgreementStatus(

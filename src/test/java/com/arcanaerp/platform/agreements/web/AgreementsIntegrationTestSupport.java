@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.agreements.AgreementStatus;
+import com.arcanaerp.platform.testsupport.web.AgreementCatalogWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.AgreementManagementWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
 import org.springframework.http.MediaType;
@@ -14,24 +15,14 @@ final class AgreementsIntegrationTestSupport {
 
     private AgreementsIntegrationTestSupport() {}
 
-    static void createAgreement(MockMvc mockMvc, String agreementNumber, String name) throws Exception {
-        mockMvc.perform(
-            post("/api/agreements")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(createAgreementPayload(agreementNumber, name))
-        )
-            .andExpect(status().isCreated());
+    static ResultActions createAgreement(MockMvc mockMvc, String agreementNumber, String name) throws Exception {
+        ResultActions result = AgreementCatalogWebTestSupport.createAgreement(mockMvc, agreementNumber, name);
+        result.andExpect(status().isCreated());
+        return result;
     }
 
     static String createAgreementPayload(String agreementNumber, String name) {
-        return """
-            {
-              "agreementNumber": "%s",
-              "name": "%s",
-              "agreementType": "service",
-              "effectiveFrom": "2026-03-01T00:00:00Z"
-            }
-            """.formatted(agreementNumber, name);
+        return AgreementCatalogWebTestSupport.createAgreementPayload(agreementNumber, name);
     }
 
     static ResultActions transitionAgreementStatus(
