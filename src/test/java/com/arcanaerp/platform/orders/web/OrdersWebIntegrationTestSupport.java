@@ -103,6 +103,17 @@ final class OrdersWebIntegrationTestSupport {
         return OrderStatusHistoryWebTestSupport.statusHistoryRequest(orderNumber, page, size);
     }
 
+    static MockHttpServletRequestBuilder statusHistoryRequestDefault(String orderNumber) {
+        return OrderStatusHistoryWebTestSupport.statusHistoryRequestDefault(orderNumber);
+    }
+
+    static MockHttpServletRequestBuilder statusHistoryRequestDefault(
+        String orderNumber,
+        String... optionalNameValuePairs
+    ) {
+        return OrderStatusHistoryWebTestSupport.statusHistoryRequestDefault(orderNumber, optionalNameValuePairs);
+    }
+
     static MockHttpServletRequestBuilder statusHistoryRequest(
         String orderNumber,
         Integer page,

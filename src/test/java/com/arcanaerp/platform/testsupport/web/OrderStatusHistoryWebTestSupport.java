@@ -4,6 +4,9 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 public final class OrderStatusHistoryWebTestSupport {
 
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 10;
+
     private OrderStatusHistoryWebTestSupport() {}
 
     public static MockHttpServletRequestBuilder statusHistoryRequest(String orderNumber) {
@@ -12,6 +15,17 @@ public final class OrderStatusHistoryWebTestSupport {
 
     public static MockHttpServletRequestBuilder statusHistoryRequest(String orderNumber, Integer page, Integer size) {
         return StatusHistoryWebTestSupport.statusHistoryRequest(statusHistoryPath(orderNumber), page, size);
+    }
+
+    public static MockHttpServletRequestBuilder statusHistoryRequestDefault(String orderNumber) {
+        return statusHistoryRequest(orderNumber, DEFAULT_PAGE, DEFAULT_SIZE);
+    }
+
+    public static MockHttpServletRequestBuilder statusHistoryRequestDefault(
+        String orderNumber,
+        String... optionalNameValuePairs
+    ) {
+        return statusHistoryRequest(orderNumber, DEFAULT_PAGE, DEFAULT_SIZE, optionalNameValuePairs);
     }
 
     public static MockHttpServletRequestBuilder statusHistoryRequest(
