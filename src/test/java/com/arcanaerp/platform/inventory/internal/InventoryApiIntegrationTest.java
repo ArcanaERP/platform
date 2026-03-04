@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.testsupport.web.InventoryManagementWebTestSupport;
+import com.arcanaerp.platform.testsupport.web.InventoryTransferReversalHistoryWebTestSupport;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -589,9 +590,7 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
             .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()));
 
-        mockMvc.perform(get("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .param("page", "0")
-            .param("size", "10"))
+        mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequest(originalTransferId, 0, 10))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1));
     }
@@ -712,9 +711,7 @@ class InventoryApiIntegrationTest {
             )
             .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
 
-        mockMvc.perform(get("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .param("page", "0")
-            .param("size", "10"))
+        mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequest(originalTransferId, 0, 10))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1));
     }
@@ -800,9 +797,7 @@ class InventoryApiIntegrationTest {
             assertThat(secondStatus).isEqualTo(HttpStatus.CREATED.value());
             assertThat(firstStatus).isEqualTo(HttpStatus.CONFLICT.value());
 
-            mockMvc.perform(get("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-                .param("page", "0")
-                .param("size", "10"))
+            mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequest(originalTransferId, 0, 10))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalItems").value(1));
         } finally {
@@ -889,9 +884,7 @@ class InventoryApiIntegrationTest {
         assertThat(idempotency.getReversalTransferId()).isEqualTo(existingReversalTransferId);
         assertThat(idempotency.getReversalTransferId()).isNotEqualTo(PENDING_REVERSAL_TRANSFER_ID);
 
-        mockMvc.perform(get("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .param("page", "0")
-            .param("size", "10"))
+        mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequest(originalTransferId, 0, 10))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1));
     }
@@ -937,9 +930,7 @@ class InventoryApiIntegrationTest {
         InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload)
             .andExpect(status().isCreated());
 
-        mockMvc.perform(get("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .param("page", "0")
-            .param("size", "10"))
+        mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequest(originalTransferId, 0, 10))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].sku").value("ARC-9217"))
@@ -988,9 +979,7 @@ class InventoryApiIntegrationTest {
             .getFirst()
             .getTransferId();
 
-        mockMvc.perform(get("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .param("page", "0")
-            .param("size", "10"))
+        mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequest(originalTransferId, 0, 10))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(0))
             .andExpect(jsonPath("$.items").isEmpty());
@@ -1000,9 +989,7 @@ class InventoryApiIntegrationTest {
     void returnsNotFoundForUnknownTransferReversalHistory() throws Exception {
         UUID unknownTransferId = UUID.fromString("33333333-3333-3333-3333-333333333333");
 
-        mockMvc.perform(get("/api/inventory/transfers/{transferId}/reversals", unknownTransferId)
-            .param("page", "0")
-            .param("size", "10"))
+        mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequest(unknownTransferId, 0, 10))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
