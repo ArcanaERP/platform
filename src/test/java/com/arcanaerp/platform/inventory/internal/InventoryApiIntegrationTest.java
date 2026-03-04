@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.arcanaerp.platform.testsupport.web.InventoryManagementWebTestSupport;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -140,17 +141,13 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String payload = """
-            {
-              "quantityDelta": -3,
-              "reason": "Cycle count correction",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String payload = InventoryManagementWebTestSupport.adjustmentPayload(
+            "-3",
+            "Cycle count correction",
+            "ops@arcanaerp.com"
+        );
 
-        mockMvc.perform(post("/api/inventory/{sku}/adjustments", "arc-9203")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload))
+        InventoryManagementWebTestSupport.adjustInventory(mockMvc, "arc-9203", payload)
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.sku").value("ARC-9203"))
             .andExpect(jsonPath("$.locationCode").value("MAIN"))
@@ -192,18 +189,13 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String payload = """
-            {
-              "quantityDelta": 6,
-              "reason": "Receiving posted",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String payload = InventoryManagementWebTestSupport.adjustmentPayload(
+            "6",
+            "Receiving posted",
+            "ops@arcanaerp.com"
+        );
 
-        mockMvc.perform(post("/api/inventory/{sku}/adjustments", "arc-9204")
-            .param("locationCode", "wh-west")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload))
+        InventoryManagementWebTestSupport.adjustInventory(mockMvc, "arc-9204", "wh-west", payload)
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.locationCode").value("WH-WEST"))
             .andExpect(jsonPath("$.previousOnHandQuantity").value(4))
@@ -242,21 +234,17 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String payload = """
-            {
-              "sourceLocationCode": "main",
-              "destinationLocationCode": "wh-east",
-              "quantity": 5,
-              "reason": "Rebalancing transfer",
-              "adjustedBy": "ops@arcanaerp.com",
-              "referenceType": "fulfillment",
-              "referenceId": "FUL-9207-1"
-            }
-            """;
+        String payload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "wh-east",
+            "5",
+            "Rebalancing transfer",
+            "ops@arcanaerp.com",
+            "fulfillment",
+            "FUL-9207-1"
+        );
 
-        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9207")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload))
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9207", payload)
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.transferId").isNotEmpty())
             .andExpect(jsonPath("$.sku").value("ARC-9207"))
@@ -316,19 +304,15 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String payload = """
-            {
-              "sourceLocationCode": "main",
-              "destinationLocationCode": "wh-north",
-              "quantity": 2,
-              "reason": "Initial stocking transfer",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String payload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "wh-north",
+            "2",
+            "Initial stocking transfer",
+            "ops@arcanaerp.com"
+        );
 
-        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9208")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload))
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9208", payload)
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.sourceOnHandQuantity").value(7))
             .andExpect(jsonPath("$.destinationOnHandQuantity").value(2));
@@ -361,21 +345,17 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String payload = """
-            {
-              "sourceLocationCode": "main",
-              "destinationLocationCode": "wh-east",
-              "quantity": 4,
-              "reason": "Fulfillment movement",
-              "adjustedBy": "ops@arcanaerp.com",
-              "referenceType": "fulfillment",
-              "referenceId": "FUL-9214-1"
-            }
-            """;
+        String payload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "wh-east",
+            "4",
+            "Fulfillment movement",
+            "ops@arcanaerp.com",
+            "fulfillment",
+            "FUL-9214-1"
+        );
 
-        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9214")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload))
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9214", payload)
             .andExpect(status().isCreated());
 
         InventoryItem sourceItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9214", "MAIN").orElseThrow();
@@ -431,19 +411,15 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String transferPayload = """
-            {
-              "sourceLocationCode": "main",
-              "destinationLocationCode": "wh-east",
-              "quantity": 3,
-              "reason": "Original transfer",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String transferPayload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "wh-east",
+            "3",
+            "Original transfer",
+            "ops@arcanaerp.com"
+        );
 
-        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9216")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(transferPayload))
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9216", transferPayload)
             .andExpect(status().isCreated());
 
         InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9216", "MAIN").orElseThrow();
@@ -538,15 +514,13 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String transferPayload = """
-            {
-              "sourceLocationCode": "main",
-              "destinationLocationCode": "wh-east",
-              "quantity": 3,
-              "reason": "Original transfer",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String transferPayload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "wh-east",
+            "3",
+            "Original transfer",
+            "ops@arcanaerp.com"
+        );
         String reversalPayload = """
             {
               "reason": "Reversal posted",
@@ -554,9 +528,7 @@ class InventoryApiIntegrationTest {
             }
             """;
 
-        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9219")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(transferPayload))
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9219", transferPayload)
             .andExpect(status().isCreated());
 
         InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9219", "MAIN").orElseThrow();
@@ -599,15 +571,13 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String transferPayload = """
-            {
-              "sourceLocationCode": "main",
-              "destinationLocationCode": "wh-east",
-              "quantity": 3,
-              "reason": "Original transfer",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String transferPayload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "wh-east",
+            "3",
+            "Original transfer",
+            "ops@arcanaerp.com"
+        );
         String reversalPayload = """
             {
               "reason": "Reversal posted",
@@ -615,9 +585,7 @@ class InventoryApiIntegrationTest {
             }
             """;
 
-        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9220")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(transferPayload))
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9220", transferPayload)
             .andExpect(status().isCreated());
 
         InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9220", "MAIN").orElseThrow();
@@ -673,15 +641,13 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String transferPayload = """
-            {
-              "sourceLocationCode": "main",
-              "destinationLocationCode": "wh-east",
-              "quantity": 3,
-              "reason": "Original transfer",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String transferPayload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "wh-east",
+            "3",
+            "Original transfer",
+            "ops@arcanaerp.com"
+        );
         String reversalPayload = """
             {
               "reason": "Reversal posted",
@@ -689,9 +655,7 @@ class InventoryApiIntegrationTest {
             }
             """;
 
-        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9221")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(transferPayload))
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9221", transferPayload)
             .andExpect(status().isCreated());
 
         InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9221", "MAIN").orElseThrow();
@@ -730,15 +694,13 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String transferPayload = """
-            {
-              "sourceLocationCode": "main",
-              "destinationLocationCode": "wh-east",
-              "quantity": 3,
-              "reason": "Original transfer",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String transferPayload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "wh-east",
+            "3",
+            "Original transfer",
+            "ops@arcanaerp.com"
+        );
         String firstReversalPayload = """
             {
               "reason": "Reversal posted",
@@ -752,9 +714,7 @@ class InventoryApiIntegrationTest {
             }
             """;
 
-        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9222")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(transferPayload))
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9222", transferPayload)
             .andExpect(status().isCreated());
 
         InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9222", "MAIN").orElseThrow();
@@ -810,15 +770,13 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String transferPayload = """
-            {
-              "sourceLocationCode": "main",
-              "destinationLocationCode": "wh-east",
-              "quantity": 3,
-              "reason": "Original transfer",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String transferPayload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "wh-east",
+            "3",
+            "Original transfer",
+            "ops@arcanaerp.com"
+        );
         String reversalPayload = """
             {
               "reason": "Reversal posted",
@@ -826,9 +784,7 @@ class InventoryApiIntegrationTest {
             }
             """;
 
-        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9223")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(transferPayload))
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9223", transferPayload)
             .andExpect(status().isCreated());
 
         InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9223", "MAIN").orElseThrow();
@@ -910,15 +866,13 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String transferPayload = """
-            {
-              "sourceLocationCode": "main",
-              "destinationLocationCode": "wh-east",
-              "quantity": 3,
-              "reason": "Original transfer",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String transferPayload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "wh-east",
+            "3",
+            "Original transfer",
+            "ops@arcanaerp.com"
+        );
         String reversalPayload = """
             {
               "reason": "Reversal posted",
@@ -926,9 +880,7 @@ class InventoryApiIntegrationTest {
             }
             """;
 
-        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9224")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(transferPayload))
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9224", transferPayload)
             .andExpect(status().isCreated());
 
         InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9224", "MAIN").orElseThrow();
@@ -1004,19 +956,15 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String transferPayload = """
-            {
-              "sourceLocationCode": "main",
-              "destinationLocationCode": "wh-east",
-              "quantity": 3,
-              "reason": "Original transfer",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String transferPayload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "wh-east",
+            "3",
+            "Original transfer",
+            "ops@arcanaerp.com"
+        );
 
-        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9217")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(transferPayload))
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9217", transferPayload)
             .andExpect(status().isCreated());
 
         InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9217", "MAIN").orElseThrow();
@@ -1071,19 +1019,15 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String transferPayload = """
-            {
-              "sourceLocationCode": "main",
-              "destinationLocationCode": "wh-east",
-              "quantity": 3,
-              "reason": "Original transfer",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String transferPayload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "wh-east",
+            "3",
+            "Original transfer",
+            "ops@arcanaerp.com"
+        );
 
-        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9218")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(transferPayload))
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9218", transferPayload)
             .andExpect(status().isCreated());
 
         InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9218", "MAIN").orElseThrow();
@@ -1125,19 +1069,15 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String payload = """
-            {
-              "sourceLocationCode": "main",
-              "destinationLocationCode": "main",
-              "quantity": 1,
-              "reason": "Invalid transfer",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String payload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "main",
+            "1",
+            "Invalid transfer",
+            "ops@arcanaerp.com"
+        );
 
-        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9209")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload))
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9209", payload)
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
@@ -1156,19 +1096,15 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String payload = """
-            {
-              "sourceLocationCode": "main",
-              "destinationLocationCode": "wh-west",
-              "quantity": 5,
-              "reason": "Too large transfer",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String payload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "wh-west",
+            "5",
+            "Too large transfer",
+            "ops@arcanaerp.com"
+        );
 
-        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9210")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload))
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9210", payload)
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
@@ -1178,19 +1114,15 @@ class InventoryApiIntegrationTest {
 
     @Test
     void returnsNotFoundWhenTransferringFromUnknownSourceLocation() throws Exception {
-        String payload = """
-            {
-              "sourceLocationCode": "wh-unknown",
-              "destinationLocationCode": "main",
-              "quantity": 1,
-              "reason": "Invalid transfer",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String payload = InventoryManagementWebTestSupport.transferPayload(
+            "wh-unknown",
+            "main",
+            "1",
+            "Invalid transfer",
+            "ops@arcanaerp.com"
+        );
 
-        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9211")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload))
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9211", payload)
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
@@ -1209,19 +1141,15 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String payload = """
-            {
-              "sourceLocationCode": "main",
-              "destinationLocationCode": "wh-west",
-              "quantity": 0,
-              "reason": "Invalid transfer",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String payload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "wh-west",
+            "0",
+            "Invalid transfer",
+            "ops@arcanaerp.com"
+        );
 
-        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9212")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload))
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9212", payload)
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
@@ -1251,9 +1179,7 @@ class InventoryApiIntegrationTest {
             }
             """;
 
-        mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9213")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload))
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9213", payload)
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
@@ -1272,17 +1198,13 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        String payload = """
-            {
-              "quantityDelta": -5,
-              "reason": "Bad adjustment",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String payload = InventoryManagementWebTestSupport.adjustmentPayload(
+            "-5",
+            "Bad adjustment",
+            "ops@arcanaerp.com"
+        );
 
-        mockMvc.perform(post("/api/inventory/{sku}/adjustments", "arc-9205")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload))
+        InventoryManagementWebTestSupport.adjustInventory(mockMvc, "arc-9205", payload)
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
@@ -1292,18 +1214,13 @@ class InventoryApiIntegrationTest {
 
     @Test
     void returnsNotFoundWhenAdjustingUnknownSkuAtLocation() throws Exception {
-        String payload = """
-            {
-              "quantityDelta": 5,
-              "reason": "Receiving posted",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String payload = InventoryManagementWebTestSupport.adjustmentPayload(
+            "5",
+            "Receiving posted",
+            "ops@arcanaerp.com"
+        );
 
-        mockMvc.perform(post("/api/inventory/{sku}/adjustments", "arc-9206")
-            .param("locationCode", "wh-west")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(payload))
+        InventoryManagementWebTestSupport.adjustInventory(mockMvc, "arc-9206", "wh-west", payload)
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
