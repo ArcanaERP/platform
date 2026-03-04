@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 final class IdentityWebIntegrationTestSupport {
 
     private static final String USERS_PATH = "/api/identity/users";
+    private static final String ORG_UNITS_PATH = "/api/identity/org-units";
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 10;
 
@@ -84,5 +85,44 @@ final class IdentityWebIntegrationTestSupport {
 
     static MockHttpServletRequestBuilder getUserRequest(String userId) {
         return get(USERS_PATH + "/" + userId);
+    }
+
+    static ResultActions createOrgUnit(
+        MockMvc mockMvc,
+        String tenantCode,
+        String tenantName,
+        String code,
+        String name
+    ) throws Exception {
+        return mockMvc.perform(post(ORG_UNITS_PATH).contentType(MediaType.APPLICATION_JSON).content(
+            createOrgUnitPayload(tenantCode, tenantName, code, name)
+        ));
+    }
+
+    static String createOrgUnitPayload(
+        String tenantCode,
+        String tenantName,
+        String code,
+        String name
+    ) {
+        return """
+            {
+              "tenantCode": "%s",
+              "tenantName": "%s",
+              "code": "%s",
+              "name": "%s"
+            }
+            """.formatted(tenantCode, tenantName, code, name);
+    }
+
+    static MockHttpServletRequestBuilder listOrgUnitsRequest(String tenantCode) {
+        return get(ORG_UNITS_PATH)
+            .param("tenantCode", tenantCode);
+    }
+
+    static MockHttpServletRequestBuilder listOrgUnitsRequest(String tenantCode, int page, int size) {
+        return listOrgUnitsRequest(tenantCode)
+            .param("page", String.valueOf(page))
+            .param("size", String.valueOf(size));
     }
 }
