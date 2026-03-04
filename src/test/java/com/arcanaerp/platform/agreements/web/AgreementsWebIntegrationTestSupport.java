@@ -1,7 +1,9 @@
 package com.arcanaerp.platform.agreements.web;
 
 import com.arcanaerp.platform.testsupport.web.AgreementCatalogWebTestSupport;
+import com.arcanaerp.platform.testsupport.web.AgreementManagementWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.AgreementStatusHistoryWebTestSupport;
+import com.arcanaerp.platform.agreements.AgreementStatus;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -28,6 +30,33 @@ final class AgreementsWebIntegrationTestSupport {
 
     static MockHttpServletRequestBuilder listAgreementsRequest(Integer page, Integer size, String status) {
         return AgreementCatalogWebTestSupport.listAgreementsRequest(page, size, status);
+    }
+
+    static ResultActions transitionAgreementStatus(
+        MockMvc mockMvc,
+        String agreementNumber,
+        AgreementStatus status,
+        String tenantCode,
+        String reason,
+        String changedBy
+    ) throws Exception {
+        return AgreementManagementWebTestSupport.transitionAgreementStatus(
+            mockMvc,
+            agreementNumber,
+            status,
+            tenantCode,
+            reason,
+            changedBy
+        );
+    }
+
+    static String changeStatusPayload(
+        AgreementStatus status,
+        String tenantCode,
+        String reason,
+        String changedBy
+    ) {
+        return AgreementManagementWebTestSupport.changeStatusPayload(status, tenantCode, reason, changedBy);
     }
 
     static MockHttpServletRequestBuilder statusHistoryRequest(String agreementNumber) {

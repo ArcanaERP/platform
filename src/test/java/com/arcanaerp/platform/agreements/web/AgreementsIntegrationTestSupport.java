@@ -4,7 +4,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.agreements.AgreementStatus;
-import com.arcanaerp.platform.testsupport.web.AgreementManagementWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -32,7 +31,7 @@ final class AgreementsIntegrationTestSupport {
         String reason,
         String changedBy
     ) throws Exception {
-        return AgreementManagementWebTestSupport.transitionAgreementStatus(
+        return AgreementsWebIntegrationTestSupport.transitionAgreementStatus(
             mockMvc,
             agreementNumber,
             status,
@@ -48,7 +47,7 @@ final class AgreementsIntegrationTestSupport {
         String reason,
         String changedBy
     ) {
-        return AgreementManagementWebTestSupport.changeStatusPayload(status, tenantCode, reason, changedBy);
+        return AgreementsWebIntegrationTestSupport.changeStatusPayload(status, tenantCode, reason, changedBy);
     }
 
     static void registerActor(
