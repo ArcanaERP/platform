@@ -11,6 +11,8 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 final class IdentityWebIntegrationTestSupport {
 
     private static final String USERS_PATH = "/api/identity/users";
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 10;
 
     private IdentityWebIntegrationTestSupport() {}
 
@@ -52,5 +54,35 @@ final class IdentityWebIntegrationTestSupport {
         return get(USERS_PATH)
             .param("page", String.valueOf(page))
             .param("size", String.valueOf(size));
+    }
+
+    static MockHttpServletRequestBuilder listUsersRequest() {
+        return get(USERS_PATH);
+    }
+
+    static MockHttpServletRequestBuilder listUsersRequest(
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        MockHttpServletRequestBuilder builder = listUsersRequest(page, size);
+        if (optionalNameValuePairs == null || optionalNameValuePairs.length == 0) {
+            return builder;
+        }
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must contain name/value pairs");
+        }
+        for (int i = 0; i < optionalNameValuePairs.length; i += 2) {
+            builder.param(optionalNameValuePairs[i], optionalNameValuePairs[i + 1]);
+        }
+        return builder;
+    }
+
+    static MockHttpServletRequestBuilder listUsersRequestDefault(String... optionalNameValuePairs) {
+        return listUsersRequest(DEFAULT_PAGE, DEFAULT_SIZE, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder getUserRequest(String userId) {
+        return get(USERS_PATH + "/" + userId);
     }
 }

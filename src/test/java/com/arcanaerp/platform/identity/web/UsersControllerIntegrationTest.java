@@ -43,6 +43,27 @@ class UsersControllerIntegrationTest {
     }
 
     @Test
+    void usesDefaultPaginationWhenPageAndSizeOmitted() throws Exception {
+        IdentityWebIntegrationTestSupport.createUser(
+            mockMvc,
+            "acme03",
+            "Acme 03",
+            "operator",
+            "Operator",
+            "ops03@acme.com",
+            "Ops 03"
+        )
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listUsersRequest())
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(20))
+            .andExpect(jsonPath("$.totalItems", greaterThanOrEqualTo(1)))
+            .andExpect(jsonPath("$.items[?(@.tenantCode=='ACME03')].displayName", hasItem("Ops 03")));
+    }
+
+    @Test
     void returnsErrorEnvelopeForDuplicateTenantEmail() throws Exception {
         IdentityWebIntegrationTestSupport.createUser(
             mockMvc,
