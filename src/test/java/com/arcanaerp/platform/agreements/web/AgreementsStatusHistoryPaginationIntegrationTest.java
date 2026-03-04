@@ -93,10 +93,8 @@ class AgreementsStatusHistoryPaginationIntegrationTest {
         String agreementNumber = "agr-hpg-0003";
         seedTwoEntryStatusHistory(agreementNumber);
 
-        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest(
+        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequestDefault(
             agreementNumber,
-            0,
-            10,
             "changedBy",
             CHANGED_BY.toUpperCase()
         ))

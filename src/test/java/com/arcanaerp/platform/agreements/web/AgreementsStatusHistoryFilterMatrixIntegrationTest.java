@@ -272,10 +272,8 @@ class AgreementsStatusHistoryFilterMatrixIntegrationTest {
         String changedAtFrom,
         String changedAtTo
     ) {
-        return AgreementStatusHistoryWebTestSupport.statusHistoryRequest(
+        return AgreementStatusHistoryWebTestSupport.statusHistoryRequestDefault(
             agreementNumber,
-            0,
-            10,
             "tenantCode",
             tenantCode,
             "changedBy",

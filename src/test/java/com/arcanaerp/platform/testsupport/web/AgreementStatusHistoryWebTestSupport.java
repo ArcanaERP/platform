@@ -4,6 +4,9 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 public final class AgreementStatusHistoryWebTestSupport {
 
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 10;
+
     private AgreementStatusHistoryWebTestSupport() {}
 
     public static MockHttpServletRequestBuilder statusHistoryRequest(String agreementNumber) {
@@ -12,6 +15,17 @@ public final class AgreementStatusHistoryWebTestSupport {
 
     public static MockHttpServletRequestBuilder statusHistoryRequest(String agreementNumber, Integer page, Integer size) {
         return StatusHistoryWebTestSupport.statusHistoryRequest(statusHistoryPath(agreementNumber), page, size);
+    }
+
+    public static MockHttpServletRequestBuilder statusHistoryRequestDefault(String agreementNumber) {
+        return statusHistoryRequest(agreementNumber, DEFAULT_PAGE, DEFAULT_SIZE);
+    }
+
+    public static MockHttpServletRequestBuilder statusHistoryRequestDefault(
+        String agreementNumber,
+        String... optionalNameValuePairs
+    ) {
+        return statusHistoryRequest(agreementNumber, DEFAULT_PAGE, DEFAULT_SIZE, optionalNameValuePairs);
     }
 
     public static MockHttpServletRequestBuilder statusHistoryRequest(
