@@ -41,10 +41,8 @@ class OrdersStatusHistoryFilterMatrixIntegrationTest {
         String orderNumber = "so-oshfm-" + suffix;
         seedConfirmedStatusHistory(orderNumber, sku);
 
-        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest(
+        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequestDefault(
                 orderNumber,
-                0,
-                10,
                 "previousStatus",
                 filterCase.previousStatus(),
                 "currentStatus",
@@ -63,10 +61,8 @@ class OrdersStatusHistoryFilterMatrixIntegrationTest {
     void rejectsInvalidOrderStatusHistoryFilterParameters(String caseId, InvalidFilterCase invalidCase) throws Exception {
         String orderNumber = "so-oshfm-invalid";
 
-        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequest(
+        mockMvc.perform(OrdersWebIntegrationTestSupport.statusHistoryRequestDefault(
                 orderNumber,
-                0,
-                10,
                 "previousStatus",
                 invalidCase.previousStatus(),
                 "currentStatus",
