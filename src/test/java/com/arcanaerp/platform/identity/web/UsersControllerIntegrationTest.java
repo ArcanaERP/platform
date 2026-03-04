@@ -90,4 +90,28 @@ class UsersControllerIntegrationTest {
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.path").value("/api/identity/users"));
     }
+
+    @Test
+    void rejectsInvalidPaginationParameters() throws Exception {
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listUsersRequest(-1, 10))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("page must be greater than or equal to zero"))
+            .andExpect(jsonPath("$.path").value("/api/identity/users"));
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listUsersRequest(0, 0))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("size must be between 1 and 100"))
+            .andExpect(jsonPath("$.path").value("/api/identity/users"));
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listUsersRequest(0, 101))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("size must be between 1 and 100"))
+            .andExpect(jsonPath("$.path").value("/api/identity/users"));
+    }
 }
