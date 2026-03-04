@@ -128,15 +128,30 @@ class UsersControllerIntegrationTest {
         )
             .andExpect(status().isCreated());
 
+        IdentityWebIntegrationTestSupport.createUser(
+            mockMvc,
+            "acme05",
+            "Acme 05",
+            "analyst",
+            "Analyst",
+            "ops05@acme.com",
+            "Ops 05"
+        )
+            .andExpect(status().isCreated());
+
         mockMvc.perform(IdentityWebIntegrationTestSupport.listUsersRequest(0, 1))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.page").value(0))
             .andExpect(jsonPath("$.size").value(1))
-            .andExpect(jsonPath("$.totalItems", greaterThanOrEqualTo(1)));
+            .andExpect(jsonPath("$.totalItems", greaterThanOrEqualTo(2)))
+            .andExpect(jsonPath("$.totalPages", greaterThanOrEqualTo(2)))
+            .andExpect(jsonPath("$.hasNext").value(true))
+            .andExpect(jsonPath("$.hasPrevious").value(false));
 
         mockMvc.perform(IdentityWebIntegrationTestSupport.listUsersRequest(1, 1))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.page").value(1))
-            .andExpect(jsonPath("$.size").value(1));
+            .andExpect(jsonPath("$.size").value(1))
+            .andExpect(jsonPath("$.hasPrevious").value(true));
     }
 }
