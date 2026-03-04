@@ -363,7 +363,7 @@ class InventoryApiIntegrationTest {
             .getFirst()
             .getTransferId();
 
-        mockMvc.perform(get("/api/inventory/transfers/{transferId}", transferId))
+        mockMvc.perform(InventoryManagementWebTestSupport.transferByIdRequest(transferId))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.transferId").value(transferId.toString()))
             .andExpect(jsonPath("$.sku").value("ARC-9214"))
@@ -383,7 +383,7 @@ class InventoryApiIntegrationTest {
     void returnsNotFoundForUnknownTransferId() throws Exception {
         UUID unknownTransferId = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
-        mockMvc.perform(get("/api/inventory/transfers/{transferId}", unknownTransferId))
+        mockMvc.perform(InventoryManagementWebTestSupport.transferByIdRequest(unknownTransferId))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))

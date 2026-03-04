@@ -1,11 +1,13 @@
 package com.arcanaerp.platform.testsupport.web;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 public final class InventoryManagementWebTestSupport {
 
@@ -28,6 +30,10 @@ public final class InventoryManagementWebTestSupport {
         return mockMvc.perform(post("/api/inventory/{sku}/transfers", sku)
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload));
+    }
+
+    public static MockHttpServletRequestBuilder transferByIdRequest(UUID transferId) {
+        return get("/api/inventory/transfers/{transferId}", transferId);
     }
 
     public static ResultActions reverseTransfer(MockMvc mockMvc, UUID transferId, String payload) throws Exception {
