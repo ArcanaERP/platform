@@ -4,7 +4,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.agreements.AgreementStatus;
-import com.arcanaerp.platform.testsupport.web.AgreementStatusHistoryWebTestSupport;
 import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,7 +37,7 @@ class AgreementsStatusHistoryPaginationIntegrationTest {
         String agreementNumber = "agr-hpg-0001";
         seedTwoEntryStatusHistory(agreementNumber);
 
-        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest(agreementNumber))
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.statusHistoryRequest(agreementNumber))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.page").value(0))
             .andExpect(jsonPath("$.size").value(20))
@@ -55,7 +54,7 @@ class AgreementsStatusHistoryPaginationIntegrationTest {
         String agreementNumber = "agr-hpg-0002";
         seedTwoEntryStatusHistory(agreementNumber);
 
-        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest(agreementNumber, 0, 1))
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.statusHistoryRequest(agreementNumber, 0, 1))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.page").value(0))
             .andExpect(jsonPath("$.size").value(1))
@@ -66,7 +65,7 @@ class AgreementsStatusHistoryPaginationIntegrationTest {
             .andExpect(jsonPath("$.items[0].previousStatus").value("ACTIVE"))
             .andExpect(jsonPath("$.items[0].currentStatus").value("TERMINATED"));
 
-        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest(agreementNumber, 1, 1))
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.statusHistoryRequest(agreementNumber, 1, 1))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.page").value(1))
             .andExpect(jsonPath("$.size").value(1))
@@ -77,7 +76,7 @@ class AgreementsStatusHistoryPaginationIntegrationTest {
             .andExpect(jsonPath("$.items[0].previousStatus").value("DRAFT"))
             .andExpect(jsonPath("$.items[0].currentStatus").value("ACTIVE"));
 
-        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest(agreementNumber, 2, 1))
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.statusHistoryRequest(agreementNumber, 2, 1))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.page").value(2))
             .andExpect(jsonPath("$.size").value(1))
@@ -93,7 +92,7 @@ class AgreementsStatusHistoryPaginationIntegrationTest {
         String agreementNumber = "agr-hpg-0003";
         seedTwoEntryStatusHistory(agreementNumber);
 
-        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequestDefault(
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.statusHistoryRequestDefault(
             agreementNumber,
             "changedBy",
             CHANGED_BY.toUpperCase()
@@ -108,7 +107,7 @@ class AgreementsStatusHistoryPaginationIntegrationTest {
 
     @Test
     void rejectsStatusHistoryWhenPageIsNegative() throws Exception {
-        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest("agr-hpg-invalid", -1, 10))
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.statusHistoryRequest("agr-hpg-invalid", -1, 10))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
@@ -118,14 +117,14 @@ class AgreementsStatusHistoryPaginationIntegrationTest {
 
     @Test
     void rejectsStatusHistoryWhenSizeOutsideBounds() throws Exception {
-        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest("agr-hpg-invalid", 0, 0))
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.statusHistoryRequest("agr-hpg-invalid", 0, 0))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.message").value("size must be between 1 and 100"))
             .andExpect(jsonPath("$.path").value("/api/agreements/agr-hpg-invalid/status-history"));
 
-        mockMvc.perform(AgreementStatusHistoryWebTestSupport.statusHistoryRequest("agr-hpg-invalid", 0, 101))
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.statusHistoryRequest("agr-hpg-invalid", 0, 101))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
