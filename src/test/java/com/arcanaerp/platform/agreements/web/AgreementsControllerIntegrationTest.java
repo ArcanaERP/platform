@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.agreements.AgreementStatus;
-import com.arcanaerp.platform.testsupport.web.AgreementCatalogWebTestSupport;
 import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -108,7 +107,7 @@ class AgreementsControllerIntegrationTest {
             .content(payload))
             .andExpect(status().isCreated());
 
-        mockMvc.perform(AgreementCatalogWebTestSupport.getAgreementRequest("agr-3004"))
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.getAgreementRequest("agr-3004"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.agreementNumber").value("AGR-3004"))
             .andExpect(jsonPath("$.name").value("Read Agreement"))
@@ -119,7 +118,7 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void returnsNotFoundWhenGettingUnknownAgreement() throws Exception {
-        mockMvc.perform(AgreementCatalogWebTestSupport.getAgreementRequest("agr-missing-read"))
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.getAgreementRequest("agr-missing-read"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
@@ -158,7 +157,7 @@ class AgreementsControllerIntegrationTest {
         )
             .andExpect(status().isOk());
 
-        mockMvc.perform(AgreementCatalogWebTestSupport.listAgreementsRequest(0, 100))
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.listAgreementsRequest(0, 100))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.page").value(0))
             .andExpect(jsonPath("$.size").value(100))
@@ -167,15 +166,15 @@ class AgreementsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3011')].status", hasItem("ACTIVE")))
             .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3012')].status", hasItem("TERMINATED")));
 
-        mockMvc.perform(AgreementCatalogWebTestSupport.listAgreementsRequest(0, 100, "ACTIVE"))
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.listAgreementsRequest(0, 100, "ACTIVE"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3011')].status", hasItem("ACTIVE")));
 
-        mockMvc.perform(AgreementCatalogWebTestSupport.listAgreementsRequest(0, 100, "TERMINATED"))
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.listAgreementsRequest(0, 100, "TERMINATED"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3012')].status", hasItem("TERMINATED")));
 
-        mockMvc.perform(AgreementCatalogWebTestSupport.listAgreementsRequest(0, 100, "DRAFT"))
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.listAgreementsRequest(0, 100, "DRAFT"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3010')].status", hasItem("DRAFT")));
     }
@@ -382,14 +381,14 @@ class AgreementsControllerIntegrationTest {
 
     @Test
     void rejectsInvalidStatusQueryFilter() throws Exception {
-        mockMvc.perform(AgreementCatalogWebTestSupport.listAgreementsRequest(0, 10, "invalid"))
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.listAgreementsRequest(0, 10, "invalid"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.message").value("status query parameter must be one of: DRAFT, ACTIVE, TERMINATED"))
             .andExpect(jsonPath("$.path").value("/api/agreements"));
 
-        mockMvc.perform(AgreementCatalogWebTestSupport.listAgreementsRequest(0, 10, ""))
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.listAgreementsRequest(0, 10, ""))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
