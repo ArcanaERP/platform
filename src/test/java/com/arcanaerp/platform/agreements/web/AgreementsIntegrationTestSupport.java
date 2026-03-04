@@ -4,7 +4,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.agreements.AgreementStatus;
-import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -57,7 +56,7 @@ final class AgreementsIntegrationTestSupport {
         String tenantNamePrefix,
         String displayName
     ) throws Exception {
-        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+        AgreementsWebIntegrationTestSupport.registerActorAllowingDuplicateEmail(
             mockMvc,
             tenantCode,
             email,

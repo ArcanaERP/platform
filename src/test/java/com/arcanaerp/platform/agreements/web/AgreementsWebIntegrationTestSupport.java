@@ -3,6 +3,7 @@ package com.arcanaerp.platform.agreements.web;
 import com.arcanaerp.platform.testsupport.web.AgreementCatalogWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.AgreementManagementWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.AgreementStatusHistoryWebTestSupport;
+import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
 import com.arcanaerp.platform.agreements.AgreementStatus;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -57,6 +58,22 @@ final class AgreementsWebIntegrationTestSupport {
         String changedBy
     ) {
         return AgreementManagementWebTestSupport.changeStatusPayload(status, tenantCode, reason, changedBy);
+    }
+
+    static void registerActorAllowingDuplicateEmail(
+        MockMvc mockMvc,
+        String tenantCode,
+        String email,
+        String tenantNamePrefix,
+        String displayName
+    ) throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            tenantCode,
+            email,
+            tenantNamePrefix,
+            displayName
+        );
     }
 
     static MockHttpServletRequestBuilder statusHistoryRequest(String agreementNumber) {
