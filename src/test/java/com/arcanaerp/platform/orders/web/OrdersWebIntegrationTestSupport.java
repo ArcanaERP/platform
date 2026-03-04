@@ -43,6 +43,26 @@ final class OrdersWebIntegrationTestSupport {
         );
     }
 
+    static ResultActions createOrder(
+        MockMvc mockMvc,
+        String orderNumber,
+        String customerEmail,
+        String currencyCode,
+        OrderManagementWebTestSupport.OrderLineRequest... lines
+    ) throws Exception {
+        return OrderManagementWebTestSupport.createOrder(
+            mockMvc,
+            orderNumber,
+            customerEmail,
+            currencyCode,
+            lines
+        );
+    }
+
+    static OrderManagementWebTestSupport.OrderLineRequest line(String productSku, String quantity, String unitPrice) {
+        return OrderManagementWebTestSupport.line(productSku, quantity, unitPrice);
+    }
+
     static ResultActions transitionToConfirmed(
         MockMvc mockMvc,
         OrdersDeterministicClockTestSupport.AdjustableClock testClock,
@@ -51,6 +71,10 @@ final class OrdersWebIntegrationTestSupport {
     ) throws Exception {
         testClock.setInstant(confirmedAt);
         return OrderManagementWebTestSupport.transitionOrderStatus(mockMvc, orderNumber, "CONFIRMED");
+    }
+
+    static ResultActions transitionOrderStatus(MockMvc mockMvc, String orderNumber, String status) throws Exception {
+        return OrderManagementWebTestSupport.transitionOrderStatus(mockMvc, orderNumber, status);
     }
 
     static ResultActions registerActor(MockMvc mockMvc, String tenantCode, String email, String displayName) throws Exception {
@@ -93,6 +117,14 @@ final class OrdersWebIntegrationTestSupport {
 
     static MockHttpServletRequestBuilder statusHistoryRequest(String orderNumber) {
         return OrderStatusHistoryWebTestSupport.statusHistoryRequest(orderNumber);
+    }
+
+    static MockHttpServletRequestBuilder getOrderRequest(String orderNumber) {
+        return OrderManagementWebTestSupport.getOrderRequest(orderNumber);
+    }
+
+    static MockHttpServletRequestBuilder listOrdersRequest(int page, int size) {
+        return OrderManagementWebTestSupport.listOrdersRequest(page, size);
     }
 
     static MockHttpServletRequestBuilder statusHistoryRequest(

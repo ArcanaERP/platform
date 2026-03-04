@@ -5,7 +5,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.orders.OrderStatus;
-import com.arcanaerp.platform.testsupport.web.OrderManagementWebTestSupport;
 import java.time.Instant;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
@@ -147,6 +146,6 @@ class OrdersLifecycleTransitionMatrixIntegrationTest {
     }
 
     private ResultActions transition(String orderNumber, OrderStatus statusValue) throws Exception {
-        return OrderManagementWebTestSupport.transitionOrderStatus(mockMvc, orderNumber, statusValue.name());
+        return OrdersWebIntegrationTestSupport.transitionOrderStatus(mockMvc, orderNumber, statusValue.name());
     }
 }

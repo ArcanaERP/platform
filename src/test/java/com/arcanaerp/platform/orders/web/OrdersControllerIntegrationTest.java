@@ -3,11 +3,10 @@ package com.arcanaerp.platform.orders.web;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.nullValue;
-import static com.arcanaerp.platform.testsupport.web.OrderManagementWebTestSupport.line;
+import static com.arcanaerp.platform.orders.web.OrdersWebIntegrationTestSupport.line;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.arcanaerp.platform.testsupport.web.OrderManagementWebTestSupport;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,7 +41,7 @@ class OrdersControllerIntegrationTest {
         registerProduct("arc-5100");
         registerProduct("arc-5200");
 
-        OrderManagementWebTestSupport.createOrder(
+        OrdersWebIntegrationTestSupport.createOrder(
             mockMvc,
             "so-5000",
             "BUYER@ACME.COM",
@@ -60,7 +59,7 @@ class OrdersControllerIntegrationTest {
             .andExpect(jsonPath("$.cancelledAt").value(nullValue()))
             .andExpect(jsonPath("$.lines[0].lineNo").value(1));
 
-        mockMvc.perform(OrderManagementWebTestSupport.listOrdersRequest(0, 10))
+        mockMvc.perform(OrdersWebIntegrationTestSupport.listOrdersRequest(0, 10))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.page").value(0))
             .andExpect(jsonPath("$.size").value(10))
@@ -74,7 +73,7 @@ class OrdersControllerIntegrationTest {
         createSingleLineOrder("so-5008", "arc-5008")
             .andExpect(status().isCreated());
 
-        mockMvc.perform(OrderManagementWebTestSupport.getOrderRequest("so-5008"))
+        mockMvc.perform(OrdersWebIntegrationTestSupport.getOrderRequest("so-5008"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.orderNumber").value("SO-5008"))
             .andExpect(jsonPath("$.customerEmail").value("buyer@acme.com"))
@@ -86,7 +85,7 @@ class OrdersControllerIntegrationTest {
 
     @Test
     void returnsNotFoundWhenGettingUnknownOrder() throws Exception {
-        mockMvc.perform(OrderManagementWebTestSupport.getOrderRequest("so-missing-read"))
+        mockMvc.perform(OrdersWebIntegrationTestSupport.getOrderRequest("so-missing-read"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
@@ -135,7 +134,7 @@ class OrdersControllerIntegrationTest {
             .andExpect(jsonPath("$.confirmedAt").value(CONFIRMED_AT_INSTANT.toString()))
             .andExpect(jsonPath("$.cancelledAt").value(nullValue()));
 
-        OrderManagementWebTestSupport.transitionOrderStatus(mockMvc, "so-5003", "CANCELLED")
+        OrdersWebIntegrationTestSupport.transitionOrderStatus(mockMvc, "so-5003", "CANCELLED")
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
