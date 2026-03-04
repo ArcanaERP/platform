@@ -114,4 +114,29 @@ class UsersControllerIntegrationTest {
             .andExpect(jsonPath("$.message").value("size must be between 1 and 100"))
             .andExpect(jsonPath("$.path").value("/api/identity/users"));
     }
+
+    @Test
+    void paginatesUsersAtPageBoundaries() throws Exception {
+        IdentityWebIntegrationTestSupport.createUser(
+            mockMvc,
+            "acme04",
+            "Acme 04",
+            "analyst",
+            "Analyst",
+            "ops04@acme.com",
+            "Ops 04"
+        )
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listUsersRequest(0, 1))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(1))
+            .andExpect(jsonPath("$.totalItems", greaterThanOrEqualTo(1)));
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listUsersRequest(1, 1))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(1))
+            .andExpect(jsonPath("$.size").value(1));
+    }
 }
