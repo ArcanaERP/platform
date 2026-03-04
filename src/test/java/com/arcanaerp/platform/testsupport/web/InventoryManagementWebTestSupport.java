@@ -2,6 +2,7 @@ package com.arcanaerp.platform.testsupport.web;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -25,6 +26,24 @@ public final class InventoryManagementWebTestSupport {
 
     public static ResultActions transferInventory(MockMvc mockMvc, String sku, String payload) throws Exception {
         return mockMvc.perform(post("/api/inventory/{sku}/transfers", sku)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload));
+    }
+
+    public static ResultActions reverseTransfer(MockMvc mockMvc, UUID transferId, String payload) throws Exception {
+        return mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", transferId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload));
+    }
+
+    public static ResultActions reverseTransfer(
+        MockMvc mockMvc,
+        UUID transferId,
+        String idempotencyKey,
+        String payload
+    ) throws Exception {
+        return mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", transferId)
+            .header("Idempotency-Key", idempotencyKey)
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload));
     }
@@ -77,5 +96,14 @@ public final class InventoryManagementWebTestSupport {
               "referenceId": "%s"
             }
             """.formatted(sourceLocationCode, destinationLocationCode, quantity, reason, adjustedBy, referenceType, referenceId);
+    }
+
+    public static String reversalPayload(String reason, String adjustedBy) {
+        return """
+            {
+              "reason": "%s",
+              "adjustedBy": "%s"
+            }
+            """.formatted(reason, adjustedBy);
     }
 }

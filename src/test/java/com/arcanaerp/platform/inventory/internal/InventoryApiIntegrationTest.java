@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.reset;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -33,7 +32,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -428,16 +426,9 @@ class InventoryApiIntegrationTest {
             .getFirst()
             .getTransferId();
 
-        String reversalPayload = """
-            {
-              "reason": "Reversal posted",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String reversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
 
-        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reversalPayload))
+        InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload)
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.sku").value("ARC-9216"))
             .andExpect(jsonPath("$.sourceLocationCode").value("WH-EAST"))
@@ -478,16 +469,9 @@ class InventoryApiIntegrationTest {
     @Test
     void returnsNotFoundForUnknownTransferReversalRequest() throws Exception {
         UUID unknownTransferId = UUID.fromString("22222222-2222-2222-2222-222222222222");
-        String reversalPayload = """
-            {
-              "reason": "Reversal posted",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String reversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
 
-        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", unknownTransferId)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reversalPayload))
+        InventoryManagementWebTestSupport.reverseTransfer(mockMvc, unknownTransferId, reversalPayload)
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
@@ -521,12 +505,7 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String reversalPayload = """
-            {
-              "reason": "Reversal posted",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String reversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9219", transferPayload)
             .andExpect(status().isCreated());
@@ -537,14 +516,10 @@ class InventoryApiIntegrationTest {
             .getFirst()
             .getTransferId();
 
-        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reversalPayload))
+        InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload)
             .andExpect(status().isCreated());
 
-        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reversalPayload))
+        InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload)
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.status").value(409))
             .andExpect(jsonPath("$.error").value("Conflict"))
@@ -578,12 +553,7 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String reversalPayload = """
-            {
-              "reason": "Reversal posted",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String reversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9220", transferPayload)
             .andExpect(status().isCreated());
@@ -594,10 +564,12 @@ class InventoryApiIntegrationTest {
             .getFirst()
             .getTransferId();
 
-        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .header("Idempotency-Key", "reverse-9220-a")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reversalPayload))
+        InventoryManagementWebTestSupport.reverseTransfer(
+            mockMvc,
+            originalTransferId,
+            "reverse-9220-a",
+            reversalPayload
+        )
             .andExpect(status().isCreated());
 
         InventoryItem eastItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9220", "WH-EAST").orElseThrow();
@@ -606,10 +578,12 @@ class InventoryApiIntegrationTest {
             .getFirst()
             .getTransferId();
 
-        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .header("Idempotency-Key", "reverse-9220-a")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reversalPayload))
+        InventoryManagementWebTestSupport.reverseTransfer(
+            mockMvc,
+            originalTransferId,
+            "reverse-9220-a",
+            reversalPayload
+        )
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.transferId").value(reversalTransferId.toString()))
             .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
@@ -648,12 +622,7 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String reversalPayload = """
-            {
-              "reason": "Reversal posted",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String reversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9221", transferPayload)
             .andExpect(status().isCreated());
@@ -664,10 +633,12 @@ class InventoryApiIntegrationTest {
             .getFirst()
             .getTransferId();
 
-        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .header("Idempotency-Key", "   ")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reversalPayload))
+        InventoryManagementWebTestSupport.reverseTransfer(
+            mockMvc,
+            originalTransferId,
+            "   ",
+            reversalPayload
+        )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
@@ -701,18 +672,11 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String firstReversalPayload = """
-            {
-              "reason": "Reversal posted",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
-        String secondReversalPayload = """
-            {
-              "reason": "Reversal posted with different reason",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String firstReversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
+        String secondReversalPayload = InventoryManagementWebTestSupport.reversalPayload(
+            "Reversal posted with different reason",
+            "ops@arcanaerp.com"
+        );
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9222", transferPayload)
             .andExpect(status().isCreated());
@@ -723,16 +687,20 @@ class InventoryApiIntegrationTest {
             .getFirst()
             .getTransferId();
 
-        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .header("Idempotency-Key", "reverse-9222-a")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(firstReversalPayload))
+        InventoryManagementWebTestSupport.reverseTransfer(
+            mockMvc,
+            originalTransferId,
+            "reverse-9222-a",
+            firstReversalPayload
+        )
             .andExpect(status().isCreated());
 
-        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .header("Idempotency-Key", "reverse-9222-a")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(secondReversalPayload))
+        InventoryManagementWebTestSupport.reverseTransfer(
+            mockMvc,
+            originalTransferId,
+            "reverse-9222-a",
+            secondReversalPayload
+        )
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.status").value(409))
             .andExpect(jsonPath("$.error").value("Conflict"))
@@ -777,12 +745,7 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String reversalPayload = """
-            {
-              "reason": "Reversal posted",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String reversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9223", transferPayload)
             .andExpect(status().isCreated());
@@ -814,14 +777,15 @@ class InventoryApiIntegrationTest {
         }).when(reversalIdempotencyRepository).saveAndFlush(any(InventoryTransferReversalIdempotency.class));
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
-        Callable<Integer> reverseCall = () ->
-            mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-                    .header("Idempotency-Key", "reverse-9223-race")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(reversalPayload))
-                .andReturn()
-                .getResponse()
-                .getStatus();
+        Callable<Integer> reverseCall = () -> InventoryManagementWebTestSupport.reverseTransfer(
+                mockMvc,
+                originalTransferId,
+                "reverse-9223-race",
+                reversalPayload
+            )
+            .andReturn()
+            .getResponse()
+            .getStatus();
 
         try {
             Future<Integer> first = executor.submit(reverseCall);
@@ -873,12 +837,7 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String reversalPayload = """
-            {
-              "reason": "Reversal posted",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String reversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9224", transferPayload)
             .andExpect(status().isCreated());
@@ -889,9 +848,7 @@ class InventoryApiIntegrationTest {
             .getFirst()
             .getTransferId();
 
-        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reversalPayload))
+        InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload)
             .andExpect(status().isCreated());
 
         UUID existingReversalTransferId = inventoryAdjustmentRepository
@@ -915,10 +872,12 @@ class InventoryApiIntegrationTest {
             )
         );
 
-        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .header("Idempotency-Key", "reverse-9224-stale")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reversalPayload))
+        InventoryManagementWebTestSupport.reverseTransfer(
+            mockMvc,
+            originalTransferId,
+            "reverse-9224-stale",
+            reversalPayload
+        )
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.transferId").value(existingReversalTransferId.toString()))
             .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
@@ -973,16 +932,9 @@ class InventoryApiIntegrationTest {
             .getFirst()
             .getTransferId();
 
-        String reversalPayload = """
-            {
-              "reason": "Reversal posted",
-              "adjustedBy": "ops@arcanaerp.com"
-            }
-            """;
+        String reversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
 
-        mockMvc.perform(post("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(reversalPayload))
+        InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload)
             .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/inventory/transfers/{transferId}/reversals", originalTransferId)
