@@ -55,7 +55,7 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
 
         seedAdjustmentHistory(sku, actorA, actorB);
 
-        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(sku, 0, 10))
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequestDefault(sku))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(2))
             .andExpect(jsonPath("$.items[0].locationCode").value("MAIN"))
@@ -73,10 +73,8 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
 
         seedAdjustmentHistory(sku, actorA, actorB);
 
-        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequestDefault(
             sku,
-            0,
-            10,
             "adjustedBy",
             actorA
         ))
@@ -94,16 +92,14 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
 
         seedAdjustmentHistory(sku, actorA, actorB);
 
-        MvcResult result = mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(sku, 0, 10))
+        MvcResult result = mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequestDefault(sku))
             .andExpect(status().isOk())
             .andReturn();
         JsonNode items = objectMapper.readTree(result.getResponse().getContentAsString()).path("items");
         String latestAdjustedAt = items.get(0).path("adjustedAt").asText();
 
-        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequestDefault(
             sku,
-            0,
-            10,
             "adjustedBy",
             actorB,
             "adjustedAtFrom",
@@ -119,10 +115,8 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
 
     @Test
     void rejectsBlankAdjustedByFilter() throws Exception {
-        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequestDefault(
             "arc-9490",
-            0,
-            10,
             "adjustedBy",
             "   "
         ))
@@ -135,10 +129,8 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
 
     @Test
     void rejectsBlankLocationCodeFilter() throws Exception {
-        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequestDefault(
             "arc-9490",
-            0,
-            10,
             "locationCode",
             "   "
         ))
@@ -151,10 +143,8 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
 
     @Test
     void rejectsInvalidAdjustedAtFromFormat() throws Exception {
-        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequestDefault(
             "arc-9491",
-            0,
-            10,
             "adjustedAtFrom",
             "not-a-timestamp"
         ))
@@ -167,10 +157,8 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
 
     @Test
     void rejectsInvalidAdjustedAtRangeOrder() throws Exception {
-        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequestDefault(
             "arc-9492",
-            0,
-            10,
             "adjustedAtFrom",
             "2026-03-02T00:00:00Z",
             "adjustedAtTo",
@@ -185,7 +173,7 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
 
     @Test
     void returnsNotFoundForUnknownSkuHistory() throws Exception {
-        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest("arc-9493", 0, 10))
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequestDefault("arc-9493"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
@@ -209,16 +197,14 @@ class InventoryAdjustmentHistoryFilterContractIntegrationTest {
         Thread.sleep(25);
         postAdjustment(sku, "wh-west", "5", ADJUSTMENT_REASON_B, actorWest);
 
-        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(sku, 0, 10))
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequestDefault(sku))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].locationCode").value("MAIN"))
             .andExpect(jsonPath("$.items[0].adjustedBy").value(actorMain));
 
-        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequest(
+        mockMvc.perform(InventoryAdjustmentHistoryWebTestSupport.adjustmentsRequestDefault(
             sku,
-            0,
-            10,
             "locationCode",
             "wh-west"
         ))

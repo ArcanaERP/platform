@@ -58,7 +58,7 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
         String actorB = "ops-b@arcanaerp.com";
         seedTransferHistory(sku, actorA, actorB);
 
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest(sku, 0, 10))
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(sku))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(2))
             .andExpect(jsonPath("$.items[0].sourceLocationCode").value("WH-WEST"))
@@ -82,10 +82,8 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
         String actorB = "ops-d@arcanaerp.com";
         seedTransferHistory(sku, actorA, actorB);
 
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest(
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
             sku,
-            0,
-            10,
             "sourceLocationCode",
             "main"
         ))
@@ -94,10 +92,8 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
             .andExpect(jsonPath("$.items[0].sourceLocationCode").value("MAIN"))
             .andExpect(jsonPath("$.items[0].destinationLocationCode").value("WH-WEST"));
 
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest(
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
             sku,
-            0,
-            10,
             "destinationLocationCode",
             "wh-east"
         ))
@@ -114,16 +110,14 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
         String actorB = "ops-f@arcanaerp.com";
         seedTransferHistory(sku, actorA, actorB);
 
-        MvcResult result = mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest(sku, 0, 10))
+        MvcResult result = mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(sku))
             .andExpect(status().isOk())
             .andReturn();
         JsonNode items = objectMapper.readTree(result.getResponse().getContentAsString()).path("items");
         String latestTransferredAt = items.get(0).path("transferredAt").asText();
 
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest(
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
             sku,
-            0,
-            10,
             "adjustedBy",
             actorB,
             "adjustedAtFrom",
@@ -144,10 +138,8 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
         String actorB = "ops-h@arcanaerp.com";
         seedTransferHistory(sku, actorA, actorB);
 
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest(
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
             sku,
-            0,
-            10,
             "referenceType",
             "fulfillment",
             "referenceId",
@@ -162,10 +154,8 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
 
     @Test
     void rejectsBlankSourceLocationCodeFilter() throws Exception {
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest(
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
             "arc-9590",
-            0,
-            10,
             "sourceLocationCode",
             "   "
         ))
@@ -178,10 +168,8 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
 
     @Test
     void rejectsBlankDestinationLocationCodeFilter() throws Exception {
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest(
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
             "arc-9590",
-            0,
-            10,
             "destinationLocationCode",
             "   "
         ))
@@ -194,10 +182,8 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
 
     @Test
     void rejectsBlankAdjustedByFilter() throws Exception {
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest(
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
             "arc-9590",
-            0,
-            10,
             "adjustedBy",
             "   "
         ))
@@ -210,10 +196,8 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
 
     @Test
     void rejectsBlankReferenceTypeFilter() throws Exception {
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest(
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
             "arc-9590",
-            0,
-            10,
             "referenceType",
             "   "
         ))
@@ -226,10 +210,8 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
 
     @Test
     void rejectsBlankReferenceIdFilter() throws Exception {
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest(
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
             "arc-9590",
-            0,
-            10,
             "referenceId",
             "   "
         ))
@@ -242,10 +224,8 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
 
     @Test
     void rejectsInvalidAdjustedAtFromFormat() throws Exception {
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest(
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
             "arc-9591",
-            0,
-            10,
             "adjustedAtFrom",
             "not-a-timestamp"
         ))
@@ -258,10 +238,8 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
 
     @Test
     void rejectsInvalidAdjustedAtRangeOrder() throws Exception {
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest(
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
             "arc-9592",
-            0,
-            10,
             "adjustedAtFrom",
             "2026-03-02T00:00:00Z",
             "adjustedAtTo",
@@ -276,7 +254,7 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
 
     @Test
     void returnsNotFoundForUnknownSkuTransferHistory() throws Exception {
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest("arc-9593", 0, 10))
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault("arc-9593"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
@@ -290,7 +268,7 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
             InventoryItem.create("ARC-9594", "main", new BigDecimal("10"), Instant.parse("2026-03-01T00:00:00Z"))
         );
 
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest("arc-9594", 0, 10))
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault("arc-9594"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(0))
             .andExpect(jsonPath("$.items").isEmpty());
