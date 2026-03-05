@@ -789,6 +789,77 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void rejectsIdempotencyKeyReuseWhenAdjustedByValueDiffers() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9222b",
+                "main",
+                new BigDecimal("10"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9222b",
+                "wh-east",
+                new BigDecimal("4"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+
+        String transferPayload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "wh-east",
+            "3",
+            "Original transfer",
+            "ops@arcanaerp.com"
+        );
+        String firstReversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
+        String secondReversalPayload = InventoryManagementWebTestSupport.reversalPayload(
+            "Reversal posted",
+            "warehouse@arcanaerp.com"
+        );
+
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9222b", transferPayload)
+            .andExpect(status().isCreated());
+
+        InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9222B", "MAIN").orElseThrow();
+        UUID originalTransferId = inventoryAdjustmentRepository
+            .findByInventoryItemIdOrderByAdjustedAtDesc(mainItem.getId())
+            .getFirst()
+            .getTransferId();
+
+        InventoryManagementWebTestSupport.reverseTransfer(
+            mockMvc,
+            originalTransferId,
+            "reverse-9222b-a",
+            firstReversalPayload
+        )
+            .andExpect(status().isCreated());
+
+        InventoryManagementWebTestSupport.reverseTransfer(
+            mockMvc,
+            originalTransferId,
+            "reverse-9222b-a",
+            secondReversalPayload
+        )
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.status").value(409))
+            .andExpect(jsonPath("$.error").value("Conflict"))
+            .andExpect(
+                jsonPath("$.message")
+                    .value(
+                        "Idempotency-Key already used with different reversal payload for transferId: " + originalTransferId
+                    )
+            )
+            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
+
+        mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequestDefault(originalTransferId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1));
+    }
+
+    @Test
     void concurrentFirstWriteWithSameIdempotencyKeyReturnsConflictForOneRequest() throws Exception {
         inventoryItemRepository.save(
             InventoryItem.create(
