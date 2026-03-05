@@ -140,6 +140,105 @@ class ProductsControllerIntegrationTest {
     }
 
     @Test
+    void usesDefaultPaginationWhenListingPriceHistoryWithoutPageAndSize() throws Exception {
+        String payload = """
+            {
+              "sku": "ARC-1070",
+              "name": "Default Price Paging Kit",
+              "categoryCode": "kits",
+              "categoryName": "Kits",
+              "amount": 21.99,
+              "currencyCode": "usd"
+            }
+            """;
+
+        mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/products/arc-1070/prices"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(20))
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].sku").value("ARC-1070"));
+    }
+
+    @Test
+    void paginatesPriceHistoryAtPageBoundaries() throws Exception {
+        String payload = """
+            {
+              "sku": "ARC-1080",
+              "name": "Boundary Price Paging Kit",
+              "categoryCode": "kits",
+              "categoryName": "Kits",
+              "amount": 11.49,
+              "currencyCode": "usd"
+            }
+            """;
+
+        mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/products/arc-1080/prices?page=0&size=1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(1))
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.totalPages").value(1))
+            .andExpect(jsonPath("$.hasNext").value(false))
+            .andExpect(jsonPath("$.hasPrevious").value(false))
+            .andExpect(jsonPath("$.items[0].sku").value("ARC-1080"));
+
+        mockMvc.perform(get("/api/products/arc-1080/prices?page=1&size=1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(1))
+            .andExpect(jsonPath("$.size").value(1))
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.totalPages").value(1))
+            .andExpect(jsonPath("$.hasNext").value(false))
+            .andExpect(jsonPath("$.hasPrevious").value(true))
+            .andExpect(jsonPath("$.items").isEmpty());
+    }
+
+    @Test
+    void rejectsInvalidPriceHistoryPaginationParameters() throws Exception {
+        String payload = """
+            {
+              "sku": "ARC-1090",
+              "name": "Invalid Paging Kit",
+              "categoryCode": "kits",
+              "categoryName": "Kits",
+              "amount": 31.00,
+              "currencyCode": "usd"
+            }
+            """;
+
+        mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/products/arc-1090/prices?page=-1&size=10"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("page must be greater than or equal to zero"))
+            .andExpect(jsonPath("$.path").value("/api/products/arc-1090/prices"));
+
+        mockMvc.perform(get("/api/products/arc-1090/prices?page=0&size=0"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("size must be between 1 and 100"))
+            .andExpect(jsonPath("$.path").value("/api/products/arc-1090/prices"));
+
+        mockMvc.perform(get("/api/products/arc-1090/prices?page=0&size=101"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("size must be between 1 and 100"))
+            .andExpect(jsonPath("$.path").value("/api/products/arc-1090/prices"));
+    }
+
+    @Test
     void canDeactivateProduct() throws Exception {
         String createPayload = """
             {
