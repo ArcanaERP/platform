@@ -8,6 +8,7 @@ import com.arcanaerp.platform.products.ProductActivationChangeView;
 import com.arcanaerp.platform.products.ProductCatalog;
 import com.arcanaerp.platform.products.ProductLookup;
 import com.arcanaerp.platform.products.ProductOrderability;
+import com.arcanaerp.platform.products.ProductPriceView;
 import com.arcanaerp.platform.products.ProductView;
 import com.arcanaerp.platform.products.RegisterProductCommand;
 import java.time.Clock;
@@ -69,6 +70,23 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
             .findTopByProductIdOrderByChangedAtDesc(product.getId())
             .orElse(null);
         return toView(product, category, price, latestAudit);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<ProductPriceView> listPrices(String sku, PageQuery pageQuery) {
+        Product product = findProductBySku(sku);
+        Page<Price> prices = priceRepository.findByProductId(
+            product.getId(),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "effectiveFrom"))
+        );
+        return PageResult.from(prices).map(price -> new ProductPriceView(
+                price.getId(),
+                product.getSku(),
+                price.getAmount(),
+                price.getCurrencyCode(),
+                price.getEffectiveFrom()
+            ));
     }
 
     @Override

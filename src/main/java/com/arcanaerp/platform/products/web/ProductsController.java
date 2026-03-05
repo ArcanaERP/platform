@@ -5,6 +5,7 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.products.ChangeProductActivationCommand;
 import com.arcanaerp.platform.products.ProductActivationChangeView;
 import com.arcanaerp.platform.products.ProductCatalog;
+import com.arcanaerp.platform.products.ProductPriceView;
 import com.arcanaerp.platform.products.ProductView;
 import com.arcanaerp.platform.products.RegisterProductCommand;
 import jakarta.validation.Valid;
@@ -57,6 +58,15 @@ public class ProductsController {
     @GetMapping("/{sku}")
     public ProductResponse productBySku(@PathVariable String sku) {
         return toResponse(productCatalog.productBySku(sku));
+    }
+
+    @GetMapping("/{sku}/prices")
+    public PageResult<ProductPriceResponse> listPrices(
+        @PathVariable String sku,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return productCatalog.listPrices(sku, PageQuery.of(page, size)).map(this::toPriceResponse);
     }
 
     @PatchMapping("/{sku}/active")
@@ -135,6 +145,16 @@ public class ProductsController {
             view.reason(),
             view.changedBy(),
             view.changedAt()
+        );
+    }
+
+    private ProductPriceResponse toPriceResponse(ProductPriceView view) {
+        return new ProductPriceResponse(
+            view.id(),
+            view.sku(),
+            view.amount(),
+            view.currencyCode(),
+            view.effectiveFrom()
         );
     }
 

@@ -104,6 +104,42 @@ class ProductsControllerIntegrationTest {
     }
 
     @Test
+    void listsProductPriceHistory() throws Exception {
+        String payload = """
+            {
+              "sku": "ARC-1060",
+              "name": "Price History Kit",
+              "categoryCode": "kits",
+              "categoryName": "Kits",
+              "amount": 17.99,
+              "currencyCode": "usd"
+            }
+            """;
+
+        mockMvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON).content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/products/arc-1060/prices?page=0&size=10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(10))
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].sku").value("ARC-1060"))
+            .andExpect(jsonPath("$.items[0].amount").value(17.99))
+            .andExpect(jsonPath("$.items[0].currencyCode").value("USD"));
+    }
+
+    @Test
+    void returnsNotFoundWhenListingPriceHistoryForUnknownSku() throws Exception {
+        mockMvc.perform(get("/api/products/arc-missing/prices?page=0&size=10"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message", startsWith("Product not found: ARC-MISSING")))
+            .andExpect(jsonPath("$.path").value("/api/products/arc-missing/prices"));
+    }
+
+    @Test
     void canDeactivateProduct() throws Exception {
         String createPayload = """
             {
