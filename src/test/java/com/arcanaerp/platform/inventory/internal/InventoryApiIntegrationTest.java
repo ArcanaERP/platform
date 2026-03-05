@@ -596,6 +596,78 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void retriesReversalWithIdempotencyKeyWhenAdjustedByOnlyDiffersByCaseReturnsOriginalResponse() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9220b",
+                "main",
+                new BigDecimal("10"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9220b",
+                "wh-east",
+                new BigDecimal("4"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+
+        String transferPayload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "wh-east",
+            "3",
+            "Original transfer",
+            "ops@arcanaerp.com"
+        );
+        String firstReversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "OPS@ARCANAERP.COM");
+        String replayReversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
+
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9220b", transferPayload)
+            .andExpect(status().isCreated());
+
+        InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9220B", "MAIN").orElseThrow();
+        UUID originalTransferId = inventoryAdjustmentRepository
+            .findByInventoryItemIdOrderByAdjustedAtDesc(mainItem.getId())
+            .getFirst()
+            .getTransferId();
+
+        InventoryManagementWebTestSupport.reverseTransfer(
+            mockMvc,
+            originalTransferId,
+            "reverse-9220b-a",
+            firstReversalPayload
+        )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.adjustedBy").value("ops@arcanaerp.com"));
+
+        InventoryItem eastItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9220B", "WH-EAST").orElseThrow();
+        UUID reversalTransferId = inventoryAdjustmentRepository
+            .findByInventoryItemIdOrderByAdjustedAtDesc(eastItem.getId())
+            .getFirst()
+            .getTransferId();
+
+        InventoryManagementWebTestSupport.reverseTransfer(
+            mockMvc,
+            originalTransferId,
+            "reverse-9220b-a",
+            replayReversalPayload
+        )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.transferId").value(reversalTransferId.toString()))
+            .andExpect(jsonPath("$.adjustedBy").value("ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
+            .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()));
+
+        mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequestDefault(originalTransferId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].transferId").value(reversalTransferId.toString()))
+            .andExpect(jsonPath("$.items[0].adjustedBy").value("ops@arcanaerp.com"));
+    }
+
+    @Test
     void rejectsBlankIdempotencyKeyHeaderOnReversalRequest() throws Exception {
         inventoryItemRepository.save(
             InventoryItem.create(
