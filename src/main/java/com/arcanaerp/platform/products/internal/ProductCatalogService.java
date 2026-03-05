@@ -61,6 +61,18 @@ class ProductCatalogService implements ProductCatalog, ProductLookup {
 
     @Override
     @Transactional(readOnly = true)
+    public ProductView productBySku(String sku) {
+        Product product = findProductBySku(sku);
+        Category category = categoryRepository.findById(product.getCategoryId()).orElse(null);
+        Price price = priceRepository.findTopByProductIdOrderByEffectiveFromDesc(product.getId()).orElse(null);
+        ProductActivationAudit latestAudit = productActivationAuditRepository
+            .findTopByProductIdOrderByChangedAtDesc(product.getId())
+            .orElse(null);
+        return toView(product, category, price, latestAudit);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<ProductView> listProducts(PageQuery pageQuery, Boolean active) {
         Page<Product> products = active == null
             ? productRepository.findAll(pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt")))

@@ -8,6 +8,8 @@ public interface ProductCatalog {
 
     ProductView registerProduct(RegisterProductCommand command);
 
+    ProductView productBySku(String sku);
+
     PageResult<ProductView> listProducts(PageQuery pageQuery, Boolean active);
 
     ProductView changeProductActivation(ChangeProductActivationCommand command);

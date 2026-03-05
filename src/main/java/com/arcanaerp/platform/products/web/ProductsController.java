@@ -54,6 +54,11 @@ public class ProductsController {
         return productCatalog.listProducts(PageQuery.of(page, size), active).map(this::toResponse);
     }
 
+    @GetMapping("/{sku}")
+    public ProductResponse productBySku(@PathVariable String sku) {
+        return toResponse(productCatalog.productBySku(sku));
+    }
+
     @PatchMapping("/{sku}/active")
     public ProductResponse changeProductActivation(
         @PathVariable String sku,
