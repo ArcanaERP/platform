@@ -125,4 +125,9 @@ final class IdentityWebIntegrationTestSupport {
             .param("page", String.valueOf(page))
             .param("size", String.valueOf(size));
     }
+
+    static MockHttpServletRequestBuilder getOrgUnitRequest(String tenantCode, String code) {
+        return get(ORG_UNITS_PATH + "/" + code)
+            .param("tenantCode", tenantCode);
+    }
 }

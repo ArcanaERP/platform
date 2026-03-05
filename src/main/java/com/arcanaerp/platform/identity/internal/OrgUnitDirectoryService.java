@@ -7,6 +7,7 @@ import com.arcanaerp.platform.identity.OrgUnitView;
 import com.arcanaerp.platform.identity.RegisterOrgUnitCommand;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.NoSuchElementException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
@@ -43,10 +44,25 @@ class OrgUnitDirectoryService implements OrgUnitDirectory {
 
     @Override
     @Transactional(readOnly = true)
+    public OrgUnitView orgUnitByCode(String tenantCode, String code) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCode = normalizeRequired(code, "code").toUpperCase();
+
+        Tenant tenant = tenantRepository.findByCode(normalizedTenantCode)
+            .orElseThrow(() -> new NoSuchElementException("Tenant not found: " + normalizedTenantCode));
+
+        OrgUnit orgUnit = orgUnitRepository.findByTenantIdAndCode(tenant.getId(), normalizedCode)
+            .orElseThrow(() -> new NoSuchElementException("Org unit not found for tenant/code: "
+                + normalizedTenantCode + "/" + normalizedCode));
+        return toView(orgUnit, tenant);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<OrgUnitView> listOrgUnits(String tenantCode, PageQuery pageQuery) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
         Tenant tenant = tenantRepository.findByCode(normalizedTenantCode)
-            .orElseThrow(() -> new java.util.NoSuchElementException("Tenant not found: " + normalizedTenantCode));
+            .orElseThrow(() -> new NoSuchElementException("Tenant not found: " + normalizedTenantCode));
 
         Page<OrgUnit> orgUnits = orgUnitRepository.findByTenantId(
             tenant.getId(),

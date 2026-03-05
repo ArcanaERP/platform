@@ -54,4 +54,41 @@ class OrgUnitsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[?(@.code=='HR')].name", hasItem("Human Resources")))
             .andExpect(jsonPath("$.items[?(@.tenantCode=='TENOU01')].tenantName", hasItem("Tenant OU 01")));
     }
+
+    @Test
+    void readsOrgUnitByTenantAndCode() throws Exception {
+        IdentityWebIntegrationTestSupport.createOrgUnit(
+            mockMvc,
+            "tenou02",
+            "Tenant OU 02",
+            "ops",
+            "Operations"
+        )
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.getOrgUnitRequest("tenou02", "ops"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tenantCode").value("TENOU02"))
+            .andExpect(jsonPath("$.code").value("OPS"))
+            .andExpect(jsonPath("$.name").value("Operations"));
+    }
+
+    @Test
+    void returnsNotFoundForMissingOrgUnitByTenantAndCode() throws Exception {
+        IdentityWebIntegrationTestSupport.createOrgUnit(
+            mockMvc,
+            "tenou03",
+            "Tenant OU 03",
+            "ops",
+            "Operations"
+        )
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.getOrgUnitRequest("tenou03", "missing"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Org unit not found for tenant/code: TENOU03/MISSING"))
+            .andExpect(jsonPath("$.path").value("/api/identity/org-units/missing"));
+    }
 }

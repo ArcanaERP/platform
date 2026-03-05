@@ -7,5 +7,7 @@ public interface OrgUnitDirectory {
 
     OrgUnitView registerOrgUnit(RegisterOrgUnitCommand command);
 
+    OrgUnitView orgUnitByCode(String tenantCode, String code);
+
     PageResult<OrgUnitView> listOrgUnits(String tenantCode, PageQuery pageQuery);
 }
