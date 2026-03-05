@@ -5,11 +5,13 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.OrgUnitDirectory;
 import com.arcanaerp.platform.identity.OrgUnitView;
 import com.arcanaerp.platform.identity.RegisterOrgUnitCommand;
+import com.arcanaerp.platform.identity.UpdateOrgUnitCommand;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -53,6 +55,23 @@ public class OrgUnitsController {
         @RequestParam String tenantCode
     ) {
         return toResponse(orgUnitDirectory.orgUnitByCode(tenantCode, code));
+    }
+
+    @PatchMapping("/{code}")
+    public OrgUnitResponse updateOrgUnit(
+        @PathVariable String code,
+        @RequestParam String tenantCode,
+        @Valid @RequestBody UpdateOrgUnitRequest request
+    ) {
+        OrgUnitView updated = orgUnitDirectory.updateOrgUnit(
+            new UpdateOrgUnitCommand(
+                tenantCode,
+                code,
+                request.name(),
+                request.active()
+            )
+        );
+        return toResponse(updated);
     }
 
     private OrgUnitResponse toResponse(OrgUnitView orgUnit) {

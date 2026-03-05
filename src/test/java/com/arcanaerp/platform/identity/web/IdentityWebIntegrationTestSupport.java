@@ -1,6 +1,7 @@
 package com.arcanaerp.platform.identity.web;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import org.springframework.http.MediaType;
@@ -129,5 +130,30 @@ final class IdentityWebIntegrationTestSupport {
     static MockHttpServletRequestBuilder getOrgUnitRequest(String tenantCode, String code) {
         return get(ORG_UNITS_PATH + "/" + code)
             .param("tenantCode", tenantCode);
+    }
+
+    static ResultActions updateOrgUnit(
+        MockMvc mockMvc,
+        String tenantCode,
+        String code,
+        String name,
+        Boolean active
+    ) throws Exception {
+        return mockMvc.perform(
+            patch(ORG_UNITS_PATH + "/" + code)
+                .param("tenantCode", tenantCode)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(updateOrgUnitPayload(name, active))
+        );
+    }
+
+    static String updateOrgUnitPayload(String name, Boolean active) {
+        String activeValue = active == null ? "null" : active.toString();
+        return """
+            {
+              "name": "%s",
+              "active": %s
+            }
+            """.formatted(name, activeValue);
     }
 }

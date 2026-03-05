@@ -76,6 +76,11 @@ public class OrgUnit {
         );
     }
 
+    void update(String name, boolean active) {
+        this.name = normalizeRequired(name, "name");
+        this.active = active;
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");

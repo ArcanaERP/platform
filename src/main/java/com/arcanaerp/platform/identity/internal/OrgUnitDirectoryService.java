@@ -5,6 +5,7 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.OrgUnitDirectory;
 import com.arcanaerp.platform.identity.OrgUnitView;
 import com.arcanaerp.platform.identity.RegisterOrgUnitCommand;
+import com.arcanaerp.platform.identity.UpdateOrgUnitCommand;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.NoSuchElementException;
@@ -55,6 +56,24 @@ class OrgUnitDirectoryService implements OrgUnitDirectory {
             .orElseThrow(() -> new NoSuchElementException("Org unit not found for tenant/code: "
                 + normalizedTenantCode + "/" + normalizedCode));
         return toView(orgUnit, tenant);
+    }
+
+    @Override
+    public OrgUnitView updateOrgUnit(UpdateOrgUnitCommand command) {
+        String normalizedTenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
+        String normalizedCode = normalizeRequired(command.code(), "code").toUpperCase();
+        String normalizedName = normalizeRequired(command.name(), "name");
+
+        Tenant tenant = tenantRepository.findByCode(normalizedTenantCode)
+            .orElseThrow(() -> new NoSuchElementException("Tenant not found: " + normalizedTenantCode));
+
+        OrgUnit orgUnit = orgUnitRepository.findByTenantIdAndCode(tenant.getId(), normalizedCode)
+            .orElseThrow(() -> new NoSuchElementException("Org unit not found for tenant/code: "
+                + normalizedTenantCode + "/" + normalizedCode));
+
+        orgUnit.update(normalizedName, command.active());
+        OrgUnit saved = orgUnitRepository.save(orgUnit);
+        return toView(saved, tenant);
     }
 
     @Override

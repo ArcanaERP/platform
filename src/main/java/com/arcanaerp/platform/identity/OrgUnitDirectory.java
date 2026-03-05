@@ -9,5 +9,7 @@ public interface OrgUnitDirectory {
 
     OrgUnitView orgUnitByCode(String tenantCode, String code);
 
+    OrgUnitView updateOrgUnit(UpdateOrgUnitCommand command);
+
     PageResult<OrgUnitView> listOrgUnits(String tenantCode, PageQuery pageQuery);
 }
