@@ -125,6 +125,47 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
     }
 
     @Test
+    void rejectsReversalReplayWhenReasonOnlyDiffersByCaseForSameIdempotencyKey() {
+        String sku = "ARC-SVC-IDEMP-5";
+        seedTransferItems(sku);
+
+        var originalTransfer = inventoryAvailability.transferInventory(
+            new TransferInventoryCommand(
+                sku,
+                "main",
+                "wh-east",
+                new BigDecimal("2"),
+                "Original transfer",
+                "ops@arcanaerp.com",
+                "order",
+                "SO-IDEMP-5"
+            )
+        );
+
+        String idempotencyKey = "reverse-svc-replay-5";
+        inventoryAvailability.reverseTransfer(
+            new ReverseInventoryTransferCommand(
+                originalTransfer.transferId(),
+                "Reversal posted",
+                "ops@arcanaerp.com",
+                idempotencyKey
+            )
+        );
+
+        assertThatThrownBy(() -> inventoryAvailability.reverseTransfer(
+                new ReverseInventoryTransferCommand(
+                    originalTransfer.transferId(),
+                    "reversal posted",
+                    "ops@arcanaerp.com",
+                    idempotencyKey
+                )
+            ))
+            .isInstanceOf(ReversalIdempotencyPayloadConflictException.class)
+            .hasMessage("Idempotency-Key already used with different reversal payload for transferId: "
+                + originalTransfer.transferId());
+    }
+
+    @Test
     void rejectsReversalReplayWhenAdjustedByDiffersForSameIdempotencyKey() {
         String sku = "ARC-SVC-IDEMP-4";
         seedTransferItems(sku);
