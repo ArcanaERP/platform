@@ -1,6 +1,7 @@
 package com.arcanaerp.platform.identity.web;
 
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -242,5 +243,120 @@ class OrgUnitsControllerIntegrationTest {
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.message").value("active query parameter must be either true or false"))
             .andExpect(jsonPath("$.path").value("/api/identity/org-units"));
+    }
+
+    @Test
+    void usesDefaultPaginationWhenPageAndSizeOmitted() throws Exception {
+        IdentityWebIntegrationTestSupport.createOrgUnit(
+            mockMvc,
+            "tenou09",
+            "Tenant OU 09",
+            "ops",
+            "Operations"
+        )
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listOrgUnitsRequest("tenou09"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(20))
+            .andExpect(jsonPath("$.totalItems", greaterThanOrEqualTo(1)))
+            .andExpect(jsonPath("$.items[?(@.tenantCode=='TENOU09')].code", hasItem("OPS")));
+    }
+
+    @Test
+    void paginatesOrgUnitsAtPageBoundaries() throws Exception {
+        String tenantCode = "tenou10";
+
+        IdentityWebIntegrationTestSupport.createOrgUnit(
+            mockMvc,
+            tenantCode,
+            "Tenant OU 10",
+            "ops",
+            "Operations"
+        )
+            .andExpect(status().isCreated());
+
+        IdentityWebIntegrationTestSupport.createOrgUnit(
+            mockMvc,
+            tenantCode,
+            "Tenant OU 10",
+            "hr",
+            "Human Resources"
+        )
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listOrgUnitsRequest(tenantCode, 0, 1))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(1))
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.totalPages").value(2))
+            .andExpect(jsonPath("$.hasNext").value(true))
+            .andExpect(jsonPath("$.hasPrevious").value(false));
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listOrgUnitsRequest(tenantCode, 1, 1))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(1))
+            .andExpect(jsonPath("$.size").value(1))
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.hasNext").value(false))
+            .andExpect(jsonPath("$.hasPrevious").value(true));
+    }
+
+    @Test
+    void combinesActiveFilterWithPagination() throws Exception {
+        String tenantCode = "tenou11";
+
+        IdentityWebIntegrationTestSupport.createOrgUnit(
+            mockMvc,
+            tenantCode,
+            "Tenant OU 11",
+            "ops",
+            "Operations"
+        )
+            .andExpect(status().isCreated());
+
+        IdentityWebIntegrationTestSupport.createOrgUnit(
+            mockMvc,
+            tenantCode,
+            "Tenant OU 11",
+            "hr",
+            "Human Resources"
+        )
+            .andExpect(status().isCreated());
+
+        IdentityWebIntegrationTestSupport.createOrgUnit(
+            mockMvc,
+            tenantCode,
+            "Tenant OU 11",
+            "fin",
+            "Finance"
+        )
+            .andExpect(status().isCreated());
+
+        IdentityWebIntegrationTestSupport.updateOrgUnit(mockMvc, tenantCode, "hr", "Human Resources", false)
+            .andExpect(status().isOk());
+        IdentityWebIntegrationTestSupport.updateOrgUnit(mockMvc, tenantCode, "fin", "Finance", false)
+            .andExpect(status().isOk());
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listOrgUnitsRequest(tenantCode, 0, 1, "active", "false"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(1))
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.totalPages").value(2))
+            .andExpect(jsonPath("$.hasNext").value(true))
+            .andExpect(jsonPath("$.hasPrevious").value(false))
+            .andExpect(jsonPath("$.items[0].active").value(false));
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listOrgUnitsRequest(tenantCode, 1, 1, "active", "false"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(1))
+            .andExpect(jsonPath("$.size").value(1))
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.hasNext").value(false))
+            .andExpect(jsonPath("$.hasPrevious").value(true))
+            .andExpect(jsonPath("$.items[0].active").value(false));
     }
 }
