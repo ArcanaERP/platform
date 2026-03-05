@@ -11,5 +11,5 @@ public interface OrgUnitDirectory {
 
     OrgUnitView updateOrgUnit(UpdateOrgUnitCommand command);
 
-    PageResult<OrgUnitView> listOrgUnits(String tenantCode, PageQuery pageQuery);
+    PageResult<OrgUnitView> listOrgUnits(String tenantCode, PageQuery pageQuery, Boolean active);
 }

@@ -23,7 +23,7 @@ class OrgUnitDirectoryIntegrationTest {
             new RegisterOrgUnitCommand("tenant01", "Tenant 01", "hr", "Human Resources")
         );
 
-        var orgUnits = orgUnitDirectory.listOrgUnits("tenant01", new PageQuery(0, 10));
+        var orgUnits = orgUnitDirectory.listOrgUnits("tenant01", new PageQuery(0, 10), null);
 
         assertThat(orgUnits.page()).isEqualTo(0);
         assertThat(orgUnits.size()).isEqualTo(10);

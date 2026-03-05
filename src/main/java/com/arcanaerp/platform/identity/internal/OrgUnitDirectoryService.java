@@ -78,15 +78,21 @@ class OrgUnitDirectoryService implements OrgUnitDirectory {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<OrgUnitView> listOrgUnits(String tenantCode, PageQuery pageQuery) {
+    public PageResult<OrgUnitView> listOrgUnits(String tenantCode, PageQuery pageQuery, Boolean active) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
         Tenant tenant = tenantRepository.findByCode(normalizedTenantCode)
             .orElseThrow(() -> new NoSuchElementException("Tenant not found: " + normalizedTenantCode));
 
-        Page<OrgUnit> orgUnits = orgUnitRepository.findByTenantId(
-            tenant.getId(),
-            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
-        );
+        Page<OrgUnit> orgUnits = active == null
+            ? orgUnitRepository.findByTenantId(
+                tenant.getId(),
+                pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+            )
+            : orgUnitRepository.findByTenantIdAndActive(
+                tenant.getId(),
+                active,
+                pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+            );
         return PageResult.from(orgUnits).map(orgUnit -> toView(orgUnit, tenant));
     }
 

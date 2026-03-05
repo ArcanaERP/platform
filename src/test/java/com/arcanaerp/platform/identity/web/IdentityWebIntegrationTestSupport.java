@@ -127,6 +127,25 @@ final class IdentityWebIntegrationTestSupport {
             .param("size", String.valueOf(size));
     }
 
+    static MockHttpServletRequestBuilder listOrgUnitsRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        MockHttpServletRequestBuilder builder = listOrgUnitsRequest(tenantCode, page, size);
+        if (optionalNameValuePairs == null || optionalNameValuePairs.length == 0) {
+            return builder;
+        }
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must contain name/value pairs");
+        }
+        for (int i = 0; i < optionalNameValuePairs.length; i += 2) {
+            builder.param(optionalNameValuePairs[i], optionalNameValuePairs[i + 1]);
+        }
+        return builder;
+    }
+
     static MockHttpServletRequestBuilder getOrgUnitRequest(String tenantCode, String code) {
         return get(ORG_UNITS_PATH + "/" + code)
             .param("tenantCode", tenantCode);

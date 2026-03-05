@@ -182,4 +182,65 @@ class OrgUnitsControllerIntegrationTest {
             .andExpect(jsonPath("$.message").value("Org unit not found for tenant/code: TENOU06/MISSING"))
             .andExpect(jsonPath("$.path").value("/api/identity/org-units/missing"));
     }
+
+    @Test
+    void filtersOrgUnitsByActiveFlag() throws Exception {
+        String tenantCode = "tenou07";
+
+        IdentityWebIntegrationTestSupport.createOrgUnit(
+            mockMvc,
+            tenantCode,
+            "Tenant OU 07",
+            "ops",
+            "Operations"
+        )
+            .andExpect(status().isCreated());
+
+        IdentityWebIntegrationTestSupport.createOrgUnit(
+            mockMvc,
+            tenantCode,
+            "Tenant OU 07",
+            "hr",
+            "Human Resources"
+        )
+            .andExpect(status().isCreated());
+
+        IdentityWebIntegrationTestSupport.updateOrgUnit(
+            mockMvc,
+            tenantCode,
+            "hr",
+            "Human Resources",
+            false
+        )
+            .andExpect(status().isOk());
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listOrgUnitsRequest(tenantCode, 0, 10, "active", "true"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].code").value("OPS"))
+            .andExpect(jsonPath("$.items[0].active").value(true));
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listOrgUnitsRequest(tenantCode, 0, 10, "active", "false"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].code").value("HR"))
+            .andExpect(jsonPath("$.items[0].active").value(false));
+    }
+
+    @Test
+    void rejectsInvalidActiveQueryParameter() throws Exception {
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listOrgUnitsRequest("tenou08", 0, 10, "active", ""))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("active query parameter must not be blank"))
+            .andExpect(jsonPath("$.path").value("/api/identity/org-units"));
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listOrgUnitsRequest("tenou08", 0, 10, "active", "yes"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("active query parameter must be either true or false"))
+            .andExpect(jsonPath("$.path").value("/api/identity/org-units"));
+    }
 }

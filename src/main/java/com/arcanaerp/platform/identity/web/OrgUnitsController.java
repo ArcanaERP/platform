@@ -43,10 +43,13 @@ public class OrgUnitsController {
     @GetMapping
     public PageResult<OrgUnitResponse> listOrgUnits(
         @RequestParam String tenantCode,
+        @RequestParam(required = false) String active,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
-        return orgUnitDirectory.listOrgUnits(tenantCode, PageQuery.of(page, size)).map(this::toResponse);
+        return orgUnitDirectory
+            .listOrgUnits(tenantCode, PageQuery.of(page, size), normalizeOptionalActive(active))
+            .map(this::toResponse);
     }
 
     @GetMapping("/{code}")
@@ -85,5 +88,22 @@ public class OrgUnitsController {
             orgUnit.active(),
             orgUnit.createdAt()
         );
+    }
+
+    private static Boolean normalizeOptionalActive(String active) {
+        if (active == null) {
+            return null;
+        }
+        if (active.isBlank()) {
+            throw new IllegalArgumentException("active query parameter must not be blank");
+        }
+        String normalized = active.trim().toLowerCase();
+        if ("true".equals(normalized)) {
+            return Boolean.TRUE;
+        }
+        if ("false".equals(normalized)) {
+            return Boolean.FALSE;
+        }
+        throw new IllegalArgumentException("active query parameter must be either true or false");
     }
 }

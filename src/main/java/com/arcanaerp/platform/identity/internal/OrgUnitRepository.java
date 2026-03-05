@@ -14,4 +14,6 @@ interface OrgUnitRepository extends JpaRepository<OrgUnit, UUID> {
     List<OrgUnit> findByTenantIdOrderByCreatedAtDesc(UUID tenantId);
 
     Page<OrgUnit> findByTenantId(UUID tenantId, Pageable pageable);
+
+    Page<OrgUnit> findByTenantIdAndActive(UUID tenantId, boolean active, Pageable pageable);
 }
