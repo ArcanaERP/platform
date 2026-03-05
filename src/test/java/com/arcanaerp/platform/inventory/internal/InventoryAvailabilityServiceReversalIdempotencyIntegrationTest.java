@@ -124,6 +124,54 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
                 + originalTransfer.transferId());
     }
 
+    @Test
+    void replaysForSamePayloadWhenAdjustedByOnlyDiffersByCase() {
+        String sku = "ARC-SVC-IDEMP-3";
+        seedTransferItems(sku);
+
+        var originalTransfer = inventoryAvailability.transferInventory(
+            new TransferInventoryCommand(
+                sku,
+                "main",
+                "wh-east",
+                new BigDecimal("2"),
+                "Original transfer",
+                "ops@arcanaerp.com",
+                "order",
+                "SO-IDEMP-3"
+            )
+        );
+
+        String idempotencyKey = "reverse-svc-replay-3";
+        var firstReversal = inventoryAvailability.reverseTransfer(
+            new ReverseInventoryTransferCommand(
+                originalTransfer.transferId(),
+                "Reversal posted",
+                "Ops@ArcanaERP.com",
+                idempotencyKey
+            )
+        );
+
+        var replayedReversal = inventoryAvailability.reverseTransfer(
+            new ReverseInventoryTransferCommand(
+                originalTransfer.transferId(),
+                "Reversal posted",
+                "OPS@ARCANAERP.COM",
+                idempotencyKey
+            )
+        );
+
+        assertThat(replayedReversal.transferId()).isEqualTo(firstReversal.transferId());
+        assertThat(replayedReversal.adjustedBy()).isEqualTo("ops@arcanaerp.com");
+        assertThat(replayedReversal.referenceType()).isEqualTo("TRANSFER_REVERSAL");
+        assertThat(replayedReversal.referenceId()).isEqualTo(originalTransfer.transferId().toString());
+
+        var reversals = inventoryAvailability.listReversals(originalTransfer.transferId(), new PageQuery(0, 10));
+        assertThat(reversals.totalItems()).isEqualTo(1);
+        assertThat(reversals.items().getFirst().transferId()).isEqualTo(firstReversal.transferId());
+        assertThat(reversals.items().getFirst().adjustedBy()).isEqualTo("ops@arcanaerp.com");
+    }
+
     private void seedTransferItems(String sku) {
         Instant seededAt = Instant.parse("2026-03-04T00:00:00Z");
         inventoryItemRepository.save(InventoryItem.create(sku, "main", new BigDecimal("20"), seededAt));
