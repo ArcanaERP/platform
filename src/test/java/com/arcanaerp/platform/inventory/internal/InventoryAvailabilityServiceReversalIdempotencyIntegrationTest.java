@@ -166,6 +166,52 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
     }
 
     @Test
+    void replaysReversalWhenReasonOnlyDiffersByTrailingWhitespaceForSameIdempotencyKey() {
+        String sku = "ARC-SVC-IDEMP-6";
+        seedTransferItems(sku);
+
+        var originalTransfer = inventoryAvailability.transferInventory(
+            new TransferInventoryCommand(
+                sku,
+                "main",
+                "wh-east",
+                new BigDecimal("2"),
+                "Original transfer",
+                "ops@arcanaerp.com",
+                "order",
+                "SO-IDEMP-6"
+            )
+        );
+
+        String idempotencyKey = "reverse-svc-replay-6";
+        var firstReversal = inventoryAvailability.reverseTransfer(
+            new ReverseInventoryTransferCommand(
+                originalTransfer.transferId(),
+                "Reversal posted",
+                "ops@arcanaerp.com",
+                idempotencyKey
+            )
+        );
+
+        var replayedReversal = inventoryAvailability.reverseTransfer(
+            new ReverseInventoryTransferCommand(
+                originalTransfer.transferId(),
+                "Reversal posted ",
+                "ops@arcanaerp.com",
+                idempotencyKey
+            )
+        );
+
+        assertThat(replayedReversal.transferId()).isEqualTo(firstReversal.transferId());
+        assertThat(replayedReversal.reason()).isEqualTo("Reversal posted");
+
+        var reversals = inventoryAvailability.listReversals(originalTransfer.transferId(), new PageQuery(0, 10));
+        assertThat(reversals.totalItems()).isEqualTo(1);
+        assertThat(reversals.items().getFirst().transferId()).isEqualTo(firstReversal.transferId());
+        assertThat(reversals.items().getFirst().reason()).isEqualTo("Reversal posted");
+    }
+
+    @Test
     void rejectsReversalReplayWhenAdjustedByDiffersForSameIdempotencyKey() {
         String sku = "ARC-SVC-IDEMP-4";
         seedTransferItems(sku);
