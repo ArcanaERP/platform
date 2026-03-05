@@ -84,6 +84,91 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
     }
 
     @Test
+    void replaysExistingReversalWhenIdempotencyKeyOnlyDiffersBySurroundingWhitespace() {
+        String sku = "ARC-SVC-IDEMP-7";
+        seedTransferItems(sku);
+
+        var originalTransfer = inventoryAvailability.transferInventory(
+            new TransferInventoryCommand(
+                sku,
+                "main",
+                "wh-east",
+                new BigDecimal("3"),
+                "Original transfer",
+                "ops@arcanaerp.com",
+                "order",
+                "SO-IDEMP-7"
+            )
+        );
+
+        var firstReversal = inventoryAvailability.reverseTransfer(
+            new ReverseInventoryTransferCommand(
+                originalTransfer.transferId(),
+                "Reversal posted",
+                "ops@arcanaerp.com",
+                " reverse-svc-replay-7 "
+            )
+        );
+
+        var replayedReversal = inventoryAvailability.reverseTransfer(
+            new ReverseInventoryTransferCommand(
+                originalTransfer.transferId(),
+                "Reversal posted",
+                "ops@arcanaerp.com",
+                "reverse-svc-replay-7"
+            )
+        );
+
+        assertThat(replayedReversal.transferId()).isEqualTo(firstReversal.transferId());
+        assertThat(replayedReversal.referenceType()).isEqualTo("TRANSFER_REVERSAL");
+        assertThat(replayedReversal.referenceId()).isEqualTo(originalTransfer.transferId().toString());
+
+        var reversals = inventoryAvailability.listReversals(originalTransfer.transferId(), new PageQuery(0, 10));
+        assertThat(reversals.totalItems()).isEqualTo(1);
+        assertThat(reversals.items().getFirst().transferId()).isEqualTo(firstReversal.transferId());
+    }
+
+    @Test
+    void rejectsReversalReplayWhenPayloadDiffersForTrimEquivalentIdempotencyKey() {
+        String sku = "ARC-SVC-IDEMP-8";
+        seedTransferItems(sku);
+
+        var originalTransfer = inventoryAvailability.transferInventory(
+            new TransferInventoryCommand(
+                sku,
+                "main",
+                "wh-east",
+                new BigDecimal("2"),
+                "Original transfer",
+                "ops@arcanaerp.com",
+                "order",
+                "SO-IDEMP-8"
+            )
+        );
+
+        inventoryAvailability.reverseTransfer(
+            new ReverseInventoryTransferCommand(
+                originalTransfer.transferId(),
+                "Reversal posted",
+                "ops@arcanaerp.com",
+                " reverse-svc-replay-8 "
+            )
+        );
+
+        assertThatThrownBy(() -> inventoryAvailability.reverseTransfer(
+                new ReverseInventoryTransferCommand(
+                    originalTransfer.transferId(),
+                    "Different reason",
+                    "ops@arcanaerp.com",
+                    "reverse-svc-replay-8"
+                )
+            ))
+            .isInstanceOf(ReversalIdempotencyPayloadConflictException.class)
+            .hasMessage("Idempotency-Key already used with different reversal payload for transferId: "
+                + originalTransfer.transferId());
+    }
+
+    @Test
     void rejectsReversalReplayWhenPayloadDiffersForSameIdempotencyKey() {
         String sku = "ARC-SVC-IDEMP-2";
         seedTransferItems(sku);
