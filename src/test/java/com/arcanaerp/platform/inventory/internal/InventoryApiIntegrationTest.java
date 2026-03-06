@@ -476,12 +476,10 @@ class InventoryApiIntegrationTest {
         UUID unknownTransferId = UUID.fromString("22222222-2222-2222-2222-222222222222");
         String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
-        InventoryManagementWebTestSupport.reverseTransfer(mockMvc, unknownTransferId, reversalPayload)
-            .andExpect(status().isNotFound())
-            .andExpect(jsonPath("$.status").value(404))
-            .andExpect(jsonPath("$.error").value("Not Found"))
-            .andExpect(jsonPath("$.message").value("Inventory transfer not found: " + unknownTransferId))
-            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + unknownTransferId + "/reversals"));
+        expectReversalTransferNotFound(
+            InventoryManagementWebTestSupport.reverseTransfer(mockMvc, unknownTransferId, reversalPayload),
+            unknownTransferId
+        );
     }
 
     @Test
@@ -877,12 +875,10 @@ class InventoryApiIntegrationTest {
     void returnsNotFoundForUnknownTransferReversalHistory() throws Exception {
         UUID unknownTransferId = UUID.fromString("33333333-3333-3333-3333-333333333333");
 
-        mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequestDefault(unknownTransferId))
-            .andExpect(status().isNotFound())
-            .andExpect(jsonPath("$.status").value(404))
-            .andExpect(jsonPath("$.error").value("Not Found"))
-            .andExpect(jsonPath("$.message").value("Inventory transfer not found: " + unknownTransferId))
-            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + unknownTransferId + "/reversals"));
+        expectReversalTransferNotFound(
+            mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequestDefault(unknownTransferId)),
+            unknownTransferId
+        );
     }
 
     @Test
@@ -1150,6 +1146,15 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.error").value("Conflict"))
             .andExpect(jsonPath("$.message").value("Inventory transfer already reversed: " + originalTransferId))
             .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
+    }
+
+    private void expectReversalTransferNotFound(ResultActions result, UUID transferId) throws Exception {
+        result
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Inventory transfer not found: " + transferId))
+            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + transferId + "/reversals"));
     }
 
     private void expectSingleReversalHistory(UUID originalTransferId) throws Exception {
