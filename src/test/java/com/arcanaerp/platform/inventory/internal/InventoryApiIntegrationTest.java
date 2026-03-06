@@ -42,6 +42,9 @@ import org.springframework.test.web.servlet.MockMvc;
 class InventoryApiIntegrationTest {
 
     private static final UUID PENDING_REVERSAL_TRANSFER_ID = new UUID(0L, 0L);
+    private static final String DEFAULT_TRANSFER_REASON = "Original transfer";
+    private static final String DEFAULT_ACTOR = "ops@arcanaerp.com";
+    private static final String DEFAULT_REVERSAL_REASON = "Reversal posted";
 
     @Autowired
     private MockMvc mockMvc;
@@ -143,7 +146,7 @@ class InventoryApiIntegrationTest {
         String payload = InventoryManagementWebTestSupport.adjustmentPayload(
             "-3",
             "Cycle count correction",
-            "ops@arcanaerp.com"
+            DEFAULT_ACTOR
         );
 
         InventoryManagementWebTestSupport.adjustInventory(mockMvc, "arc-9203", payload)
@@ -154,7 +157,7 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.quantityDelta").value(-3))
             .andExpect(jsonPath("$.currentOnHandQuantity").value(7))
             .andExpect(jsonPath("$.reason").value("Cycle count correction"))
-            .andExpect(jsonPath("$.adjustedBy").value("ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR))
             .andExpect(jsonPath("$.adjustedAt").isNotEmpty());
 
         mockMvc.perform(get("/api/inventory/{sku}", "arc-9203"))
@@ -165,7 +168,7 @@ class InventoryApiIntegrationTest {
             .findByInventoryItemIdOrderByAdjustedAtDesc(item.getId());
         assertThat(adjustments).hasSize(1);
         assertThat(adjustments.getFirst().getReason()).isEqualTo("Cycle count correction");
-        assertThat(adjustments.getFirst().getAdjustedBy()).isEqualTo("ops@arcanaerp.com");
+        assertThat(adjustments.getFirst().getAdjustedBy()).isEqualTo(DEFAULT_ACTOR);
         assertThat(adjustments.getFirst().getLocationCode()).isEqualTo("MAIN");
     }
 
@@ -191,7 +194,7 @@ class InventoryApiIntegrationTest {
         String payload = InventoryManagementWebTestSupport.adjustmentPayload(
             "6",
             "Receiving posted",
-            "ops@arcanaerp.com"
+            DEFAULT_ACTOR
         );
 
         InventoryManagementWebTestSupport.adjustInventory(mockMvc, "arc-9204", "wh-west", payload)
@@ -238,7 +241,7 @@ class InventoryApiIntegrationTest {
             "wh-east",
             "5",
             "Rebalancing transfer",
-            "ops@arcanaerp.com",
+            DEFAULT_ACTOR,
             "fulfillment",
             "FUL-9207-1"
         );
@@ -253,7 +256,7 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.sourceOnHandQuantity").value(7))
             .andExpect(jsonPath("$.destinationOnHandQuantity").value(8))
             .andExpect(jsonPath("$.reason").value("Rebalancing transfer"))
-            .andExpect(jsonPath("$.adjustedBy").value("ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR))
             .andExpect(jsonPath("$.referenceType").value("FULFILLMENT"))
             .andExpect(jsonPath("$.referenceId").value("FUL-9207-1"))
             .andExpect(jsonPath("$.transferredAt").isNotEmpty());
@@ -308,7 +311,7 @@ class InventoryApiIntegrationTest {
             "wh-north",
             "2",
             "Initial stocking transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_ACTOR
         );
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9208", payload)
@@ -349,7 +352,7 @@ class InventoryApiIntegrationTest {
             "wh-east",
             "4",
             "Fulfillment movement",
-            "ops@arcanaerp.com",
+            DEFAULT_ACTOR,
             "fulfillment",
             "FUL-9214-1"
         );
@@ -373,7 +376,7 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.sourceOnHandQuantity").value(7))
             .andExpect(jsonPath("$.destinationOnHandQuantity").value(6))
             .andExpect(jsonPath("$.reason").value("Fulfillment movement"))
-            .andExpect(jsonPath("$.adjustedBy").value("ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR))
             .andExpect(jsonPath("$.referenceType").value("FULFILLMENT"))
             .andExpect(jsonPath("$.referenceId").value("FUL-9214-1"))
             .andExpect(jsonPath("$.transferredAt").isNotEmpty());
@@ -414,8 +417,8 @@ class InventoryApiIntegrationTest {
             "main",
             "wh-east",
             "3",
-            "Original transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_TRANSFER_REASON,
+            DEFAULT_ACTOR
         );
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9216", transferPayload)
@@ -427,7 +430,7 @@ class InventoryApiIntegrationTest {
             .getFirst()
             .getTransferId();
 
-        String reversalPayload = reversalPayload("Reversal posted");
+        String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
         InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload)
             .andExpect(status().isCreated())
@@ -437,8 +440,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.quantity").value(3))
             .andExpect(jsonPath("$.sourceOnHandQuantity").value(4))
             .andExpect(jsonPath("$.destinationOnHandQuantity").value(10))
-            .andExpect(jsonPath("$.reason").value("Reversal posted"))
-            .andExpect(jsonPath("$.adjustedBy").value("ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.reason").value(DEFAULT_REVERSAL_REASON))
+            .andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR))
             .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
             .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()));
 
@@ -470,7 +473,7 @@ class InventoryApiIntegrationTest {
     @Test
     void returnsNotFoundForUnknownTransferReversalRequest() throws Exception {
         UUID unknownTransferId = UUID.fromString("22222222-2222-2222-2222-222222222222");
-        String reversalPayload = reversalPayload("Reversal posted");
+        String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
         InventoryManagementWebTestSupport.reverseTransfer(mockMvc, unknownTransferId, reversalPayload)
             .andExpect(status().isNotFound())
@@ -503,10 +506,10 @@ class InventoryApiIntegrationTest {
             "main",
             "wh-east",
             "3",
-            "Original transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_TRANSFER_REASON,
+            DEFAULT_ACTOR
         );
-        String reversalPayload = reversalPayload("Reversal posted");
+        String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9219", transferPayload)
             .andExpect(status().isCreated());
@@ -542,10 +545,10 @@ class InventoryApiIntegrationTest {
             "main",
             "wh-east",
             "3",
-            "Original transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_TRANSFER_REASON,
+            DEFAULT_ACTOR
         );
-        String reversalPayload = reversalPayload("Reversal posted");
+        String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9220", transferPayload)
             .andExpect(status().isCreated());
@@ -602,11 +605,11 @@ class InventoryApiIntegrationTest {
             "main",
             "wh-east",
             "3",
-            "Original transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_TRANSFER_REASON,
+            DEFAULT_ACTOR
         );
-        String firstReversalPayload = reversalPayload("Reversal posted", "OPS@ARCANAERP.COM");
-        String replayReversalPayload = reversalPayload("Reversal posted");
+        String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON, "OPS@ARCANAERP.COM");
+        String replayReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9220b", transferPayload)
             .andExpect(status().isCreated());
@@ -625,7 +628,7 @@ class InventoryApiIntegrationTest {
             firstReversalPayload
         )
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.adjustedBy").value("ops@arcanaerp.com"));
+            .andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR));
 
         UUID reversalTransferId = InventoryIdempotencyTestFixture.latestTransferIdFor(
             inventoryItemRepository,
@@ -642,7 +645,7 @@ class InventoryApiIntegrationTest {
         )
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.transferId").value(reversalTransferId.toString()))
-            .andExpect(jsonPath("$.adjustedBy").value("ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR))
             .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
             .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()));
 
@@ -650,7 +653,7 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].transferId").value(reversalTransferId.toString()))
-            .andExpect(jsonPath("$.items[0].adjustedBy").value("ops@arcanaerp.com"));
+            .andExpect(jsonPath("$.items[0].adjustedBy").value(DEFAULT_ACTOR));
     }
 
     @Test
@@ -667,10 +670,10 @@ class InventoryApiIntegrationTest {
             "main",
             "wh-east",
             "3",
-            "Original transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_TRANSFER_REASON,
+            DEFAULT_ACTOR
         );
-        String reversalPayload = reversalPayload("Reversal posted");
+        String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9221", transferPayload)
             .andExpect(status().isCreated());
@@ -709,10 +712,10 @@ class InventoryApiIntegrationTest {
             "main",
             "wh-east",
             "3",
-            "Original transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_TRANSFER_REASON,
+            DEFAULT_ACTOR
         );
-        String reversalPayload = reversalPayload("Reversal posted");
+        String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9221b", transferPayload)
             .andExpect(status().isCreated());
@@ -770,13 +773,13 @@ class InventoryApiIntegrationTest {
             "main",
             "wh-east",
             "3",
-            "Original transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_TRANSFER_REASON,
+            DEFAULT_ACTOR
         );
-        String firstReversalPayload = reversalPayload("Reversal posted");
+        String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
         String secondReversalPayload = reversalPayload(
             "Reversal posted with different reason",
-            "ops@arcanaerp.com"
+            DEFAULT_ACTOR
         );
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9221c", transferPayload)
@@ -833,13 +836,13 @@ class InventoryApiIntegrationTest {
             "main",
             "wh-east",
             "3",
-            "Original transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_TRANSFER_REASON,
+            DEFAULT_ACTOR
         );
-        String firstReversalPayload = reversalPayload("Reversal posted");
+        String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
         String secondReversalPayload = reversalPayload(
             "Reversal posted with different reason",
-            "ops@arcanaerp.com"
+            DEFAULT_ACTOR
         );
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9222", transferPayload)
@@ -896,10 +899,10 @@ class InventoryApiIntegrationTest {
             "main",
             "wh-east",
             "3",
-            "Original transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_TRANSFER_REASON,
+            DEFAULT_ACTOR
         );
-        String firstReversalPayload = reversalPayload("Reversal posted");
+        String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
         String secondReversalPayload = reversalPayload("reversal posted");
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9222c", transferPayload)
@@ -956,10 +959,10 @@ class InventoryApiIntegrationTest {
             "main",
             "wh-east",
             "3",
-            "Original transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_TRANSFER_REASON,
+            DEFAULT_ACTOR
         );
-        String firstReversalPayload = reversalPayload("Reversal posted");
+        String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
         String secondReversalPayload = reversalPayload("Reversal posted ");
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9222d", transferPayload)
@@ -979,7 +982,7 @@ class InventoryApiIntegrationTest {
             firstReversalPayload
         )
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.reason").value("Reversal posted"));
+            .andExpect(jsonPath("$.reason").value(DEFAULT_REVERSAL_REASON));
 
         UUID reversalTransferId = InventoryIdempotencyTestFixture.latestTransferIdFor(
             inventoryItemRepository,
@@ -996,7 +999,7 @@ class InventoryApiIntegrationTest {
         )
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.transferId").value(reversalTransferId.toString()))
-            .andExpect(jsonPath("$.reason").value("Reversal posted"))
+            .andExpect(jsonPath("$.reason").value(DEFAULT_REVERSAL_REASON))
             .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
             .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()));
 
@@ -1004,7 +1007,7 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].transferId").value(reversalTransferId.toString()))
-            .andExpect(jsonPath("$.items[0].reason").value("Reversal posted"));
+            .andExpect(jsonPath("$.items[0].reason").value(DEFAULT_REVERSAL_REASON));
     }
 
     @Test
@@ -1021,12 +1024,12 @@ class InventoryApiIntegrationTest {
             "main",
             "wh-east",
             "3",
-            "Original transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_TRANSFER_REASON,
+            DEFAULT_ACTOR
         );
-        String firstReversalPayload = reversalPayload("Reversal posted");
+        String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
         String secondReversalPayload = reversalPayload(
-            "Reversal posted",
+            DEFAULT_REVERSAL_REASON,
             "warehouse@arcanaerp.com"
         );
 
@@ -1084,10 +1087,10 @@ class InventoryApiIntegrationTest {
             "main",
             "wh-east",
             "3",
-            "Original transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_TRANSFER_REASON,
+            DEFAULT_ACTOR
         );
-        String reversalPayload = reversalPayload("Reversal posted");
+        String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9223", transferPayload)
             .andExpect(status().isCreated());
@@ -1175,10 +1178,10 @@ class InventoryApiIntegrationTest {
             "main",
             "wh-east",
             "3",
-            "Original transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_TRANSFER_REASON,
+            DEFAULT_ACTOR
         );
-        String reversalPayload = reversalPayload("Reversal posted");
+        String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9224", transferPayload)
             .andExpect(status().isCreated());
@@ -1207,7 +1210,7 @@ class InventoryApiIntegrationTest {
             InventoryTransferReversalIdempotency.create(
                 originalTransferId,
                 "reverse-9224-stale",
-                fingerprintForReversalRequest("Reversal posted", "ops@arcanaerp.com"),
+                fingerprintForReversalRequest(DEFAULT_REVERSAL_REASON, DEFAULT_ACTOR),
                 PENDING_REVERSAL_TRANSFER_ID,
                 Instant.parse("2025-12-01T00:00:00Z")
             )
@@ -1258,8 +1261,8 @@ class InventoryApiIntegrationTest {
             "main",
             "wh-east",
             "3",
-            "Original transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_TRANSFER_REASON,
+            DEFAULT_ACTOR
         );
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9217", transferPayload)
@@ -1271,7 +1274,7 @@ class InventoryApiIntegrationTest {
             .getFirst()
             .getTransferId();
 
-        String reversalPayload = reversalPayload("Reversal posted");
+        String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
         InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload)
             .andExpect(status().isCreated());
@@ -1283,8 +1286,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.items[0].sourceLocationCode").value("WH-EAST"))
             .andExpect(jsonPath("$.items[0].destinationLocationCode").value("MAIN"))
             .andExpect(jsonPath("$.items[0].quantity").value(3))
-            .andExpect(jsonPath("$.items[0].reason").value("Reversal posted"))
-            .andExpect(jsonPath("$.items[0].adjustedBy").value("ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].reason").value(DEFAULT_REVERSAL_REASON))
+            .andExpect(jsonPath("$.items[0].adjustedBy").value(DEFAULT_ACTOR))
             .andExpect(jsonPath("$.items[0].referenceType").value("TRANSFER_REVERSAL"))
             .andExpect(jsonPath("$.items[0].referenceId").value(originalTransferId.toString()));
     }
@@ -1312,8 +1315,8 @@ class InventoryApiIntegrationTest {
             "main",
             "wh-east",
             "3",
-            "Original transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_TRANSFER_REASON,
+            DEFAULT_ACTOR
         );
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9218", transferPayload)
@@ -1359,7 +1362,7 @@ class InventoryApiIntegrationTest {
             "main",
             "1",
             "Invalid transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_ACTOR
         );
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9209", payload)
@@ -1386,7 +1389,7 @@ class InventoryApiIntegrationTest {
             "wh-west",
             "5",
             "Too large transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_ACTOR
         );
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9210", payload)
@@ -1404,7 +1407,7 @@ class InventoryApiIntegrationTest {
             "main",
             "1",
             "Invalid transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_ACTOR
         );
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9211", payload)
@@ -1431,7 +1434,7 @@ class InventoryApiIntegrationTest {
             "wh-west",
             "0",
             "Invalid transfer",
-            "ops@arcanaerp.com"
+            DEFAULT_ACTOR
         );
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9212", payload)
@@ -1486,7 +1489,7 @@ class InventoryApiIntegrationTest {
         String payload = InventoryManagementWebTestSupport.adjustmentPayload(
             "-5",
             "Bad adjustment",
-            "ops@arcanaerp.com"
+            DEFAULT_ACTOR
         );
 
         InventoryManagementWebTestSupport.adjustInventory(mockMvc, "arc-9205", payload)
@@ -1502,7 +1505,7 @@ class InventoryApiIntegrationTest {
         String payload = InventoryManagementWebTestSupport.adjustmentPayload(
             "5",
             "Receiving posted",
-            "ops@arcanaerp.com"
+            DEFAULT_ACTOR
         );
 
         InventoryManagementWebTestSupport.adjustInventory(mockMvc, "arc-9206", "wh-west", payload)
@@ -1514,7 +1517,7 @@ class InventoryApiIntegrationTest {
     }
 
     private static String reversalPayload(String reason) {
-        return reversalPayload(reason, "ops@arcanaerp.com");
+        return reversalPayload(reason, DEFAULT_ACTOR);
     }
 
     private static String reversalPayload(String reason, String adjustedBy) {

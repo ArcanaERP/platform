@@ -19,6 +19,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 @SpringBootTest
 class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
 
+    private static final String DEFAULT_REASON = "Reversal posted";
+    private static final String DEFAULT_ACTOR = "ops@arcanaerp.com";
+    private static final String DEFAULT_TRANSFER_REASON = "Original transfer";
+
     @Autowired
     private InventoryAvailability inventoryAvailability;
 
@@ -49,11 +53,11 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
 
         String idempotencyKey = "reverse-svc-replay-1";
         var firstReversal = inventoryAvailability.reverseTransfer(
-            reverseCommand(originalTransfer.transferId(), "Reversal posted", idempotencyKey)
+            reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, idempotencyKey)
         );
 
         var replayedReversal = inventoryAvailability.reverseTransfer(
-            reverseCommand(originalTransfer.transferId(), "Reversal posted", idempotencyKey)
+            reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, idempotencyKey)
         );
 
         assertThat(replayedReversal.transferId()).isEqualTo(firstReversal.transferId());
@@ -75,11 +79,11 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         );
 
         var firstReversal = inventoryAvailability.reverseTransfer(
-            reverseCommand(originalTransfer.transferId(), "Reversal posted", " reverse-svc-replay-7 ")
+            reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, " reverse-svc-replay-7 ")
         );
 
         var replayedReversal = inventoryAvailability.reverseTransfer(
-            reverseCommand(originalTransfer.transferId(), "Reversal posted", "reverse-svc-replay-7")
+            reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, "reverse-svc-replay-7")
         );
 
         assertThat(replayedReversal.transferId()).isEqualTo(firstReversal.transferId());
@@ -101,7 +105,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         );
 
         inventoryAvailability.reverseTransfer(
-            reverseCommand(originalTransfer.transferId(), "Reversal posted", " reverse-svc-replay-8 ")
+            reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, " reverse-svc-replay-8 ")
         );
 
         assertThatThrownBy(() -> inventoryAvailability.reverseTransfer(
@@ -123,7 +127,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
 
         String idempotencyKey = "reverse-svc-replay-2";
         inventoryAvailability.reverseTransfer(
-            reverseCommand(originalTransfer.transferId(), "Reversal posted", idempotencyKey)
+            reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, idempotencyKey)
         );
 
         assertThatThrownBy(() -> inventoryAvailability.reverseTransfer(
@@ -145,7 +149,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
 
         String idempotencyKey = "reverse-svc-replay-5";
         inventoryAvailability.reverseTransfer(
-            reverseCommand(originalTransfer.transferId(), "Reversal posted", idempotencyKey)
+            reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, idempotencyKey)
         );
 
         assertThatThrownBy(() -> inventoryAvailability.reverseTransfer(
@@ -167,20 +171,20 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
 
         String idempotencyKey = "reverse-svc-replay-6";
         var firstReversal = inventoryAvailability.reverseTransfer(
-            reverseCommand(originalTransfer.transferId(), "Reversal posted", idempotencyKey)
+            reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, idempotencyKey)
         );
 
         var replayedReversal = inventoryAvailability.reverseTransfer(
-            reverseCommand(originalTransfer.transferId(), "Reversal posted ", idempotencyKey)
+            reverseCommand(originalTransfer.transferId(), DEFAULT_REASON + " ", idempotencyKey)
         );
 
         assertThat(replayedReversal.transferId()).isEqualTo(firstReversal.transferId());
-        assertThat(replayedReversal.reason()).isEqualTo("Reversal posted");
+        assertThat(replayedReversal.reason()).isEqualTo(DEFAULT_REASON);
 
         var reversals = inventoryAvailability.listReversals(originalTransfer.transferId(), new PageQuery(0, 10));
         assertThat(reversals.totalItems()).isEqualTo(1);
         assertThat(reversals.items().getFirst().transferId()).isEqualTo(firstReversal.transferId());
-        assertThat(reversals.items().getFirst().reason()).isEqualTo("Reversal posted");
+        assertThat(reversals.items().getFirst().reason()).isEqualTo(DEFAULT_REASON);
     }
 
     @Test
@@ -194,11 +198,11 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
 
         String idempotencyKey = "reverse-svc-replay-4";
         inventoryAvailability.reverseTransfer(
-            reverseCommand(originalTransfer.transferId(), "Reversal posted", idempotencyKey)
+            reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, idempotencyKey)
         );
 
         assertThatThrownBy(() -> inventoryAvailability.reverseTransfer(
-                reverseCommand(originalTransfer.transferId(), "Reversal posted", "warehouse@arcanaerp.com", idempotencyKey)
+                reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, "warehouse@arcanaerp.com", idempotencyKey)
             ))
             .isInstanceOf(ReversalIdempotencyPayloadConflictException.class)
             .hasMessage("Idempotency-Key already used with different reversal payload for transferId: "
@@ -216,22 +220,22 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
 
         String idempotencyKey = "reverse-svc-replay-3";
         var firstReversal = inventoryAvailability.reverseTransfer(
-            reverseCommand(originalTransfer.transferId(), "Reversal posted", "Ops@ArcanaERP.com", idempotencyKey)
+            reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, "Ops@ArcanaERP.com", idempotencyKey)
         );
 
         var replayedReversal = inventoryAvailability.reverseTransfer(
-            reverseCommand(originalTransfer.transferId(), "Reversal posted", "OPS@ARCANAERP.COM", idempotencyKey)
+            reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, "OPS@ARCANAERP.COM", idempotencyKey)
         );
 
         assertThat(replayedReversal.transferId()).isEqualTo(firstReversal.transferId());
-        assertThat(replayedReversal.adjustedBy()).isEqualTo("ops@arcanaerp.com");
+        assertThat(replayedReversal.adjustedBy()).isEqualTo(DEFAULT_ACTOR);
         assertThat(replayedReversal.referenceType()).isEqualTo("TRANSFER_REVERSAL");
         assertThat(replayedReversal.referenceId()).isEqualTo(originalTransfer.transferId().toString());
 
         var reversals = inventoryAvailability.listReversals(originalTransfer.transferId(), new PageQuery(0, 10));
         assertThat(reversals.totalItems()).isEqualTo(1);
         assertThat(reversals.items().getFirst().transferId()).isEqualTo(firstReversal.transferId());
-        assertThat(reversals.items().getFirst().adjustedBy()).isEqualTo("ops@arcanaerp.com");
+        assertThat(reversals.items().getFirst().adjustedBy()).isEqualTo(DEFAULT_ACTOR);
     }
 
     private void seedTransferItems(String sku) {
@@ -249,7 +253,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         String reason,
         String idempotencyKey
     ) {
-        return reverseCommand(transferId, reason, "ops@arcanaerp.com", idempotencyKey);
+        return reverseCommand(transferId, reason, DEFAULT_ACTOR, idempotencyKey);
     }
 
     private static ReverseInventoryTransferCommand reverseCommand(
@@ -271,8 +275,8 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
             "main",
             "wh-east",
             quantity,
-            "Original transfer",
-            "ops@arcanaerp.com",
+            DEFAULT_TRANSFER_REASON,
+            DEFAULT_ACTOR,
             "order",
             referenceId
         );
