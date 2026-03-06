@@ -633,21 +633,16 @@ class InventoryApiIntegrationTest {
 
     @Test
     void rejectsIdempotencyKeyReuseWithDifferentPayloadWhenHeaderOnlyDiffersBySurroundingWhitespace() throws Exception {
-        IdempotencyScenario scenario = createIdempotencyScenario("arc-9221c");
-        UUID originalTransferId = scenario.originalTransferId();
-        String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
+        ReversalScenario reversalScenario = scenarioWithReversal(
+            "arc-9221c",
+            " reverse-9221c-a ",
+            reversalPayload(DEFAULT_REVERSAL_REASON)
+        );
+        UUID originalTransferId = reversalScenario.originalTransferId();
         String secondReversalPayload = reversalPayload(
             "Reversal posted with different reason",
             DEFAULT_ACTOR
         );
-
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
-            originalTransferId,
-            " reverse-9221c-a ",
-            firstReversalPayload
-        )
-            .andExpect(status().isCreated());
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -673,21 +668,16 @@ class InventoryApiIntegrationTest {
 
     @Test
     void rejectsIdempotencyKeyReuseWithDifferentReversalPayload() throws Exception {
-        IdempotencyScenario scenario = createIdempotencyScenario("arc-9222");
-        UUID originalTransferId = scenario.originalTransferId();
-        String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
+        ReversalScenario reversalScenario = scenarioWithReversal(
+            "arc-9222",
+            "reverse-9222-a",
+            reversalPayload(DEFAULT_REVERSAL_REASON)
+        );
+        UUID originalTransferId = reversalScenario.originalTransferId();
         String secondReversalPayload = reversalPayload(
             "Reversal posted with different reason",
             DEFAULT_ACTOR
         );
-
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
-            originalTransferId,
-            "reverse-9222-a",
-            firstReversalPayload
-        )
-            .andExpect(status().isCreated());
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -713,18 +703,13 @@ class InventoryApiIntegrationTest {
 
     @Test
     void rejectsIdempotencyKeyReuseWhenReasonOnlyDiffersByCase() throws Exception {
-        IdempotencyScenario scenario = createIdempotencyScenario("arc-9222c");
-        UUID originalTransferId = scenario.originalTransferId();
-        String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
-        String secondReversalPayload = reversalPayload("reversal posted");
-
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
-            originalTransferId,
+        ReversalScenario reversalScenario = scenarioWithReversal(
+            "arc-9222c",
             "reverse-9222c-a",
-            firstReversalPayload
-        )
-            .andExpect(status().isCreated());
+            reversalPayload(DEFAULT_REVERSAL_REASON)
+        );
+        UUID originalTransferId = reversalScenario.originalTransferId();
+        String secondReversalPayload = reversalPayload("reversal posted");
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -784,21 +769,16 @@ class InventoryApiIntegrationTest {
 
     @Test
     void rejectsIdempotencyKeyReuseWhenAdjustedByValueDiffers() throws Exception {
-        IdempotencyScenario scenario = createIdempotencyScenario("arc-9222b");
-        UUID originalTransferId = scenario.originalTransferId();
-        String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
+        ReversalScenario reversalScenario = scenarioWithReversal(
+            "arc-9222b",
+            "reverse-9222b-a",
+            reversalPayload(DEFAULT_REVERSAL_REASON)
+        );
+        UUID originalTransferId = reversalScenario.originalTransferId();
         String secondReversalPayload = reversalPayload(
             DEFAULT_REVERSAL_REASON,
             "warehouse@arcanaerp.com"
         );
-
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
-            originalTransferId,
-            "reverse-9222b-a",
-            firstReversalPayload
-        )
-            .andExpect(status().isCreated());
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
