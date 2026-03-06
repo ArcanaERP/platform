@@ -719,21 +719,12 @@ class InventoryApiIntegrationTest {
 
     @Test
     void retriesReversalWhenIdempotencyKeyHeaderOnlyDiffersBySurroundingWhitespace() throws Exception {
-        inventoryItemRepository.save(
-            InventoryItem.create(
-                "arc-9221b",
-                "main",
-                new BigDecimal("10"),
-                Instant.parse("2026-03-01T00:00:00Z")
-            )
-        );
-        inventoryItemRepository.save(
-            InventoryItem.create(
-                "arc-9221b",
-                "wh-east",
-                new BigDecimal("4"),
-                Instant.parse("2026-03-01T00:00:00Z")
-            )
+        InventoryIdempotencyTestFixture.seedTransferItems(
+            inventoryItemRepository,
+            "arc-9221b",
+            new BigDecimal("10"),
+            new BigDecimal("4"),
+            Instant.parse("2026-03-01T00:00:00Z")
         );
 
         String transferPayload = InventoryManagementWebTestSupport.transferPayload(
@@ -748,11 +739,12 @@ class InventoryApiIntegrationTest {
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9221b", transferPayload)
             .andExpect(status().isCreated());
 
-        InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9221B", "MAIN").orElseThrow();
-        UUID originalTransferId = inventoryAdjustmentRepository
-            .findByInventoryItemIdOrderByAdjustedAtDesc(mainItem.getId())
-            .getFirst()
-            .getTransferId();
+        UUID originalTransferId = InventoryIdempotencyTestFixture.latestTransferIdFor(
+            inventoryItemRepository,
+            inventoryAdjustmentRepository,
+            "arc-9221b",
+            "main"
+        );
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -762,11 +754,12 @@ class InventoryApiIntegrationTest {
         )
             .andExpect(status().isCreated());
 
-        InventoryItem eastItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9221B", "WH-EAST").orElseThrow();
-        UUID reversalTransferId = inventoryAdjustmentRepository
-            .findByInventoryItemIdOrderByAdjustedAtDesc(eastItem.getId())
-            .getFirst()
-            .getTransferId();
+        UUID reversalTransferId = InventoryIdempotencyTestFixture.latestTransferIdFor(
+            inventoryItemRepository,
+            inventoryAdjustmentRepository,
+            "arc-9221b",
+            "wh-east"
+        );
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -787,21 +780,12 @@ class InventoryApiIntegrationTest {
 
     @Test
     void rejectsIdempotencyKeyReuseWithDifferentPayloadWhenHeaderOnlyDiffersBySurroundingWhitespace() throws Exception {
-        inventoryItemRepository.save(
-            InventoryItem.create(
-                "arc-9221c",
-                "main",
-                new BigDecimal("10"),
-                Instant.parse("2026-03-01T00:00:00Z")
-            )
-        );
-        inventoryItemRepository.save(
-            InventoryItem.create(
-                "arc-9221c",
-                "wh-east",
-                new BigDecimal("4"),
-                Instant.parse("2026-03-01T00:00:00Z")
-            )
+        InventoryIdempotencyTestFixture.seedTransferItems(
+            inventoryItemRepository,
+            "arc-9221c",
+            new BigDecimal("10"),
+            new BigDecimal("4"),
+            Instant.parse("2026-03-01T00:00:00Z")
         );
 
         String transferPayload = InventoryManagementWebTestSupport.transferPayload(
@@ -820,11 +804,12 @@ class InventoryApiIntegrationTest {
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9221c", transferPayload)
             .andExpect(status().isCreated());
 
-        InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9221C", "MAIN").orElseThrow();
-        UUID originalTransferId = inventoryAdjustmentRepository
-            .findByInventoryItemIdOrderByAdjustedAtDesc(mainItem.getId())
-            .getFirst()
-            .getTransferId();
+        UUID originalTransferId = InventoryIdempotencyTestFixture.latestTransferIdFor(
+            inventoryItemRepository,
+            inventoryAdjustmentRepository,
+            "arc-9221c",
+            "main"
+        );
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,

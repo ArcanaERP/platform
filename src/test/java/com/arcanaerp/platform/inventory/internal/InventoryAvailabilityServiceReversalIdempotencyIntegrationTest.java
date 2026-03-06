@@ -386,8 +386,12 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
     }
 
     private void seedTransferItems(String sku) {
-        Instant seededAt = Instant.parse("2026-03-04T00:00:00Z");
-        inventoryItemRepository.save(InventoryItem.create(sku, "main", new BigDecimal("20"), seededAt));
-        inventoryItemRepository.save(InventoryItem.create(sku, "wh-east", new BigDecimal("5"), seededAt));
+        InventoryIdempotencyTestFixture.seedTransferItems(
+            inventoryItemRepository,
+            sku,
+            new BigDecimal("20"),
+            new BigDecimal("5"),
+            Instant.parse("2026-03-04T00:00:00Z")
+        );
     }
 }
