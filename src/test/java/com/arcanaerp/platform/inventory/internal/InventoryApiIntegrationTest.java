@@ -36,6 +36,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -644,22 +645,15 @@ class InventoryApiIntegrationTest {
             DEFAULT_ACTOR
         );
 
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
-            originalTransferId,
-            "reverse-9221c-a",
-            secondReversalPayload
-        )
-            .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.status").value(409))
-            .andExpect(jsonPath("$.error").value("Conflict"))
-            .andExpect(
-                jsonPath("$.message")
-                    .value(
-                        "Idempotency-Key already used with different reversal payload for transferId: " + originalTransferId
-                    )
-            )
-            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
+        expectIdempotencyPayloadConflict(
+            InventoryManagementWebTestSupport.reverseTransfer(
+                mockMvc,
+                originalTransferId,
+                "reverse-9221c-a",
+                secondReversalPayload
+            ),
+            originalTransferId
+        );
 
         mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequestDefault(originalTransferId))
             .andExpect(status().isOk())
@@ -679,22 +673,15 @@ class InventoryApiIntegrationTest {
             DEFAULT_ACTOR
         );
 
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
-            originalTransferId,
-            "reverse-9222-a",
-            secondReversalPayload
-        )
-            .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.status").value(409))
-            .andExpect(jsonPath("$.error").value("Conflict"))
-            .andExpect(
-                jsonPath("$.message")
-                    .value(
-                        "Idempotency-Key already used with different reversal payload for transferId: " + originalTransferId
-                    )
-            )
-            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
+        expectIdempotencyPayloadConflict(
+            InventoryManagementWebTestSupport.reverseTransfer(
+                mockMvc,
+                originalTransferId,
+                "reverse-9222-a",
+                secondReversalPayload
+            ),
+            originalTransferId
+        );
 
         mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequestDefault(originalTransferId))
             .andExpect(status().isOk())
@@ -711,22 +698,15 @@ class InventoryApiIntegrationTest {
         UUID originalTransferId = reversalScenario.originalTransferId();
         String secondReversalPayload = reversalPayload("reversal posted");
 
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
-            originalTransferId,
-            "reverse-9222c-a",
-            secondReversalPayload
-        )
-            .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.status").value(409))
-            .andExpect(jsonPath("$.error").value("Conflict"))
-            .andExpect(
-                jsonPath("$.message")
-                    .value(
-                        "Idempotency-Key already used with different reversal payload for transferId: " + originalTransferId
-                    )
-            )
-            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
+        expectIdempotencyPayloadConflict(
+            InventoryManagementWebTestSupport.reverseTransfer(
+                mockMvc,
+                originalTransferId,
+                "reverse-9222c-a",
+                secondReversalPayload
+            ),
+            originalTransferId
+        );
 
         mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequestDefault(originalTransferId))
             .andExpect(status().isOk())
@@ -780,22 +760,15 @@ class InventoryApiIntegrationTest {
             "warehouse@arcanaerp.com"
         );
 
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
-            originalTransferId,
-            "reverse-9222b-a",
-            secondReversalPayload
-        )
-            .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.status").value(409))
-            .andExpect(jsonPath("$.error").value("Conflict"))
-            .andExpect(
-                jsonPath("$.message")
-                    .value(
-                        "Idempotency-Key already used with different reversal payload for transferId: " + originalTransferId
-                    )
-            )
-            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
+        expectIdempotencyPayloadConflict(
+            InventoryManagementWebTestSupport.reverseTransfer(
+                mockMvc,
+                originalTransferId,
+                "reverse-9222b-a",
+                secondReversalPayload
+            ),
+            originalTransferId
+        );
 
         mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequestDefault(originalTransferId))
             .andExpect(status().isOk())
@@ -1262,6 +1235,20 @@ class InventoryApiIntegrationTest {
         return new ReversalScenario(scenario, latestReversalTransferId(scenario));
     }
 
+    private void expectIdempotencyPayloadConflict(ResultActions result, UUID originalTransferId) throws Exception {
+        result
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.status").value(409))
+            .andExpect(jsonPath("$.error").value("Conflict"))
+            .andExpect(
+                jsonPath("$.message")
+                    .value(
+                        "Idempotency-Key already used with different reversal payload for transferId: " + originalTransferId
+                    )
+            )
+            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
+    }
+
     private record IdempotencyScenario(String sku, UUID originalTransferId) {}
     private record ReversalScenario(IdempotencyScenario scenario, UUID reversalTransferId) {
         private UUID originalTransferId() {
@@ -1270,7 +1257,7 @@ class InventoryApiIntegrationTest {
     }
     @FunctionalInterface
     private interface ReversalResponseExpectation {
-        void verify(org.springframework.test.web.servlet.ResultActions result) throws Exception;
+        void verify(ResultActions result) throws Exception;
     }
 
     private static String reversalPayload(String reason) {
