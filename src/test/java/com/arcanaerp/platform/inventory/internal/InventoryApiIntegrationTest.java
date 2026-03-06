@@ -114,12 +114,12 @@ class InventoryApiIntegrationTest {
 
     @Test
     void returnsNotFoundForUnknownSkuAtDefaultMainLocation() throws Exception {
-        mockMvc.perform(get("/api/inventory/{sku}", "arc-9202"))
-            .andExpect(status().isNotFound())
-            .andExpect(jsonPath("$.status").value(404))
-            .andExpect(jsonPath("$.error").value("Not Found"))
-            .andExpect(jsonPath("$.message").value("Inventory item not found for SKU: ARC-9202 at location: MAIN"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9202"));
+        expectInventoryItemNotFound(
+            mockMvc.perform(get("/api/inventory/{sku}", "arc-9202")),
+            "arc-9202",
+            "main",
+            "/api/inventory/arc-9202"
+        );
     }
 
     @Test
@@ -945,12 +945,12 @@ class InventoryApiIntegrationTest {
             DEFAULT_ACTOR
         );
 
-        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9211", payload)
-            .andExpect(status().isNotFound())
-            .andExpect(jsonPath("$.status").value(404))
-            .andExpect(jsonPath("$.error").value("Not Found"))
-            .andExpect(jsonPath("$.message").value("Inventory item not found for SKU: ARC-9211 at location: WH-UNKNOWN"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9211/transfers"));
+        expectInventoryItemNotFound(
+            InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9211", payload),
+            "arc-9211",
+            "wh-unknown",
+            "/api/inventory/arc-9211/transfers"
+        );
     }
 
     @Test
@@ -1043,12 +1043,12 @@ class InventoryApiIntegrationTest {
             DEFAULT_ACTOR
         );
 
-        InventoryManagementWebTestSupport.adjustInventory(mockMvc, "arc-9206", "wh-west", payload)
-            .andExpect(status().isNotFound())
-            .andExpect(jsonPath("$.status").value(404))
-            .andExpect(jsonPath("$.error").value("Not Found"))
-            .andExpect(jsonPath("$.message").value("Inventory item not found for SKU: ARC-9206 at location: WH-WEST"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9206/adjustments"));
+        expectInventoryItemNotFound(
+            InventoryManagementWebTestSupport.adjustInventory(mockMvc, "arc-9206", "wh-west", payload),
+            "arc-9206",
+            "wh-west",
+            "/api/inventory/arc-9206/adjustments"
+        );
     }
 
     private IdempotencyScenario createIdempotencyScenario(String sku) throws Exception {
@@ -1155,6 +1155,25 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.error").value("Not Found"))
             .andExpect(jsonPath("$.message").value("Inventory transfer not found: " + transferId))
             .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + transferId + "/reversals"));
+    }
+
+    private void expectInventoryItemNotFound(
+        ResultActions result,
+        String sku,
+        String locationCode,
+        String path
+    ) throws Exception {
+        result
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(
+                jsonPath("$.message")
+                    .value(
+                        "Inventory item not found for SKU: " + sku.toUpperCase() + " at location: " + locationCode.toUpperCase()
+                    )
+            )
+            .andExpect(jsonPath("$.path").value(path));
     }
 
     private void expectSingleReversalHistory(UUID originalTransferId) throws Exception {
