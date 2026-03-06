@@ -556,21 +556,18 @@ class InventoryApiIntegrationTest {
 
     @Test
     void retriesReversalWithIdempotencyKeyWhenAdjustedByOnlyDiffersByCaseReturnsOriginalResponse() throws Exception {
-        IdempotencyScenario scenario = createIdempotencyScenario("arc-9220b");
-        UUID originalTransferId = scenario.originalTransferId();
         String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON, "OPS@ARCANAERP.COM");
         String replayReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
-
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
-            originalTransferId,
+        ReversalScenario reversalScenario = scenarioWithReversal(
+            "arc-9220b",
             "reverse-9220b-a",
-            firstReversalPayload
-        )
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR));
-
-        UUID reversalTransferId = latestReversalTransferId(scenario);
+            firstReversalPayload,
+            result -> result
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR))
+        );
+        UUID originalTransferId = reversalScenario.originalTransferId();
+        UUID reversalTransferId = reversalScenario.reversalTransferId();
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -753,21 +750,18 @@ class InventoryApiIntegrationTest {
 
     @Test
     void retriesReversalWithIdempotencyKeyWhenReasonOnlyDiffersByTrailingWhitespaceReturnsOriginalResponse() throws Exception {
-        IdempotencyScenario scenario = createIdempotencyScenario("arc-9222d");
-        UUID originalTransferId = scenario.originalTransferId();
         String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
         String secondReversalPayload = reversalPayload("Reversal posted ");
-
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
-            originalTransferId,
+        ReversalScenario reversalScenario = scenarioWithReversal(
+            "arc-9222d",
             "reverse-9222d-a",
-            firstReversalPayload
-        )
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.reason").value(DEFAULT_REVERSAL_REASON));
-
-        UUID reversalTransferId = latestReversalTransferId(scenario);
+            firstReversalPayload,
+            result -> result
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.reason").value(DEFAULT_REVERSAL_REASON))
+        );
+        UUID originalTransferId = reversalScenario.originalTransferId();
+        UUID reversalTransferId = reversalScenario.reversalTransferId();
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -1263,14 +1257,28 @@ class InventoryApiIntegrationTest {
         String idempotencyKey,
         String reversalPayload
     ) throws Exception {
+        return scenarioWithReversal(
+            sku,
+            idempotencyKey,
+            reversalPayload,
+            result -> result.andExpect(status().isCreated())
+        );
+    }
+
+    private ReversalScenario scenarioWithReversal(
+        String sku,
+        String idempotencyKey,
+        String reversalPayload,
+        ReversalResponseExpectation expectation
+    ) throws Exception {
         IdempotencyScenario scenario = createIdempotencyScenario(sku);
-        InventoryManagementWebTestSupport.reverseTransfer(
+        var result = InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
             scenario.originalTransferId(),
             idempotencyKey,
             reversalPayload
-        )
-            .andExpect(status().isCreated());
+        );
+        expectation.verify(result);
         return new ReversalScenario(scenario, latestReversalTransferId(scenario));
     }
 
@@ -1279,6 +1287,10 @@ class InventoryApiIntegrationTest {
         private UUID originalTransferId() {
             return scenario.originalTransferId();
         }
+    }
+    @FunctionalInterface
+    private interface ReversalResponseExpectation {
+        void verify(org.springframework.test.web.servlet.ResultActions result) throws Exception;
     }
 
     private static String reversalPayload(String reason) {
