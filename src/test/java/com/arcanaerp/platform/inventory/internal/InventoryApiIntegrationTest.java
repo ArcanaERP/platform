@@ -427,7 +427,7 @@ class InventoryApiIntegrationTest {
             .getFirst()
             .getTransferId();
 
-        String reversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
+        String reversalPayload = reversalPayload("Reversal posted");
 
         InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload)
             .andExpect(status().isCreated())
@@ -470,7 +470,7 @@ class InventoryApiIntegrationTest {
     @Test
     void returnsNotFoundForUnknownTransferReversalRequest() throws Exception {
         UUID unknownTransferId = UUID.fromString("22222222-2222-2222-2222-222222222222");
-        String reversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
+        String reversalPayload = reversalPayload("Reversal posted");
 
         InventoryManagementWebTestSupport.reverseTransfer(mockMvc, unknownTransferId, reversalPayload)
             .andExpect(status().isNotFound())
@@ -506,7 +506,7 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String reversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
+        String reversalPayload = reversalPayload("Reversal posted");
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9219", transferPayload)
             .andExpect(status().isCreated());
@@ -545,7 +545,7 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String reversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
+        String reversalPayload = reversalPayload("Reversal posted");
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9220", transferPayload)
             .andExpect(status().isCreated());
@@ -605,8 +605,8 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String firstReversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "OPS@ARCANAERP.COM");
-        String replayReversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
+        String firstReversalPayload = reversalPayload("Reversal posted", "OPS@ARCANAERP.COM");
+        String replayReversalPayload = reversalPayload("Reversal posted");
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9220b", transferPayload)
             .andExpect(status().isCreated());
@@ -670,7 +670,7 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String reversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
+        String reversalPayload = reversalPayload("Reversal posted");
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9221", transferPayload)
             .andExpect(status().isCreated());
@@ -712,7 +712,7 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String reversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
+        String reversalPayload = reversalPayload("Reversal posted");
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9221b", transferPayload)
             .andExpect(status().isCreated());
@@ -773,8 +773,8 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String firstReversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
-        String secondReversalPayload = InventoryManagementWebTestSupport.reversalPayload(
+        String firstReversalPayload = reversalPayload("Reversal posted");
+        String secondReversalPayload = reversalPayload(
             "Reversal posted with different reason",
             "ops@arcanaerp.com"
         );
@@ -836,8 +836,8 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String firstReversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
-        String secondReversalPayload = InventoryManagementWebTestSupport.reversalPayload(
+        String firstReversalPayload = reversalPayload("Reversal posted");
+        String secondReversalPayload = reversalPayload(
             "Reversal posted with different reason",
             "ops@arcanaerp.com"
         );
@@ -899,8 +899,8 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String firstReversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
-        String secondReversalPayload = InventoryManagementWebTestSupport.reversalPayload("reversal posted", "ops@arcanaerp.com");
+        String firstReversalPayload = reversalPayload("Reversal posted");
+        String secondReversalPayload = reversalPayload("reversal posted");
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9222c", transferPayload)
             .andExpect(status().isCreated());
@@ -959,8 +959,8 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String firstReversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
-        String secondReversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted ", "ops@arcanaerp.com");
+        String firstReversalPayload = reversalPayload("Reversal posted");
+        String secondReversalPayload = reversalPayload("Reversal posted ");
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9222d", transferPayload)
             .andExpect(status().isCreated());
@@ -1024,8 +1024,8 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String firstReversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
-        String secondReversalPayload = InventoryManagementWebTestSupport.reversalPayload(
+        String firstReversalPayload = reversalPayload("Reversal posted");
+        String secondReversalPayload = reversalPayload(
             "Reversal posted",
             "warehouse@arcanaerp.com"
         );
@@ -1087,7 +1087,7 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String reversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
+        String reversalPayload = reversalPayload("Reversal posted");
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9223", transferPayload)
             .andExpect(status().isCreated());
@@ -1178,7 +1178,7 @@ class InventoryApiIntegrationTest {
             "Original transfer",
             "ops@arcanaerp.com"
         );
-        String reversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
+        String reversalPayload = reversalPayload("Reversal posted");
 
         InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9224", transferPayload)
             .andExpect(status().isCreated());
@@ -1271,7 +1271,7 @@ class InventoryApiIntegrationTest {
             .getFirst()
             .getTransferId();
 
-        String reversalPayload = InventoryManagementWebTestSupport.reversalPayload("Reversal posted", "ops@arcanaerp.com");
+        String reversalPayload = reversalPayload("Reversal posted");
 
         InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload)
             .andExpect(status().isCreated());
@@ -1511,6 +1511,14 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.error").value("Not Found"))
             .andExpect(jsonPath("$.message").value("Inventory item not found for SKU: ARC-9206 at location: WH-WEST"))
             .andExpect(jsonPath("$.path").value("/api/inventory/arc-9206/adjustments"));
+    }
+
+    private static String reversalPayload(String reason) {
+        return reversalPayload(reason, "ops@arcanaerp.com");
+    }
+
+    private static String reversalPayload(String reason, String adjustedBy) {
+        return InventoryManagementWebTestSupport.reversalPayload(reason, adjustedBy);
     }
 
     private static String fingerprintForReversalRequest(String reason, String adjustedBy) {
