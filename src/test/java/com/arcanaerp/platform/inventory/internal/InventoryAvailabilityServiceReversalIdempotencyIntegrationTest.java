@@ -44,16 +44,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         seedTransferItems(sku);
 
         var originalTransfer = inventoryAvailability.transferInventory(
-            new TransferInventoryCommand(
-                sku,
-                "main",
-                "wh-east",
-                new BigDecimal("3"),
-                "Original transfer",
-                "ops@arcanaerp.com",
-                "order",
-                "SO-IDEMP-1"
-            )
+            transferCommand(sku, new BigDecimal("3"), "SO-IDEMP-1")
         );
 
         String idempotencyKey = "reverse-svc-replay-1";
@@ -80,16 +71,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         seedTransferItems(sku);
 
         var originalTransfer = inventoryAvailability.transferInventory(
-            new TransferInventoryCommand(
-                sku,
-                "main",
-                "wh-east",
-                new BigDecimal("3"),
-                "Original transfer",
-                "ops@arcanaerp.com",
-                "order",
-                "SO-IDEMP-7"
-            )
+            transferCommand(sku, new BigDecimal("3"), "SO-IDEMP-7")
         );
 
         var firstReversal = inventoryAvailability.reverseTransfer(
@@ -115,16 +97,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         seedTransferItems(sku);
 
         var originalTransfer = inventoryAvailability.transferInventory(
-            new TransferInventoryCommand(
-                sku,
-                "main",
-                "wh-east",
-                new BigDecimal("2"),
-                "Original transfer",
-                "ops@arcanaerp.com",
-                "order",
-                "SO-IDEMP-8"
-            )
+            transferCommand(sku, new BigDecimal("2"), "SO-IDEMP-8")
         );
 
         inventoryAvailability.reverseTransfer(
@@ -145,16 +118,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         seedTransferItems(sku);
 
         var originalTransfer = inventoryAvailability.transferInventory(
-            new TransferInventoryCommand(
-                sku,
-                "main",
-                "wh-east",
-                new BigDecimal("2"),
-                "Original transfer",
-                "ops@arcanaerp.com",
-                "order",
-                "SO-IDEMP-2"
-            )
+            transferCommand(sku, new BigDecimal("2"), "SO-IDEMP-2")
         );
 
         String idempotencyKey = "reverse-svc-replay-2";
@@ -176,16 +140,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         seedTransferItems(sku);
 
         var originalTransfer = inventoryAvailability.transferInventory(
-            new TransferInventoryCommand(
-                sku,
-                "main",
-                "wh-east",
-                new BigDecimal("2"),
-                "Original transfer",
-                "ops@arcanaerp.com",
-                "order",
-                "SO-IDEMP-5"
-            )
+            transferCommand(sku, new BigDecimal("2"), "SO-IDEMP-5")
         );
 
         String idempotencyKey = "reverse-svc-replay-5";
@@ -207,16 +162,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         seedTransferItems(sku);
 
         var originalTransfer = inventoryAvailability.transferInventory(
-            new TransferInventoryCommand(
-                sku,
-                "main",
-                "wh-east",
-                new BigDecimal("2"),
-                "Original transfer",
-                "ops@arcanaerp.com",
-                "order",
-                "SO-IDEMP-6"
-            )
+            transferCommand(sku, new BigDecimal("2"), "SO-IDEMP-6")
         );
 
         String idempotencyKey = "reverse-svc-replay-6";
@@ -243,16 +189,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         seedTransferItems(sku);
 
         var originalTransfer = inventoryAvailability.transferInventory(
-            new TransferInventoryCommand(
-                sku,
-                "main",
-                "wh-east",
-                new BigDecimal("2"),
-                "Original transfer",
-                "ops@arcanaerp.com",
-                "order",
-                "SO-IDEMP-4"
-            )
+            transferCommand(sku, new BigDecimal("2"), "SO-IDEMP-4")
         );
 
         String idempotencyKey = "reverse-svc-replay-4";
@@ -274,16 +211,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         seedTransferItems(sku);
 
         var originalTransfer = inventoryAvailability.transferInventory(
-            new TransferInventoryCommand(
-                sku,
-                "main",
-                "wh-east",
-                new BigDecimal("2"),
-                "Original transfer",
-                "ops@arcanaerp.com",
-                "order",
-                "SO-IDEMP-3"
-            )
+            transferCommand(sku, new BigDecimal("2"), "SO-IDEMP-3")
         );
 
         String idempotencyKey = "reverse-svc-replay-3";
@@ -331,5 +259,22 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         String idempotencyKey
     ) {
         return new ReverseInventoryTransferCommand(transferId, reason, adjustedBy, idempotencyKey);
+    }
+
+    private static TransferInventoryCommand transferCommand(
+        String sku,
+        BigDecimal quantity,
+        String referenceId
+    ) {
+        return new TransferInventoryCommand(
+            sku,
+            "main",
+            "wh-east",
+            quantity,
+            "Original transfer",
+            "ops@arcanaerp.com",
+            "order",
+            referenceId
+        );
     }
 }
