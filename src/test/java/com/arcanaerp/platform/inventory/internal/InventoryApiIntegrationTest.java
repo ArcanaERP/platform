@@ -492,12 +492,10 @@ class InventoryApiIntegrationTest {
         InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload)
             .andExpect(status().isCreated());
 
-        InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload)
-            .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.status").value(409))
-            .andExpect(jsonPath("$.error").value("Conflict"))
-            .andExpect(jsonPath("$.message").value("Inventory transfer already reversed: " + originalTransferId))
-            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
+        expectDuplicateReversalConflict(
+            InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload),
+            originalTransferId
+        );
     }
 
     @Test
@@ -1142,6 +1140,15 @@ class InventoryApiIntegrationTest {
                         "Idempotency-Key already used with different reversal payload for transferId: " + originalTransferId
                     )
             )
+            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
+    }
+
+    private void expectDuplicateReversalConflict(ResultActions result, UUID originalTransferId) throws Exception {
+        result
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.status").value(409))
+            .andExpect(jsonPath("$.error").value("Conflict"))
+            .andExpect(jsonPath("$.message").value("Inventory transfer already reversed: " + originalTransferId))
             .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
     }
 
