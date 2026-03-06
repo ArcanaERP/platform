@@ -10,6 +10,7 @@ import com.arcanaerp.platform.inventory.ReverseInventoryTransferCommand;
 import com.arcanaerp.platform.inventory.TransferInventoryCommand;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,21 +58,11 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
 
         String idempotencyKey = "reverse-svc-replay-1";
         var firstReversal = inventoryAvailability.reverseTransfer(
-            new ReverseInventoryTransferCommand(
-                originalTransfer.transferId(),
-                "Reversal posted",
-                "ops@arcanaerp.com",
-                idempotencyKey
-            )
+            reverseCommand(originalTransfer.transferId(), "Reversal posted", idempotencyKey)
         );
 
         var replayedReversal = inventoryAvailability.reverseTransfer(
-            new ReverseInventoryTransferCommand(
-                originalTransfer.transferId(),
-                "Reversal posted",
-                "ops@arcanaerp.com",
-                idempotencyKey
-            )
+            reverseCommand(originalTransfer.transferId(), "Reversal posted", idempotencyKey)
         );
 
         assertThat(replayedReversal.transferId()).isEqualTo(firstReversal.transferId());
@@ -102,21 +93,11 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         );
 
         var firstReversal = inventoryAvailability.reverseTransfer(
-            new ReverseInventoryTransferCommand(
-                originalTransfer.transferId(),
-                "Reversal posted",
-                "ops@arcanaerp.com",
-                " reverse-svc-replay-7 "
-            )
+            reverseCommand(originalTransfer.transferId(), "Reversal posted", " reverse-svc-replay-7 ")
         );
 
         var replayedReversal = inventoryAvailability.reverseTransfer(
-            new ReverseInventoryTransferCommand(
-                originalTransfer.transferId(),
-                "Reversal posted",
-                "ops@arcanaerp.com",
-                "reverse-svc-replay-7"
-            )
+            reverseCommand(originalTransfer.transferId(), "Reversal posted", "reverse-svc-replay-7")
         );
 
         assertThat(replayedReversal.transferId()).isEqualTo(firstReversal.transferId());
@@ -147,21 +128,11 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         );
 
         inventoryAvailability.reverseTransfer(
-            new ReverseInventoryTransferCommand(
-                originalTransfer.transferId(),
-                "Reversal posted",
-                "ops@arcanaerp.com",
-                " reverse-svc-replay-8 "
-            )
+            reverseCommand(originalTransfer.transferId(), "Reversal posted", " reverse-svc-replay-8 ")
         );
 
         assertThatThrownBy(() -> inventoryAvailability.reverseTransfer(
-                new ReverseInventoryTransferCommand(
-                    originalTransfer.transferId(),
-                    "Different reason",
-                    "ops@arcanaerp.com",
-                    "reverse-svc-replay-8"
-                )
+                reverseCommand(originalTransfer.transferId(), "Different reason", "reverse-svc-replay-8")
             ))
             .isInstanceOf(ReversalIdempotencyPayloadConflictException.class)
             .hasMessage("Idempotency-Key already used with different reversal payload for transferId: "
@@ -188,21 +159,11 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
 
         String idempotencyKey = "reverse-svc-replay-2";
         inventoryAvailability.reverseTransfer(
-            new ReverseInventoryTransferCommand(
-                originalTransfer.transferId(),
-                "Reversal posted",
-                "ops@arcanaerp.com",
-                idempotencyKey
-            )
+            reverseCommand(originalTransfer.transferId(), "Reversal posted", idempotencyKey)
         );
 
         assertThatThrownBy(() -> inventoryAvailability.reverseTransfer(
-                new ReverseInventoryTransferCommand(
-                    originalTransfer.transferId(),
-                    "Different reason",
-                    "ops@arcanaerp.com",
-                    idempotencyKey
-                )
+                reverseCommand(originalTransfer.transferId(), "Different reason", idempotencyKey)
             ))
             .isInstanceOf(ReversalIdempotencyPayloadConflictException.class)
             .hasMessage("Idempotency-Key already used with different reversal payload for transferId: "
@@ -229,21 +190,11 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
 
         String idempotencyKey = "reverse-svc-replay-5";
         inventoryAvailability.reverseTransfer(
-            new ReverseInventoryTransferCommand(
-                originalTransfer.transferId(),
-                "Reversal posted",
-                "ops@arcanaerp.com",
-                idempotencyKey
-            )
+            reverseCommand(originalTransfer.transferId(), "Reversal posted", idempotencyKey)
         );
 
         assertThatThrownBy(() -> inventoryAvailability.reverseTransfer(
-                new ReverseInventoryTransferCommand(
-                    originalTransfer.transferId(),
-                    "reversal posted",
-                    "ops@arcanaerp.com",
-                    idempotencyKey
-                )
+                reverseCommand(originalTransfer.transferId(), "reversal posted", idempotencyKey)
             ))
             .isInstanceOf(ReversalIdempotencyPayloadConflictException.class)
             .hasMessage("Idempotency-Key already used with different reversal payload for transferId: "
@@ -270,21 +221,11 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
 
         String idempotencyKey = "reverse-svc-replay-6";
         var firstReversal = inventoryAvailability.reverseTransfer(
-            new ReverseInventoryTransferCommand(
-                originalTransfer.transferId(),
-                "Reversal posted",
-                "ops@arcanaerp.com",
-                idempotencyKey
-            )
+            reverseCommand(originalTransfer.transferId(), "Reversal posted", idempotencyKey)
         );
 
         var replayedReversal = inventoryAvailability.reverseTransfer(
-            new ReverseInventoryTransferCommand(
-                originalTransfer.transferId(),
-                "Reversal posted ",
-                "ops@arcanaerp.com",
-                idempotencyKey
-            )
+            reverseCommand(originalTransfer.transferId(), "Reversal posted ", idempotencyKey)
         );
 
         assertThat(replayedReversal.transferId()).isEqualTo(firstReversal.transferId());
@@ -316,21 +257,11 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
 
         String idempotencyKey = "reverse-svc-replay-4";
         inventoryAvailability.reverseTransfer(
-            new ReverseInventoryTransferCommand(
-                originalTransfer.transferId(),
-                "Reversal posted",
-                "ops@arcanaerp.com",
-                idempotencyKey
-            )
+            reverseCommand(originalTransfer.transferId(), "Reversal posted", idempotencyKey)
         );
 
         assertThatThrownBy(() -> inventoryAvailability.reverseTransfer(
-                new ReverseInventoryTransferCommand(
-                    originalTransfer.transferId(),
-                    "Reversal posted",
-                    "warehouse@arcanaerp.com",
-                    idempotencyKey
-                )
+                reverseCommand(originalTransfer.transferId(), "Reversal posted", "warehouse@arcanaerp.com", idempotencyKey)
             ))
             .isInstanceOf(ReversalIdempotencyPayloadConflictException.class)
             .hasMessage("Idempotency-Key already used with different reversal payload for transferId: "
@@ -357,21 +288,11 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
 
         String idempotencyKey = "reverse-svc-replay-3";
         var firstReversal = inventoryAvailability.reverseTransfer(
-            new ReverseInventoryTransferCommand(
-                originalTransfer.transferId(),
-                "Reversal posted",
-                "Ops@ArcanaERP.com",
-                idempotencyKey
-            )
+            reverseCommand(originalTransfer.transferId(), "Reversal posted", "Ops@ArcanaERP.com", idempotencyKey)
         );
 
         var replayedReversal = inventoryAvailability.reverseTransfer(
-            new ReverseInventoryTransferCommand(
-                originalTransfer.transferId(),
-                "Reversal posted",
-                "OPS@ARCANAERP.COM",
-                idempotencyKey
-            )
+            reverseCommand(originalTransfer.transferId(), "Reversal posted", "OPS@ARCANAERP.COM", idempotencyKey)
         );
 
         assertThat(replayedReversal.transferId()).isEqualTo(firstReversal.transferId());
@@ -393,5 +314,22 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
             new BigDecimal("5"),
             Instant.parse("2026-03-04T00:00:00Z")
         );
+    }
+
+    private static ReverseInventoryTransferCommand reverseCommand(
+        UUID transferId,
+        String reason,
+        String idempotencyKey
+    ) {
+        return reverseCommand(transferId, reason, "ops@arcanaerp.com", idempotencyKey);
+    }
+
+    private static ReverseInventoryTransferCommand reverseCommand(
+        UUID transferId,
+        String reason,
+        String adjustedBy,
+        String idempotencyKey
+    ) {
+        return new ReverseInventoryTransferCommand(transferId, reason, adjustedBy, idempotencyKey);
     }
 }
