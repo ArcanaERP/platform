@@ -544,12 +544,7 @@ class InventoryApiIntegrationTest {
         )
             .andExpect(status().isCreated());
 
-        UUID reversalTransferId = InventoryIdempotencyTestFixture.latestTransferIdFor(
-            inventoryItemRepository,
-            inventoryAdjustmentRepository,
-            "arc-9220",
-            "wh-east"
-        );
+        UUID reversalTransferId = latestReversalTransferId("arc-9220");
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -582,12 +577,7 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR));
 
-        UUID reversalTransferId = InventoryIdempotencyTestFixture.latestTransferIdFor(
-            inventoryItemRepository,
-            inventoryAdjustmentRepository,
-            "arc-9220b",
-            "wh-east"
-        );
+        UUID reversalTransferId = latestReversalTransferId("arc-9220b");
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -639,12 +629,7 @@ class InventoryApiIntegrationTest {
         )
             .andExpect(status().isCreated());
 
-        UUID reversalTransferId = InventoryIdempotencyTestFixture.latestTransferIdFor(
-            inventoryItemRepository,
-            inventoryAdjustmentRepository,
-            "arc-9221b",
-            "wh-east"
-        );
+        UUID reversalTransferId = latestReversalTransferId("arc-9221b");
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -792,12 +777,7 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.reason").value(DEFAULT_REVERSAL_REASON));
 
-        UUID reversalTransferId = InventoryIdempotencyTestFixture.latestTransferIdFor(
-            inventoryItemRepository,
-            inventoryAdjustmentRepository,
-            "arc-9222d",
-            "wh-east"
-        );
+        UUID reversalTransferId = latestReversalTransferId("arc-9222d");
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -1272,6 +1252,15 @@ class InventoryApiIntegrationTest {
             "3",
             DEFAULT_TRANSFER_REASON,
             DEFAULT_ACTOR
+        );
+    }
+
+    private UUID latestReversalTransferId(String sku) {
+        return InventoryIdempotencyTestFixture.latestTransferIdFor(
+            inventoryItemRepository,
+            inventoryAdjustmentRepository,
+            sku,
+            "wh-east"
         );
     }
 
