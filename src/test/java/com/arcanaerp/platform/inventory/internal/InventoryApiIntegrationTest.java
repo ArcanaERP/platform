@@ -533,7 +533,8 @@ class InventoryApiIntegrationTest {
 
     @Test
     void retriesReversalWithIdempotencyKeyReturnsOriginalResponse() throws Exception {
-        UUID originalTransferId = createIdempotencyScenario("arc-9220");
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9220");
+        UUID originalTransferId = scenario.originalTransferId();
         String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
         InventoryManagementWebTestSupport.reverseTransfer(
@@ -544,7 +545,7 @@ class InventoryApiIntegrationTest {
         )
             .andExpect(status().isCreated());
 
-        UUID reversalTransferId = latestReversalTransferId("arc-9220");
+        UUID reversalTransferId = latestReversalTransferId(scenario);
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -564,7 +565,8 @@ class InventoryApiIntegrationTest {
 
     @Test
     void retriesReversalWithIdempotencyKeyWhenAdjustedByOnlyDiffersByCaseReturnsOriginalResponse() throws Exception {
-        UUID originalTransferId = createIdempotencyScenario("arc-9220b");
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9220b");
+        UUID originalTransferId = scenario.originalTransferId();
         String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON, "OPS@ARCANAERP.COM");
         String replayReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
@@ -577,7 +579,7 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR));
 
-        UUID reversalTransferId = latestReversalTransferId("arc-9220b");
+        UUID reversalTransferId = latestReversalTransferId(scenario);
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -600,7 +602,8 @@ class InventoryApiIntegrationTest {
 
     @Test
     void rejectsBlankIdempotencyKeyHeaderOnReversalRequest() throws Exception {
-        UUID originalTransferId = createIdempotencyScenario("arc-9221");
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9221");
+        UUID originalTransferId = scenario.originalTransferId();
         String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
         InventoryManagementWebTestSupport.reverseTransfer(
@@ -618,7 +621,8 @@ class InventoryApiIntegrationTest {
 
     @Test
     void retriesReversalWhenIdempotencyKeyHeaderOnlyDiffersBySurroundingWhitespace() throws Exception {
-        UUID originalTransferId = createIdempotencyScenario("arc-9221b");
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9221b");
+        UUID originalTransferId = scenario.originalTransferId();
         String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
         InventoryManagementWebTestSupport.reverseTransfer(
@@ -629,7 +633,7 @@ class InventoryApiIntegrationTest {
         )
             .andExpect(status().isCreated());
 
-        UUID reversalTransferId = latestReversalTransferId("arc-9221b");
+        UUID reversalTransferId = latestReversalTransferId(scenario);
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -650,7 +654,8 @@ class InventoryApiIntegrationTest {
 
     @Test
     void rejectsIdempotencyKeyReuseWithDifferentPayloadWhenHeaderOnlyDiffersBySurroundingWhitespace() throws Exception {
-        UUID originalTransferId = createIdempotencyScenario("arc-9221c");
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9221c");
+        UUID originalTransferId = scenario.originalTransferId();
         String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
         String secondReversalPayload = reversalPayload(
             "Reversal posted with different reason",
@@ -689,7 +694,8 @@ class InventoryApiIntegrationTest {
 
     @Test
     void rejectsIdempotencyKeyReuseWithDifferentReversalPayload() throws Exception {
-        UUID originalTransferId = createIdempotencyScenario("arc-9222");
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9222");
+        UUID originalTransferId = scenario.originalTransferId();
         String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
         String secondReversalPayload = reversalPayload(
             "Reversal posted with different reason",
@@ -728,7 +734,8 @@ class InventoryApiIntegrationTest {
 
     @Test
     void rejectsIdempotencyKeyReuseWhenReasonOnlyDiffersByCase() throws Exception {
-        UUID originalTransferId = createIdempotencyScenario("arc-9222c");
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9222c");
+        UUID originalTransferId = scenario.originalTransferId();
         String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
         String secondReversalPayload = reversalPayload("reversal posted");
 
@@ -764,7 +771,8 @@ class InventoryApiIntegrationTest {
 
     @Test
     void retriesReversalWithIdempotencyKeyWhenReasonOnlyDiffersByTrailingWhitespaceReturnsOriginalResponse() throws Exception {
-        UUID originalTransferId = createIdempotencyScenario("arc-9222d");
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9222d");
+        UUID originalTransferId = scenario.originalTransferId();
         String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
         String secondReversalPayload = reversalPayload("Reversal posted ");
 
@@ -777,7 +785,7 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.reason").value(DEFAULT_REVERSAL_REASON));
 
-        UUID reversalTransferId = latestReversalTransferId("arc-9222d");
+        UUID reversalTransferId = latestReversalTransferId(scenario);
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -800,7 +808,8 @@ class InventoryApiIntegrationTest {
 
     @Test
     void rejectsIdempotencyKeyReuseWhenAdjustedByValueDiffers() throws Exception {
-        UUID originalTransferId = createIdempotencyScenario("arc-9222b");
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9222b");
+        UUID originalTransferId = scenario.originalTransferId();
         String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
         String secondReversalPayload = reversalPayload(
             DEFAULT_REVERSAL_REASON,
@@ -839,7 +848,8 @@ class InventoryApiIntegrationTest {
 
     @Test
     void concurrentFirstWriteWithSameIdempotencyKeyReturnsConflictForOneRequest() throws Exception {
-        UUID originalTransferId = createIdempotencyScenario("arc-9223");
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9223");
+        UUID originalTransferId = scenario.originalTransferId();
         String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
         CountDownLatch firstClaimBlocked = new CountDownLatch(1);
@@ -897,13 +907,14 @@ class InventoryApiIntegrationTest {
 
     @Test
     void retriesAfterStalePendingClaimRecoversAndReturnsOriginalReversal() throws Exception {
-        UUID originalTransferId = createIdempotencyScenario("arc-9224");
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9224");
+        UUID originalTransferId = scenario.originalTransferId();
         String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
         InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload)
             .andExpect(status().isCreated());
 
-        InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9224", "MAIN").orElseThrow();
+        InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode(scenario.sku().toUpperCase(), "MAIN").orElseThrow();
         UUID existingReversalTransferId = inventoryAdjustmentRepository
             .findByInventoryItemIdOrderByAdjustedAtDesc(mainItem.getId())
             .stream()
@@ -1225,7 +1236,7 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.path").value("/api/inventory/arc-9206/adjustments"));
     }
 
-    private UUID createIdempotencyScenario(String sku) throws Exception {
+    private IdempotencyScenario createIdempotencyScenario(String sku) throws Exception {
         InventoryIdempotencyTestFixture.seedTransferItems(
             inventoryItemRepository,
             sku,
@@ -1237,12 +1248,13 @@ class InventoryApiIntegrationTest {
         InventoryManagementWebTestSupport.transferInventory(mockMvc, sku, defaultTransferPayload())
             .andExpect(status().isCreated());
 
-        return InventoryIdempotencyTestFixture.latestTransferIdFor(
+        UUID originalTransferId = InventoryIdempotencyTestFixture.latestTransferIdFor(
             inventoryItemRepository,
             inventoryAdjustmentRepository,
             sku,
             "main"
         );
+        return new IdempotencyScenario(sku, originalTransferId);
     }
 
     private static String defaultTransferPayload() {
@@ -1255,14 +1267,16 @@ class InventoryApiIntegrationTest {
         );
     }
 
-    private UUID latestReversalTransferId(String sku) {
+    private UUID latestReversalTransferId(IdempotencyScenario scenario) {
         return InventoryIdempotencyTestFixture.latestTransferIdFor(
             inventoryItemRepository,
             inventoryAdjustmentRepository,
-            sku,
+            scenario.sku(),
             "wh-east"
         );
     }
+
+    private record IdempotencyScenario(String sku, UUID originalTransferId) {}
 
     private static String reversalPayload(String reason) {
         return reversalPayload(reason, DEFAULT_ACTOR);
