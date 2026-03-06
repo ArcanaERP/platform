@@ -486,40 +486,8 @@ class InventoryApiIntegrationTest {
 
     @Test
     void rejectsDuplicateReversalForSameTransferId() throws Exception {
-        inventoryItemRepository.save(
-            InventoryItem.create(
-                "arc-9219",
-                "main",
-                new BigDecimal("10"),
-                Instant.parse("2026-03-01T00:00:00Z")
-            )
-        );
-        inventoryItemRepository.save(
-            InventoryItem.create(
-                "arc-9219",
-                "wh-east",
-                new BigDecimal("4"),
-                Instant.parse("2026-03-01T00:00:00Z")
-            )
-        );
-
-        String transferPayload = InventoryManagementWebTestSupport.transferPayload(
-            "main",
-            "wh-east",
-            "3",
-            DEFAULT_TRANSFER_REASON,
-            DEFAULT_ACTOR
-        );
+        UUID originalTransferId = createLegacyTransferScenarioTransferId("arc-9219");
         String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
-
-        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9219", transferPayload)
-            .andExpect(status().isCreated());
-
-        InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9219", "MAIN").orElseThrow();
-        UUID originalTransferId = inventoryAdjustmentRepository
-            .findByInventoryItemIdOrderByAdjustedAtDesc(mainItem.getId())
-            .getFirst()
-            .getTransferId();
 
         InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload)
             .andExpect(status().isCreated());
@@ -877,40 +845,7 @@ class InventoryApiIntegrationTest {
 
     @Test
     void listsReversalHistoryForTransferId() throws Exception {
-        inventoryItemRepository.save(
-            InventoryItem.create(
-                "arc-9217",
-                "main",
-                new BigDecimal("10"),
-                Instant.parse("2026-03-01T00:00:00Z")
-            )
-        );
-        inventoryItemRepository.save(
-            InventoryItem.create(
-                "arc-9217",
-                "wh-east",
-                new BigDecimal("4"),
-                Instant.parse("2026-03-01T00:00:00Z")
-            )
-        );
-
-        String transferPayload = InventoryManagementWebTestSupport.transferPayload(
-            "main",
-            "wh-east",
-            "3",
-            DEFAULT_TRANSFER_REASON,
-            DEFAULT_ACTOR
-        );
-
-        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9217", transferPayload)
-            .andExpect(status().isCreated());
-
-        InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9217", "MAIN").orElseThrow();
-        UUID originalTransferId = inventoryAdjustmentRepository
-            .findByInventoryItemIdOrderByAdjustedAtDesc(mainItem.getId())
-            .getFirst()
-            .getTransferId();
-
+        UUID originalTransferId = createLegacyTransferScenarioTransferId("arc-9217");
         String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
         InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload)
@@ -932,39 +867,7 @@ class InventoryApiIntegrationTest {
 
     @Test
     void returnsEmptyReversalHistoryWhenNoReversalExists() throws Exception {
-        inventoryItemRepository.save(
-            InventoryItem.create(
-                "arc-9218",
-                "main",
-                new BigDecimal("10"),
-                Instant.parse("2026-03-01T00:00:00Z")
-            )
-        );
-        inventoryItemRepository.save(
-            InventoryItem.create(
-                "arc-9218",
-                "wh-east",
-                new BigDecimal("4"),
-                Instant.parse("2026-03-01T00:00:00Z")
-            )
-        );
-
-        String transferPayload = InventoryManagementWebTestSupport.transferPayload(
-            "main",
-            "wh-east",
-            "3",
-            DEFAULT_TRANSFER_REASON,
-            DEFAULT_ACTOR
-        );
-
-        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9218", transferPayload)
-            .andExpect(status().isCreated());
-
-        InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9218", "MAIN").orElseThrow();
-        UUID originalTransferId = inventoryAdjustmentRepository
-            .findByInventoryItemIdOrderByAdjustedAtDesc(mainItem.getId())
-            .getFirst()
-            .getTransferId();
+        UUID originalTransferId = createLegacyTransferScenarioTransferId("arc-9218");
 
         mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequestDefault(originalTransferId))
             .andExpect(status().isOk())
@@ -1173,6 +1076,10 @@ class InventoryApiIntegrationTest {
             "main"
         );
         return new IdempotencyScenario(sku, originalTransferId);
+    }
+
+    private UUID createLegacyTransferScenarioTransferId(String sku) throws Exception {
+        return createIdempotencyScenario(sku).originalTransferId();
     }
 
     private static String defaultTransferPayload() {
