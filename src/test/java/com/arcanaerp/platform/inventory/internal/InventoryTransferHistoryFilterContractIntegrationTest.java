@@ -17,6 +17,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -175,102 +176,95 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
 
     @Test
     void rejectsBlankSourceLocationCodeFilter() throws Exception {
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
-            "arc-9590",
-            "sourceLocationCode",
-            "   "
-        ))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("sourceLocationCode query parameter must not be blank"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9590/transfers"));
+        expectBadRequest(
+            mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
+                "arc-9590",
+                "sourceLocationCode",
+                "   "
+            )),
+            "sourceLocationCode query parameter must not be blank",
+            "/api/inventory/arc-9590/transfers"
+        );
     }
 
     @Test
     void rejectsBlankDestinationLocationCodeFilter() throws Exception {
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
-            "arc-9590",
-            "destinationLocationCode",
-            "   "
-        ))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("destinationLocationCode query parameter must not be blank"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9590/transfers"));
+        expectBadRequest(
+            mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
+                "arc-9590",
+                "destinationLocationCode",
+                "   "
+            )),
+            "destinationLocationCode query parameter must not be blank",
+            "/api/inventory/arc-9590/transfers"
+        );
     }
 
     @Test
     void rejectsBlankAdjustedByFilter() throws Exception {
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
-            "arc-9590",
-            "adjustedBy",
-            "   "
-        ))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("adjustedBy query parameter must not be blank"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9590/transfers"));
+        expectBadRequest(
+            mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
+                "arc-9590",
+                "adjustedBy",
+                "   "
+            )),
+            "adjustedBy query parameter must not be blank",
+            "/api/inventory/arc-9590/transfers"
+        );
     }
 
     @Test
     void rejectsBlankReferenceTypeFilter() throws Exception {
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
-            "arc-9590",
-            "referenceType",
-            "   "
-        ))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("referenceType query parameter must not be blank"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9590/transfers"));
+        expectBadRequest(
+            mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
+                "arc-9590",
+                "referenceType",
+                "   "
+            )),
+            "referenceType query parameter must not be blank",
+            "/api/inventory/arc-9590/transfers"
+        );
     }
 
     @Test
     void rejectsBlankReferenceIdFilter() throws Exception {
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
-            "arc-9590",
-            "referenceId",
-            "   "
-        ))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("referenceId query parameter must not be blank"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9590/transfers"));
+        expectBadRequest(
+            mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
+                "arc-9590",
+                "referenceId",
+                "   "
+            )),
+            "referenceId query parameter must not be blank",
+            "/api/inventory/arc-9590/transfers"
+        );
     }
 
     @Test
     void rejectsInvalidAdjustedAtFromFormat() throws Exception {
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
-            "arc-9591",
-            "adjustedAtFrom",
-            "not-a-timestamp"
-        ))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("adjustedAtFrom query parameter must be a valid ISO-8601 instant"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9591/transfers"));
+        expectBadRequest(
+            mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
+                "arc-9591",
+                "adjustedAtFrom",
+                "not-a-timestamp"
+            )),
+            "adjustedAtFrom query parameter must be a valid ISO-8601 instant",
+            "/api/inventory/arc-9591/transfers"
+        );
     }
 
     @Test
     void rejectsInvalidAdjustedAtRangeOrder() throws Exception {
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
-            "arc-9592",
-            "adjustedAtFrom",
-            "2026-03-02T00:00:00Z",
-            "adjustedAtTo",
-            "2026-03-01T00:00:00Z"
-        ))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("adjustedAtFrom must be before or equal to adjustedAtTo"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9592/transfers"));
+        expectBadRequest(
+            mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequestDefault(
+                "arc-9592",
+                "adjustedAtFrom",
+                "2026-03-02T00:00:00Z",
+                "adjustedAtTo",
+                "2026-03-01T00:00:00Z"
+            )),
+            "adjustedAtFrom must be before or equal to adjustedAtTo",
+            "/api/inventory/arc-9592/transfers"
+        );
     }
 
     @Test
@@ -297,29 +291,35 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
 
     @Test
     void rejectsTransferHistoryWhenPageIsNegative() throws Exception {
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest("arc-9595", -1, 10))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("page must be greater than or equal to zero"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9595/transfers"));
+        expectBadRequest(
+            mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest("arc-9595", -1, 10)),
+            "page must be greater than or equal to zero",
+            "/api/inventory/arc-9595/transfers"
+        );
     }
 
     @Test
     void rejectsTransferHistoryWhenSizeOutsideBounds() throws Exception {
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest("arc-9596", 0, 0))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("size must be between 1 and 100"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9596/transfers"));
+        expectBadRequest(
+            mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest("arc-9596", 0, 0)),
+            "size must be between 1 and 100",
+            "/api/inventory/arc-9596/transfers"
+        );
 
-        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest("arc-9596", 0, 101))
+        expectBadRequest(
+            mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest("arc-9596", 0, 101)),
+            "size must be between 1 and 100",
+            "/api/inventory/arc-9596/transfers"
+        );
+    }
+
+    private void expectBadRequest(ResultActions result, String message, String path) throws Exception {
+        result
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("size must be between 1 and 100"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9596/transfers"));
+            .andExpect(jsonPath("$.message").value(message))
+            .andExpect(jsonPath("$.path").value(path));
     }
 
     private void seedTransferHistory(String sku, String actorA, String actorB) throws Exception {
