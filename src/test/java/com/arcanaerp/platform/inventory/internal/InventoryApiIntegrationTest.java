@@ -46,6 +46,7 @@ class InventoryApiIntegrationTest {
     private static final String DEFAULT_TRANSFER_REASON = "Original transfer";
     private static final String DEFAULT_ACTOR = "ops@arcanaerp.com";
     private static final String DEFAULT_REVERSAL_REASON = "Reversal posted";
+    private static final Instant SEED_INSTANT = Instant.parse("2026-03-01T00:00:00Z");
 
     @Autowired
     private MockMvc mockMvc;
@@ -81,7 +82,7 @@ class InventoryApiIntegrationTest {
                 "arc-9200",
                 "main",
                 new BigDecimal("25"),
-                Instant.parse("2026-03-01T00:00:00Z")
+                SEED_INSTANT
             )
         );
 
@@ -100,7 +101,7 @@ class InventoryApiIntegrationTest {
                 "arc-9201",
                 "wh-west",
                 new BigDecimal("7"),
-                Instant.parse("2026-03-01T00:00:00Z")
+                SEED_INSTANT
             )
         );
 
@@ -139,7 +140,7 @@ class InventoryApiIntegrationTest {
                 "arc-9203",
                 "main",
                 new BigDecimal("10"),
-                Instant.parse("2026-03-01T00:00:00Z")
+                SEED_INSTANT
             )
         );
 
@@ -179,7 +180,7 @@ class InventoryApiIntegrationTest {
                 "arc-9204",
                 "main",
                 new BigDecimal("10"),
-                Instant.parse("2026-03-01T00:00:00Z")
+                SEED_INSTANT
             )
         );
         inventoryItemRepository.save(
@@ -187,7 +188,7 @@ class InventoryApiIntegrationTest {
                 "arc-9204",
                 "wh-west",
                 new BigDecimal("4"),
-                Instant.parse("2026-03-01T00:00:00Z")
+                SEED_INSTANT
             )
         );
 
@@ -224,7 +225,7 @@ class InventoryApiIntegrationTest {
                 "arc-9207",
                 "main",
                 new BigDecimal("12"),
-                Instant.parse("2026-03-01T00:00:00Z")
+                SEED_INSTANT
             )
         );
         inventoryItemRepository.save(
@@ -232,7 +233,7 @@ class InventoryApiIntegrationTest {
                 "arc-9207",
                 "wh-east",
                 new BigDecimal("3"),
-                Instant.parse("2026-03-01T00:00:00Z")
+                SEED_INSTANT
             )
         );
 
@@ -302,7 +303,7 @@ class InventoryApiIntegrationTest {
                 "arc-9208",
                 "main",
                 new BigDecimal("9"),
-                Instant.parse("2026-03-01T00:00:00Z")
+                SEED_INSTANT
             )
         );
 
@@ -838,7 +839,7 @@ class InventoryApiIntegrationTest {
                 "arc-9209",
                 "main",
                 new BigDecimal("5"),
-                Instant.parse("2026-03-01T00:00:00Z")
+                SEED_INSTANT
             )
         );
 
@@ -864,7 +865,7 @@ class InventoryApiIntegrationTest {
                 "arc-9210",
                 "main",
                 new BigDecimal("2"),
-                Instant.parse("2026-03-01T00:00:00Z")
+                SEED_INSTANT
             )
         );
 
@@ -908,7 +909,7 @@ class InventoryApiIntegrationTest {
                 "arc-9212",
                 "main",
                 new BigDecimal("5"),
-                Instant.parse("2026-03-01T00:00:00Z")
+                SEED_INSTANT
             )
         );
 
@@ -934,7 +935,7 @@ class InventoryApiIntegrationTest {
                 "arc-9213",
                 "main",
                 new BigDecimal("5"),
-                Instant.parse("2026-03-01T00:00:00Z")
+                SEED_INSTANT
             )
         );
 
@@ -963,7 +964,7 @@ class InventoryApiIntegrationTest {
                 "arc-9205",
                 "main",
                 new BigDecimal("2"),
-                Instant.parse("2026-03-01T00:00:00Z")
+                SEED_INSTANT
             )
         );
 
@@ -1017,7 +1018,7 @@ class InventoryApiIntegrationTest {
             sku,
             mainOnHand,
             eastOnHand,
-            Instant.parse("2026-03-01T00:00:00Z")
+            SEED_INSTANT
         );
         InventoryManagementWebTestSupport.transferInventory(mockMvc, sku, transferPayload)
             .andExpect(status().isCreated());
