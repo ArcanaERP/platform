@@ -386,12 +386,11 @@ class InventoryApiIntegrationTest {
     void returnsNotFoundForUnknownTransferId() throws Exception {
         UUID unknownTransferId = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
-        mockMvc.perform(InventoryManagementWebTestSupport.transferByIdRequest(unknownTransferId))
-            .andExpect(status().isNotFound())
-            .andExpect(jsonPath("$.status").value(404))
-            .andExpect(jsonPath("$.error").value("Not Found"))
-            .andExpect(jsonPath("$.message").value("Inventory transfer not found: " + unknownTransferId))
-            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + unknownTransferId));
+        expectTransferNotFound(
+            mockMvc.perform(InventoryManagementWebTestSupport.transferByIdRequest(unknownTransferId)),
+            unknownTransferId,
+            "/api/inventory/transfers/" + unknownTransferId
+        );
     }
 
     @Test
@@ -1144,12 +1143,16 @@ class InventoryApiIntegrationTest {
     }
 
     private void expectReversalTransferNotFound(ResultActions result, UUID transferId) throws Exception {
+        expectTransferNotFound(result, transferId, "/api/inventory/transfers/" + transferId + "/reversals");
+    }
+
+    private void expectTransferNotFound(ResultActions result, UUID transferId, String path) throws Exception {
         result
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
             .andExpect(jsonPath("$.message").value("Inventory transfer not found: " + transferId))
-            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + transferId + "/reversals"));
+            .andExpect(jsonPath("$.path").value(path));
     }
 
     private void expectInventoryItemNotFound(
