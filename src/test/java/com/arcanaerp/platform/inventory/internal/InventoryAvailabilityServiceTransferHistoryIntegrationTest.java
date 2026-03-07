@@ -175,6 +175,45 @@ class InventoryAvailabilityServiceTransferHistoryIntegrationTest {
     }
 
     @Test
+    void usesDefaultPaginationWhenPageQueryValuesAreOmitted() throws Exception {
+        String sku = "ARC-SVC-TR-2A";
+        seedTransferItems(sku);
+
+        inventoryAvailability.transferInventory(
+            new TransferInventoryCommand(
+                sku,
+                "main",
+                "wh-west",
+                new BigDecimal("3"),
+                "Transfer Default Pagination",
+                "ops-default@arcanaerp.com",
+                "order",
+                "SO-SVC-DEFAULT"
+            )
+        );
+
+        var page = inventoryAvailability.listTransfers(
+            sku,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            PageQuery.of(null, null)
+        );
+
+        assertThat(page.page()).isEqualTo(PageQuery.DEFAULT_PAGE);
+        assertThat(page.size()).isEqualTo(PageQuery.DEFAULT_SIZE);
+        assertThat(page.totalItems()).isEqualTo(1);
+        assertThat(page.totalPages()).isEqualTo(1);
+        assertThat(page.hasNext()).isFalse();
+        assertThat(page.hasPrevious()).isFalse();
+        assertThat(page.items()).extracting(transfer -> transfer.reason()).containsExactly("Transfer Default Pagination");
+    }
+
+    @Test
     void throwsForUnknownSkuTransferHistory() {
         assertThatThrownBy(() -> inventoryAvailability.listTransfers(
                 "missing-sku",
