@@ -124,13 +124,12 @@ class InventoryApiIntegrationTest {
 
     @Test
     void rejectsBlankLocationCodeQueryParam() throws Exception {
-        mockMvc.perform(get("/api/inventory/{sku}", "arc-9202")
-            .param("locationCode", "   "))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("locationCode query parameter must not be blank"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9202"));
+        expectBadRequest(
+            mockMvc.perform(get("/api/inventory/{sku}", "arc-9202")
+                .param("locationCode", "   ")),
+            "locationCode query parameter must not be blank",
+            "/api/inventory/arc-9202"
+        );
     }
 
     @Test
@@ -558,17 +557,16 @@ class InventoryApiIntegrationTest {
         UUID originalTransferId = scenario.originalTransferId();
         String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
-            originalTransferId,
-            "   ",
-            reversalPayload
-        )
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("Idempotency-Key header must not be blank"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
+        expectBadRequest(
+            InventoryManagementWebTestSupport.reverseTransfer(
+                mockMvc,
+                originalTransferId,
+                "   ",
+                reversalPayload
+            ),
+            "Idempotency-Key header must not be blank",
+            "/api/inventory/transfers/" + originalTransferId + "/reversals"
+        );
     }
 
     @Test
@@ -972,12 +970,11 @@ class InventoryApiIntegrationTest {
             DEFAULT_ACTOR
         );
 
-        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9212", payload)
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("quantity must be greater than zero"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9212/transfers"));
+        expectBadRequest(
+            InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9212", payload),
+            "quantity must be greater than zero",
+            "/api/inventory/arc-9212/transfers"
+        );
     }
 
     @Test
@@ -1002,12 +999,11 @@ class InventoryApiIntegrationTest {
             }
             """;
 
-        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9213", payload)
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("referenceType and referenceId must both be provided together"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9213/transfers"));
+        expectBadRequest(
+            InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9213", payload),
+            "referenceType and referenceId must both be provided together",
+            "/api/inventory/arc-9213/transfers"
+        );
     }
 
     @Test
@@ -1027,12 +1023,11 @@ class InventoryApiIntegrationTest {
             DEFAULT_ACTOR
         );
 
-        InventoryManagementWebTestSupport.adjustInventory(mockMvc, "arc-9205", payload)
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("onHandQuantity cannot become negative"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9205/adjustments"));
+        expectBadRequest(
+            InventoryManagementWebTestSupport.adjustInventory(mockMvc, "arc-9205", payload),
+            "onHandQuantity cannot become negative",
+            "/api/inventory/arc-9205/adjustments"
+        );
     }
 
     @Test
@@ -1173,6 +1168,15 @@ class InventoryApiIntegrationTest {
                         "Inventory item not found for SKU: " + sku.toUpperCase() + " at location: " + locationCode.toUpperCase()
                     )
             )
+            .andExpect(jsonPath("$.path").value(path));
+    }
+
+    private void expectBadRequest(ResultActions result, String message, String path) throws Exception {
+        result
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value(message))
             .andExpect(jsonPath("$.path").value(path));
     }
 
