@@ -869,6 +869,34 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void rejectsReversalHistoryWhenPageIsNegative() throws Exception {
+        UUID transferId = UUID.fromString("44444444-4444-4444-4444-444444444444");
+
+        expectBadRequest(
+            mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequest(transferId, -1, 10)),
+            "page must be greater than or equal to zero",
+            "/api/inventory/transfers/" + transferId + "/reversals"
+        );
+    }
+
+    @Test
+    void rejectsReversalHistoryWhenSizeOutsideBounds() throws Exception {
+        UUID transferId = UUID.fromString("55555555-5555-5555-5555-555555555555");
+
+        expectBadRequest(
+            mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequest(transferId, 0, 0)),
+            "size must be between 1 and 100",
+            "/api/inventory/transfers/" + transferId + "/reversals"
+        );
+
+        expectBadRequest(
+            mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequest(transferId, 0, 101)),
+            "size must be between 1 and 100",
+            "/api/inventory/transfers/" + transferId + "/reversals"
+        );
+    }
+
+    @Test
     void rejectsTransferWhenLocationsMatch() throws Exception {
         inventoryItemRepository.save(
             InventoryItem.create(
