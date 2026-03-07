@@ -1,11 +1,12 @@
 package com.arcanaerp.platform.testsupport.web;
 
+import com.arcanaerp.platform.core.pagination.PageQuery;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 public final class InventoryTransferHistoryWebTestSupport {
 
-    private static final int DEFAULT_PAGE = 0;
-    private static final int DEFAULT_SIZE = 10;
+    private static final int DEFAULT_PAGE = PageQuery.DEFAULT_PAGE;
+    private static final int DEFAULT_SIZE = PageQuery.DEFAULT_SIZE;
 
     private InventoryTransferHistoryWebTestSupport() {}
 
