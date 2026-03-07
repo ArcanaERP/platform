@@ -997,22 +997,11 @@ class InventoryApiIntegrationTest {
     }
 
     private IdempotencyScenario createIdempotencyScenario(String sku) throws Exception {
-        InventoryIdempotencyTestFixture.seedTransferItems(
-            inventoryItemRepository,
+        UUID originalTransferId = createTransferScenarioTransferId(
             sku,
             new BigDecimal("10"),
             new BigDecimal("4"),
-            Instant.parse("2026-03-01T00:00:00Z")
-        );
-
-        InventoryManagementWebTestSupport.transferInventory(mockMvc, sku, defaultTransferPayload())
-            .andExpect(status().isCreated());
-
-        UUID originalTransferId = InventoryIdempotencyTestFixture.latestTransferIdFor(
-            inventoryItemRepository,
-            inventoryAdjustmentRepository,
-            sku,
-            "main"
+            defaultTransferPayload()
         );
         return new IdempotencyScenario(sku, originalTransferId);
     }
