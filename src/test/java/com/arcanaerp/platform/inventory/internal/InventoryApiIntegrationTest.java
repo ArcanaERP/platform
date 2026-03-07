@@ -849,6 +849,28 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void listsReversalHistoryWithControllerDefaultPaginationWhenParamsOmitted() throws Exception {
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9217c");
+        UUID originalTransferId = scenario.originalTransferId();
+        String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
+
+        InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload)
+            .andExpect(status().isCreated());
+        UUID reversalTransferId = latestReversalTransferId(scenario);
+
+        mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequest(originalTransferId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(20))
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.totalPages").value(1))
+            .andExpect(jsonPath("$.hasNext").value(false))
+            .andExpect(jsonPath("$.hasPrevious").value(false))
+            .andExpect(jsonPath("$.items[0].transferId").value(reversalTransferId.toString()))
+            .andExpect(jsonPath("$.items[0].referenceId").value(originalTransferId.toString()));
+    }
+
+    @Test
     void returnsEmptyReversalHistoryWhenNoReversalExists() throws Exception {
         UUID originalTransferId = createLegacyTransferScenarioTransferId("arc-9218");
 
