@@ -295,6 +295,33 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
             .andExpect(jsonPath("$.items").isEmpty());
     }
 
+    @Test
+    void rejectsTransferHistoryWhenPageIsNegative() throws Exception {
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest("arc-9595", -1, 10))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("page must be greater than or equal to zero"))
+            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9595/transfers"));
+    }
+
+    @Test
+    void rejectsTransferHistoryWhenSizeOutsideBounds() throws Exception {
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest("arc-9596", 0, 0))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("size must be between 1 and 100"))
+            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9596/transfers"));
+
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest("arc-9596", 0, 101))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("size must be between 1 and 100"))
+            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9596/transfers"));
+    }
+
     private void seedTransferHistory(String sku, String actorA, String actorB) throws Exception {
         inventoryItemRepository.save(
             InventoryItem.create(sku, "main", new BigDecimal("25"), Instant.parse("2026-03-01T00:00:00Z"))
