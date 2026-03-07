@@ -76,6 +76,27 @@ class InventoryTransferHistoryFilterContractIntegrationTest {
     }
 
     @Test
+    void usesControllerDefaultPaginationWhenTransferHistoryPageAndSizeOmitted() throws Exception {
+        String sku = "ARC-9500A";
+        String actorA = "ops-a2@arcanaerp.com";
+        String actorB = "ops-b2@arcanaerp.com";
+        seedTransferHistory(sku, actorA, actorB);
+
+        mockMvc.perform(InventoryTransferHistoryWebTestSupport.transfersRequest(sku))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(20))
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.totalPages").value(1))
+            .andExpect(jsonPath("$.hasNext").value(false))
+            .andExpect(jsonPath("$.hasPrevious").value(false))
+            .andExpect(jsonPath("$.items[0].sourceLocationCode").value("WH-WEST"))
+            .andExpect(jsonPath("$.items[0].destinationLocationCode").value("WH-EAST"))
+            .andExpect(jsonPath("$.items[1].sourceLocationCode").value("MAIN"))
+            .andExpect(jsonPath("$.items[1].destinationLocationCode").value("WH-WEST"));
+    }
+
+    @Test
     void filtersTransferHistoryBySourceAndDestinationLocation() throws Exception {
         String sku = "ARC-9501";
         String actorA = "ops-c@arcanaerp.com";
