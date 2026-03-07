@@ -191,6 +191,54 @@ class InventoryAvailabilityServiceTransferHistoryIntegrationTest {
             .hasMessage("Inventory item not found for SKU: MISSING-SKU");
     }
 
+    @Test
+    void rejectsTransferHistoryWhenPageIsNegative() {
+        assertThatThrownBy(() -> inventoryAvailability.listTransfers(
+                "arc-svc-tr-3",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                PageQuery.of(-1, 10)
+            ))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("page must be greater than or equal to zero");
+    }
+
+    @Test
+    void rejectsTransferHistoryWhenSizeOutsideBounds() {
+        assertThatThrownBy(() -> inventoryAvailability.listTransfers(
+                "arc-svc-tr-4",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                PageQuery.of(0, 0)
+            ))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("size must be between 1 and 100");
+
+        assertThatThrownBy(() -> inventoryAvailability.listTransfers(
+                "arc-svc-tr-4",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                PageQuery.of(0, 101)
+            ))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("size must be between 1 and 100");
+    }
+
     private void seedTransferItems(String sku) {
         Instant seededAt = Instant.parse("2026-03-04T00:00:00Z");
         inventoryItemRepository.save(InventoryItem.create(sku, "main", new BigDecimal("20"), seededAt));
