@@ -897,12 +897,11 @@ class InventoryApiIntegrationTest {
             DEFAULT_ACTOR
         );
 
-        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9209", payload)
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("sourceLocationCode and destinationLocationCode must be different"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9209/transfers"));
+        expectBadRequest(
+            InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9209", payload),
+            "sourceLocationCode and destinationLocationCode must be different",
+            "/api/inventory/arc-9209/transfers"
+        );
     }
 
     @Test
@@ -924,12 +923,11 @@ class InventoryApiIntegrationTest {
             DEFAULT_ACTOR
         );
 
-        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9210", payload)
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("Bad Request"))
-            .andExpect(jsonPath("$.message").value("onHandQuantity cannot become negative"))
-            .andExpect(jsonPath("$.path").value("/api/inventory/arc-9210/transfers"));
+        expectBadRequest(
+            InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9210", payload),
+            "onHandQuantity cannot become negative",
+            "/api/inventory/arc-9210/transfers"
+        );
     }
 
     @Test
