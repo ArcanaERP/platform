@@ -49,6 +49,8 @@ class InventoryApiIntegrationTest {
     private static final Instant SEED_INSTANT = Instant.parse("2026-03-01T00:00:00Z");
     private static final BigDecimal DEFAULT_MAIN_ON_HAND = new BigDecimal("10");
     private static final BigDecimal DEFAULT_EAST_ON_HAND = new BigDecimal("4");
+    private static final BigDecimal TRANSFER_BY_ID_MAIN_ON_HAND = new BigDecimal("11");
+    private static final BigDecimal TRANSFER_BY_ID_EAST_ON_HAND = new BigDecimal("2");
 
     @Autowired
     private MockMvc mockMvc;
@@ -344,8 +346,8 @@ class InventoryApiIntegrationTest {
         );
         UUID transferId = createTransferScenarioTransferId(
             "arc-9214",
-            new BigDecimal("11"),
-            new BigDecimal("2"),
+            TRANSFER_BY_ID_MAIN_ON_HAND,
+            TRANSFER_BY_ID_EAST_ON_HAND,
             payload
         );
 
