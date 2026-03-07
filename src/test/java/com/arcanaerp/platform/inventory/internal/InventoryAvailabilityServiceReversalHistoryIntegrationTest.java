@@ -119,12 +119,73 @@ class InventoryAvailabilityServiceReversalHistoryIntegrationTest {
     }
 
     @Test
+    void usesDefaultPaginationWhenReversalHistoryPageQueryValuesAreOmitted() {
+        String sku = "ARC-SVC-RV-2A";
+        seedTransferItems(sku);
+
+        var originalTransfer = inventoryAvailability.transferInventory(
+            new TransferInventoryCommand(
+                sku,
+                "main",
+                "wh-east",
+                new BigDecimal("2"),
+                "Original transfer",
+                "ops@arcanaerp.com",
+                "order",
+                "SO-RV-2A"
+            )
+        );
+
+        inventoryAvailability.reverseTransfer(
+            new ReverseInventoryTransferCommand(
+                originalTransfer.transferId(),
+                "Reversal posted",
+                "ops@arcanaerp.com",
+                null
+            )
+        );
+
+        var reversals = inventoryAvailability.listReversals(originalTransfer.transferId(), PageQuery.of(null, null));
+        assertThat(reversals.page()).isEqualTo(PageQuery.DEFAULT_PAGE);
+        assertThat(reversals.size()).isEqualTo(PageQuery.DEFAULT_SIZE);
+        assertThat(reversals.totalItems()).isEqualTo(1);
+        assertThat(reversals.totalPages()).isEqualTo(1);
+        assertThat(reversals.hasNext()).isFalse();
+        assertThat(reversals.hasPrevious()).isFalse();
+        assertThat(reversals.items()).hasSize(1);
+        assertThat(reversals.items().getFirst().referenceId()).isEqualTo(originalTransfer.transferId().toString());
+    }
+
+    @Test
     void throwsWhenListingReversalHistoryForUnknownTransferId() {
         UUID unknownTransferId = UUID.fromString("44444444-4444-4444-4444-444444444444");
 
         assertThatThrownBy(() -> inventoryAvailability.listReversals(unknownTransferId, new PageQuery(0, 10)))
             .isInstanceOf(NoSuchElementException.class)
             .hasMessage("Inventory transfer not found: " + unknownTransferId);
+    }
+
+    @Test
+    void rejectsReversalHistoryWhenPageIsNegative() {
+        assertThatThrownBy(() -> inventoryAvailability.listReversals(
+                UUID.fromString("44444444-4444-4444-4444-444444444444"),
+                PageQuery.of(-1, 10)
+            ))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("page must be greater than or equal to zero");
+    }
+
+    @Test
+    void rejectsReversalHistoryWhenSizeOutsideBounds() {
+        UUID transferId = UUID.fromString("44444444-4444-4444-4444-444444444444");
+
+        assertThatThrownBy(() -> inventoryAvailability.listReversals(transferId, PageQuery.of(0, 0)))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("size must be between 1 and 100");
+
+        assertThatThrownBy(() -> inventoryAvailability.listReversals(transferId, PageQuery.of(0, 101)))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("size must be between 1 and 100");
     }
 
     private void seedTransferItems(String sku) {
