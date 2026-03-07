@@ -330,23 +330,6 @@ class InventoryApiIntegrationTest {
 
     @Test
     void returnsTransferByTransferId() throws Exception {
-        inventoryItemRepository.save(
-            InventoryItem.create(
-                "arc-9214",
-                "main",
-                new BigDecimal("11"),
-                Instant.parse("2026-03-01T00:00:00Z")
-            )
-        );
-        inventoryItemRepository.save(
-            InventoryItem.create(
-                "arc-9214",
-                "wh-east",
-                new BigDecimal("2"),
-                Instant.parse("2026-03-01T00:00:00Z")
-            )
-        );
-
         String payload = InventoryManagementWebTestSupport.transferPayload(
             "main",
             "wh-east",
@@ -356,15 +339,12 @@ class InventoryApiIntegrationTest {
             "fulfillment",
             "FUL-9214-1"
         );
-
-        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9214", payload)
-            .andExpect(status().isCreated());
-
-        InventoryItem sourceItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9214", "MAIN").orElseThrow();
-        UUID transferId = inventoryAdjustmentRepository
-            .findByInventoryItemIdOrderByAdjustedAtDesc(sourceItem.getId())
-            .getFirst()
-            .getTransferId();
+        UUID transferId = createTransferScenarioTransferId(
+            "arc-9214",
+            new BigDecimal("11"),
+            new BigDecimal("2"),
+            payload
+        );
 
         mockMvc.perform(InventoryManagementWebTestSupport.transferByIdRequest(transferId))
             .andExpect(status().isOk())
@@ -395,39 +375,12 @@ class InventoryApiIntegrationTest {
 
     @Test
     void reversesTransferByTransferIdWithCompensatingMovements() throws Exception {
-        inventoryItemRepository.save(
-            InventoryItem.create(
-                "arc-9216",
-                "main",
-                new BigDecimal("10"),
-                Instant.parse("2026-03-01T00:00:00Z")
-            )
+        UUID originalTransferId = createTransferScenarioTransferId(
+            "arc-9216",
+            new BigDecimal("10"),
+            new BigDecimal("4"),
+            defaultTransferPayload()
         );
-        inventoryItemRepository.save(
-            InventoryItem.create(
-                "arc-9216",
-                "wh-east",
-                new BigDecimal("4"),
-                Instant.parse("2026-03-01T00:00:00Z")
-            )
-        );
-
-        String transferPayload = InventoryManagementWebTestSupport.transferPayload(
-            "main",
-            "wh-east",
-            "3",
-            DEFAULT_TRANSFER_REASON,
-            DEFAULT_ACTOR
-        );
-
-        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9216", transferPayload)
-            .andExpect(status().isCreated());
-
-        InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode("ARC-9216", "MAIN").orElseThrow();
-        UUID originalTransferId = inventoryAdjustmentRepository
-            .findByInventoryItemIdOrderByAdjustedAtDesc(mainItem.getId())
-            .getFirst()
-            .getTransferId();
 
         String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
 
@@ -1062,6 +1015,29 @@ class InventoryApiIntegrationTest {
             "main"
         );
         return new IdempotencyScenario(sku, originalTransferId);
+    }
+
+    private UUID createTransferScenarioTransferId(
+        String sku,
+        BigDecimal mainOnHand,
+        BigDecimal eastOnHand,
+        String transferPayload
+    ) throws Exception {
+        InventoryIdempotencyTestFixture.seedTransferItems(
+            inventoryItemRepository,
+            sku,
+            mainOnHand,
+            eastOnHand,
+            Instant.parse("2026-03-01T00:00:00Z")
+        );
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, sku, transferPayload)
+            .andExpect(status().isCreated());
+        return InventoryIdempotencyTestFixture.latestTransferIdFor(
+            inventoryItemRepository,
+            inventoryAdjustmentRepository,
+            sku,
+            "main"
+        );
     }
 
     private UUID createLegacyTransferScenarioTransferId(String sku) throws Exception {
