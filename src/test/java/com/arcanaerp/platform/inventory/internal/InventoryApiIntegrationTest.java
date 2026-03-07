@@ -47,6 +47,8 @@ class InventoryApiIntegrationTest {
     private static final String DEFAULT_ACTOR = "ops@arcanaerp.com";
     private static final String DEFAULT_REVERSAL_REASON = "Reversal posted";
     private static final Instant SEED_INSTANT = Instant.parse("2026-03-01T00:00:00Z");
+    private static final BigDecimal DEFAULT_MAIN_ON_HAND = new BigDecimal("10");
+    private static final BigDecimal DEFAULT_EAST_ON_HAND = new BigDecimal("4");
 
     @Autowired
     private MockMvc mockMvc;
@@ -378,8 +380,8 @@ class InventoryApiIntegrationTest {
     void reversesTransferByTransferIdWithCompensatingMovements() throws Exception {
         UUID originalTransferId = createTransferScenarioTransferId(
             "arc-9216",
-            new BigDecimal("10"),
-            new BigDecimal("4"),
+            DEFAULT_MAIN_ON_HAND,
+            DEFAULT_EAST_ON_HAND,
             defaultTransferPayload()
         );
 
@@ -1000,8 +1002,8 @@ class InventoryApiIntegrationTest {
     private IdempotencyScenario createIdempotencyScenario(String sku) throws Exception {
         UUID originalTransferId = createTransferScenarioTransferId(
             sku,
-            new BigDecimal("10"),
-            new BigDecimal("4"),
+            DEFAULT_MAIN_ON_HAND,
+            DEFAULT_EAST_ON_HAND,
             defaultTransferPayload()
         );
         return new IdempotencyScenario(sku, originalTransferId);
