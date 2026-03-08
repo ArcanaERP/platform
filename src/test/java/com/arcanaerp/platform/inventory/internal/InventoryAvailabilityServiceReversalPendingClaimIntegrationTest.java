@@ -7,11 +7,7 @@ import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.ReversalIdempotencyRaceConflictException;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -62,7 +58,10 @@ class InventoryAvailabilityServiceReversalPendingClaimIntegrationTest {
             InventoryTransferReversalIdempotency.create(
                 originalTransfer.transferId(),
                 idempotencyKey,
-                fingerprintForReversalRequest("Reversal posted", "ops@arcanaerp.com"),
+                InventoryTransferReversalServiceTestFixture.fingerprintForReversalRequest(
+                    "Reversal posted",
+                    "ops@arcanaerp.com"
+                ),
                 PENDING_REVERSAL_TRANSFER_ID,
                 Instant.now()
             )
@@ -85,15 +84,5 @@ class InventoryAvailabilityServiceReversalPendingClaimIntegrationTest {
 
         var reversals = inventoryAvailability.listReversals(originalTransfer.transferId(), new PageQuery(0, 10));
         assertThat(reversals.totalItems()).isEqualTo(0);
-    }
-
-    private static String fingerprintForReversalRequest(String reason, String adjustedBy) {
-        String canonicalRequest = reason + "\n" + adjustedBy.toLowerCase();
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(canonicalRequest.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 algorithm not available", exception);
-        }
     }
 }
