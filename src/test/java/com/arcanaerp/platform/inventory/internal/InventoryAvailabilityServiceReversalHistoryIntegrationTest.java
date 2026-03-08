@@ -5,10 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
-import com.arcanaerp.platform.inventory.ReverseInventoryTransferCommand;
-import com.arcanaerp.platform.inventory.TransferInventoryCommand;
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,28 +38,20 @@ class InventoryAvailabilityServiceReversalHistoryIntegrationTest {
     @Test
     void listsReversalsWithPaginationAndOriginalTransferLinkSemantics() {
         String sku = "ARC-SVC-RV-1";
-        seedTransferItems(sku);
-
-        var originalTransfer = inventoryAvailability.transferInventory(
-            new TransferInventoryCommand(
-                sku,
-                "main",
-                "wh-east",
-                new BigDecimal("3"),
-                "Original transfer",
-                "ops@arcanaerp.com",
-                "order",
-                "SO-RV-1"
-            )
+        var originalTransfer = InventoryTransferReversalServiceTestFixture.createOriginalTransfer(
+            inventoryAvailability,
+            inventoryItemRepository,
+            sku,
+            new BigDecimal("3"),
+            "SO-RV-1"
         );
 
-        inventoryAvailability.reverseTransfer(
-            new ReverseInventoryTransferCommand(
-                originalTransfer.transferId(),
-                "Reversal posted",
-                "ops@arcanaerp.com",
-                null
-            )
+        InventoryTransferReversalServiceTestFixture.reverseTransfer(
+            inventoryAvailability,
+            originalTransfer.transferId(),
+            "Reversal posted",
+            "ops@arcanaerp.com",
+            null
         );
 
         var firstPage = inventoryAvailability.listReversals(originalTransfer.transferId(), new PageQuery(0, 1));
@@ -98,19 +87,12 @@ class InventoryAvailabilityServiceReversalHistoryIntegrationTest {
     @Test
     void returnsEmptyReversalHistoryWhenNoReversalExists() {
         String sku = "ARC-SVC-RV-2";
-        seedTransferItems(sku);
-
-        var originalTransfer = inventoryAvailability.transferInventory(
-            new TransferInventoryCommand(
-                sku,
-                "main",
-                "wh-east",
-                new BigDecimal("2"),
-                "Original transfer",
-                "ops@arcanaerp.com",
-                "order",
-                "SO-RV-2"
-            )
+        var originalTransfer = InventoryTransferReversalServiceTestFixture.createOriginalTransfer(
+            inventoryAvailability,
+            inventoryItemRepository,
+            sku,
+            new BigDecimal("2"),
+            "SO-RV-2"
         );
 
         var reversals = inventoryAvailability.listReversals(originalTransfer.transferId(), new PageQuery(0, 10));
@@ -121,28 +103,20 @@ class InventoryAvailabilityServiceReversalHistoryIntegrationTest {
     @Test
     void usesDefaultPaginationWhenReversalHistoryPageQueryValuesAreOmitted() {
         String sku = "ARC-SVC-RV-2A";
-        seedTransferItems(sku);
-
-        var originalTransfer = inventoryAvailability.transferInventory(
-            new TransferInventoryCommand(
-                sku,
-                "main",
-                "wh-east",
-                new BigDecimal("2"),
-                "Original transfer",
-                "ops@arcanaerp.com",
-                "order",
-                "SO-RV-2A"
-            )
+        var originalTransfer = InventoryTransferReversalServiceTestFixture.createOriginalTransfer(
+            inventoryAvailability,
+            inventoryItemRepository,
+            sku,
+            new BigDecimal("2"),
+            "SO-RV-2A"
         );
 
-        inventoryAvailability.reverseTransfer(
-            new ReverseInventoryTransferCommand(
-                originalTransfer.transferId(),
-                "Reversal posted",
-                "ops@arcanaerp.com",
-                null
-            )
+        InventoryTransferReversalServiceTestFixture.reverseTransfer(
+            inventoryAvailability,
+            originalTransfer.transferId(),
+            "Reversal posted",
+            "ops@arcanaerp.com",
+            null
         );
 
         var reversals = inventoryAvailability.listReversals(originalTransfer.transferId(), PageQuery.of(null, null));
@@ -188,9 +162,4 @@ class InventoryAvailabilityServiceReversalHistoryIntegrationTest {
             .hasMessage("size must be between 1 and 100");
     }
 
-    private void seedTransferItems(String sku) {
-        Instant seededAt = Instant.parse("2026-03-04T00:00:00Z");
-        inventoryItemRepository.save(InventoryItem.create(sku, "main", new BigDecimal("20"), seededAt));
-        inventoryItemRepository.save(InventoryItem.create(sku, "wh-east", new BigDecimal("5"), seededAt));
-    }
 }
