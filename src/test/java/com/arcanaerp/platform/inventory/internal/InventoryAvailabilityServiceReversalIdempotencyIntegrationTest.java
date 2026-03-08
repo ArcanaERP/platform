@@ -251,6 +251,41 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         assertThat(reversalHistory.adjustedBy()).isEqualTo(DEFAULT_ACTOR);
     }
 
+    @Test
+    void reasonCaseOnlyChangesConflictWhileAdjustedByCaseOnlyChangesReplay() {
+        var reasonCaseTransfer = createOriginalTransfer("ARC-SVC-IDEMP-11A", new BigDecimal("2"), "SO-IDEMP-11A");
+        inventoryAvailability.reverseTransfer(
+            reverseCommand(reasonCaseTransfer.transferId(), DEFAULT_REASON, "reverse-svc-replay-11a")
+        );
+        assertPayloadConflict(
+            reasonCaseTransfer.transferId(),
+            () -> inventoryAvailability.reverseTransfer(
+                reverseCommand(reasonCaseTransfer.transferId(), "Reversal Posted", "reverse-svc-replay-11a")
+            )
+        );
+
+        var adjustedByCaseTransfer = createOriginalTransfer("ARC-SVC-IDEMP-11B", new BigDecimal("2"), "SO-IDEMP-11B");
+        var firstReversal = inventoryAvailability.reverseTransfer(
+            reverseCommand(
+                adjustedByCaseTransfer.transferId(),
+                DEFAULT_REASON,
+                "Ops@ArcanaERP.com",
+                "reverse-svc-replay-11b"
+            )
+        );
+        var replayedReversal = inventoryAvailability.reverseTransfer(
+            reverseCommand(
+                adjustedByCaseTransfer.transferId(),
+                DEFAULT_REASON,
+                "OPS@ARCANAERP.COM",
+                "reverse-svc-replay-11b"
+            )
+        );
+
+        assertReplayInvariants(replayedReversal, firstReversal.transferId(), adjustedByCaseTransfer.transferId());
+        assertThat(replayedReversal.adjustedBy()).isEqualTo(DEFAULT_ACTOR);
+    }
+
     private static ReverseInventoryTransferCommand reverseCommand(
         UUID transferId,
         String reason,
