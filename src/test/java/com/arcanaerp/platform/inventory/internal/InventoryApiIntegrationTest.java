@@ -683,6 +683,54 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void reasonCaseOnlyChangesConflictWhileAdjustedByCaseOnlyChangesReplay() throws Exception {
+        ReversalScenario reasonCaseScenario = scenarioWithReversal(
+            "arc-9222e",
+            "reverse-9222e-a",
+            reversalPayload(DEFAULT_REVERSAL_REASON)
+        );
+        UUID reasonCaseTransferId = reasonCaseScenario.originalTransferId();
+
+        expectIdempotencyPayloadConflict(
+            InventoryManagementWebTestSupport.reverseTransfer(
+                mockMvc,
+                reasonCaseTransferId,
+                "reverse-9222e-a",
+                reversalPayload("Reversal Posted")
+            ),
+            reasonCaseTransferId
+        );
+        expectSingleReversalHistory(reasonCaseTransferId);
+
+        ReversalScenario adjustedByCaseScenario = scenarioWithReversal(
+            "arc-9222f",
+            "reverse-9222f-a",
+            reversalPayload(DEFAULT_REVERSAL_REASON, "Ops@ArcanaERP.com")
+        );
+        UUID adjustedByCaseTransferId = adjustedByCaseScenario.originalTransferId();
+        UUID adjustedByCaseReversalId = adjustedByCaseScenario.reversalTransferId();
+
+        InventoryManagementWebTestSupport.reverseTransfer(
+            mockMvc,
+            adjustedByCaseTransferId,
+            "reverse-9222f-a",
+            reversalPayload(DEFAULT_REVERSAL_REASON, "OPS@ARCANAERP.COM")
+        )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.transferId").value(adjustedByCaseReversalId.toString()))
+            .andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR))
+            .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
+            .andExpect(jsonPath("$.referenceId").value(adjustedByCaseTransferId.toString()));
+
+        expectSingleReversalHistory(
+            adjustedByCaseTransferId,
+            result -> result
+                .andExpect(jsonPath("$.items[0].transferId").value(adjustedByCaseReversalId.toString()))
+                .andExpect(jsonPath("$.items[0].adjustedBy").value(DEFAULT_ACTOR))
+        );
+    }
+
+    @Test
     void concurrentFirstWriteWithSameIdempotencyKeyReturnsConflictForOneRequest() throws Exception {
         IdempotencyScenario scenario = createIdempotencyScenario("arc-9223");
         UUID originalTransferId = scenario.originalTransferId();
