@@ -1179,26 +1179,24 @@ class InventoryApiIntegrationTest {
     }
 
     private void expectIdempotencyPayloadConflict(ResultActions result, UUID originalTransferId) throws Exception {
-        result
-            .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.status").value(409))
-            .andExpect(jsonPath("$.error").value("Conflict"))
-            .andExpect(
-                jsonPath("$.message")
-                    .value(
-                        "Idempotency-Key already used with different reversal payload for transferId: " + originalTransferId
-                    )
-            )
-            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
+        expectConflict(
+            result,
+            "Idempotency-Key already used with different reversal payload for transferId: " + originalTransferId,
+            "/api/inventory/transfers/" + originalTransferId + "/reversals"
+        );
     }
 
     private void expectDuplicateReversalConflict(ResultActions result, UUID originalTransferId) throws Exception {
+        expectConflict(result, "Inventory transfer already reversed: " + originalTransferId, "/api/inventory/transfers/" + originalTransferId + "/reversals");
+    }
+
+    private void expectConflict(ResultActions result, String message, String path) throws Exception {
         result
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.status").value(409))
             .andExpect(jsonPath("$.error").value("Conflict"))
-            .andExpect(jsonPath("$.message").value("Inventory transfer already reversed: " + originalTransferId))
-            .andExpect(jsonPath("$.path").value("/api/inventory/transfers/" + originalTransferId + "/reversals"));
+            .andExpect(jsonPath("$.message").value(message))
+            .andExpect(jsonPath("$.path").value(path));
     }
 
     private void expectReversalTransferNotFound(ResultActions result, UUID transferId) throws Exception {
