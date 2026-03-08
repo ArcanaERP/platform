@@ -455,18 +455,12 @@ class InventoryApiIntegrationTest {
         UUID originalTransferId = reversalScenario.originalTransferId();
         UUID reversalTransferId = reversalScenario.reversalTransferId();
 
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
+        expectIdempotentReplay(
             originalTransferId,
             "reverse-9220-a",
-            reversalPayload
-        )
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.transferId").value(reversalTransferId.toString()))
-            .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
-            .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()));
-
-        expectSingleReversalHistory(originalTransferId);
+            reversalPayload,
+            reversalTransferId
+        );
     }
 
     @Test
@@ -484,20 +478,12 @@ class InventoryApiIntegrationTest {
         UUID originalTransferId = reversalScenario.originalTransferId();
         UUID reversalTransferId = reversalScenario.reversalTransferId();
 
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
+        expectIdempotentReplay(
             originalTransferId,
             "reverse-9220b-a",
-            replayReversalPayload
-        )
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.transferId").value(reversalTransferId.toString()))
-            .andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR))
-            .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
-            .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()));
-
-        expectSingleReversalHistory(
-            originalTransferId,
+            replayReversalPayload,
+            reversalTransferId,
+            result -> result.andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR)),
             result -> result
                 .andExpect(jsonPath("$.items[0].transferId").value(reversalTransferId.toString()))
                 .andExpect(jsonPath("$.items[0].adjustedBy").value(DEFAULT_ACTOR))
@@ -529,19 +515,11 @@ class InventoryApiIntegrationTest {
         UUID originalTransferId = reversalScenario.originalTransferId();
         UUID reversalTransferId = reversalScenario.reversalTransferId();
 
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
+        expectIdempotentReplay(
             originalTransferId,
             "reverse-9221b-a",
-            reversalPayload
-        )
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.transferId").value(reversalTransferId.toString()))
-            .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
-            .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()));
-
-        expectSingleReversalHistory(
-            originalTransferId,
+            reversalPayload,
+            reversalTransferId,
             result -> result.andExpect(jsonPath("$.items[0].transferId").value(reversalTransferId.toString()))
         );
     }
@@ -636,20 +614,12 @@ class InventoryApiIntegrationTest {
         UUID originalTransferId = reversalScenario.originalTransferId();
         UUID reversalTransferId = reversalScenario.reversalTransferId();
 
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
+        expectIdempotentReplay(
             originalTransferId,
             "reverse-9222d-a",
-            secondReversalPayload
-        )
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.transferId").value(reversalTransferId.toString()))
-            .andExpect(jsonPath("$.reason").value(DEFAULT_REVERSAL_REASON))
-            .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
-            .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()));
-
-        expectSingleReversalHistory(
-            originalTransferId,
+            secondReversalPayload,
+            reversalTransferId,
+            result -> result.andExpect(jsonPath("$.reason").value(DEFAULT_REVERSAL_REASON)),
             result -> result
                 .andExpect(jsonPath("$.items[0].transferId").value(reversalTransferId.toString()))
                 .andExpect(jsonPath("$.items[0].reason").value(DEFAULT_REVERSAL_REASON))
@@ -710,20 +680,12 @@ class InventoryApiIntegrationTest {
         UUID adjustedByCaseTransferId = adjustedByCaseScenario.originalTransferId();
         UUID adjustedByCaseReversalId = adjustedByCaseScenario.reversalTransferId();
 
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
+        expectIdempotentReplay(
             adjustedByCaseTransferId,
             "reverse-9222f-a",
-            reversalPayload(DEFAULT_REVERSAL_REASON, "OPS@ARCANAERP.COM")
-        )
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.transferId").value(adjustedByCaseReversalId.toString()))
-            .andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR))
-            .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
-            .andExpect(jsonPath("$.referenceId").value(adjustedByCaseTransferId.toString()));
-
-        expectSingleReversalHistory(
-            adjustedByCaseTransferId,
+            reversalPayload(DEFAULT_REVERSAL_REASON, "OPS@ARCANAERP.COM"),
+            adjustedByCaseReversalId,
+            result -> result.andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR)),
             result -> result
                 .andExpect(jsonPath("$.items[0].transferId").value(adjustedByCaseReversalId.toString()))
                 .andExpect(jsonPath("$.items[0].adjustedBy").value(DEFAULT_ACTOR))
@@ -1282,6 +1244,55 @@ class InventoryApiIntegrationTest {
 
     private void expectSingleReversalHistory(UUID originalTransferId) throws Exception {
         expectSingleReversalHistory(originalTransferId, result -> {});
+    }
+
+    private void expectIdempotentReplay(
+        UUID originalTransferId,
+        String idempotencyKey,
+        String replayPayload,
+        UUID reversalTransferId
+    ) throws Exception {
+        expectIdempotentReplay(originalTransferId, idempotencyKey, replayPayload, reversalTransferId, result -> {}, result -> {});
+    }
+
+    private void expectIdempotentReplay(
+        UUID originalTransferId,
+        String idempotencyKey,
+        String replayPayload,
+        UUID reversalTransferId,
+        ReversalHistoryExpectation historyExpectation
+    ) throws Exception {
+        expectIdempotentReplay(
+            originalTransferId,
+            idempotencyKey,
+            replayPayload,
+            reversalTransferId,
+            result -> {},
+            historyExpectation
+        );
+    }
+
+    private void expectIdempotentReplay(
+        UUID originalTransferId,
+        String idempotencyKey,
+        String replayPayload,
+        UUID reversalTransferId,
+        ReversalResponseExpectation responseExpectation,
+        ReversalHistoryExpectation historyExpectation
+    ) throws Exception {
+        ResultActions replayResult = InventoryManagementWebTestSupport.reverseTransfer(
+            mockMvc,
+            originalTransferId,
+            idempotencyKey,
+            replayPayload
+        )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.transferId").value(reversalTransferId.toString()))
+            .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
+            .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()));
+        responseExpectation.verify(replayResult);
+
+        expectSingleReversalHistory(originalTransferId, historyExpectation);
     }
 
     private void expectSingleReversalHistory(
