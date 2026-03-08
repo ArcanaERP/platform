@@ -18,6 +18,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 class InventoryAvailabilityServiceReversalPendingClaimIntegrationTest {
 
     private static final UUID PENDING_REVERSAL_TRANSFER_ID = new UUID(0L, 0L);
+    private static final String REVERSAL_REASON = "Reversal posted";
+    private static final String REVERSAL_ACTOR = "ops@arcanaerp.com";
 
     @Autowired
     private InventoryAvailability inventoryAvailability;
@@ -59,8 +61,8 @@ class InventoryAvailabilityServiceReversalPendingClaimIntegrationTest {
                 originalTransfer.transferId(),
                 idempotencyKey,
                 InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(
-                    "Reversal posted",
-                    "ops@arcanaerp.com"
+                    REVERSAL_REASON,
+                    REVERSAL_ACTOR
                 ),
                 PENDING_REVERSAL_TRANSFER_ID,
                 Instant.now()
@@ -70,8 +72,8 @@ class InventoryAvailabilityServiceReversalPendingClaimIntegrationTest {
         assertThatThrownBy(() -> InventoryTransferReversalServiceTestFixture.reverseTransfer(
                 inventoryAvailability,
                 originalTransfer.transferId(),
-                "Reversal posted",
-                "ops@arcanaerp.com",
+                REVERSAL_REASON,
+                REVERSAL_ACTOR,
                 idempotencyKey
             ))
             .isInstanceOf(ReversalIdempotencyRaceConflictException.class)

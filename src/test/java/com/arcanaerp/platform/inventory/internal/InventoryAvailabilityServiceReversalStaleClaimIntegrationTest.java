@@ -16,6 +16,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 class InventoryAvailabilityServiceReversalStaleClaimIntegrationTest {
 
     private static final UUID PENDING_REVERSAL_TRANSFER_ID = new UUID(0L, 0L);
+    private static final String REVERSAL_REASON = "Reversal posted";
+    private static final String REVERSAL_ACTOR = "ops@arcanaerp.com";
+    private static final Instant STALE_PENDING_CLAIM_AT = Instant.parse("2025-12-01T00:00:00Z");
 
     @Autowired
     private InventoryAvailability inventoryAvailability;
@@ -57,19 +60,19 @@ class InventoryAvailabilityServiceReversalStaleClaimIntegrationTest {
                 originalTransfer.transferId(),
                 idempotencyKey,
                 InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(
-                    "Reversal posted",
-                    "ops@arcanaerp.com"
+                    REVERSAL_REASON,
+                    REVERSAL_ACTOR
                 ),
                 PENDING_REVERSAL_TRANSFER_ID,
-                Instant.parse("2025-12-01T00:00:00Z")
+                STALE_PENDING_CLAIM_AT
             )
         );
 
         var reversal = InventoryTransferReversalServiceTestFixture.reverseTransfer(
             inventoryAvailability,
             originalTransfer.transferId(),
-            "Reversal posted",
-            "ops@arcanaerp.com",
+            REVERSAL_REASON,
+            REVERSAL_ACTOR,
             idempotencyKey
         );
 
@@ -101,8 +104,8 @@ class InventoryAvailabilityServiceReversalStaleClaimIntegrationTest {
         var existingReversal = InventoryTransferReversalServiceTestFixture.reverseTransfer(
             inventoryAvailability,
             originalTransfer.transferId(),
-            "Reversal posted",
-            "ops@arcanaerp.com",
+            REVERSAL_REASON,
+            REVERSAL_ACTOR,
             null
         );
 
@@ -112,19 +115,19 @@ class InventoryAvailabilityServiceReversalStaleClaimIntegrationTest {
                 originalTransfer.transferId(),
                 idempotencyKey,
                 InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(
-                    "Reversal posted",
-                    "ops@arcanaerp.com"
+                    REVERSAL_REASON,
+                    REVERSAL_ACTOR
                 ),
                 PENDING_REVERSAL_TRANSFER_ID,
-                Instant.parse("2025-12-01T00:00:00Z")
+                STALE_PENDING_CLAIM_AT
             )
         );
 
         var replayed = InventoryTransferReversalServiceTestFixture.reverseTransfer(
             inventoryAvailability,
             originalTransfer.transferId(),
-            "Reversal posted",
-            "ops@arcanaerp.com",
+            REVERSAL_REASON,
+            REVERSAL_ACTOR,
             idempotencyKey
         );
 
