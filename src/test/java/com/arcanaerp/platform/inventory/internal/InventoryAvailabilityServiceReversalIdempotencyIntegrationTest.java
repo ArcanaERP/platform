@@ -17,8 +17,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 @SpringBootTest
 class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
 
-    private static final String DEFAULT_REASON = "Reversal posted";
-    private static final String DEFAULT_ACTOR = "ops@arcanaerp.com";
+    private static final String DEFAULT_REASON = InventoryReversalTestConstants.REVERSAL_REASON;
+    private static final String DEFAULT_ACTOR = InventoryReversalTestConstants.REVERSAL_ACTOR;
 
     @Autowired
     private InventoryAvailability inventoryAvailability;

@@ -71,16 +71,22 @@ class InventoryIdempotencyTtlOverrideIntegrationTest {
               "sourceLocationCode": "main",
               "destinationLocationCode": "wh-east",
               "quantity": 3,
-              "reason": "Original transfer",
-              "adjustedBy": "ops@arcanaerp.com"
+              "reason": "%s",
+              "adjustedBy": "%s"
             }
-            """;
+            """.formatted(
+            InventoryReversalTestConstants.TRANSFER_REASON,
+            InventoryReversalTestConstants.REVERSAL_ACTOR
+        );
         String reversalPayload = """
             {
-              "reason": "Reversal posted",
-              "adjustedBy": "ops@arcanaerp.com"
+              "reason": "%s",
+              "adjustedBy": "%s"
             }
-            """;
+            """.formatted(
+            InventoryReversalTestConstants.REVERSAL_REASON,
+            InventoryReversalTestConstants.REVERSAL_ACTOR
+        );
 
         mockMvc.perform(post("/api/inventory/{sku}/transfers", "arc-9225")
             .contentType(MediaType.APPLICATION_JSON)
@@ -98,8 +104,8 @@ class InventoryIdempotencyTtlOverrideIntegrationTest {
                 originalTransferId,
                 "reverse-9225-ttl",
                 InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(
-                    "Reversal posted",
-                    "ops@arcanaerp.com"
+                    InventoryReversalTestConstants.REVERSAL_REASON,
+                    InventoryReversalTestConstants.REVERSAL_ACTOR
                 ),
                 PENDING_REVERSAL_TRANSFER_ID,
                 Instant.now().minus(Duration.ofHours(1))

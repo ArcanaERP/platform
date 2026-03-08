@@ -39,9 +39,9 @@ import org.springframework.test.web.servlet.ResultActions;
 class InventoryApiIntegrationTest {
 
     private static final UUID PENDING_REVERSAL_TRANSFER_ID = new UUID(0L, 0L);
-    private static final String DEFAULT_TRANSFER_REASON = "Original transfer";
-    private static final String DEFAULT_ACTOR = "ops@arcanaerp.com";
-    private static final String DEFAULT_REVERSAL_REASON = "Reversal posted";
+    private static final String DEFAULT_TRANSFER_REASON = InventoryReversalTestConstants.TRANSFER_REASON;
+    private static final String DEFAULT_ACTOR = InventoryReversalTestConstants.REVERSAL_ACTOR;
+    private static final String DEFAULT_REVERSAL_REASON = InventoryReversalTestConstants.REVERSAL_REASON;
     private static final Instant SEED_INSTANT = Instant.parse("2026-03-01T00:00:00Z");
     private static final BigDecimal DEFAULT_MAIN_ON_HAND = new BigDecimal("10");
     private static final BigDecimal DEFAULT_EAST_ON_HAND = new BigDecimal("4");
