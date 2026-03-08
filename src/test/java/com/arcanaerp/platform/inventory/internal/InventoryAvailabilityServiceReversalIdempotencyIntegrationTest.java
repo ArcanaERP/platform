@@ -218,6 +218,39 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         assertThat(reversalHistory.adjustedBy()).isEqualTo(DEFAULT_ACTOR);
     }
 
+    @Test
+    void canonicalizesReasonAndAdjustedByTogetherForSameIdempotencyKey() {
+        String sku = "ARC-SVC-IDEMP-10";
+        var originalTransfer = createOriginalTransfer(sku, new BigDecimal("2"), "SO-IDEMP-10");
+
+        String idempotencyKey = "reverse-svc-replay-10";
+        var firstReversal = inventoryAvailability.reverseTransfer(
+            reverseCommand(
+                originalTransfer.transferId(),
+                "  Reversal posted  ",
+                "  Ops@ArcanaERP.com ",
+                idempotencyKey
+            )
+        );
+
+        var replayedReversal = inventoryAvailability.reverseTransfer(
+            reverseCommand(
+                originalTransfer.transferId(),
+                DEFAULT_REASON,
+                DEFAULT_ACTOR.toUpperCase(),
+                idempotencyKey
+            )
+        );
+
+        assertReplayInvariants(replayedReversal, firstReversal.transferId(), originalTransfer.transferId());
+        assertThat(replayedReversal.reason()).isEqualTo(DEFAULT_REASON);
+        assertThat(replayedReversal.adjustedBy()).isEqualTo(DEFAULT_ACTOR);
+
+        var reversalHistory = assertSingleReversalHistoryContains(originalTransfer.transferId(), firstReversal.transferId());
+        assertThat(reversalHistory.reason()).isEqualTo(DEFAULT_REASON);
+        assertThat(reversalHistory.adjustedBy()).isEqualTo(DEFAULT_ACTOR);
+    }
+
     private static ReverseInventoryTransferCommand reverseCommand(
         UUID transferId,
         String reason,
