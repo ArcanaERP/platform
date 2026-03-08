@@ -628,10 +628,7 @@ class InventoryApiIntegrationTest {
             reversalPayload(DEFAULT_REVERSAL_REASON)
         );
         UUID originalTransferId = reversalScenario.originalTransferId();
-        String secondReversalPayload = reversalPayload(
-            DEFAULT_REVERSAL_REASON,
-            "warehouse@arcanaerp.com"
-        );
+        String secondReversalPayload = reversalPayloadWithWarehouseActor();
 
         expectIdempotencyPayloadConflict(
             InventoryManagementWebTestSupport.reverseTransfer(
@@ -669,7 +666,7 @@ class InventoryApiIntegrationTest {
         ReversalScenario adjustedByCaseScenario = scenarioWithReversal(
             "arc-9222f",
             "reverse-9222f-a",
-            reversalPayload(DEFAULT_REVERSAL_REASON, "Ops@ArcanaERP.com")
+            reversalPayloadWithMixedCaseActor()
         );
         UUID adjustedByCaseTransferId = adjustedByCaseScenario.originalTransferId();
         UUID adjustedByCaseReversalId = adjustedByCaseScenario.reversalTransferId();
@@ -677,7 +674,7 @@ class InventoryApiIntegrationTest {
         expectIdempotentReplay(
             adjustedByCaseTransferId,
             "reverse-9222f-a",
-            reversalPayload(DEFAULT_REVERSAL_REASON, "OPS@ARCANAERP.COM"),
+            reversalPayloadWithUppercaseActor(),
             adjustedByCaseReversalId,
             result -> result.andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR)),
             result -> result
@@ -1335,6 +1332,18 @@ class InventoryApiIntegrationTest {
 
     private static String reversalPayloadWithTitleCaseReason() {
         return reversalPayload("Reversal Posted");
+    }
+
+    private static String reversalPayloadWithWarehouseActor() {
+        return reversalPayload(DEFAULT_REVERSAL_REASON, "warehouse@arcanaerp.com");
+    }
+
+    private static String reversalPayloadWithUppercaseActor() {
+        return reversalPayload(DEFAULT_REVERSAL_REASON, "OPS@ARCANAERP.COM");
+    }
+
+    private static String reversalPayloadWithMixedCaseActor() {
+        return reversalPayload(DEFAULT_REVERSAL_REASON, "Ops@ArcanaERP.com");
     }
 
 }
