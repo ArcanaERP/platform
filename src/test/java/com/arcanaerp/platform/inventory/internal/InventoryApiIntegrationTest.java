@@ -555,7 +555,7 @@ class InventoryApiIntegrationTest {
         );
         UUID originalTransferId = reversalScenario.originalTransferId();
         String secondReversalPayload = reversalPayload(
-            "Reversal posted with different reason",
+            DEFAULT_REVERSAL_REASON + " with different reason",
             DEFAULT_ACTOR
         );
 
@@ -581,7 +581,7 @@ class InventoryApiIntegrationTest {
         );
         UUID originalTransferId = reversalScenario.originalTransferId();
         String secondReversalPayload = reversalPayload(
-            "Reversal posted with different reason",
+            DEFAULT_REVERSAL_REASON + " with different reason",
             DEFAULT_ACTOR
         );
 
@@ -624,7 +624,7 @@ class InventoryApiIntegrationTest {
     @Test
     void retriesReversalWithIdempotencyKeyWhenReasonOnlyDiffersByTrailingWhitespaceReturnsOriginalResponse() throws Exception {
         String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
-        String secondReversalPayload = reversalPayload("Reversal posted ");
+        String secondReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON + " ");
         ReversalScenario reversalScenario = scenarioWithReversal(
             "arc-9222d",
             "reverse-9222d-a",
@@ -1030,10 +1030,10 @@ class InventoryApiIntegrationTest {
               "destinationLocationCode": "wh-west",
               "quantity": 1,
               "reason": "Invalid transfer",
-              "adjustedBy": "ops@arcanaerp.com",
+              "adjustedBy": "%s",
               "referenceType": "FULFILLMENT"
             }
-            """;
+            """.formatted(DEFAULT_ACTOR);
 
         expectBadRequest(
             InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9213", payload),
