@@ -16,6 +16,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 @SpringBootTest
 class InventoryAvailabilityServiceReversalHistoryIntegrationTest {
 
+    private static final String REVERSAL_REASON = InventoryReversalTestConstants.REVERSAL_REASON;
+    private static final String REVERSAL_ACTOR = InventoryReversalTestConstants.REVERSAL_ACTOR;
+
     @Autowired
     private InventoryAvailability inventoryAvailability;
 
@@ -49,8 +52,8 @@ class InventoryAvailabilityServiceReversalHistoryIntegrationTest {
         InventoryTransferReversalServiceTestFixture.reverseTransfer(
             inventoryAvailability,
             originalTransfer.transferId(),
-            "Reversal posted",
-            "ops@arcanaerp.com",
+            REVERSAL_REASON,
+            REVERSAL_ACTOR,
             null
         );
 
@@ -69,8 +72,8 @@ class InventoryAvailabilityServiceReversalHistoryIntegrationTest {
         assertThat(reversal.sourceLocationCode()).isEqualTo("WH-EAST");
         assertThat(reversal.destinationLocationCode()).isEqualTo("MAIN");
         assertThat(reversal.quantity()).isEqualByComparingTo("3");
-        assertThat(reversal.reason()).isEqualTo("Reversal posted");
-        assertThat(reversal.adjustedBy()).isEqualTo("ops@arcanaerp.com");
+        assertThat(reversal.reason()).isEqualTo(REVERSAL_REASON);
+        assertThat(reversal.adjustedBy()).isEqualTo(REVERSAL_ACTOR);
         assertThat(reversal.referenceType()).isEqualTo("TRANSFER_REVERSAL");
         assertThat(reversal.referenceId()).isEqualTo(originalTransfer.transferId().toString());
 
@@ -114,8 +117,8 @@ class InventoryAvailabilityServiceReversalHistoryIntegrationTest {
         InventoryTransferReversalServiceTestFixture.reverseTransfer(
             inventoryAvailability,
             originalTransfer.transferId(),
-            "Reversal posted",
-            "ops@arcanaerp.com",
+            REVERSAL_REASON,
+            REVERSAL_ACTOR,
             null
         );
 

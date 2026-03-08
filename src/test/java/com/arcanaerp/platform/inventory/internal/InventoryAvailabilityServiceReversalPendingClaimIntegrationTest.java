@@ -18,8 +18,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 class InventoryAvailabilityServiceReversalPendingClaimIntegrationTest {
 
     private static final UUID PENDING_REVERSAL_TRANSFER_ID = new UUID(0L, 0L);
-    private static final String REVERSAL_REASON = "Reversal posted";
-    private static final String REVERSAL_ACTOR = "ops@arcanaerp.com";
+    private static final String REVERSAL_REASON = InventoryReversalTestConstants.REVERSAL_REASON;
+    private static final String REVERSAL_ACTOR = InventoryReversalTestConstants.REVERSAL_ACTOR;
 
     @Autowired
     private InventoryAvailability inventoryAvailability;

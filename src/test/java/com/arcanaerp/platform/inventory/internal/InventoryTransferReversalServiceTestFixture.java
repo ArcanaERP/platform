@@ -13,8 +13,8 @@ final class InventoryTransferReversalServiceTestFixture {
     private static final BigDecimal DEFAULT_MAIN_ON_HAND = new BigDecimal("20");
     private static final BigDecimal DEFAULT_EAST_ON_HAND = new BigDecimal("5");
     private static final Instant DEFAULT_SEEDED_AT = Instant.parse("2026-03-04T00:00:00Z");
-    private static final String DEFAULT_TRANSFER_REASON = "Original transfer";
-    private static final String DEFAULT_ACTOR = "ops@arcanaerp.com";
+    private static final String DEFAULT_TRANSFER_REASON = InventoryReversalTestConstants.TRANSFER_REASON;
+    private static final String DEFAULT_ACTOR = InventoryReversalTestConstants.REVERSAL_ACTOR;
     private static final String DEFAULT_REFERENCE_TYPE = "order";
 
     private InventoryTransferReversalServiceTestFixture() {}
