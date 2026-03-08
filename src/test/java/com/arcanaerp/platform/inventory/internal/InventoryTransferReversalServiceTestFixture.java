@@ -5,11 +5,7 @@ import com.arcanaerp.platform.inventory.InventoryTransferView;
 import com.arcanaerp.platform.inventory.ReverseInventoryTransferCommand;
 import com.arcanaerp.platform.inventory.TransferInventoryCommand;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.UUID;
 
 final class InventoryTransferReversalServiceTestFixture {
@@ -58,13 +54,7 @@ final class InventoryTransferReversalServiceTestFixture {
     }
 
     static String fingerprintForReversalRequest(String reason, String adjustedBy) {
-        String canonicalRequest = reason + "\n" + adjustedBy.toLowerCase();
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(canonicalRequest.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 algorithm not available", exception);
-        }
+        return InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(reason, adjustedBy);
     }
 
     private static void seedTransferItems(
