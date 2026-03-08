@@ -55,9 +55,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
             reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, idempotencyKey)
         );
 
-        assertThat(replayedReversal.transferId()).isEqualTo(firstReversal.transferId());
-        assertThat(replayedReversal.referenceType()).isEqualTo("TRANSFER_REVERSAL");
-        assertThat(replayedReversal.referenceId()).isEqualTo(originalTransfer.transferId().toString());
+        assertReplayInvariants(replayedReversal, firstReversal.transferId(), originalTransfer.transferId());
 
         assertSingleReversalHistoryContains(originalTransfer.transferId(), firstReversal.transferId());
     }
@@ -75,9 +73,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
             reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, "reverse-svc-replay-7")
         );
 
-        assertThat(replayedReversal.transferId()).isEqualTo(firstReversal.transferId());
-        assertThat(replayedReversal.referenceType()).isEqualTo("TRANSFER_REVERSAL");
-        assertThat(replayedReversal.referenceId()).isEqualTo(originalTransfer.transferId().toString());
+        assertReplayInvariants(replayedReversal, firstReversal.transferId(), originalTransfer.transferId());
 
         assertSingleReversalHistoryContains(originalTransfer.transferId(), firstReversal.transferId());
     }
@@ -149,7 +145,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
             reverseCommand(originalTransfer.transferId(), DEFAULT_REASON + " ", idempotencyKey)
         );
 
-        assertThat(replayedReversal.transferId()).isEqualTo(firstReversal.transferId());
+        assertReplayInvariants(replayedReversal, firstReversal.transferId(), originalTransfer.transferId());
         assertThat(replayedReversal.reason()).isEqualTo(DEFAULT_REASON);
 
         var reversalHistory = assertSingleReversalHistoryContains(originalTransfer.transferId(), firstReversal.transferId());
@@ -188,10 +184,8 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
             reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, "OPS@ARCANAERP.COM", idempotencyKey)
         );
 
-        assertThat(replayedReversal.transferId()).isEqualTo(firstReversal.transferId());
+        assertReplayInvariants(replayedReversal, firstReversal.transferId(), originalTransfer.transferId());
         assertThat(replayedReversal.adjustedBy()).isEqualTo(DEFAULT_ACTOR);
-        assertThat(replayedReversal.referenceType()).isEqualTo("TRANSFER_REVERSAL");
-        assertThat(replayedReversal.referenceId()).isEqualTo(originalTransfer.transferId().toString());
 
         var reversalHistory = assertSingleReversalHistoryContains(originalTransfer.transferId(), firstReversal.transferId());
         assertThat(reversalHistory.adjustedBy()).isEqualTo(DEFAULT_ACTOR);
@@ -215,8 +209,8 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
             reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, "OPS@ARCANAERP.COM", idempotencyKey)
         );
 
-        assertThat(secondReplay.transferId()).isEqualTo(firstReversal.transferId());
-        assertThat(thirdReplay.transferId()).isEqualTo(firstReversal.transferId());
+        assertReplayInvariants(secondReplay, firstReversal.transferId(), originalTransfer.transferId());
+        assertReplayInvariants(thirdReplay, firstReversal.transferId(), originalTransfer.transferId());
         assertThat(secondReplay.adjustedBy()).isEqualTo(DEFAULT_ACTOR);
         assertThat(thirdReplay.adjustedBy()).isEqualTo(DEFAULT_ACTOR);
 
@@ -272,6 +266,16 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         assertThatThrownBy(operation::run)
             .isInstanceOf(ReversalIdempotencyPayloadConflictException.class)
             .hasMessage("Idempotency-Key already used with different reversal payload for transferId: " + transferId);
+    }
+
+    private void assertReplayInvariants(
+        InventoryTransferView replayedReversal,
+        UUID expectedTransferId,
+        UUID originalTransferId
+    ) {
+        assertThat(replayedReversal.transferId()).isEqualTo(expectedTransferId);
+        assertThat(replayedReversal.referenceType()).isEqualTo("TRANSFER_REVERSAL");
+        assertThat(replayedReversal.referenceId()).isEqualTo(originalTransferId.toString());
     }
 
 }
