@@ -3,8 +3,10 @@ package com.arcanaerp.platform.inventory.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
+import com.arcanaerp.platform.inventory.InventoryTransferView;
 import com.arcanaerp.platform.inventory.ReversalIdempotencyPayloadConflictException;
 import com.arcanaerp.platform.inventory.ReverseInventoryTransferCommand;
 import java.math.BigDecimal;
@@ -63,9 +65,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         assertThat(replayedReversal.referenceType()).isEqualTo("TRANSFER_REVERSAL");
         assertThat(replayedReversal.referenceId()).isEqualTo(originalTransfer.transferId().toString());
 
-        var reversals = inventoryAvailability.listReversals(originalTransfer.transferId(), new PageQuery(0, 10));
-        assertThat(reversals.totalItems()).isEqualTo(1);
-        assertThat(reversals.items().getFirst().transferId()).isEqualTo(firstReversal.transferId());
+        assertSingleReversalHistoryContains(originalTransfer.transferId(), firstReversal.transferId());
     }
 
     @Test
@@ -91,9 +91,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         assertThat(replayedReversal.referenceType()).isEqualTo("TRANSFER_REVERSAL");
         assertThat(replayedReversal.referenceId()).isEqualTo(originalTransfer.transferId().toString());
 
-        var reversals = inventoryAvailability.listReversals(originalTransfer.transferId(), new PageQuery(0, 10));
-        assertThat(reversals.totalItems()).isEqualTo(1);
-        assertThat(reversals.items().getFirst().transferId()).isEqualTo(firstReversal.transferId());
+        assertSingleReversalHistoryContains(originalTransfer.transferId(), firstReversal.transferId());
     }
 
     @Test
@@ -190,10 +188,8 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         assertThat(replayedReversal.transferId()).isEqualTo(firstReversal.transferId());
         assertThat(replayedReversal.reason()).isEqualTo(DEFAULT_REASON);
 
-        var reversals = inventoryAvailability.listReversals(originalTransfer.transferId(), new PageQuery(0, 10));
-        assertThat(reversals.totalItems()).isEqualTo(1);
-        assertThat(reversals.items().getFirst().transferId()).isEqualTo(firstReversal.transferId());
-        assertThat(reversals.items().getFirst().reason()).isEqualTo(DEFAULT_REASON);
+        var reversalHistory = assertSingleReversalHistoryContains(originalTransfer.transferId(), firstReversal.transferId());
+        assertThat(reversalHistory.reason()).isEqualTo(DEFAULT_REASON);
     }
 
     @Test
@@ -245,10 +241,8 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         assertThat(replayedReversal.referenceType()).isEqualTo("TRANSFER_REVERSAL");
         assertThat(replayedReversal.referenceId()).isEqualTo(originalTransfer.transferId().toString());
 
-        var reversals = inventoryAvailability.listReversals(originalTransfer.transferId(), new PageQuery(0, 10));
-        assertThat(reversals.totalItems()).isEqualTo(1);
-        assertThat(reversals.items().getFirst().transferId()).isEqualTo(firstReversal.transferId());
-        assertThat(reversals.items().getFirst().adjustedBy()).isEqualTo(DEFAULT_ACTOR);
+        var reversalHistory = assertSingleReversalHistoryContains(originalTransfer.transferId(), firstReversal.transferId());
+        assertThat(reversalHistory.adjustedBy()).isEqualTo(DEFAULT_ACTOR);
     }
 
     @Test
@@ -280,10 +274,8 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         assertThat(secondReplay.adjustedBy()).isEqualTo(DEFAULT_ACTOR);
         assertThat(thirdReplay.adjustedBy()).isEqualTo(DEFAULT_ACTOR);
 
-        var reversals = inventoryAvailability.listReversals(originalTransfer.transferId(), new PageQuery(0, 10));
-        assertThat(reversals.totalItems()).isEqualTo(1);
-        assertThat(reversals.items().getFirst().transferId()).isEqualTo(firstReversal.transferId());
-        assertThat(reversals.items().getFirst().adjustedBy()).isEqualTo(DEFAULT_ACTOR);
+        var reversalHistory = assertSingleReversalHistoryContains(originalTransfer.transferId(), firstReversal.transferId());
+        assertThat(reversalHistory.adjustedBy()).isEqualTo(DEFAULT_ACTOR);
     }
 
     private static ReverseInventoryTransferCommand reverseCommand(
@@ -301,6 +293,19 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         String idempotencyKey
     ) {
         return new ReverseInventoryTransferCommand(transferId, reason, adjustedBy, idempotencyKey);
+    }
+
+    private InventoryTransferView assertSingleReversalHistoryContains(
+        UUID originalTransferId,
+        UUID expectedReversalTransferId
+    ) {
+        PageResult<InventoryTransferView> reversals =
+            inventoryAvailability.listReversals(originalTransferId, new PageQuery(0, 10));
+        assertThat(reversals.totalItems()).isEqualTo(1);
+
+        InventoryTransferView reversal = reversals.items().getFirst();
+        assertThat(reversal.transferId()).isEqualTo(expectedReversalTransferId);
+        return reversal;
     }
 
 }
