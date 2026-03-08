@@ -91,12 +91,12 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
             reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, " reverse-svc-replay-8 ")
         );
 
-        assertThatThrownBy(() -> inventoryAvailability.reverseTransfer(
+        assertPayloadConflict(
+            originalTransfer.transferId(),
+            () -> inventoryAvailability.reverseTransfer(
                 reverseCommand(originalTransfer.transferId(), "Different reason", "reverse-svc-replay-8")
-            ))
-            .isInstanceOf(ReversalIdempotencyPayloadConflictException.class)
-            .hasMessage("Idempotency-Key already used with different reversal payload for transferId: "
-                + originalTransfer.transferId());
+            )
+        );
     }
 
     @Test
@@ -109,12 +109,12 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
             reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, idempotencyKey)
         );
 
-        assertThatThrownBy(() -> inventoryAvailability.reverseTransfer(
+        assertPayloadConflict(
+            originalTransfer.transferId(),
+            () -> inventoryAvailability.reverseTransfer(
                 reverseCommand(originalTransfer.transferId(), "Different reason", idempotencyKey)
-            ))
-            .isInstanceOf(ReversalIdempotencyPayloadConflictException.class)
-            .hasMessage("Idempotency-Key already used with different reversal payload for transferId: "
-                + originalTransfer.transferId());
+            )
+        );
     }
 
     @Test
@@ -127,12 +127,12 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
             reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, idempotencyKey)
         );
 
-        assertThatThrownBy(() -> inventoryAvailability.reverseTransfer(
+        assertPayloadConflict(
+            originalTransfer.transferId(),
+            () -> inventoryAvailability.reverseTransfer(
                 reverseCommand(originalTransfer.transferId(), "reversal posted", idempotencyKey)
-            ))
-            .isInstanceOf(ReversalIdempotencyPayloadConflictException.class)
-            .hasMessage("Idempotency-Key already used with different reversal payload for transferId: "
-                + originalTransfer.transferId());
+            )
+        );
     }
 
     @Test
@@ -166,12 +166,12 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
             reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, idempotencyKey)
         );
 
-        assertThatThrownBy(() -> inventoryAvailability.reverseTransfer(
+        assertPayloadConflict(
+            originalTransfer.transferId(),
+            () -> inventoryAvailability.reverseTransfer(
                 reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, "warehouse@arcanaerp.com", idempotencyKey)
-            ))
-            .isInstanceOf(ReversalIdempotencyPayloadConflictException.class)
-            .hasMessage("Idempotency-Key already used with different reversal payload for transferId: "
-                + originalTransfer.transferId());
+            )
+        );
     }
 
     @Test
@@ -266,6 +266,12 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
             quantity,
             referenceId
         );
+    }
+
+    private void assertPayloadConflict(UUID transferId, Runnable operation) {
+        assertThatThrownBy(operation::run)
+            .isInstanceOf(ReversalIdempotencyPayloadConflictException.class)
+            .hasMessage("Idempotency-Key already used with different reversal payload for transferId: " + transferId);
     }
 
 }
