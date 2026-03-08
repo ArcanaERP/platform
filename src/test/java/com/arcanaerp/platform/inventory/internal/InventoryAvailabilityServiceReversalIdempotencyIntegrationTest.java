@@ -251,6 +251,41 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         assertThat(reversals.items().getFirst().adjustedBy()).isEqualTo(DEFAULT_ACTOR);
     }
 
+    @Test
+    void canonicalizesAdjustedByAcrossCaseAndWhitespaceForSameIdempotencyKey() {
+        String sku = "ARC-SVC-IDEMP-9";
+        var originalTransfer = InventoryTransferReversalServiceTestFixture.createOriginalTransfer(
+            inventoryAvailability,
+            inventoryItemRepository,
+            sku,
+            new BigDecimal("2"),
+            "SO-IDEMP-9"
+        );
+
+        String idempotencyKey = "reverse-svc-replay-9";
+        var firstReversal = inventoryAvailability.reverseTransfer(
+            reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, "  Ops@ArcanaERP.com ", idempotencyKey)
+        );
+
+        var secondReplay = inventoryAvailability.reverseTransfer(
+            reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, "ops@arcanaerp.com", idempotencyKey)
+        );
+
+        var thirdReplay = inventoryAvailability.reverseTransfer(
+            reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, "OPS@ARCANAERP.COM", idempotencyKey)
+        );
+
+        assertThat(secondReplay.transferId()).isEqualTo(firstReversal.transferId());
+        assertThat(thirdReplay.transferId()).isEqualTo(firstReversal.transferId());
+        assertThat(secondReplay.adjustedBy()).isEqualTo(DEFAULT_ACTOR);
+        assertThat(thirdReplay.adjustedBy()).isEqualTo(DEFAULT_ACTOR);
+
+        var reversals = inventoryAvailability.listReversals(originalTransfer.transferId(), new PageQuery(0, 10));
+        assertThat(reversals.totalItems()).isEqualTo(1);
+        assertThat(reversals.items().getFirst().transferId()).isEqualTo(firstReversal.transferId());
+        assertThat(reversals.items().getFirst().adjustedBy()).isEqualTo(DEFAULT_ACTOR);
+    }
+
     private static ReverseInventoryTransferCommand reverseCommand(
         UUID transferId,
         String reason,
