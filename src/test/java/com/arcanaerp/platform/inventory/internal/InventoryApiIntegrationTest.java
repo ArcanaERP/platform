@@ -578,7 +578,7 @@ class InventoryApiIntegrationTest {
             reversalPayload(DEFAULT_REVERSAL_REASON)
         );
         UUID originalTransferId = reversalScenario.originalTransferId();
-        String secondReversalPayload = reversalPayload("reversal posted");
+        String secondReversalPayload = reversalPayloadLowercaseReason();
 
         expectIdempotencyPayloadConflict(
             InventoryManagementWebTestSupport.reverseTransfer(
@@ -596,7 +596,7 @@ class InventoryApiIntegrationTest {
     @Test
     void retriesReversalWithIdempotencyKeyWhenReasonOnlyDiffersByTrailingWhitespaceReturnsOriginalResponse() throws Exception {
         String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
-        String secondReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON + " ");
+        String secondReversalPayload = reversalPayloadWithTrailingWhitespaceReason();
         ReversalScenario reversalScenario = scenarioWithReversal(
             "arc-9222d",
             "reverse-9222d-a",
@@ -660,7 +660,7 @@ class InventoryApiIntegrationTest {
                 mockMvc,
                 reasonCaseTransferId,
                 "reverse-9222e-a",
-                reversalPayload("Reversal Posted")
+                reversalPayloadWithTitleCaseReason()
             ),
             reasonCaseTransferId
         );
@@ -1323,6 +1323,18 @@ class InventoryApiIntegrationTest {
 
     private static String reversalPayloadWithDifferentReason() {
         return reversalPayload(DEFAULT_REVERSAL_REASON + " with different reason");
+    }
+
+    private static String reversalPayloadLowercaseReason() {
+        return reversalPayload("reversal posted");
+    }
+
+    private static String reversalPayloadWithTrailingWhitespaceReason() {
+        return reversalPayload(DEFAULT_REVERSAL_REASON + " ");
+    }
+
+    private static String reversalPayloadWithTitleCaseReason() {
+        return reversalPayload("Reversal Posted");
     }
 
 }
