@@ -7,12 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -101,7 +97,10 @@ class InventoryIdempotencyTtlOverrideIntegrationTest {
             InventoryTransferReversalIdempotency.create(
                 originalTransferId,
                 "reverse-9225-ttl",
-                fingerprintForReversalRequest("Reversal posted", "ops@arcanaerp.com"),
+                InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(
+                    "Reversal posted",
+                    "ops@arcanaerp.com"
+                ),
                 PENDING_REVERSAL_TRANSFER_ID,
                 Instant.now().minus(Duration.ofHours(1))
             )
@@ -129,13 +128,4 @@ class InventoryIdempotencyTtlOverrideIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(0));
     }
 
-    private static String fingerprintForReversalRequest(String reason, String adjustedBy) {
-        String canonicalRequest = reason + "\n" + adjustedBy.toLowerCase();
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(canonicalRequest.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 algorithm not available", exception);
-        }
-    }
 }

@@ -11,11 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.arcanaerp.platform.testsupport.web.InventoryManagementWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.InventoryTransferReversalHistoryWebTestSupport;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -768,7 +764,10 @@ class InventoryApiIntegrationTest {
             InventoryTransferReversalIdempotency.create(
                 originalTransferId,
                 "reverse-9224-stale",
-                fingerprintForReversalRequest(DEFAULT_REVERSAL_REASON, DEFAULT_ACTOR),
+                InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(
+                    DEFAULT_REVERSAL_REASON,
+                    DEFAULT_ACTOR
+                ),
                 PENDING_REVERSAL_TRANSFER_ID,
                 Instant.parse("2025-12-01T00:00:00Z")
             )
@@ -1271,13 +1270,4 @@ class InventoryApiIntegrationTest {
         return InventoryManagementWebTestSupport.reversalPayload(reason, adjustedBy);
     }
 
-    private static String fingerprintForReversalRequest(String reason, String adjustedBy) {
-        String canonicalRequest = reason + "\n" + adjustedBy.toLowerCase();
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(canonicalRequest.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 algorithm not available", exception);
-        }
-    }
 }
