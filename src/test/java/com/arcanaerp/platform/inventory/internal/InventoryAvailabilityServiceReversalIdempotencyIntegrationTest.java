@@ -44,13 +44,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
     @Test
     void replaysExistingReversalForSameIdempotencyKeyAndPayload() {
         String sku = "ARC-SVC-IDEMP-1";
-        var originalTransfer = InventoryTransferReversalServiceTestFixture.createOriginalTransfer(
-            inventoryAvailability,
-            inventoryItemRepository,
-            sku,
-            new BigDecimal("3"),
-            "SO-IDEMP-1"
-        );
+        var originalTransfer = createOriginalTransfer(sku, new BigDecimal("3"), "SO-IDEMP-1");
 
         String idempotencyKey = "reverse-svc-replay-1";
         var firstReversal = inventoryAvailability.reverseTransfer(
@@ -71,13 +65,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
     @Test
     void replaysExistingReversalWhenIdempotencyKeyOnlyDiffersBySurroundingWhitespace() {
         String sku = "ARC-SVC-IDEMP-7";
-        var originalTransfer = InventoryTransferReversalServiceTestFixture.createOriginalTransfer(
-            inventoryAvailability,
-            inventoryItemRepository,
-            sku,
-            new BigDecimal("3"),
-            "SO-IDEMP-7"
-        );
+        var originalTransfer = createOriginalTransfer(sku, new BigDecimal("3"), "SO-IDEMP-7");
 
         var firstReversal = inventoryAvailability.reverseTransfer(
             reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, " reverse-svc-replay-7 ")
@@ -97,13 +85,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
     @Test
     void rejectsReversalReplayWhenPayloadDiffersForTrimEquivalentIdempotencyKey() {
         String sku = "ARC-SVC-IDEMP-8";
-        var originalTransfer = InventoryTransferReversalServiceTestFixture.createOriginalTransfer(
-            inventoryAvailability,
-            inventoryItemRepository,
-            sku,
-            new BigDecimal("2"),
-            "SO-IDEMP-8"
-        );
+        var originalTransfer = createOriginalTransfer(sku, new BigDecimal("2"), "SO-IDEMP-8");
 
         inventoryAvailability.reverseTransfer(
             reverseCommand(originalTransfer.transferId(), DEFAULT_REASON, " reverse-svc-replay-8 ")
@@ -120,13 +102,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
     @Test
     void rejectsReversalReplayWhenPayloadDiffersForSameIdempotencyKey() {
         String sku = "ARC-SVC-IDEMP-2";
-        var originalTransfer = InventoryTransferReversalServiceTestFixture.createOriginalTransfer(
-            inventoryAvailability,
-            inventoryItemRepository,
-            sku,
-            new BigDecimal("2"),
-            "SO-IDEMP-2"
-        );
+        var originalTransfer = createOriginalTransfer(sku, new BigDecimal("2"), "SO-IDEMP-2");
 
         String idempotencyKey = "reverse-svc-replay-2";
         inventoryAvailability.reverseTransfer(
@@ -144,13 +120,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
     @Test
     void rejectsReversalReplayWhenReasonOnlyDiffersByCaseForSameIdempotencyKey() {
         String sku = "ARC-SVC-IDEMP-5";
-        var originalTransfer = InventoryTransferReversalServiceTestFixture.createOriginalTransfer(
-            inventoryAvailability,
-            inventoryItemRepository,
-            sku,
-            new BigDecimal("2"),
-            "SO-IDEMP-5"
-        );
+        var originalTransfer = createOriginalTransfer(sku, new BigDecimal("2"), "SO-IDEMP-5");
 
         String idempotencyKey = "reverse-svc-replay-5";
         inventoryAvailability.reverseTransfer(
@@ -168,13 +138,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
     @Test
     void replaysReversalWhenReasonOnlyDiffersByTrailingWhitespaceForSameIdempotencyKey() {
         String sku = "ARC-SVC-IDEMP-6";
-        var originalTransfer = InventoryTransferReversalServiceTestFixture.createOriginalTransfer(
-            inventoryAvailability,
-            inventoryItemRepository,
-            sku,
-            new BigDecimal("2"),
-            "SO-IDEMP-6"
-        );
+        var originalTransfer = createOriginalTransfer(sku, new BigDecimal("2"), "SO-IDEMP-6");
 
         String idempotencyKey = "reverse-svc-replay-6";
         var firstReversal = inventoryAvailability.reverseTransfer(
@@ -195,13 +159,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
     @Test
     void rejectsReversalReplayWhenAdjustedByDiffersForSameIdempotencyKey() {
         String sku = "ARC-SVC-IDEMP-4";
-        var originalTransfer = InventoryTransferReversalServiceTestFixture.createOriginalTransfer(
-            inventoryAvailability,
-            inventoryItemRepository,
-            sku,
-            new BigDecimal("2"),
-            "SO-IDEMP-4"
-        );
+        var originalTransfer = createOriginalTransfer(sku, new BigDecimal("2"), "SO-IDEMP-4");
 
         String idempotencyKey = "reverse-svc-replay-4";
         inventoryAvailability.reverseTransfer(
@@ -219,13 +177,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
     @Test
     void replaysForSamePayloadWhenAdjustedByOnlyDiffersByCase() {
         String sku = "ARC-SVC-IDEMP-3";
-        var originalTransfer = InventoryTransferReversalServiceTestFixture.createOriginalTransfer(
-            inventoryAvailability,
-            inventoryItemRepository,
-            sku,
-            new BigDecimal("2"),
-            "SO-IDEMP-3"
-        );
+        var originalTransfer = createOriginalTransfer(sku, new BigDecimal("2"), "SO-IDEMP-3");
 
         String idempotencyKey = "reverse-svc-replay-3";
         var firstReversal = inventoryAvailability.reverseTransfer(
@@ -248,13 +200,7 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
     @Test
     void canonicalizesAdjustedByAcrossCaseAndWhitespaceForSameIdempotencyKey() {
         String sku = "ARC-SVC-IDEMP-9";
-        var originalTransfer = InventoryTransferReversalServiceTestFixture.createOriginalTransfer(
-            inventoryAvailability,
-            inventoryItemRepository,
-            sku,
-            new BigDecimal("2"),
-            "SO-IDEMP-9"
-        );
+        var originalTransfer = createOriginalTransfer(sku, new BigDecimal("2"), "SO-IDEMP-9");
 
         String idempotencyKey = "reverse-svc-replay-9";
         var firstReversal = inventoryAvailability.reverseTransfer(
@@ -306,6 +252,20 @@ class InventoryAvailabilityServiceReversalIdempotencyIntegrationTest {
         InventoryTransferView reversal = reversals.items().getFirst();
         assertThat(reversal.transferId()).isEqualTo(expectedReversalTransferId);
         return reversal;
+    }
+
+    private InventoryTransferView createOriginalTransfer(
+        String sku,
+        BigDecimal quantity,
+        String referenceId
+    ) {
+        return InventoryTransferReversalServiceTestFixture.createOriginalTransfer(
+            inventoryAvailability,
+            inventoryItemRepository,
+            sku,
+            quantity,
+            referenceId
+        );
     }
 
 }
