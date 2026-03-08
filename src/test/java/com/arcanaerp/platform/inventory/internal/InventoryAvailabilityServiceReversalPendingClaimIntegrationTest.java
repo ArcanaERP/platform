@@ -6,8 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.ReversalIdempotencyRaceConflictException;
-import com.arcanaerp.platform.inventory.ReverseInventoryTransferCommand;
-import com.arcanaerp.platform.inventory.TransferInventoryCommand;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -51,19 +49,12 @@ class InventoryAvailabilityServiceReversalPendingClaimIntegrationTest {
     @Test
     void keepsFreshPendingClaimInProcessingState() {
         String sku = "ARC-SVC-PENDING-1";
-        seedTransferItems(sku);
-
-        var originalTransfer = inventoryAvailability.transferInventory(
-            new TransferInventoryCommand(
-                sku,
-                "main",
-                "wh-east",
-                new BigDecimal("3"),
-                "Original transfer",
-                "ops@arcanaerp.com",
-                "order",
-                "SO-PENDING-1"
-            )
+        var originalTransfer = InventoryTransferReversalServiceTestFixture.createOriginalTransfer(
+            inventoryAvailability,
+            inventoryItemRepository,
+            sku,
+            new BigDecimal("3"),
+            "SO-PENDING-1"
         );
 
         String idempotencyKey = "reverse-pending-svc-1";
@@ -77,13 +68,12 @@ class InventoryAvailabilityServiceReversalPendingClaimIntegrationTest {
             )
         );
 
-        assertThatThrownBy(() -> inventoryAvailability.reverseTransfer(
-                new ReverseInventoryTransferCommand(
-                    originalTransfer.transferId(),
-                    "Reversal posted",
-                    "ops@arcanaerp.com",
-                    idempotencyKey
-                )
+        assertThatThrownBy(() -> InventoryTransferReversalServiceTestFixture.reverseTransfer(
+                inventoryAvailability,
+                originalTransfer.transferId(),
+                "Reversal posted",
+                "ops@arcanaerp.com",
+                idempotencyKey
             ))
             .isInstanceOf(ReversalIdempotencyRaceConflictException.class)
             .hasMessage("Idempotency-Key is already being processed for transferId: " + originalTransfer.transferId());
@@ -95,12 +85,6 @@ class InventoryAvailabilityServiceReversalPendingClaimIntegrationTest {
 
         var reversals = inventoryAvailability.listReversals(originalTransfer.transferId(), new PageQuery(0, 10));
         assertThat(reversals.totalItems()).isEqualTo(0);
-    }
-
-    private void seedTransferItems(String sku) {
-        Instant seededAt = Instant.parse("2026-03-04T00:00:00Z");
-        inventoryItemRepository.save(InventoryItem.create(sku, "main", new BigDecimal("20"), seededAt));
-        inventoryItemRepository.save(InventoryItem.create(sku, "wh-east", new BigDecimal("5"), seededAt));
     }
 
     private static String fingerprintForReversalRequest(String reason, String adjustedBy) {
