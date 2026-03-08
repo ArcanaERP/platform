@@ -549,9 +549,10 @@ class InventoryApiIntegrationTest {
 
     @Test
     void rejectsIdempotencyKeyReuseWithDifferentReversalPayload() throws Exception {
+        Arc9222Scenario scenario = arc9222Scenario("");
         ReversalScenario reversalScenario = scenarioWithReversal(
-            arc9222Sku(""),
-            reverse9222Key("-a"),
+            scenario.sku(),
+            scenario.key(),
             reversalPayload(DEFAULT_REVERSAL_REASON)
         );
         UUID originalTransferId = reversalScenario.originalTransferId();
@@ -561,7 +562,7 @@ class InventoryApiIntegrationTest {
             InventoryManagementWebTestSupport.reverseTransfer(
                 mockMvc,
                 originalTransferId,
-                reverse9222Key("-a"),
+                scenario.key(),
                 secondReversalPayload
             ),
             originalTransferId
@@ -572,9 +573,10 @@ class InventoryApiIntegrationTest {
 
     @Test
     void rejectsIdempotencyKeyReuseWhenReasonOnlyDiffersByCase() throws Exception {
+        Arc9222Scenario scenario = arc9222Scenario("c");
         ReversalScenario reversalScenario = scenarioWithReversal(
-            arc9222Sku("c"),
-            reverse9222Key("c-a"),
+            scenario.sku(),
+            scenario.key(),
             reversalPayload(DEFAULT_REVERSAL_REASON)
         );
         UUID originalTransferId = reversalScenario.originalTransferId();
@@ -584,7 +586,7 @@ class InventoryApiIntegrationTest {
             InventoryManagementWebTestSupport.reverseTransfer(
                 mockMvc,
                 originalTransferId,
-                reverse9222Key("c-a"),
+                scenario.key(),
                 secondReversalPayload
             ),
             originalTransferId
@@ -595,11 +597,12 @@ class InventoryApiIntegrationTest {
 
     @Test
     void retriesReversalWithIdempotencyKeyWhenReasonOnlyDiffersByTrailingWhitespaceReturnsOriginalResponse() throws Exception {
+        Arc9222Scenario scenario = arc9222Scenario("d");
         String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
         String secondReversalPayload = reversalPayloadWithTrailingWhitespaceReason();
         ReversalScenario reversalScenario = scenarioWithReversal(
-            arc9222Sku("d"),
-            reverse9222Key("d-a"),
+            scenario.sku(),
+            scenario.key(),
             firstReversalPayload,
             result -> result
                 .andExpect(status().isCreated())
@@ -610,7 +613,7 @@ class InventoryApiIntegrationTest {
 
         expectIdempotentReplay(
             originalTransferId,
-            reverse9222Key("d-a"),
+            scenario.key(),
             secondReversalPayload,
             reversalTransferId,
             result -> result.andExpect(jsonPath("$.reason").value(DEFAULT_REVERSAL_REASON)),
@@ -622,9 +625,10 @@ class InventoryApiIntegrationTest {
 
     @Test
     void rejectsIdempotencyKeyReuseWhenAdjustedByValueDiffers() throws Exception {
+        Arc9222Scenario scenario = arc9222Scenario("b");
         ReversalScenario reversalScenario = scenarioWithReversal(
-            arc9222Sku("b"),
-            reverse9222Key("b-a"),
+            scenario.sku(),
+            scenario.key(),
             reversalPayload(DEFAULT_REVERSAL_REASON)
         );
         UUID originalTransferId = reversalScenario.originalTransferId();
@@ -634,7 +638,7 @@ class InventoryApiIntegrationTest {
             InventoryManagementWebTestSupport.reverseTransfer(
                 mockMvc,
                 originalTransferId,
-                reverse9222Key("b-a"),
+                scenario.key(),
                 secondReversalPayload
             ),
             originalTransferId
@@ -645,9 +649,10 @@ class InventoryApiIntegrationTest {
 
     @Test
     void reasonCaseOnlyChangesConflictWhileAdjustedByCaseOnlyChangesReplay() throws Exception {
+        Arc9222Scenario reasonCaseScenarioDef = arc9222Scenario("e");
         ReversalScenario reasonCaseScenario = scenarioWithReversal(
-            arc9222Sku("e"),
-            reverse9222Key("e-a"),
+            reasonCaseScenarioDef.sku(),
+            reasonCaseScenarioDef.key(),
             reversalPayload(DEFAULT_REVERSAL_REASON)
         );
         UUID reasonCaseTransferId = reasonCaseScenario.originalTransferId();
@@ -656,16 +661,17 @@ class InventoryApiIntegrationTest {
             InventoryManagementWebTestSupport.reverseTransfer(
                 mockMvc,
                 reasonCaseTransferId,
-                reverse9222Key("e-a"),
+                reasonCaseScenarioDef.key(),
                 reversalPayloadWithTitleCaseReason()
             ),
             reasonCaseTransferId
         );
         expectSingleReversalHistory(reasonCaseTransferId);
 
+        Arc9222Scenario adjustedByCaseScenarioDef = arc9222Scenario("f");
         ReversalScenario adjustedByCaseScenario = scenarioWithReversal(
-            arc9222Sku("f"),
-            reverse9222Key("f-a"),
+            adjustedByCaseScenarioDef.sku(),
+            adjustedByCaseScenarioDef.key(),
             reversalPayloadWithMixedCaseActor()
         );
         UUID adjustedByCaseTransferId = adjustedByCaseScenario.originalTransferId();
@@ -673,7 +679,7 @@ class InventoryApiIntegrationTest {
 
         expectIdempotentReplay(
             adjustedByCaseTransferId,
-            reverse9222Key("f-a"),
+            adjustedByCaseScenarioDef.key(),
             reversalPayloadWithUppercaseActor(),
             adjustedByCaseReversalId,
             result -> result.andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR)),
@@ -1346,12 +1352,18 @@ class InventoryApiIntegrationTest {
         return reversalPayload(DEFAULT_REVERSAL_REASON, "Ops@ArcanaERP.com");
     }
 
-    private static String reverse9222Key(String suffix) {
-        return "reverse-9222" + suffix;
+    private static Arc9222Scenario arc9222Scenario(String suffix) {
+        return new Arc9222Scenario(suffix);
     }
 
-    private static String arc9222Sku(String suffix) {
-        return "arc-9222" + suffix;
+    private record Arc9222Scenario(String suffix) {
+        private String sku() {
+            return "arc-9222" + suffix;
+        }
+
+        private String key() {
+            return "reverse-9222" + (suffix.isEmpty() ? "-a" : suffix + "-a");
+        }
     }
 
 }
