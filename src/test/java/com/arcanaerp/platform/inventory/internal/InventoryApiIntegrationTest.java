@@ -550,7 +550,7 @@ class InventoryApiIntegrationTest {
     @Test
     void rejectsIdempotencyKeyReuseWithDifferentReversalPayload() throws Exception {
         ReversalScenario reversalScenario = scenarioWithReversal(
-            "arc-9222",
+            arc9222Sku(""),
             reverse9222Key("-a"),
             reversalPayload(DEFAULT_REVERSAL_REASON)
         );
@@ -573,7 +573,7 @@ class InventoryApiIntegrationTest {
     @Test
     void rejectsIdempotencyKeyReuseWhenReasonOnlyDiffersByCase() throws Exception {
         ReversalScenario reversalScenario = scenarioWithReversal(
-            "arc-9222c",
+            arc9222Sku("c"),
             reverse9222Key("c-a"),
             reversalPayload(DEFAULT_REVERSAL_REASON)
         );
@@ -598,7 +598,7 @@ class InventoryApiIntegrationTest {
         String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
         String secondReversalPayload = reversalPayloadWithTrailingWhitespaceReason();
         ReversalScenario reversalScenario = scenarioWithReversal(
-            "arc-9222d",
+            arc9222Sku("d"),
             reverse9222Key("d-a"),
             firstReversalPayload,
             result -> result
@@ -623,7 +623,7 @@ class InventoryApiIntegrationTest {
     @Test
     void rejectsIdempotencyKeyReuseWhenAdjustedByValueDiffers() throws Exception {
         ReversalScenario reversalScenario = scenarioWithReversal(
-            "arc-9222b",
+            arc9222Sku("b"),
             reverse9222Key("b-a"),
             reversalPayload(DEFAULT_REVERSAL_REASON)
         );
@@ -646,7 +646,7 @@ class InventoryApiIntegrationTest {
     @Test
     void reasonCaseOnlyChangesConflictWhileAdjustedByCaseOnlyChangesReplay() throws Exception {
         ReversalScenario reasonCaseScenario = scenarioWithReversal(
-            "arc-9222e",
+            arc9222Sku("e"),
             reverse9222Key("e-a"),
             reversalPayload(DEFAULT_REVERSAL_REASON)
         );
@@ -664,7 +664,7 @@ class InventoryApiIntegrationTest {
         expectSingleReversalHistory(reasonCaseTransferId);
 
         ReversalScenario adjustedByCaseScenario = scenarioWithReversal(
-            "arc-9222f",
+            arc9222Sku("f"),
             reverse9222Key("f-a"),
             reversalPayloadWithMixedCaseActor()
         );
@@ -1348,6 +1348,10 @@ class InventoryApiIntegrationTest {
 
     private static String reverse9222Key(String suffix) {
         return "reverse-9222" + suffix;
+    }
+
+    private static String arc9222Sku(String suffix) {
+        return "arc-9222" + suffix;
     }
 
 }
