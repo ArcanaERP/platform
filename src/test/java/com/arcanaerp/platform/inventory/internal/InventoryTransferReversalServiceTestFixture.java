@@ -53,10 +53,6 @@ final class InventoryTransferReversalServiceTestFixture {
         );
     }
 
-    static String fingerprintForReversalRequest(String reason, String adjustedBy) {
-        return InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(reason, adjustedBy);
-    }
-
     private static void seedTransferItems(
         InventoryItemRepository inventoryItemRepository,
         String sku

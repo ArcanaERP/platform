@@ -56,7 +56,7 @@ class InventoryAvailabilityServiceReversalStaleClaimIntegrationTest {
             InventoryTransferReversalIdempotency.create(
                 originalTransfer.transferId(),
                 idempotencyKey,
-                InventoryTransferReversalServiceTestFixture.fingerprintForReversalRequest(
+                InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(
                     "Reversal posted",
                     "ops@arcanaerp.com"
                 ),
@@ -111,7 +111,7 @@ class InventoryAvailabilityServiceReversalStaleClaimIntegrationTest {
             InventoryTransferReversalIdempotency.create(
                 originalTransfer.transferId(),
                 idempotencyKey,
-                InventoryTransferReversalServiceTestFixture.fingerprintForReversalRequest(
+                InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(
                     "Reversal posted",
                     "ops@arcanaerp.com"
                 ),
