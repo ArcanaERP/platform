@@ -551,7 +551,7 @@ class InventoryApiIntegrationTest {
     void rejectsIdempotencyKeyReuseWithDifferentReversalPayload() throws Exception {
         ReversalScenario reversalScenario = scenarioWithReversal(
             "arc-9222",
-            "reverse-9222-a",
+            reverse9222Key("-a"),
             reversalPayload(DEFAULT_REVERSAL_REASON)
         );
         UUID originalTransferId = reversalScenario.originalTransferId();
@@ -561,7 +561,7 @@ class InventoryApiIntegrationTest {
             InventoryManagementWebTestSupport.reverseTransfer(
                 mockMvc,
                 originalTransferId,
-                "reverse-9222-a",
+                reverse9222Key("-a"),
                 secondReversalPayload
             ),
             originalTransferId
@@ -574,7 +574,7 @@ class InventoryApiIntegrationTest {
     void rejectsIdempotencyKeyReuseWhenReasonOnlyDiffersByCase() throws Exception {
         ReversalScenario reversalScenario = scenarioWithReversal(
             "arc-9222c",
-            "reverse-9222c-a",
+            reverse9222Key("c-a"),
             reversalPayload(DEFAULT_REVERSAL_REASON)
         );
         UUID originalTransferId = reversalScenario.originalTransferId();
@@ -584,7 +584,7 @@ class InventoryApiIntegrationTest {
             InventoryManagementWebTestSupport.reverseTransfer(
                 mockMvc,
                 originalTransferId,
-                "reverse-9222c-a",
+                reverse9222Key("c-a"),
                 secondReversalPayload
             ),
             originalTransferId
@@ -599,7 +599,7 @@ class InventoryApiIntegrationTest {
         String secondReversalPayload = reversalPayloadWithTrailingWhitespaceReason();
         ReversalScenario reversalScenario = scenarioWithReversal(
             "arc-9222d",
-            "reverse-9222d-a",
+            reverse9222Key("d-a"),
             firstReversalPayload,
             result -> result
                 .andExpect(status().isCreated())
@@ -610,7 +610,7 @@ class InventoryApiIntegrationTest {
 
         expectIdempotentReplay(
             originalTransferId,
-            "reverse-9222d-a",
+            reverse9222Key("d-a"),
             secondReversalPayload,
             reversalTransferId,
             result -> result.andExpect(jsonPath("$.reason").value(DEFAULT_REVERSAL_REASON)),
@@ -624,7 +624,7 @@ class InventoryApiIntegrationTest {
     void rejectsIdempotencyKeyReuseWhenAdjustedByValueDiffers() throws Exception {
         ReversalScenario reversalScenario = scenarioWithReversal(
             "arc-9222b",
-            "reverse-9222b-a",
+            reverse9222Key("b-a"),
             reversalPayload(DEFAULT_REVERSAL_REASON)
         );
         UUID originalTransferId = reversalScenario.originalTransferId();
@@ -634,7 +634,7 @@ class InventoryApiIntegrationTest {
             InventoryManagementWebTestSupport.reverseTransfer(
                 mockMvc,
                 originalTransferId,
-                "reverse-9222b-a",
+                reverse9222Key("b-a"),
                 secondReversalPayload
             ),
             originalTransferId
@@ -647,7 +647,7 @@ class InventoryApiIntegrationTest {
     void reasonCaseOnlyChangesConflictWhileAdjustedByCaseOnlyChangesReplay() throws Exception {
         ReversalScenario reasonCaseScenario = scenarioWithReversal(
             "arc-9222e",
-            "reverse-9222e-a",
+            reverse9222Key("e-a"),
             reversalPayload(DEFAULT_REVERSAL_REASON)
         );
         UUID reasonCaseTransferId = reasonCaseScenario.originalTransferId();
@@ -656,7 +656,7 @@ class InventoryApiIntegrationTest {
             InventoryManagementWebTestSupport.reverseTransfer(
                 mockMvc,
                 reasonCaseTransferId,
-                "reverse-9222e-a",
+                reverse9222Key("e-a"),
                 reversalPayloadWithTitleCaseReason()
             ),
             reasonCaseTransferId
@@ -665,7 +665,7 @@ class InventoryApiIntegrationTest {
 
         ReversalScenario adjustedByCaseScenario = scenarioWithReversal(
             "arc-9222f",
-            "reverse-9222f-a",
+            reverse9222Key("f-a"),
             reversalPayloadWithMixedCaseActor()
         );
         UUID adjustedByCaseTransferId = adjustedByCaseScenario.originalTransferId();
@@ -673,7 +673,7 @@ class InventoryApiIntegrationTest {
 
         expectIdempotentReplay(
             adjustedByCaseTransferId,
-            "reverse-9222f-a",
+            reverse9222Key("f-a"),
             reversalPayloadWithUppercaseActor(),
             adjustedByCaseReversalId,
             result -> result.andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR)),
@@ -1344,6 +1344,10 @@ class InventoryApiIntegrationTest {
 
     private static String reversalPayloadWithMixedCaseActor() {
         return reversalPayload(DEFAULT_REVERSAL_REASON, "Ops@ArcanaERP.com");
+    }
+
+    private static String reverse9222Key(String suffix) {
+        return "reverse-9222" + suffix;
     }
 
 }
