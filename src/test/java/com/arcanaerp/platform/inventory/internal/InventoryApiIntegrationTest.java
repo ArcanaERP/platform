@@ -532,10 +532,7 @@ class InventoryApiIntegrationTest {
             reversalPayload(DEFAULT_REVERSAL_REASON)
         );
         UUID originalTransferId = reversalScenario.originalTransferId();
-        String secondReversalPayload = reversalPayload(
-            DEFAULT_REVERSAL_REASON + " with different reason",
-            DEFAULT_ACTOR
-        );
+        String secondReversalPayload = reversalPayloadWithDifferentReason();
 
         expectIdempotencyPayloadConflict(
             InventoryManagementWebTestSupport.reverseTransfer(
@@ -558,10 +555,7 @@ class InventoryApiIntegrationTest {
             reversalPayload(DEFAULT_REVERSAL_REASON)
         );
         UUID originalTransferId = reversalScenario.originalTransferId();
-        String secondReversalPayload = reversalPayload(
-            DEFAULT_REVERSAL_REASON + " with different reason",
-            DEFAULT_ACTOR
-        );
+        String secondReversalPayload = reversalPayloadWithDifferentReason();
 
         expectIdempotencyPayloadConflict(
             InventoryManagementWebTestSupport.reverseTransfer(
@@ -1325,6 +1319,10 @@ class InventoryApiIntegrationTest {
 
     private static String reversalPayload(String reason, String adjustedBy) {
         return InventoryManagementWebTestSupport.reversalPayload(reason, adjustedBy);
+    }
+
+    private static String reversalPayloadWithDifferentReason() {
+        return reversalPayload(DEFAULT_REVERSAL_REASON + " with different reason");
     }
 
 }
