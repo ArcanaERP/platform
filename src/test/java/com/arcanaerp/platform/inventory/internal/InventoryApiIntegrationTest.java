@@ -550,11 +550,7 @@ class InventoryApiIntegrationTest {
     @Test
     void rejectsIdempotencyKeyReuseWithDifferentReversalPayload() throws Exception {
         Arc9222Scenario scenario = arc9222Scenario("");
-        ReversalScenario reversalScenario = scenarioWithReversal(
-            scenario.sku(),
-            scenario.key(),
-            reversalPayload(DEFAULT_REVERSAL_REASON)
-        );
+        ReversalScenario reversalScenario = arc9222ScenarioWithReversal(scenario, reversalPayload(DEFAULT_REVERSAL_REASON));
         UUID originalTransferId = reversalScenario.originalTransferId();
         String secondReversalPayload = reversalPayloadWithDifferentReason();
 
@@ -574,11 +570,7 @@ class InventoryApiIntegrationTest {
     @Test
     void rejectsIdempotencyKeyReuseWhenReasonOnlyDiffersByCase() throws Exception {
         Arc9222Scenario scenario = arc9222Scenario("c");
-        ReversalScenario reversalScenario = scenarioWithReversal(
-            scenario.sku(),
-            scenario.key(),
-            reversalPayload(DEFAULT_REVERSAL_REASON)
-        );
+        ReversalScenario reversalScenario = arc9222ScenarioWithReversal(scenario, reversalPayload(DEFAULT_REVERSAL_REASON));
         UUID originalTransferId = reversalScenario.originalTransferId();
         String secondReversalPayload = reversalPayloadLowercaseReason();
 
@@ -600,9 +592,8 @@ class InventoryApiIntegrationTest {
         Arc9222Scenario scenario = arc9222Scenario("d");
         String firstReversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
         String secondReversalPayload = reversalPayloadWithTrailingWhitespaceReason();
-        ReversalScenario reversalScenario = scenarioWithReversal(
-            scenario.sku(),
-            scenario.key(),
+        ReversalScenario reversalScenario = arc9222ScenarioWithReversal(
+            scenario,
             firstReversalPayload,
             result -> result
                 .andExpect(status().isCreated())
@@ -626,11 +617,7 @@ class InventoryApiIntegrationTest {
     @Test
     void rejectsIdempotencyKeyReuseWhenAdjustedByValueDiffers() throws Exception {
         Arc9222Scenario scenario = arc9222Scenario("b");
-        ReversalScenario reversalScenario = scenarioWithReversal(
-            scenario.sku(),
-            scenario.key(),
-            reversalPayload(DEFAULT_REVERSAL_REASON)
-        );
+        ReversalScenario reversalScenario = arc9222ScenarioWithReversal(scenario, reversalPayload(DEFAULT_REVERSAL_REASON));
         UUID originalTransferId = reversalScenario.originalTransferId();
         String secondReversalPayload = reversalPayloadWithWarehouseActor();
 
@@ -650,9 +637,8 @@ class InventoryApiIntegrationTest {
     @Test
     void reasonCaseOnlyChangesConflictWhileAdjustedByCaseOnlyChangesReplay() throws Exception {
         Arc9222Scenario reasonCaseScenarioDef = arc9222Scenario("e");
-        ReversalScenario reasonCaseScenario = scenarioWithReversal(
-            reasonCaseScenarioDef.sku(),
-            reasonCaseScenarioDef.key(),
+        ReversalScenario reasonCaseScenario = arc9222ScenarioWithReversal(
+            reasonCaseScenarioDef,
             reversalPayload(DEFAULT_REVERSAL_REASON)
         );
         UUID reasonCaseTransferId = reasonCaseScenario.originalTransferId();
@@ -669,9 +655,8 @@ class InventoryApiIntegrationTest {
         expectSingleReversalHistory(reasonCaseTransferId);
 
         Arc9222Scenario adjustedByCaseScenarioDef = arc9222Scenario("f");
-        ReversalScenario adjustedByCaseScenario = scenarioWithReversal(
-            adjustedByCaseScenarioDef.sku(),
-            adjustedByCaseScenarioDef.key(),
+        ReversalScenario adjustedByCaseScenario = arc9222ScenarioWithReversal(
+            adjustedByCaseScenarioDef,
             reversalPayloadWithMixedCaseActor()
         );
         UUID adjustedByCaseTransferId = adjustedByCaseScenario.originalTransferId();
@@ -1156,6 +1141,21 @@ class InventoryApiIntegrationTest {
             reversalPayload,
             result -> result.andExpect(status().isCreated())
         );
+    }
+
+    private ReversalScenario arc9222ScenarioWithReversal(
+        Arc9222Scenario scenario,
+        String reversalPayload
+    ) throws Exception {
+        return scenarioWithReversal(scenario.sku(), scenario.key(), reversalPayload);
+    }
+
+    private ReversalScenario arc9222ScenarioWithReversal(
+        Arc9222Scenario scenario,
+        String reversalPayload,
+        ReversalResponseExpectation expectation
+    ) throws Exception {
+        return scenarioWithReversal(scenario.sku(), scenario.key(), reversalPayload, expectation);
     }
 
     private ReversalScenario scenarioWithReversal(
