@@ -43,6 +43,7 @@ class InventoryApiIntegrationTest {
     private static final String DEFAULT_ACTOR = InventoryReversalTestConstants.REVERSAL_ACTOR;
     private static final String DEFAULT_REVERSAL_REASON = InventoryReversalTestConstants.REVERSAL_REASON;
     private static final Instant SEED_INSTANT = Instant.parse("2026-03-01T00:00:00Z");
+    private static final Instant STALE_PENDING_CLAIM_AT = Instant.parse("2025-12-01T00:00:00Z");
     private static final BigDecimal DEFAULT_MAIN_ON_HAND = new BigDecimal("10");
     private static final BigDecimal DEFAULT_EAST_ON_HAND = new BigDecimal("4");
     private static final BigDecimal TRANSFER_BY_ID_MAIN_ON_HAND = new BigDecimal("11");
@@ -733,7 +734,7 @@ class InventoryApiIntegrationTest {
                     DEFAULT_ACTOR
                 ),
                 PENDING_REVERSAL_TRANSFER_ID,
-                Instant.parse("2025-12-01T00:00:00Z")
+                STALE_PENDING_CLAIM_AT
             )
         );
 
@@ -755,6 +756,49 @@ class InventoryApiIntegrationTest {
         assertThat(idempotency.getReversalTransferId()).isNotEqualTo(PENDING_REVERSAL_TRANSFER_ID);
 
         expectSingleReversalHistory(originalTransferId);
+    }
+
+    @Test
+    void reclaimsStalePendingClaimAndCreatesReversalWhenMissing() throws Exception {
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9224a");
+        UUID originalTransferId = scenario.originalTransferId();
+        String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
+        String staleIdempotencyKey = "reverse-9224a-stale";
+
+        reversalIdempotencyRepository.saveAndFlush(
+            InventoryTransferReversalIdempotency.create(
+                originalTransferId,
+                staleIdempotencyKey,
+                InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(
+                    DEFAULT_REVERSAL_REASON,
+                    DEFAULT_ACTOR
+                ),
+                PENDING_REVERSAL_TRANSFER_ID,
+                STALE_PENDING_CLAIM_AT
+            )
+        );
+
+        InventoryManagementWebTestSupport.reverseTransfer(
+            mockMvc,
+            originalTransferId,
+            staleIdempotencyKey,
+            reversalPayload
+        )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
+            .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()));
+
+        UUID createdReversalTransferId = latestReversalTransferId(scenario);
+        InventoryTransferReversalIdempotency idempotency = reversalIdempotencyRepository
+            .findByTransferIdAndIdempotencyKey(originalTransferId, staleIdempotencyKey)
+            .orElseThrow();
+        assertThat(idempotency.getReversalTransferId()).isEqualTo(createdReversalTransferId);
+        assertThat(idempotency.getReversalTransferId()).isNotEqualTo(PENDING_REVERSAL_TRANSFER_ID);
+
+        expectSingleReversalHistory(
+            originalTransferId,
+            result -> result.andExpect(jsonPath("$.items[0].transferId").value(createdReversalTransferId.toString()))
+        );
     }
 
     @Test
