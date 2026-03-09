@@ -802,6 +802,50 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void reclaimsStalePendingClaimWithTrimEquivalentIdempotencyKeyAndCreatesReversalWhenMissing() throws Exception {
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9224b");
+        UUID originalTransferId = scenario.originalTransferId();
+        String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
+        String seededStaleIdempotencyKey = " reverse-9224b-stale ";
+        String replayIdempotencyKey = "reverse-9224b-stale";
+
+        reversalIdempotencyRepository.saveAndFlush(
+            InventoryTransferReversalIdempotency.create(
+                originalTransferId,
+                seededStaleIdempotencyKey,
+                InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(
+                    DEFAULT_REVERSAL_REASON,
+                    DEFAULT_ACTOR
+                ),
+                PENDING_REVERSAL_TRANSFER_ID,
+                STALE_PENDING_CLAIM_AT
+            )
+        );
+
+        InventoryManagementWebTestSupport.reverseTransfer(
+            mockMvc,
+            originalTransferId,
+            replayIdempotencyKey,
+            reversalPayload
+        )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
+            .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()));
+
+        UUID createdReversalTransferId = latestReversalTransferId(scenario);
+        InventoryTransferReversalIdempotency idempotency = reversalIdempotencyRepository
+            .findByTransferIdAndIdempotencyKey(originalTransferId, replayIdempotencyKey)
+            .orElseThrow();
+        assertThat(idempotency.getReversalTransferId()).isEqualTo(createdReversalTransferId);
+        assertThat(idempotency.getReversalTransferId()).isNotEqualTo(PENDING_REVERSAL_TRANSFER_ID);
+
+        expectSingleReversalHistory(
+            originalTransferId,
+            result -> result.andExpect(jsonPath("$.items[0].transferId").value(createdReversalTransferId.toString()))
+        );
+    }
+
+    @Test
     void listsReversalHistoryForTransferId() throws Exception {
         UUID originalTransferId = createLegacyTransferScenarioTransferId("arc-9217");
         String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
