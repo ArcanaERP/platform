@@ -888,6 +888,37 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void rejectsTrimEquivalentStalePendingClaimReplayWhenPayloadFingerprintDiffersAndKeepsPendingClaimUnchanged()
+        throws Exception {
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9224e");
+        UUID originalTransferId = scenario.originalTransferId();
+        String seededStaleIdempotencyKey = " reverse-9224e-stale ";
+        String replayIdempotencyKey = "reverse-9224e-stale";
+        String conflictingPayload = reversalPayloadWithDifferentReason();
+
+        seedStalePendingClaim(originalTransferId, seededStaleIdempotencyKey);
+
+        expectIdempotencyPayloadConflict(
+            InventoryManagementWebTestSupport.reverseTransfer(
+                mockMvc,
+                originalTransferId,
+                replayIdempotencyKey,
+                conflictingPayload
+            ),
+            originalTransferId
+        );
+
+        InventoryTransferReversalIdempotency idempotency = reversalIdempotencyRepository
+            .findByTransferIdAndIdempotencyKey(originalTransferId, replayIdempotencyKey)
+            .orElseThrow();
+        assertThat(idempotency.getReversalTransferId()).isEqualTo(PENDING_REVERSAL_TRANSFER_ID);
+
+        mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequestDefault(originalTransferId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(0));
+    }
+
+    @Test
     void listsReversalHistoryForTransferId() throws Exception {
         UUID originalTransferId = createLegacyTransferScenarioTransferId("arc-9217");
         String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
