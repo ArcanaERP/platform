@@ -554,15 +554,7 @@ class InventoryApiIntegrationTest {
         UUID originalTransferId = reversalScenario.originalTransferId();
         String secondReversalPayload = reversalPayloadWithDifferentReason();
 
-        expectIdempotencyPayloadConflict(
-            InventoryManagementWebTestSupport.reverseTransfer(
-                mockMvc,
-                originalTransferId,
-                scenario.key(),
-                secondReversalPayload
-            ),
-            originalTransferId
-        );
+        expectIdempotencyPayloadConflictForScenario(scenario, originalTransferId, secondReversalPayload);
 
         expectSingleReversalHistory(originalTransferId);
     }
@@ -574,15 +566,7 @@ class InventoryApiIntegrationTest {
         UUID originalTransferId = reversalScenario.originalTransferId();
         String secondReversalPayload = reversalPayloadLowercaseReason();
 
-        expectIdempotencyPayloadConflict(
-            InventoryManagementWebTestSupport.reverseTransfer(
-                mockMvc,
-                originalTransferId,
-                scenario.key(),
-                secondReversalPayload
-            ),
-            originalTransferId
-        );
+        expectIdempotencyPayloadConflictForScenario(scenario, originalTransferId, secondReversalPayload);
 
         expectSingleReversalHistory(originalTransferId);
     }
@@ -621,15 +605,7 @@ class InventoryApiIntegrationTest {
         UUID originalTransferId = reversalScenario.originalTransferId();
         String secondReversalPayload = reversalPayloadWithWarehouseActor();
 
-        expectIdempotencyPayloadConflict(
-            InventoryManagementWebTestSupport.reverseTransfer(
-                mockMvc,
-                originalTransferId,
-                scenario.key(),
-                secondReversalPayload
-            ),
-            originalTransferId
-        );
+        expectIdempotencyPayloadConflictForScenario(scenario, originalTransferId, secondReversalPayload);
 
         expectSingleReversalHistory(originalTransferId);
     }
@@ -643,14 +619,10 @@ class InventoryApiIntegrationTest {
         );
         UUID reasonCaseTransferId = reasonCaseScenario.originalTransferId();
 
-        expectIdempotencyPayloadConflict(
-            InventoryManagementWebTestSupport.reverseTransfer(
-                mockMvc,
-                reasonCaseTransferId,
-                reasonCaseScenarioDef.key(),
-                reversalPayloadWithTitleCaseReason()
-            ),
-            reasonCaseTransferId
+        expectIdempotencyPayloadConflictForScenario(
+            reasonCaseScenarioDef,
+            reasonCaseTransferId,
+            reversalPayloadWithTitleCaseReason()
         );
         expectSingleReversalHistory(reasonCaseTransferId);
 
@@ -1156,6 +1128,22 @@ class InventoryApiIntegrationTest {
         ReversalResponseExpectation expectation
     ) throws Exception {
         return scenarioWithReversal(scenario.sku(), scenario.key(), reversalPayload, expectation);
+    }
+
+    private void expectIdempotencyPayloadConflictForScenario(
+        Arc9222Scenario scenario,
+        UUID originalTransferId,
+        String reversalPayload
+    ) throws Exception {
+        expectIdempotencyPayloadConflict(
+            InventoryManagementWebTestSupport.reverseTransfer(
+                mockMvc,
+                originalTransferId,
+                scenario.key(),
+                reversalPayload
+            ),
+            originalTransferId
+        );
     }
 
     private ReversalScenario scenarioWithReversal(
