@@ -866,25 +866,7 @@ class InventoryApiIntegrationTest {
         String conflictingPayload = reversalPayloadWithDifferentReason();
 
         seedStalePendingClaim(originalTransferId, staleIdempotencyKey);
-
-        expectIdempotencyPayloadConflict(
-            InventoryManagementWebTestSupport.reverseTransfer(
-                mockMvc,
-                originalTransferId,
-                staleIdempotencyKey,
-                conflictingPayload
-            ),
-            originalTransferId
-        );
-
-        InventoryTransferReversalIdempotency idempotency = reversalIdempotencyRepository
-            .findByTransferIdAndIdempotencyKey(originalTransferId, staleIdempotencyKey)
-            .orElseThrow();
-        assertThat(idempotency.getReversalTransferId()).isEqualTo(PENDING_REVERSAL_TRANSFER_ID);
-
-        mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequestDefault(originalTransferId))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.totalItems").value(0));
+        expectStaleConflictWithoutReversalSideEffects(originalTransferId, staleIdempotencyKey, conflictingPayload);
     }
 
     @Test
@@ -897,25 +879,7 @@ class InventoryApiIntegrationTest {
         String conflictingPayload = reversalPayloadWithDifferentReason();
 
         seedStalePendingClaim(originalTransferId, seededStaleIdempotencyKey);
-
-        expectIdempotencyPayloadConflict(
-            InventoryManagementWebTestSupport.reverseTransfer(
-                mockMvc,
-                originalTransferId,
-                replayIdempotencyKey,
-                conflictingPayload
-            ),
-            originalTransferId
-        );
-
-        InventoryTransferReversalIdempotency idempotency = reversalIdempotencyRepository
-            .findByTransferIdAndIdempotencyKey(originalTransferId, replayIdempotencyKey)
-            .orElseThrow();
-        assertThat(idempotency.getReversalTransferId()).isEqualTo(PENDING_REVERSAL_TRANSFER_ID);
-
-        mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequestDefault(originalTransferId))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.totalItems").value(0));
+        expectStaleConflictWithoutReversalSideEffects(originalTransferId, replayIdempotencyKey, conflictingPayload);
     }
 
     @Test
@@ -1447,6 +1411,31 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1));
         expectation.verify(result);
+    }
+
+    private void expectStaleConflictWithoutReversalSideEffects(
+        UUID originalTransferId,
+        String replayIdempotencyKey,
+        String replayPayload
+    ) throws Exception {
+        expectIdempotencyPayloadConflict(
+            InventoryManagementWebTestSupport.reverseTransfer(
+                mockMvc,
+                originalTransferId,
+                replayIdempotencyKey,
+                replayPayload
+            ),
+            originalTransferId
+        );
+
+        InventoryTransferReversalIdempotency idempotency = reversalIdempotencyRepository
+            .findByTransferIdAndIdempotencyKey(originalTransferId, replayIdempotencyKey)
+            .orElseThrow();
+        assertThat(idempotency.getReversalTransferId()).isEqualTo(PENDING_REVERSAL_TRANSFER_ID);
+
+        mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequestDefault(originalTransferId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(0));
     }
 
     private void seedStalePendingClaim(UUID originalTransferId, String idempotencyKey) {
