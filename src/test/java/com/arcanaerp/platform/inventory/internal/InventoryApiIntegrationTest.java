@@ -725,18 +725,7 @@ class InventoryApiIntegrationTest {
             .orElseThrow()
             .getTransferId();
 
-        reversalIdempotencyRepository.saveAndFlush(
-            InventoryTransferReversalIdempotency.create(
-                originalTransferId,
-                "reverse-9224-stale",
-                InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(
-                    DEFAULT_REVERSAL_REASON,
-                    DEFAULT_ACTOR
-                ),
-                PENDING_REVERSAL_TRANSFER_ID,
-                STALE_PENDING_CLAIM_AT
-            )
-        );
+        seedStalePendingClaim(originalTransferId, "reverse-9224-stale");
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -782,18 +771,7 @@ class InventoryApiIntegrationTest {
             .orElseThrow()
             .getTransferId();
 
-        reversalIdempotencyRepository.saveAndFlush(
-            InventoryTransferReversalIdempotency.create(
-                originalTransferId,
-                seededStaleIdempotencyKey,
-                InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(
-                    DEFAULT_REVERSAL_REASON,
-                    DEFAULT_ACTOR
-                ),
-                PENDING_REVERSAL_TRANSFER_ID,
-                STALE_PENDING_CLAIM_AT
-            )
-        );
+        seedStalePendingClaim(originalTransferId, seededStaleIdempotencyKey);
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -822,18 +800,7 @@ class InventoryApiIntegrationTest {
         String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
         String staleIdempotencyKey = "reverse-9224a-stale";
 
-        reversalIdempotencyRepository.saveAndFlush(
-            InventoryTransferReversalIdempotency.create(
-                originalTransferId,
-                staleIdempotencyKey,
-                InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(
-                    DEFAULT_REVERSAL_REASON,
-                    DEFAULT_ACTOR
-                ),
-                PENDING_REVERSAL_TRANSFER_ID,
-                STALE_PENDING_CLAIM_AT
-            )
-        );
+        seedStalePendingClaim(originalTransferId, staleIdempotencyKey);
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -866,18 +833,7 @@ class InventoryApiIntegrationTest {
         String seededStaleIdempotencyKey = " reverse-9224b-stale ";
         String replayIdempotencyKey = "reverse-9224b-stale";
 
-        reversalIdempotencyRepository.saveAndFlush(
-            InventoryTransferReversalIdempotency.create(
-                originalTransferId,
-                seededStaleIdempotencyKey,
-                InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(
-                    DEFAULT_REVERSAL_REASON,
-                    DEFAULT_ACTOR
-                ),
-                PENDING_REVERSAL_TRANSFER_ID,
-                STALE_PENDING_CLAIM_AT
-            )
-        );
+        seedStalePendingClaim(originalTransferId, seededStaleIdempotencyKey);
 
         InventoryManagementWebTestSupport.reverseTransfer(
             mockMvc,
@@ -1431,6 +1387,21 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1));
         expectation.verify(result);
+    }
+
+    private void seedStalePendingClaim(UUID originalTransferId, String idempotencyKey) {
+        reversalIdempotencyRepository.saveAndFlush(
+            InventoryTransferReversalIdempotency.create(
+                originalTransferId,
+                idempotencyKey,
+                InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(
+                    DEFAULT_REVERSAL_REASON,
+                    DEFAULT_ACTOR
+                ),
+                PENDING_REVERSAL_TRANSFER_ID,
+                STALE_PENDING_CLAIM_AT
+            )
+        );
     }
 
     private record IdempotencyScenario(String sku, UUID originalTransferId) {}
