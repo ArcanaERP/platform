@@ -759,6 +759,63 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void retriesAfterStalePendingClaimRelinksExistingReversalWhenIdempotencyKeyOnlyDiffersBySurroundingWhitespace()
+        throws Exception {
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9224c");
+        UUID originalTransferId = scenario.originalTransferId();
+        String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
+        String seededStaleIdempotencyKey = " reverse-9224c-stale ";
+        String replayIdempotencyKey = "reverse-9224c-stale";
+
+        InventoryManagementWebTestSupport.reverseTransfer(mockMvc, originalTransferId, reversalPayload)
+            .andExpect(status().isCreated());
+
+        InventoryItem mainItem = inventoryItemRepository.findBySkuAndLocationCode(scenario.sku().toUpperCase(), "MAIN").orElseThrow();
+        UUID existingReversalTransferId = inventoryAdjustmentRepository
+            .findByInventoryItemIdOrderByAdjustedAtDesc(mainItem.getId())
+            .stream()
+            .filter(adjustment ->
+                "TRANSFER_REVERSAL".equals(adjustment.getReferenceType()) &&
+                originalTransferId.toString().equals(adjustment.getReferenceId())
+            )
+            .findFirst()
+            .orElseThrow()
+            .getTransferId();
+
+        reversalIdempotencyRepository.saveAndFlush(
+            InventoryTransferReversalIdempotency.create(
+                originalTransferId,
+                seededStaleIdempotencyKey,
+                InventoryReversalFingerprintTestSupport.fingerprintForReversalRequest(
+                    DEFAULT_REVERSAL_REASON,
+                    DEFAULT_ACTOR
+                ),
+                PENDING_REVERSAL_TRANSFER_ID,
+                STALE_PENDING_CLAIM_AT
+            )
+        );
+
+        InventoryManagementWebTestSupport.reverseTransfer(
+            mockMvc,
+            originalTransferId,
+            replayIdempotencyKey,
+            reversalPayload
+        )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.transferId").value(existingReversalTransferId.toString()))
+            .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
+            .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()));
+
+        InventoryTransferReversalIdempotency idempotency = reversalIdempotencyRepository
+            .findByTransferIdAndIdempotencyKey(originalTransferId, replayIdempotencyKey)
+            .orElseThrow();
+        assertThat(idempotency.getReversalTransferId()).isEqualTo(existingReversalTransferId);
+        assertThat(idempotency.getReversalTransferId()).isNotEqualTo(PENDING_REVERSAL_TRANSFER_ID);
+
+        expectSingleReversalHistory(originalTransferId);
+    }
+
+    @Test
     void reclaimsStalePendingClaimAndCreatesReversalWhenMissing() throws Exception {
         IdempotencyScenario scenario = createIdempotencyScenario("arc-9224a");
         UUID originalTransferId = scenario.originalTransferId();
