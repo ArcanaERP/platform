@@ -964,6 +964,42 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void reclaimsTrimEquivalentStalePendingClaimWhenAdjustedByOnlyDiffersByCaseAndReplaysIdempotently() throws Exception {
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9224i");
+        UUID originalTransferId = scenario.originalTransferId();
+        String seededStaleIdempotencyKey = " reverse-9224i-stale ";
+        String replayIdempotencyKey = "reverse-9224i-stale";
+        String replayPayload = reversalPayloadWithUppercaseActor();
+
+        seedStalePendingClaim(originalTransferId, seededStaleIdempotencyKey);
+
+        InventoryManagementWebTestSupport.reverseTransfer(
+            mockMvc,
+            originalTransferId,
+            replayIdempotencyKey,
+            replayPayload
+        )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
+            .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()))
+            .andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR));
+
+        UUID createdReversalTransferId = latestReversalTransferId(scenario);
+        InventoryTransferReversalIdempotency idempotency = reversalIdempotencyRepository
+            .findByTransferIdAndIdempotencyKey(originalTransferId, replayIdempotencyKey)
+            .orElseThrow();
+        assertThat(idempotency.getReversalTransferId()).isEqualTo(createdReversalTransferId);
+        assertThat(idempotency.getReversalTransferId()).isNotEqualTo(PENDING_REVERSAL_TRANSFER_ID);
+
+        expectSingleReversalHistory(
+            originalTransferId,
+            result -> result
+                .andExpect(jsonPath("$.items[0].transferId").value(createdReversalTransferId.toString()))
+                .andExpect(jsonPath("$.items[0].adjustedBy").value(DEFAULT_ACTOR))
+        );
+    }
+
+    @Test
     void listsReversalHistoryForTransferId() throws Exception {
         UUID originalTransferId = createLegacyTransferScenarioTransferId("arc-9217");
         String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
