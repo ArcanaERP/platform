@@ -1037,6 +1037,19 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void rejectsTrimEquivalentStalePendingClaimReplayWhenReasonOnlyDiffersByTitleCaseAndKeepsPendingClaimUnchanged()
+        throws Exception {
+        IdempotencyScenario scenario = createIdempotencyScenario("arc-9224k");
+        UUID originalTransferId = scenario.originalTransferId();
+        String seededStaleIdempotencyKey = " reverse-9224k-stale ";
+        String replayIdempotencyKey = "reverse-9224k-stale";
+        String conflictingPayload = reversalPayloadWithTitleCaseReason();
+
+        seedStalePendingClaim(originalTransferId, seededStaleIdempotencyKey);
+        expectStaleConflictWithoutReversalSideEffects(originalTransferId, replayIdempotencyKey, conflictingPayload);
+    }
+
+    @Test
     void listsReversalHistoryForTransferId() throws Exception {
         UUID originalTransferId = createLegacyTransferScenarioTransferId("arc-9217");
         String reversalPayload = reversalPayload(DEFAULT_REVERSAL_REASON);
