@@ -878,8 +878,12 @@ class InventoryApiIntegrationTest {
         String replayIdempotencyKey = "reverse-9224e-stale";
         String conflictingPayload = reversalPayloadWithDifferentReason();
 
-        seedStalePendingClaim(originalTransferId, seededStaleIdempotencyKey);
-        expectStaleConflictWithoutReversalSideEffects(originalTransferId, replayIdempotencyKey, conflictingPayload);
+        expectTrimEquivalentStaleConflictWithoutReversalSideEffects(
+            originalTransferId,
+            seededStaleIdempotencyKey,
+            replayIdempotencyKey,
+            conflictingPayload
+        );
     }
 
     @Test
@@ -1045,8 +1049,12 @@ class InventoryApiIntegrationTest {
         String replayIdempotencyKey = "reverse-9224k-stale";
         String conflictingPayload = reversalPayloadWithTitleCaseReason();
 
-        seedStalePendingClaim(originalTransferId, seededStaleIdempotencyKey);
-        expectStaleConflictWithoutReversalSideEffects(originalTransferId, replayIdempotencyKey, conflictingPayload);
+        expectTrimEquivalentStaleConflictWithoutReversalSideEffects(
+            originalTransferId,
+            seededStaleIdempotencyKey,
+            replayIdempotencyKey,
+            conflictingPayload
+        );
     }
 
     @Test
@@ -1058,8 +1066,12 @@ class InventoryApiIntegrationTest {
         String replayIdempotencyKey = "reverse-9224l-stale";
         String conflictingPayload = reversalPayloadWithDifferentReason();
 
-        seedStalePendingClaim(originalTransferId, seededStaleIdempotencyKey);
-        expectStaleConflictWithoutReversalSideEffects(originalTransferId, replayIdempotencyKey, conflictingPayload);
+        expectTrimEquivalentStaleConflictWithoutReversalSideEffects(
+            originalTransferId,
+            seededStaleIdempotencyKey,
+            replayIdempotencyKey,
+            conflictingPayload
+        );
     }
 
     @Test
@@ -1616,6 +1628,16 @@ class InventoryApiIntegrationTest {
         mockMvc.perform(InventoryTransferReversalHistoryWebTestSupport.reversalsRequestDefault(originalTransferId))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(0));
+    }
+
+    private void expectTrimEquivalentStaleConflictWithoutReversalSideEffects(
+        UUID originalTransferId,
+        String seededStaleIdempotencyKey,
+        String replayIdempotencyKey,
+        String replayPayload
+    ) throws Exception {
+        seedStalePendingClaim(originalTransferId, seededStaleIdempotencyKey);
+        expectStaleConflictWithoutReversalSideEffects(originalTransferId, replayIdempotencyKey, replayPayload);
     }
 
     private void seedStalePendingClaim(UUID originalTransferId, String idempotencyKey) {
