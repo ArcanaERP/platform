@@ -107,6 +107,11 @@ Invoicing:
 - `GET /api/invoices/{invoiceNumber}/status-history?page=&size=&previousStatus=&currentStatus=&changedAtFrom=&changedAtTo=`
 - invoice responses currently include snapshot `lines[]` copied from the source order at creation time
 
+Payments:
+
+- `POST /api/payments`
+- `GET /api/payments/invoices/{invoiceNumber}/balance`
+
 Agreements:
 
 - `POST /api/agreements`

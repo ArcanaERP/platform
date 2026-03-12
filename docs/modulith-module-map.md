@@ -11,6 +11,7 @@ This map covers the currently implemented Spring Modulith modules under `com.arc
 - `products`
 - `orders`
 - `invoicing`
+- `payments`
 - `agreements`
 - `inventory`
 
@@ -22,6 +23,7 @@ Consumer -> allowed dependency
 - `products` -> `core::pagination`, `identity`
 - `orders` -> `core::pagination`, `products`
 - `invoicing` -> `core::pagination`, `orders`
+- `payments` -> `invoicing`
 - `agreements` -> `core::pagination`, `identity`
 - `inventory` -> `core::pagination`, `core::errors`
 
@@ -40,6 +42,7 @@ Notes:
 | Products | `com.arcanaerp.platform.products` | Product catalog, activation lifecycle, activation audit history, orderability lookup | `ProductCatalog`, `ProductLookup` | `POST /api/products`, `GET /api/products`, `PATCH /api/products/{sku}/active`, `GET /api/products/{sku}/activation-history` |
 | Orders | `com.arcanaerp.platform.orders` | Sales order creation, listing, and status transitions | `OrderManagement` | `POST /api/orders`, `GET /api/orders`, `PATCH /api/orders/{orderNumber}/status` |
 | Invoicing | `com.arcanaerp.platform.invoicing` | Order-backed invoice creation, direct retrieval, paged listing, minimal lifecycle transitions (`DRAFT -> ISSUED`, `DRAFT/ISSUED -> VOID`; `VOID` final), and immutable status-change history | `InvoiceManagement` | `POST /api/invoices`, `GET /api/invoices/{invoiceNumber}`, `GET /api/invoices`, `PATCH /api/invoices/{invoiceNumber}/status`, `GET /api/invoices/{invoiceNumber}/status-history` |
+| Payments | `com.arcanaerp.platform.payments` | Payment capture against issued invoices plus invoice balance read model | `PaymentManagement` | `POST /api/payments`, `GET /api/payments/invoices/{invoiceNumber}/balance` |
 | Agreements | `com.arcanaerp.platform.agreements` | Agreement master-record creation, direct retrieval by agreement number, paged listing (optional status filtering), lifecycle transitions (`DRAFT -> ACTIVE`, `DRAFT/ACTIVE -> TERMINATED`; `TERMINATED` final), and immutable status-change history with tenant-scoped actor/reason attribution and optional audit filters | `AgreementManagement` | `POST /api/agreements`, `GET /api/agreements/{agreementNumber}`, `GET /api/agreements`, `PATCH /api/agreements/{agreementNumber}/status`, `GET /api/agreements/{agreementNumber}/status-history` |
 | Inventory | `com.arcanaerp.platform.inventory` | On-hand inventory by `sku + location`, location-scoped adjustment transactions, and location-to-location transfers with optional source-document references and idempotent reversal retries with payload-consistency, concurrent first-write conflict enforcement, and stale-claim recovery | `InventoryAvailability` | `GET /api/inventory/{sku}`, `POST /api/inventory/{sku}/adjustments`, `GET /api/inventory/{sku}/adjustments`, `POST /api/inventory/{sku}/transfers`, `GET /api/inventory/transfers/{transferId}`, `POST /api/inventory/transfers/{transferId}/reversals`, `GET /api/inventory/transfers/{transferId}/reversals`, `GET /api/inventory/{sku}/transfers` |
 
@@ -52,4 +55,5 @@ Notes:
   - `agreements` -> `identity` via `IdentityActorLookup`
   - `orders` -> `products` via `ProductLookup`
   - `invoicing` -> `orders` via `OrderManagement`
+  - `payments` -> `invoicing` via `InvoiceManagement`
 - Shared paging contract is centralized in `core::pagination`.
