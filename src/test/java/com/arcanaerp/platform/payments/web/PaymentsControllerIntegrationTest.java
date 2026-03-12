@@ -19,6 +19,7 @@ class PaymentsControllerIntegrationTest {
 
     private static final Instant PAID_AT = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(180);
     private static final String SUMMARY_TENANT_CODE = "tenant-summary";
+    private static final String INVOICE_SUMMARY_TENANT_CODE = "tenant-invoice-summary";
 
     @Autowired
     private MockMvc mockMvc;
@@ -230,5 +231,62 @@ class PaymentsControllerIntegrationTest {
             ))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("paidAtFrom must be before or equal to paidAtTo"));
+    }
+
+    @Test
+    void listsTenantInvoicePaymentBreakdown() throws Exception {
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(mockMvc, testClock, "arc-pay-1007", "so-pay-1007", "inv-pay-1007");
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(mockMvc, testClock, "arc-pay-1008", "so-pay-1008", "inv-pay-1008");
+
+        PaymentsWebIntegrationTestSupport.createPayment(
+            mockMvc,
+            INVOICE_SUMMARY_TENANT_CODE,
+            "pay-1008",
+            "inv-pay-1007",
+            "4.00",
+            "USD",
+            PAID_AT
+        ).andExpect(status().isCreated());
+
+        PaymentsWebIntegrationTestSupport.createPayment(
+            mockMvc,
+            INVOICE_SUMMARY_TENANT_CODE,
+            "pay-1009",
+            "inv-pay-1007",
+            "2.00",
+            "USD",
+            PAID_AT.plusSeconds(10)
+        ).andExpect(status().isCreated());
+
+        PaymentsWebIntegrationTestSupport.createPayment(
+            mockMvc,
+            INVOICE_SUMMARY_TENANT_CODE,
+            "pay-1010",
+            "inv-pay-1008",
+            "5.00",
+            "USD",
+            PAID_AT.plusSeconds(20)
+        ).andExpect(status().isCreated());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantInvoiceSummaryRequest(
+                INVOICE_SUMMARY_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "paidAtFrom",
+                PAID_AT.minusSeconds(1).toString(),
+                "paidAtTo",
+                PAID_AT.plusSeconds(21).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("TENANT-INVOICE-SUMMARY"))
+            .andExpect(jsonPath("$.items[0].currencyCode").value("USD"))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-1007"))
+            .andExpect(jsonPath("$.items[0].paymentCount").value(2))
+            .andExpect(jsonPath("$.items[0].totalCollected").value(6.0))
+            .andExpect(jsonPath("$.items[1].invoiceNumber").value("INV-PAY-1008"))
+            .andExpect(jsonPath("$.items[1].paymentCount").value(1))
+            .andExpect(jsonPath("$.items[1].totalCollected").value(5.0));
     }
 }

@@ -9,6 +9,7 @@ import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
+import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentView;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -102,6 +103,33 @@ class PaymentManagementService implements PaymentManagement {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "paidAt").and(Sort.by(Sort.Direction.DESC, "createdAt")))
         );
         return PageResult.from(payments).map(this::toView);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<TenantInvoicePaymentSummaryView> listTenantInvoiceSummaries(
+        String tenantCode,
+        String currencyCode,
+        Instant paidAtFrom,
+        Instant paidAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        Page<TenantInvoicePaymentSummaryRow> summaries = paymentRepository.summarizeInvoicesByTenantAndCurrency(
+            normalizedTenantCode,
+            normalizedCurrencyCode,
+            paidAtFrom,
+            paidAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "invoiceNumber"))
+        );
+        return PageResult.from(summaries).map(summary -> new TenantInvoicePaymentSummaryView(
+            normalizedTenantCode,
+            normalizedCurrencyCode,
+            summary.getInvoiceNumber(),
+            summary.getPaymentCount(),
+            summary.getTotalCollected()
+        ));
     }
 
     @Override

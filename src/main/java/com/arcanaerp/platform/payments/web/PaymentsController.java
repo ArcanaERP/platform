@@ -6,6 +6,7 @@ import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
+import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -88,6 +89,28 @@ public class PaymentsController {
         ));
     }
 
+    @GetMapping("/tenants/{tenantCode}/invoices")
+    public PageResult<TenantInvoicePaymentSummaryResponse> tenantInvoiceSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam String currencyCode,
+        @RequestParam(required = false) String paidAtFrom,
+        @RequestParam(required = false) String paidAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedPaidAtFrom = parseOptionalInstant(paidAtFrom, "paidAtFrom");
+        Instant parsedPaidAtTo = parseOptionalInstant(paidAtTo, "paidAtTo");
+        validatePaidAtRange(parsedPaidAtFrom, parsedPaidAtTo);
+        return paymentManagement.listTenantInvoiceSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(currencyCode, "currencyCode"),
+                parsedPaidAtFrom,
+                parsedPaidAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toInvoiceSummaryResponse);
+    }
+
     private PaymentResponse toResponse(PaymentView payment) {
         return new PaymentResponse(
             payment.id(),
@@ -118,6 +141,16 @@ public class PaymentsController {
             summary.currencyCode(),
             summary.paymentCount(),
             summary.invoiceCount(),
+            summary.totalCollected()
+        );
+    }
+
+    private TenantInvoicePaymentSummaryResponse toInvoiceSummaryResponse(TenantInvoicePaymentSummaryView summary) {
+        return new TenantInvoicePaymentSummaryResponse(
+            summary.tenantCode(),
+            summary.currencyCode(),
+            summary.invoiceNumber(),
+            summary.paymentCount(),
             summary.totalCollected()
         );
     }

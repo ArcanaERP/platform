@@ -157,4 +157,57 @@ class PaymentRepositoryTest {
         assertThat(summary.getInvoiceCount()).isEqualTo(2);
         assertThat(summary.getTotalCollected()).isEqualByComparingTo("15.50");
     }
+
+    @Test
+    void summarizesPaymentsByInvoiceForTenantAndCurrency() {
+        paymentRepository.saveAndFlush(Payment.create(
+            "TENANT-04",
+            "PAY-2008",
+            "INV-2008",
+            new BigDecimal("4.00"),
+            "USD",
+            Instant.parse("2026-03-12T02:00:00Z"),
+            Instant.parse("2026-03-12T02:01:00Z")
+        ));
+        paymentRepository.saveAndFlush(Payment.create(
+            "TENANT-04",
+            "PAY-2009",
+            "INV-2008",
+            new BigDecimal("3.00"),
+            "USD",
+            Instant.parse("2026-03-12T02:10:00Z"),
+            Instant.parse("2026-03-12T02:11:00Z")
+        ));
+        paymentRepository.saveAndFlush(Payment.create(
+            "TENANT-04",
+            "PAY-2010",
+            "INV-2009",
+            new BigDecimal("5.00"),
+            "USD",
+            Instant.parse("2026-03-12T02:20:00Z"),
+            Instant.parse("2026-03-12T02:21:00Z")
+        ));
+
+        var page = paymentRepository.summarizeInvoicesByTenantAndCurrency(
+            "TENANT-04",
+            "USD",
+            Instant.parse("2026-03-12T01:30:00Z"),
+            Instant.parse("2026-03-12T02:30:00Z"),
+            PageRequest.of(0, 10)
+        );
+
+        assertThat(page.getTotalElements()).isEqualTo(2);
+        assertThat(page.getContent()).extracting(TenantInvoicePaymentSummaryRow::getInvoiceNumber)
+            .containsExactlyInAnyOrder("INV-2008", "INV-2009");
+        assertThat(page.getContent().stream()
+            .filter(row -> row.getInvoiceNumber().equals("INV-2008"))
+            .findFirst()
+            .orElseThrow()
+            .getPaymentCount()).isEqualTo(2);
+        assertThat(page.getContent().stream()
+            .filter(row -> row.getInvoiceNumber().equals("INV-2008"))
+            .findFirst()
+            .orElseThrow()
+            .getTotalCollected()).isEqualByComparingTo("7.00");
+    }
 }

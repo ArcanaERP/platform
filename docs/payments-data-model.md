@@ -61,6 +61,7 @@ Computation:
 - `GET /api/payments/invoices/{invoiceNumber}/balance`
 - `GET /api/payments?page=&size=&invoiceNumber=&tenantCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/summary?currencyCode=&paidAtFrom=&paidAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/invoices?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`
 
 ## Query Notes
 
@@ -82,3 +83,19 @@ Fields:
 
 Notes:
 - summary is intentionally scoped by `currencyCode` to avoid mixing monetary totals across currencies
+
+## Tenant Invoice Breakdown
+
+Purpose:
+- show per-invoice collected totals for a tenant in a single currency
+
+Fields:
+- `tenantCode`
+- `currencyCode`
+- `invoiceNumber`
+- `paymentCount`
+- `totalCollected`
+
+Notes:
+- rows are grouped by `invoiceNumber`
+- endpoint is paged for operational reconciliation screens

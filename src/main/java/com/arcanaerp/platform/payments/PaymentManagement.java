@@ -18,6 +18,14 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    PageResult<TenantInvoicePaymentSummaryView> listTenantInvoiceSummaries(
+        String tenantCode,
+        String currencyCode,
+        Instant paidAtFrom,
+        Instant paidAtTo,
+        PageQuery pageQuery
+    );
+
     TenantPaymentSummaryView tenantSummary(
         String tenantCode,
         String currencyCode,
