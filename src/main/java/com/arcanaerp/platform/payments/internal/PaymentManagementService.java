@@ -1,5 +1,7 @@
 package com.arcanaerp.platform.payments.internal;
 
+import com.arcanaerp.platform.core.pagination.PageQuery;
+import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.invoicing.InvoiceManagement;
 import com.arcanaerp.platform.invoicing.InvoiceStatus;
 import com.arcanaerp.platform.invoicing.InvoiceView;
@@ -11,6 +13,8 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -80,6 +84,25 @@ class PaymentManagementService implements PaymentManagement {
         );
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<PaymentView> listPayments(
+        String invoiceNumber,
+        String tenantCode,
+        Instant paidAtFrom,
+        Instant paidAtTo,
+        PageQuery pageQuery
+    ) {
+        Page<Payment> payments = paymentRepository.findFiltered(
+            normalizeOptional(invoiceNumber),
+            normalizeOptional(tenantCode),
+            paidAtFrom,
+            paidAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "paidAt").and(Sort.by(Sort.Direction.DESC, "createdAt")))
+        );
+        return PageResult.from(payments).map(this::toView);
+    }
+
     private PaymentView toView(Payment payment) {
         return new PaymentView(
             payment.getId(),
@@ -98,5 +121,9 @@ class PaymentManagementService implements PaymentManagement {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private static String normalizeOptional(String value) {
+        return value == null ? null : value.trim().toUpperCase();
     }
 }

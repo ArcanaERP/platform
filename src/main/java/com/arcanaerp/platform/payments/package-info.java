@@ -1,5 +1,5 @@
 @org.springframework.modulith.ApplicationModule(
     displayName = "Payments",
-    allowedDependencies = {"invoicing"}
+    allowedDependencies = {"core::pagination", "invoicing"}
 )
 package com.arcanaerp.platform.payments;

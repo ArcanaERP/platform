@@ -100,4 +100,72 @@ class PaymentsControllerIntegrationTest {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("Payment amount exceeds outstanding invoice balance: INV-PAY-1002"));
     }
+
+    @Test
+    void listsPaymentsWithInvoiceAndTenantFilters() throws Exception {
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(mockMvc, testClock, "arc-pay-1003", "so-pay-1003", "inv-pay-1003");
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(mockMvc, testClock, "arc-pay-1004", "so-pay-1004", "inv-pay-1004");
+
+        PaymentsWebIntegrationTestSupport.createPayment(
+            mockMvc,
+            "tenant-pay",
+            "pay-1003",
+            "inv-pay-1003",
+            "4.00",
+            "USD",
+            PAID_AT
+        ).andExpect(status().isCreated());
+
+        PaymentsWebIntegrationTestSupport.createPayment(
+            mockMvc,
+            "tenant-alt",
+            "pay-1004",
+            "inv-pay-1004",
+            "5.00",
+            "USD",
+            PAID_AT.plusSeconds(60)
+        ).andExpect(status().isCreated());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.listPaymentsRequest(
+                0,
+                10,
+                "invoiceNumber",
+                "inv-pay-1003",
+                "tenantCode",
+                "tenant-pay",
+                "paidAtFrom",
+                PAID_AT.minusSeconds(1).toString(),
+                "paidAtTo",
+                PAID_AT.plusSeconds(1).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].paymentReference").value("PAY-1003"))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-1003"))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("TENANT-PAY"));
+    }
+
+    @Test
+    void rejectsInvalidPaymentListFilters() throws Exception {
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.listPaymentsRequest(
+                0,
+                10,
+                "invoiceNumber",
+                "   "
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("invoiceNumber query parameter must not be blank"))
+            .andExpect(jsonPath("$.path").value("/api/payments"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.listPaymentsRequest(
+                0,
+                10,
+                "paidAtFrom",
+                "2026-03-13T00:00:00Z",
+                "paidAtTo",
+                "2026-03-12T00:00:00Z"
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("paidAtFrom must be before or equal to paidAtTo"));
+    }
 }

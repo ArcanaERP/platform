@@ -59,3 +59,10 @@ Computation:
 
 - `POST /api/payments`
 - `GET /api/payments/invoices/{invoiceNumber}/balance`
+- `GET /api/payments?page=&size=&invoiceNumber=&tenantCode=&paidAtFrom=&paidAtTo=`
+
+## Query Notes
+
+- payment listing is newest-first by `paidAt DESC`, then `createdAt DESC`
+- optional filters currently support `invoiceNumber`, `tenantCode`, `paidAtFrom`, and `paidAtTo`
+- blank query values and invalid/range-reversed timestamps are rejected at the HTTP boundary

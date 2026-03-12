@@ -1,11 +1,16 @@
 package com.arcanaerp.platform.payments.web;
 
+import com.arcanaerp.platform.core.pagination.PageQuery;
+import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
 import jakarta.validation.Valid;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,6 +47,28 @@ public class PaymentsController {
         return toBalanceResponse(paymentManagement.invoiceBalance(invoiceNumber));
     }
 
+    @GetMapping
+    public PageResult<PaymentResponse> listPayments(
+        @RequestParam(required = false) String invoiceNumber,
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String paidAtFrom,
+        @RequestParam(required = false) String paidAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedPaidAtFrom = parseOptionalInstant(paidAtFrom, "paidAtFrom");
+        Instant parsedPaidAtTo = parseOptionalInstant(paidAtTo, "paidAtTo");
+        validatePaidAtRange(parsedPaidAtFrom, parsedPaidAtTo);
+        return paymentManagement.listPayments(
+                normalizeOptional(invoiceNumber, "invoiceNumber"),
+                normalizeOptional(tenantCode, "tenantCode"),
+                parsedPaidAtFrom,
+                parsedPaidAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toResponse);
+    }
+
     private PaymentResponse toResponse(PaymentView payment) {
         return new PaymentResponse(
             payment.id(),
@@ -64,5 +91,35 @@ public class PaymentsController {
             balance.outstandingAmount(),
             balance.paidInFull()
         );
+    }
+
+    private static String normalizeOptional(String value, String parameterName) {
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
+            throw new IllegalArgumentException(parameterName + " query parameter must not be blank");
+        }
+        return value.trim();
+    }
+
+    private static Instant parseOptionalInstant(String value, String parameterName) {
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
+            throw new IllegalArgumentException(parameterName + " query parameter must not be blank");
+        }
+        try {
+            return Instant.parse(value.trim());
+        } catch (DateTimeParseException exception) {
+            throw new IllegalArgumentException(parameterName + " query parameter must be a valid ISO-8601 instant");
+        }
+    }
+
+    private static void validatePaidAtRange(Instant paidAtFrom, Instant paidAtTo) {
+        if (paidAtFrom != null && paidAtTo != null && paidAtFrom.isAfter(paidAtTo)) {
+            throw new IllegalArgumentException("paidAtFrom must be before or equal to paidAtTo");
+        }
     }
 }

@@ -8,6 +8,7 @@ import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.dao.DataIntegrityViolationException;
 
 @DataJpaTest
@@ -62,5 +63,56 @@ class PaymentRepositoryTest {
             Instant.parse("2026-03-12T00:03:00Z")
         )))
             .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void filtersPaymentsByInvoiceTenantAndPaidAtRange() {
+        paymentRepository.saveAndFlush(Payment.create(
+            "TENANT-01",
+            "PAY-2003",
+            "INV-2004",
+            new BigDecimal("10.00"),
+            "USD",
+            Instant.parse("2026-03-12T00:00:00Z"),
+            Instant.parse("2026-03-12T00:01:00Z")
+        ));
+        paymentRepository.saveAndFlush(Payment.create(
+            "TENANT-02",
+            "PAY-2004",
+            "INV-2005",
+            new BigDecimal("12.00"),
+            "USD",
+            Instant.parse("2026-03-12T00:10:00Z"),
+            Instant.parse("2026-03-12T00:11:00Z")
+        ));
+
+        var invoiceFiltered = paymentRepository.findFiltered(
+            "INV-2004",
+            null,
+            null,
+            null,
+            PageRequest.of(0, 10)
+        );
+        var tenantFiltered = paymentRepository.findFiltered(
+            null,
+            "TENANT-02",
+            null,
+            null,
+            PageRequest.of(0, 10)
+        );
+        var rangeFiltered = paymentRepository.findFiltered(
+            null,
+            null,
+            Instant.parse("2026-03-12T00:05:00Z"),
+            Instant.parse("2026-03-12T00:15:00Z"),
+            PageRequest.of(0, 10)
+        );
+
+        assertThat(invoiceFiltered.getTotalElements()).isEqualTo(1);
+        assertThat(invoiceFiltered.getContent().get(0).getPaymentReference()).isEqualTo("PAY-2003");
+        assertThat(tenantFiltered.getTotalElements()).isEqualTo(1);
+        assertThat(tenantFiltered.getContent().get(0).getPaymentReference()).isEqualTo("PAY-2004");
+        assertThat(rangeFiltered.getTotalElements()).isEqualTo(1);
+        assertThat(rangeFiltered.getContent().get(0).getPaymentReference()).isEqualTo("PAY-2004");
     }
 }
