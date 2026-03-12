@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class PaymentsControllerIntegrationTest {
 
     private static final Instant PAID_AT = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(180);
+    private static final String SUMMARY_TENANT_CODE = "tenant-summary";
 
     @Autowired
     private MockMvc mockMvc;
@@ -160,6 +161,68 @@ class PaymentsControllerIntegrationTest {
         mockMvc.perform(PaymentsWebIntegrationTestSupport.listPaymentsRequest(
                 0,
                 10,
+                "paidAtFrom",
+                "2026-03-13T00:00:00Z",
+                "paidAtTo",
+                "2026-03-12T00:00:00Z"
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("paidAtFrom must be before or equal to paidAtTo"));
+    }
+
+    @Test
+    void returnsTenantPaymentSummaryForCurrencyAndDateRange() throws Exception {
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(mockMvc, testClock, "arc-pay-1005", "so-pay-1005", "inv-pay-1005");
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(mockMvc, testClock, "arc-pay-1006", "so-pay-1006", "inv-pay-1006");
+
+        PaymentsWebIntegrationTestSupport.createPayment(
+            mockMvc,
+            SUMMARY_TENANT_CODE,
+            "pay-1005",
+            "inv-pay-1005",
+            "4.00",
+            "USD",
+            PAID_AT
+        ).andExpect(status().isCreated());
+
+        PaymentsWebIntegrationTestSupport.createPayment(
+            mockMvc,
+            SUMMARY_TENANT_CODE,
+            "pay-1006",
+            "inv-pay-1006",
+            "5.00",
+            "USD",
+            PAID_AT.plusSeconds(60)
+        ).andExpect(status().isCreated());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantSummaryRequest(
+                SUMMARY_TENANT_CODE,
+                "USD",
+                "paidAtFrom",
+                PAID_AT.minusSeconds(1).toString(),
+                "paidAtTo",
+                PAID_AT.plusSeconds(61).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tenantCode").value("TENANT-SUMMARY"))
+            .andExpect(jsonPath("$.currencyCode").value("USD"))
+            .andExpect(jsonPath("$.paymentCount").value(2))
+            .andExpect(jsonPath("$.invoiceCount").value(2))
+            .andExpect(jsonPath("$.totalCollected").value(9.0));
+    }
+
+    @Test
+    void rejectsInvalidTenantSummaryFilters() throws Exception {
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantSummaryRequest(
+                "tenant-pay",
+                "   "
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("currencyCode query parameter must not be blank"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantSummaryRequest(
+                "tenant-pay",
+                "USD",
                 "paidAtFrom",
                 "2026-03-13T00:00:00Z",
                 "paidAtTo",

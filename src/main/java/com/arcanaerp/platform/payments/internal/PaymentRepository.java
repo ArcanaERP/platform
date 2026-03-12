@@ -34,4 +34,24 @@ interface PaymentRepository extends JpaRepository<Payment, UUID> {
         @Param("paidAtTo") Instant paidAtTo,
         Pageable pageable
     );
+
+    @Query(
+        """
+        select
+          count(payment) as paymentCount,
+          count(distinct payment.invoiceNumber) as invoiceCount,
+          coalesce(sum(payment.amount), 0) as totalCollected
+        from Payment payment
+        where payment.tenantCode = :tenantCode
+          and payment.currencyCode = :currencyCode
+          and (:paidAtFrom is null or payment.paidAt >= :paidAtFrom)
+          and (:paidAtTo is null or payment.paidAt <= :paidAtTo)
+        """
+    )
+    TenantPaymentSummaryRow summarizeByTenantAndCurrency(
+        @Param("tenantCode") String tenantCode,
+        @Param("currencyCode") String currencyCode,
+        @Param("paidAtFrom") Instant paidAtFrom,
+        @Param("paidAtTo") Instant paidAtTo
+    );
 }

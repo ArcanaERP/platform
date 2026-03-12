@@ -17,4 +17,11 @@ public interface PaymentManagement {
         Instant paidAtTo,
         PageQuery pageQuery
     );
+
+    TenantPaymentSummaryView tenantSummary(
+        String tenantCode,
+        String currencyCode,
+        Instant paidAtFrom,
+        Instant paidAtTo
+    );
 }

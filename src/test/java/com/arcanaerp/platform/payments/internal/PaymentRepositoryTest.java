@@ -115,4 +115,46 @@ class PaymentRepositoryTest {
         assertThat(rangeFiltered.getTotalElements()).isEqualTo(1);
         assertThat(rangeFiltered.getContent().get(0).getPaymentReference()).isEqualTo("PAY-2004");
     }
+
+    @Test
+    void summarizesPaymentsByTenantAndCurrency() {
+        paymentRepository.saveAndFlush(Payment.create(
+            "TENANT-03",
+            "PAY-2005",
+            "INV-2006",
+            new BigDecimal("10.00"),
+            "USD",
+            Instant.parse("2026-03-12T01:00:00Z"),
+            Instant.parse("2026-03-12T01:01:00Z")
+        ));
+        paymentRepository.saveAndFlush(Payment.create(
+            "TENANT-03",
+            "PAY-2006",
+            "INV-2007",
+            new BigDecimal("5.50"),
+            "USD",
+            Instant.parse("2026-03-12T01:10:00Z"),
+            Instant.parse("2026-03-12T01:11:00Z")
+        ));
+        paymentRepository.saveAndFlush(Payment.create(
+            "TENANT-03",
+            "PAY-2007",
+            "INV-2007",
+            new BigDecimal("2.25"),
+            "EUR",
+            Instant.parse("2026-03-12T01:20:00Z"),
+            Instant.parse("2026-03-12T01:21:00Z")
+        ));
+
+        var summary = paymentRepository.summarizeByTenantAndCurrency(
+            "TENANT-03",
+            "USD",
+            Instant.parse("2026-03-12T00:30:00Z"),
+            Instant.parse("2026-03-12T01:15:00Z")
+        );
+
+        assertThat(summary.getPaymentCount()).isEqualTo(2);
+        assertThat(summary.getInvoiceCount()).isEqualTo(2);
+        assertThat(summary.getTotalCollected()).isEqualByComparingTo("15.50");
+    }
 }

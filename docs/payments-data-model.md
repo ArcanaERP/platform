@@ -60,9 +60,25 @@ Computation:
 - `POST /api/payments`
 - `GET /api/payments/invoices/{invoiceNumber}/balance`
 - `GET /api/payments?page=&size=&invoiceNumber=&tenantCode=&paidAtFrom=&paidAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/summary?currencyCode=&paidAtFrom=&paidAtTo=`
 
 ## Query Notes
 
 - payment listing is newest-first by `paidAt DESC`, then `createdAt DESC`
 - optional filters currently support `invoiceNumber`, `tenantCode`, `paidAtFrom`, and `paidAtTo`
 - blank query values and invalid/range-reversed timestamps are rejected at the HTTP boundary
+
+## Tenant Summary
+
+Purpose:
+- expose a small reconciliation aggregate for a tenant in a single currency
+
+Fields:
+- `tenantCode`
+- `currencyCode`
+- `paymentCount`
+- `invoiceCount`
+- `totalCollected`
+
+Notes:
+- summary is intentionally scoped by `currencyCode` to avoid mixing monetary totals across currencies

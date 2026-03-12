@@ -112,6 +112,7 @@ Payments:
 - `POST /api/payments`
 - `GET /api/payments/invoices/{invoiceNumber}/balance`
 - `GET /api/payments?page=&size=&invoiceNumber=&tenantCode=&paidAtFrom=&paidAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/summary?currencyCode=&paidAtFrom=&paidAtTo=`
 
 Agreements:
 

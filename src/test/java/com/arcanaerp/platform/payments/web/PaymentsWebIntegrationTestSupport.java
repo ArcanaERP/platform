@@ -62,6 +62,26 @@ final class PaymentsWebIntegrationTestSupport {
         return request;
     }
 
+    static MockHttpServletRequestBuilder tenantSummaryRequest(
+        String tenantCode,
+        String currencyCode,
+        String... optionalNameValuePairs
+    ) {
+        MockHttpServletRequestBuilder request = get("/api/payments/tenants/" + tenantCode + "/summary")
+            .param("currencyCode", currencyCode);
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must have an even number of elements");
+        }
+        for (int index = 0; index < optionalNameValuePairs.length; index += 2) {
+            String name = optionalNameValuePairs[index];
+            String value = optionalNameValuePairs[index + 1];
+            if (value != null) {
+                request.param(name, value);
+            }
+        }
+        return request;
+    }
+
     static void seedIssuedInvoice(
         MockMvc mockMvc,
         PaymentsDeterministicClockTestSupport.AdjustableClock testClock,

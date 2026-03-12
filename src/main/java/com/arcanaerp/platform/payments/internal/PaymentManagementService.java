@@ -8,6 +8,7 @@ import com.arcanaerp.platform.invoicing.InvoiceView;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
 import com.arcanaerp.platform.payments.PaymentManagement;
+import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentView;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -101,6 +102,31 @@ class PaymentManagementService implements PaymentManagement {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "paidAt").and(Sort.by(Sort.Direction.DESC, "createdAt")))
         );
         return PageResult.from(payments).map(this::toView);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TenantPaymentSummaryView tenantSummary(
+        String tenantCode,
+        String currencyCode,
+        Instant paidAtFrom,
+        Instant paidAtTo
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        TenantPaymentSummaryRow summary = paymentRepository.summarizeByTenantAndCurrency(
+            normalizedTenantCode,
+            normalizedCurrencyCode,
+            paidAtFrom,
+            paidAtTo
+        );
+        return new TenantPaymentSummaryView(
+            normalizedTenantCode,
+            normalizedCurrencyCode,
+            summary.getPaymentCount(),
+            summary.getInvoiceCount(),
+            summary.getTotalCollected()
+        );
     }
 
     private PaymentView toView(Payment payment) {

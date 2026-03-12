@@ -6,6 +6,7 @@ import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
+import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -69,6 +70,24 @@ public class PaymentsController {
             .map(this::toResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/summary")
+    public TenantPaymentSummaryResponse tenantSummary(
+        @PathVariable String tenantCode,
+        @RequestParam String currencyCode,
+        @RequestParam(required = false) String paidAtFrom,
+        @RequestParam(required = false) String paidAtTo
+    ) {
+        Instant parsedPaidAtFrom = parseOptionalInstant(paidAtFrom, "paidAtFrom");
+        Instant parsedPaidAtTo = parseOptionalInstant(paidAtTo, "paidAtTo");
+        validatePaidAtRange(parsedPaidAtFrom, parsedPaidAtTo);
+        return toSummaryResponse(paymentManagement.tenantSummary(
+            requirePathValue(tenantCode, "tenantCode"),
+            normalizeOptional(currencyCode, "currencyCode"),
+            parsedPaidAtFrom,
+            parsedPaidAtTo
+        ));
+    }
+
     private PaymentResponse toResponse(PaymentView payment) {
         return new PaymentResponse(
             payment.id(),
@@ -93,12 +112,29 @@ public class PaymentsController {
         );
     }
 
+    private TenantPaymentSummaryResponse toSummaryResponse(TenantPaymentSummaryView summary) {
+        return new TenantPaymentSummaryResponse(
+            summary.tenantCode(),
+            summary.currencyCode(),
+            summary.paymentCount(),
+            summary.invoiceCount(),
+            summary.totalCollected()
+        );
+    }
+
     private static String normalizeOptional(String value, String parameterName) {
         if (value == null) {
             return null;
         }
         if (value.isBlank()) {
             throw new IllegalArgumentException(parameterName + " query parameter must not be blank");
+        }
+        return value.trim();
+    }
+
+    private static String requirePathValue(String value, String parameterName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(parameterName + " is required");
         }
         return value.trim();
     }
