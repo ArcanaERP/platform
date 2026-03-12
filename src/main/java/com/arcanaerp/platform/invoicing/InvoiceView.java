@@ -2,6 +2,7 @@ package com.arcanaerp.platform.invoicing;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public record InvoiceView(
@@ -15,6 +16,7 @@ public record InvoiceView(
     Instant createdAt,
     Instant dueAt,
     Instant issuedAt,
-    Instant voidedAt
+    Instant voidedAt,
+    List<InvoiceLineView> lines
 ) {
 }

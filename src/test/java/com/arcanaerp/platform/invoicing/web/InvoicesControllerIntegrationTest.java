@@ -39,14 +39,12 @@ class InvoicesControllerIntegrationTest {
     void createsAndReadsInvoiceForConfirmedOrder() throws Exception {
         InvoicesWebIntegrationTestSupport.registerProduct(mockMvc, "arc-6101")
             .andExpect(status().isCreated());
-        OrderManagementWebTestSupport.createSingleLineOrder(
+        OrderManagementWebTestSupport.createOrder(
             mockMvc,
             "so-6101",
             "buyer@acme.com",
-            "arc-6101",
-            "1",
-            "10.00",
-            "USD"
+            "USD",
+            OrderManagementWebTestSupport.line("arc-6101", "2", "10.00")
         ).andExpect(status().isCreated());
         testClock.setInstant(InvoicesDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(60));
         OrderManagementWebTestSupport.transitionOrderStatus(mockMvc, "so-6101", "CONFIRMED")
@@ -60,14 +58,20 @@ class InvoicesControllerIntegrationTest {
             .andExpect(jsonPath("$.orderNumber").value("SO-6101"))
             .andExpect(jsonPath("$.status").value("DRAFT"))
             .andExpect(jsonPath("$.currencyCode").value("USD"))
-            .andExpect(jsonPath("$.totalAmount").value(10.0))
+            .andExpect(jsonPath("$.totalAmount").value(20.0))
             .andExpect(jsonPath("$.issuedAt").value(nullValue()))
-            .andExpect(jsonPath("$.voidedAt").value(nullValue()));
+            .andExpect(jsonPath("$.voidedAt").value(nullValue()))
+            .andExpect(jsonPath("$.lines[0].lineNo").value(1))
+            .andExpect(jsonPath("$.lines[0].productSku").value("ARC-6101"))
+            .andExpect(jsonPath("$.lines[0].quantity").value(2.0))
+            .andExpect(jsonPath("$.lines[0].unitPrice").value(10.0))
+            .andExpect(jsonPath("$.lines[0].lineTotal").value(20.0));
 
         mockMvc.perform(InvoicesWebIntegrationTestSupport.getInvoiceRequest("inv-6101"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.invoiceNumber").value("INV-6101"))
-            .andExpect(jsonPath("$.orderNumber").value("SO-6101"));
+            .andExpect(jsonPath("$.orderNumber").value("SO-6101"))
+            .andExpect(jsonPath("$.lines[0].productSku").value("ARC-6101"));
 
         mockMvc.perform(InvoicesWebIntegrationTestSupport.listInvoicesRequest(0, 10))
             .andExpect(status().isOk())

@@ -31,11 +31,27 @@ Rules:
 - `tenantCode`, `invoiceNumber`, and `orderNumber` are normalized to uppercase
 - source order must already be in `CONFIRMED` state
 - `currencyCode` and `totalAmount` are copied from the source order at invoice creation time
+- invoice responses include immutable line snapshots copied from the source order at invoice creation time
 - lifecycle is intentionally minimal:
   - `DRAFT -> ISSUED`
   - `DRAFT -> VOID`
   - `ISSUED -> VOID`
   - `VOID` is terminal
+
+### InvoiceLine
+
+Purpose:
+- preserve invoice line detail independently of later order or catalog changes
+
+Core fields:
+- `id` (`UUID`)
+- `invoiceId`
+- `lineNo`
+- `productSku`
+- `quantity`
+- `unitPrice`
+- `lineTotal`
+- `createdAt`
 
 ## Cross-Module Dependency
 

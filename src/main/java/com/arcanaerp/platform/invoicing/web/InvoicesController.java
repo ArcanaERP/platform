@@ -4,9 +4,11 @@ import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.invoicing.ChangeInvoiceStatusCommand;
 import com.arcanaerp.platform.invoicing.CreateInvoiceCommand;
+import com.arcanaerp.platform.invoicing.InvoiceLineView;
 import com.arcanaerp.platform.invoicing.InvoiceManagement;
 import com.arcanaerp.platform.invoicing.InvoiceView;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -63,6 +65,9 @@ public class InvoicesController {
     }
 
     private InvoiceResponse toResponse(InvoiceView invoice) {
+        List<InvoiceLineResponse> lines = invoice.lines().stream()
+            .map(this::toLineResponse)
+            .toList();
         return new InvoiceResponse(
             invoice.id(),
             invoice.tenantCode(),
@@ -74,7 +79,19 @@ public class InvoicesController {
             invoice.createdAt(),
             invoice.dueAt(),
             invoice.issuedAt(),
-            invoice.voidedAt()
+            invoice.voidedAt(),
+            lines
+        );
+    }
+
+    private InvoiceLineResponse toLineResponse(InvoiceLineView line) {
+        return new InvoiceLineResponse(
+            line.id(),
+            line.lineNo(),
+            line.productSku(),
+            line.quantity(),
+            line.unitPrice(),
+            line.lineTotal()
         );
     }
 }

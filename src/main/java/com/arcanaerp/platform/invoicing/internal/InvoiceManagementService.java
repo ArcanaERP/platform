@@ -4,12 +4,20 @@ import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.invoicing.ChangeInvoiceStatusCommand;
 import com.arcanaerp.platform.invoicing.CreateInvoiceCommand;
+import com.arcanaerp.platform.invoicing.InvoiceLineView;
 import com.arcanaerp.platform.invoicing.InvoiceManagement;
 import com.arcanaerp.platform.invoicing.InvoiceStatus;
 import com.arcanaerp.platform.invoicing.InvoiceView;
 import com.arcanaerp.platform.orders.OrderManagement;
+import com.arcanaerp.platform.orders.OrderLineView;
 import com.arcanaerp.platform.orders.OrderStatus;
 import com.arcanaerp.platform.orders.OrderView;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.time.Clock;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 class InvoiceManagementService implements InvoiceManagement {
 
     private final InvoiceRepository invoiceRepository;
+    private final InvoiceLineRepository invoiceLineRepository;
     private final OrderManagement orderManagement;
     private final Clock clock;
 
@@ -51,13 +60,26 @@ class InvoiceManagementService implements InvoiceManagement {
                 command.dueAt()
             )
         );
-        return toView(created);
+        List<InvoiceLine> createdLines = invoiceLineRepository.saveAll(
+            order.lines().stream()
+                .map(line -> InvoiceLine.create(
+                    created.getId(),
+                    line.lineNo(),
+                    line.productSku(),
+                    line.quantity(),
+                    line.unitPrice(),
+                    now
+                ))
+                .toList()
+        );
+        return toView(created, createdLines);
     }
 
     @Override
     @Transactional(readOnly = true)
     public InvoiceView getInvoice(String invoiceNumber) {
-        return toView(findInvoiceByNumber(invoiceNumber));
+        Invoice invoice = findInvoiceByNumber(invoiceNumber);
+        return toView(invoice, invoiceLineRepository.findByInvoiceIdOrderByLineNoAsc(invoice.getId()));
     }
 
     @Override
@@ -66,7 +88,14 @@ class InvoiceManagementService implements InvoiceManagement {
         Page<Invoice> invoices = invoiceRepository.findAll(
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
-        return PageResult.from(invoices).map(this::toView);
+        Set<UUID> invoiceIds = invoices.stream().map(Invoice::getId).collect(java.util.stream.Collectors.toSet());
+        Map<UUID, List<InvoiceLine>> linesByInvoiceId = new HashMap<>();
+        if (!invoiceIds.isEmpty()) {
+            invoiceLineRepository.findByInvoiceIdInOrderByInvoiceIdAscLineNoAsc(invoiceIds)
+                .forEach(line -> linesByInvoiceId.computeIfAbsent(line.getInvoiceId(), ignored -> new ArrayList<>()).add(line));
+        }
+        return PageResult.from(invoices)
+            .map(invoice -> toView(invoice, linesByInvoiceId.getOrDefault(invoice.getId(), List.of())));
     }
 
     @Override
@@ -77,7 +106,8 @@ class InvoiceManagementService implements InvoiceManagement {
         }
         Invoice invoice = findInvoiceByNumber(command.invoiceNumber());
         invoice.transitionTo(targetStatus, Instant.now(clock));
-        return toView(invoiceRepository.save(invoice));
+        Invoice saved = invoiceRepository.save(invoice);
+        return toView(saved, invoiceLineRepository.findByInvoiceIdOrderByLineNoAsc(saved.getId()));
     }
 
     private Invoice findInvoiceByNumber(String invoiceNumber) {
@@ -93,7 +123,10 @@ class InvoiceManagementService implements InvoiceManagement {
         return value.trim();
     }
 
-    private InvoiceView toView(Invoice invoice) {
+    private InvoiceView toView(Invoice invoice, List<InvoiceLine> lines) {
+        List<InvoiceLineView> lineViews = lines.stream()
+            .map(this::toLineView)
+            .toList();
         return new InvoiceView(
             invoice.getId(),
             invoice.getTenantCode(),
@@ -105,7 +138,19 @@ class InvoiceManagementService implements InvoiceManagement {
             invoice.getCreatedAt(),
             invoice.getDueAt(),
             invoice.getIssuedAt(),
-            invoice.getVoidedAt()
+            invoice.getVoidedAt(),
+            lineViews
+        );
+    }
+
+    private InvoiceLineView toLineView(InvoiceLine line) {
+        return new InvoiceLineView(
+            line.getId(),
+            line.getLineNo(),
+            line.getProductSku(),
+            line.getQuantity(),
+            line.getUnitPrice(),
+            line.getLineTotal()
         );
     }
 }
