@@ -98,6 +98,13 @@ Orders:
 - `GET /api/orders?page=&size=`
 - `PATCH /api/orders/{orderNumber}/status`
 
+Invoicing:
+
+- `POST /api/invoices`
+- `GET /api/invoices/{invoiceNumber}`
+- `GET /api/invoices?page=&size=`
+- `PATCH /api/invoices/{invoiceNumber}/status`
+
 Agreements:
 
 - `POST /api/agreements`
