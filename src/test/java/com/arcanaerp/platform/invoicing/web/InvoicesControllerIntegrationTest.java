@@ -23,6 +23,7 @@ class InvoicesControllerIntegrationTest {
 
     private static final Instant DUE_AT = InvoicesDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(86400);
     private static final Instant ISSUED_AT = InvoicesDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(120);
+    private static final Instant VOIDED_AT = InvoicesDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(180);
 
     @Autowired
     private MockMvc mockMvc;
@@ -114,5 +115,107 @@ class InvoicesControllerIntegrationTest {
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.message").value("Invoice not found: INV-MISSING"))
             .andExpect(jsonPath("$.path").value("/api/invoices/inv-missing"));
+    }
+
+    @Test
+    void listsInvoiceStatusHistoryAndIgnoresNoOpTransitions() throws Exception {
+        seedConfirmedOrderAndInvoice("arc-6103", "so-6103", "inv-6103");
+
+        testClock.setInstant(ISSUED_AT);
+        InvoicesWebIntegrationTestSupport.transitionInvoiceStatus(mockMvc, "inv-6103", "ISSUED")
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ISSUED"));
+
+        testClock.setInstant(ISSUED_AT.plusSeconds(60));
+        InvoicesWebIntegrationTestSupport.transitionInvoiceStatus(mockMvc, "inv-6103", "ISSUED")
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ISSUED"));
+
+        mockMvc.perform(InvoicesStatusHistoryWebTestSupport.statusHistoryRequestDefault("inv-6103"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-6103"))
+            .andExpect(jsonPath("$.items[0].previousStatus").value("DRAFT"))
+            .andExpect(jsonPath("$.items[0].currentStatus").value("ISSUED"))
+            .andExpect(jsonPath("$.items[0].changedAt").value(ISSUED_AT.toString()));
+    }
+
+    @Test
+    void statusHistoryReturnsNotFoundForUnknownInvoice() throws Exception {
+        mockMvc.perform(InvoicesStatusHistoryWebTestSupport.statusHistoryRequestDefault("inv-missing-history"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value("Invoice not found: INV-MISSING-HISTORY"))
+            .andExpect(jsonPath("$.path").value("/api/invoices/inv-missing-history/status-history"));
+    }
+
+    @Test
+    void filtersInvoiceStatusHistoryByStatusAndChangedAtRange() throws Exception {
+        seedConfirmedOrderAndInvoice("arc-6104", "so-6104", "inv-6104");
+
+        testClock.setInstant(ISSUED_AT);
+        InvoicesWebIntegrationTestSupport.transitionInvoiceStatus(mockMvc, "inv-6104", "ISSUED")
+            .andExpect(status().isOk());
+
+        testClock.setInstant(VOIDED_AT);
+        InvoicesWebIntegrationTestSupport.transitionInvoiceStatus(mockMvc, "inv-6104", "VOID")
+            .andExpect(status().isOk());
+
+        mockMvc.perform(InvoicesStatusHistoryWebTestSupport.statusHistoryRequestDefault(
+                "inv-6104",
+                "currentStatus",
+                "VOID",
+                "changedAtFrom",
+                VOIDED_AT.minusSeconds(1).toString(),
+                "changedAtTo",
+                VOIDED_AT.plusSeconds(1).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].previousStatus").value("ISSUED"))
+            .andExpect(jsonPath("$.items[0].currentStatus").value("VOID"));
+    }
+
+    @Test
+    void rejectsInvalidInvoiceStatusHistoryFilters() throws Exception {
+        mockMvc.perform(InvoicesStatusHistoryWebTestSupport.statusHistoryRequestDefault(
+                "inv-invalid-history",
+                "previousStatus",
+                "invalid"
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.message").value("previousStatus query parameter must be one of: DRAFT, ISSUED, VOID"))
+            .andExpect(jsonPath("$.path").value("/api/invoices/inv-invalid-history/status-history"));
+
+        mockMvc.perform(InvoicesStatusHistoryWebTestSupport.statusHistoryRequestDefault(
+                "inv-invalid-range",
+                "changedAtFrom",
+                "2026-03-12T00:00:00Z",
+                "changedAtTo",
+                "2026-03-11T00:00:00Z"
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("changedAtFrom must be before or equal to changedAtTo"));
+    }
+
+    private void seedConfirmedOrderAndInvoice(String sku, String orderNumber, String invoiceNumber) throws Exception {
+        InvoicesWebIntegrationTestSupport.registerProduct(mockMvc, sku)
+            .andExpect(status().isCreated());
+        OrderManagementWebTestSupport.createSingleLineOrder(
+            mockMvc,
+            orderNumber,
+            "buyer@acme.com",
+            sku,
+            "1",
+            "10.00",
+            "USD"
+        ).andExpect(status().isCreated());
+        testClock.setInstant(InvoicesDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(60));
+        OrderManagementWebTestSupport.transitionOrderStatus(mockMvc, orderNumber, "CONFIRMED")
+            .andExpect(status().isOk());
+        testClock.resetToBaseInstant();
+        InvoicesWebIntegrationTestSupport.createInvoice(mockMvc, "tenant-inv", invoiceNumber, orderNumber, DUE_AT)
+            .andExpect(status().isCreated());
     }
 }

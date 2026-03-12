@@ -38,6 +38,18 @@ Rules:
   - `ISSUED -> VOID`
   - `VOID` is terminal
 
+### InvoiceStatusChangeAudit
+
+Purpose:
+- keep lifecycle transitions append-only and queryable for audit/history views
+
+Core fields:
+- `id` (`UUID`)
+- `invoiceId`
+- `previousStatus`
+- `currentStatus`
+- `changedAt`
+
 ### InvoiceLine
 
 Purpose:
@@ -64,3 +76,4 @@ Core fields:
 - `GET /api/invoices/{invoiceNumber}`
 - `GET /api/invoices?page=&size=`
 - `PATCH /api/invoices/{invoiceNumber}/status`
+- `GET /api/invoices/{invoiceNumber}/status-history?page=&size=&previousStatus=&currentStatus=&changedAtFrom=&changedAtTo=`

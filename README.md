@@ -104,6 +104,7 @@ Invoicing:
 - `GET /api/invoices/{invoiceNumber}`
 - `GET /api/invoices?page=&size=`
 - `PATCH /api/invoices/{invoiceNumber}/status`
+- `GET /api/invoices/{invoiceNumber}/status-history?page=&size=&previousStatus=&currentStatus=&changedAtFrom=&changedAtTo=`
 - invoice responses currently include snapshot `lines[]` copied from the source order at creation time
 
 Agreements:
