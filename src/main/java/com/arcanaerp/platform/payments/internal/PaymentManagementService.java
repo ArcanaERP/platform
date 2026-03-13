@@ -25,12 +25,13 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
+import java.time.temporal.TemporalAdjusters;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.time.temporal.TemporalAdjusters;
 
 @Service
 @Transactional
@@ -153,44 +154,21 @@ class PaymentManagementService implements PaymentManagement {
         Instant paidAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
-        List<Payment> payments = paymentRepository.findForTenantSummary(
-            normalizedTenantCode,
-            normalizedCurrencyCode,
+        return summarizeTenantPayments(
+            tenantCode,
+            currencyCode,
             paidAtFrom,
-            paidAtTo
-        );
-
-        Map<LocalDate, DailySummaryAccumulator> byDate = new LinkedHashMap<>();
-        for (Payment payment : payments) {
-            LocalDate businessDate = payment.getPaidAt().atOffset(ZoneOffset.UTC).toLocalDate();
-            byDate.computeIfAbsent(businessDate, ignored -> new DailySummaryAccumulator())
-                .add(payment);
-        }
-
-        List<DailyTenantPaymentSummaryView> summaries = new ArrayList<>();
-        byDate.forEach((businessDate, summary) -> summaries.add(new DailyTenantPaymentSummaryView(
-            normalizedTenantCode,
-            normalizedCurrencyCode,
-            businessDate,
-            summary.paymentCount,
-            summary.invoiceNumbers.size(),
-            summary.totalCollected
-        )));
-
-        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), summaries.size());
-        int toIndex = Math.min(fromIndex + pageQuery.size(), summaries.size());
-        int totalPages = summaries.isEmpty() ? 0 : (int) Math.ceil((double) summaries.size() / pageQuery.size());
-
-        return new PageResult<>(
-            summaries.subList(fromIndex, toIndex),
-            pageQuery.page(),
-            pageQuery.size(),
-            summaries.size(),
-            totalPages,
-            toIndex < summaries.size(),
-            pageQuery.page() > 0
+            paidAtTo,
+            pageQuery,
+            payment -> payment.getPaidAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            (normalizedTenantCode, normalizedCurrencyCode, businessDate, summary) -> new DailyTenantPaymentSummaryView(
+                normalizedTenantCode,
+                normalizedCurrencyCode,
+                businessDate,
+                summary.paymentCount,
+                summary.invoiceNumbers.size(),
+                summary.totalCollected
+            )
         );
     }
 
@@ -203,44 +181,21 @@ class PaymentManagementService implements PaymentManagement {
         Instant paidAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
-        List<Payment> payments = paymentRepository.findForTenantSummary(
-            normalizedTenantCode,
-            normalizedCurrencyCode,
+        return summarizeTenantPayments(
+            tenantCode,
+            currencyCode,
             paidAtFrom,
-            paidAtTo
-        );
-
-        Map<YearMonth, DailySummaryAccumulator> byMonth = new LinkedHashMap<>();
-        for (Payment payment : payments) {
-            YearMonth businessMonth = YearMonth.from(payment.getPaidAt().atOffset(ZoneOffset.UTC));
-            byMonth.computeIfAbsent(businessMonth, ignored -> new DailySummaryAccumulator())
-                .add(payment);
-        }
-
-        List<MonthlyTenantPaymentSummaryView> summaries = new ArrayList<>();
-        byMonth.forEach((businessMonth, summary) -> summaries.add(new MonthlyTenantPaymentSummaryView(
-            normalizedTenantCode,
-            normalizedCurrencyCode,
-            businessMonth,
-            summary.paymentCount,
-            summary.invoiceNumbers.size(),
-            summary.totalCollected
-        )));
-
-        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), summaries.size());
-        int toIndex = Math.min(fromIndex + pageQuery.size(), summaries.size());
-        int totalPages = summaries.isEmpty() ? 0 : (int) Math.ceil((double) summaries.size() / pageQuery.size());
-
-        return new PageResult<>(
-            summaries.subList(fromIndex, toIndex),
-            pageQuery.page(),
-            pageQuery.size(),
-            summaries.size(),
-            totalPages,
-            toIndex < summaries.size(),
-            pageQuery.page() > 0
+            paidAtTo,
+            pageQuery,
+            payment -> YearMonth.from(payment.getPaidAt().atOffset(ZoneOffset.UTC)),
+            (normalizedTenantCode, normalizedCurrencyCode, businessMonth, summary) -> new MonthlyTenantPaymentSummaryView(
+                normalizedTenantCode,
+                normalizedCurrencyCode,
+                businessMonth,
+                summary.paymentCount,
+                summary.invoiceNumbers.size(),
+                summary.totalCollected
+            )
         );
     }
 
@@ -253,47 +208,24 @@ class PaymentManagementService implements PaymentManagement {
         Instant paidAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
-        List<Payment> payments = paymentRepository.findForTenantSummary(
-            normalizedTenantCode,
-            normalizedCurrencyCode,
+        return summarizeTenantPayments(
+            tenantCode,
+            currencyCode,
             paidAtFrom,
-            paidAtTo
-        );
-
-        Map<LocalDate, DailySummaryAccumulator> byWeek = new LinkedHashMap<>();
-        for (Payment payment : payments) {
-            LocalDate businessWeekStart = payment.getPaidAt()
+            paidAtTo,
+            pageQuery,
+            payment -> payment.getPaidAt()
                 .atOffset(ZoneOffset.UTC)
                 .toLocalDate()
-                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-            byWeek.computeIfAbsent(businessWeekStart, ignored -> new DailySummaryAccumulator())
-                .add(payment);
-        }
-
-        List<WeeklyTenantPaymentSummaryView> summaries = new ArrayList<>();
-        byWeek.forEach((businessWeekStart, summary) -> summaries.add(new WeeklyTenantPaymentSummaryView(
-            normalizedTenantCode,
-            normalizedCurrencyCode,
-            businessWeekStart,
-            summary.paymentCount,
-            summary.invoiceNumbers.size(),
-            summary.totalCollected
-        )));
-
-        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), summaries.size());
-        int toIndex = Math.min(fromIndex + pageQuery.size(), summaries.size());
-        int totalPages = summaries.isEmpty() ? 0 : (int) Math.ceil((double) summaries.size() / pageQuery.size());
-
-        return new PageResult<>(
-            summaries.subList(fromIndex, toIndex),
-            pageQuery.page(),
-            pageQuery.size(),
-            summaries.size(),
-            totalPages,
-            toIndex < summaries.size(),
-            pageQuery.page() > 0
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            (normalizedTenantCode, normalizedCurrencyCode, businessWeekStart, summary) -> new WeeklyTenantPaymentSummaryView(
+                normalizedTenantCode,
+                normalizedCurrencyCode,
+                businessWeekStart,
+                summary.paymentCount,
+                summary.invoiceNumbers.size(),
+                summary.totalCollected
+            )
         );
     }
 
@@ -319,6 +251,51 @@ class PaymentManagementService implements PaymentManagement {
             summary.getPaymentCount(),
             summary.getInvoiceCount(),
             summary.getTotalCollected()
+        );
+    }
+
+    private <B, V> PageResult<V> summarizeTenantPayments(
+        String tenantCode,
+        String currencyCode,
+        Instant paidAtFrom,
+        Instant paidAtTo,
+        PageQuery pageQuery,
+        Function<Payment, B> bucketExtractor,
+        BucketViewFactory<B, V> viewFactory
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        List<Payment> payments = paymentRepository.findForTenantSummary(
+            normalizedTenantCode,
+            normalizedCurrencyCode,
+            paidAtFrom,
+            paidAtTo
+        );
+
+        Map<B, DailySummaryAccumulator> summariesByBucket = new LinkedHashMap<>();
+        for (Payment payment : payments) {
+            B bucket = bucketExtractor.apply(payment);
+            summariesByBucket.computeIfAbsent(bucket, ignored -> new DailySummaryAccumulator())
+                .add(payment);
+        }
+
+        List<V> summaries = new ArrayList<>();
+        summariesByBucket.forEach((bucket, summary) -> summaries.add(
+            viewFactory.create(normalizedTenantCode, normalizedCurrencyCode, bucket, summary)
+        ));
+
+        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), summaries.size());
+        int toIndex = Math.min(fromIndex + pageQuery.size(), summaries.size());
+        int totalPages = summaries.isEmpty() ? 0 : (int) Math.ceil((double) summaries.size() / pageQuery.size());
+
+        return new PageResult<>(
+            summaries.subList(fromIndex, toIndex),
+            pageQuery.page(),
+            pageQuery.size(),
+            summaries.size(),
+            totalPages,
+            toIndex < summaries.size(),
+            pageQuery.page() > 0
         );
     }
 
@@ -357,5 +334,11 @@ class PaymentManagementService implements PaymentManagement {
             totalCollected = totalCollected.add(payment.getAmount());
             invoiceNumbers.add(payment.getInvoiceNumber());
         }
+    }
+
+    @FunctionalInterface
+    private interface BucketViewFactory<B, V> {
+
+        V create(String tenantCode, String currencyCode, B bucket, DailySummaryAccumulator summary);
     }
 }
