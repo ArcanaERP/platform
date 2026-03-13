@@ -13,8 +13,10 @@ import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentView;
+import com.arcanaerp.platform.payments.WeeklyTenantPaymentSummaryView;
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -28,6 +30,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.temporal.TemporalAdjusters;
 
 @Service
 @Transactional
@@ -221,6 +224,59 @@ class PaymentManagementService implements PaymentManagement {
             normalizedTenantCode,
             normalizedCurrencyCode,
             businessMonth,
+            summary.paymentCount,
+            summary.invoiceNumbers.size(),
+            summary.totalCollected
+        )));
+
+        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), summaries.size());
+        int toIndex = Math.min(fromIndex + pageQuery.size(), summaries.size());
+        int totalPages = summaries.isEmpty() ? 0 : (int) Math.ceil((double) summaries.size() / pageQuery.size());
+
+        return new PageResult<>(
+            summaries.subList(fromIndex, toIndex),
+            pageQuery.page(),
+            pageQuery.size(),
+            summaries.size(),
+            totalPages,
+            toIndex < summaries.size(),
+            pageQuery.page() > 0
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WeeklyTenantPaymentSummaryView> listWeeklyTenantSummaries(
+        String tenantCode,
+        String currencyCode,
+        Instant paidAtFrom,
+        Instant paidAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        List<Payment> payments = paymentRepository.findForTenantSummary(
+            normalizedTenantCode,
+            normalizedCurrencyCode,
+            paidAtFrom,
+            paidAtTo
+        );
+
+        Map<LocalDate, DailySummaryAccumulator> byWeek = new LinkedHashMap<>();
+        for (Payment payment : payments) {
+            LocalDate businessWeekStart = payment.getPaidAt()
+                .atOffset(ZoneOffset.UTC)
+                .toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            byWeek.computeIfAbsent(businessWeekStart, ignored -> new DailySummaryAccumulator())
+                .add(payment);
+        }
+
+        List<WeeklyTenantPaymentSummaryView> summaries = new ArrayList<>();
+        byWeek.forEach((businessWeekStart, summary) -> summaries.add(new WeeklyTenantPaymentSummaryView(
+            normalizedTenantCode,
+            normalizedCurrencyCode,
+            businessWeekStart,
             summary.paymentCount,
             summary.invoiceNumbers.size(),
             summary.totalCollected

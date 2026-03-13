@@ -64,6 +64,7 @@ Computation:
 - `GET /api/payments/tenants/{tenantCode}/invoices?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/daily-summary?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/monthly-summary?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/weekly-summary?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`
 
 ## Query Notes
 
@@ -118,6 +119,23 @@ Fields:
 Notes:
 - buckets are derived in the service layer from `paidAt` using UTC date semantics
 - pagination applies to the date buckets after grouping
+
+## Weekly Tenant Summary
+
+Purpose:
+- provide a mid-granularity trend view of payment activity by UTC business week
+
+Fields:
+- `tenantCode`
+- `currencyCode`
+- `businessWeekStart`
+- `paymentCount`
+- `invoiceCount`
+- `totalCollected`
+
+Notes:
+- buckets are derived in the service layer from `paidAt` using UTC week semantics with Monday as the business-week start
+- pagination applies to the week buckets after grouping
 
 ## Monthly Tenant Summary
 

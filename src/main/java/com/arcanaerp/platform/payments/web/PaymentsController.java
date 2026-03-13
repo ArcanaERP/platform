@@ -10,6 +10,7 @@ import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
+import com.arcanaerp.platform.payments.WeeklyTenantPaymentSummaryView;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -157,6 +158,28 @@ public class PaymentsController {
             .map(this::toMonthlySummaryResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/weekly-summary")
+    public PageResult<WeeklyTenantPaymentSummaryResponse> weeklyTenantSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam String currencyCode,
+        @RequestParam(required = false) String paidAtFrom,
+        @RequestParam(required = false) String paidAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedPaidAtFrom = parseOptionalInstant(paidAtFrom, "paidAtFrom");
+        Instant parsedPaidAtTo = parseOptionalInstant(paidAtTo, "paidAtTo");
+        validatePaidAtRange(parsedPaidAtFrom, parsedPaidAtTo);
+        return paymentManagement.listWeeklyTenantSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(currencyCode, "currencyCode"),
+                parsedPaidAtFrom,
+                parsedPaidAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toWeeklySummaryResponse);
+    }
+
     private PaymentResponse toResponse(PaymentView payment) {
         return new PaymentResponse(
             payment.id(),
@@ -217,6 +240,17 @@ public class PaymentsController {
             summary.tenantCode(),
             summary.currencyCode(),
             summary.businessMonth(),
+            summary.paymentCount(),
+            summary.invoiceCount(),
+            summary.totalCollected()
+        );
+    }
+
+    private WeeklyTenantPaymentSummaryResponse toWeeklySummaryResponse(WeeklyTenantPaymentSummaryView summary) {
+        return new WeeklyTenantPaymentSummaryResponse(
+            summary.tenantCode(),
+            summary.currencyCode(),
+            summary.businessWeekStart(),
             summary.paymentCount(),
             summary.invoiceCount(),
             summary.totalCollected()

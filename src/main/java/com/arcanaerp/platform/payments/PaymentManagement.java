@@ -42,6 +42,14 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    PageResult<WeeklyTenantPaymentSummaryView> listWeeklyTenantSummaries(
+        String tenantCode,
+        String currencyCode,
+        Instant paidAtFrom,
+        Instant paidAtTo,
+        PageQuery pageQuery
+    );
+
     TenantPaymentSummaryView tenantSummary(
         String tenantCode,
         String currencyCode,
