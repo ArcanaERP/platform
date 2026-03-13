@@ -8,6 +8,7 @@ import com.arcanaerp.platform.invoicing.InvoiceView;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
+import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
@@ -16,6 +17,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -169,6 +171,56 @@ class PaymentManagementService implements PaymentManagement {
             normalizedTenantCode,
             normalizedCurrencyCode,
             businessDate,
+            summary.paymentCount,
+            summary.invoiceNumbers.size(),
+            summary.totalCollected
+        )));
+
+        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), summaries.size());
+        int toIndex = Math.min(fromIndex + pageQuery.size(), summaries.size());
+        int totalPages = summaries.isEmpty() ? 0 : (int) Math.ceil((double) summaries.size() / pageQuery.size());
+
+        return new PageResult<>(
+            summaries.subList(fromIndex, toIndex),
+            pageQuery.page(),
+            pageQuery.size(),
+            summaries.size(),
+            totalPages,
+            toIndex < summaries.size(),
+            pageQuery.page() > 0
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyTenantPaymentSummaryView> listMonthlyTenantSummaries(
+        String tenantCode,
+        String currencyCode,
+        Instant paidAtFrom,
+        Instant paidAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        List<Payment> payments = paymentRepository.findForTenantSummary(
+            normalizedTenantCode,
+            normalizedCurrencyCode,
+            paidAtFrom,
+            paidAtTo
+        );
+
+        Map<YearMonth, DailySummaryAccumulator> byMonth = new LinkedHashMap<>();
+        for (Payment payment : payments) {
+            YearMonth businessMonth = YearMonth.from(payment.getPaidAt().atOffset(ZoneOffset.UTC));
+            byMonth.computeIfAbsent(businessMonth, ignored -> new DailySummaryAccumulator())
+                .add(payment);
+        }
+
+        List<MonthlyTenantPaymentSummaryView> summaries = new ArrayList<>();
+        byMonth.forEach((businessMonth, summary) -> summaries.add(new MonthlyTenantPaymentSummaryView(
+            normalizedTenantCode,
+            normalizedCurrencyCode,
+            businessMonth,
             summary.paymentCount,
             summary.invoiceNumbers.size(),
             summary.totalCollected

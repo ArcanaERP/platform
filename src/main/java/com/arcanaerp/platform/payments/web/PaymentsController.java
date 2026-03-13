@@ -5,6 +5,7 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
+import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
@@ -134,6 +135,28 @@ public class PaymentsController {
             .map(this::toDailySummaryResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/monthly-summary")
+    public PageResult<MonthlyTenantPaymentSummaryResponse> monthlyTenantSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam String currencyCode,
+        @RequestParam(required = false) String paidAtFrom,
+        @RequestParam(required = false) String paidAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedPaidAtFrom = parseOptionalInstant(paidAtFrom, "paidAtFrom");
+        Instant parsedPaidAtTo = parseOptionalInstant(paidAtTo, "paidAtTo");
+        validatePaidAtRange(parsedPaidAtFrom, parsedPaidAtTo);
+        return paymentManagement.listMonthlyTenantSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(currencyCode, "currencyCode"),
+                parsedPaidAtFrom,
+                parsedPaidAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toMonthlySummaryResponse);
+    }
+
     private PaymentResponse toResponse(PaymentView payment) {
         return new PaymentResponse(
             payment.id(),
@@ -183,6 +206,17 @@ public class PaymentsController {
             summary.tenantCode(),
             summary.currencyCode(),
             summary.businessDate(),
+            summary.paymentCount(),
+            summary.invoiceCount(),
+            summary.totalCollected()
+        );
+    }
+
+    private MonthlyTenantPaymentSummaryResponse toMonthlySummaryResponse(MonthlyTenantPaymentSummaryView summary) {
+        return new MonthlyTenantPaymentSummaryResponse(
+            summary.tenantCode(),
+            summary.currencyCode(),
+            summary.businessMonth(),
             summary.paymentCount(),
             summary.invoiceCount(),
             summary.totalCollected()

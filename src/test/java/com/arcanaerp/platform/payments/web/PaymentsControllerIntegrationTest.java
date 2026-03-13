@@ -21,6 +21,7 @@ class PaymentsControllerIntegrationTest {
     private static final String SUMMARY_TENANT_CODE = "tenant-summary";
     private static final String INVOICE_SUMMARY_TENANT_CODE = "tenant-invoice-summary";
     private static final String DAILY_SUMMARY_TENANT_CODE = "tenant-daily-summary";
+    private static final String MONTHLY_SUMMARY_TENANT_CODE = "tenant-monthly-summary";
 
     @Autowired
     private MockMvc mockMvc;
@@ -335,6 +336,53 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].invoiceCount").value(1))
             .andExpect(jsonPath("$.items[0].totalCollected").value(5.0))
             .andExpect(jsonPath("$.items[1].businessDate").value("2026-03-12"))
+            .andExpect(jsonPath("$.items[1].totalCollected").value(4.0));
+    }
+
+    @Test
+    void listsMonthlyTenantPaymentSummary() throws Exception {
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(mockMvc, testClock, "arc-pay-1011", "so-pay-1011", "inv-pay-1011");
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(mockMvc, testClock, "arc-pay-1012", "so-pay-1012", "inv-pay-1012");
+
+        PaymentsWebIntegrationTestSupport.createPayment(
+            mockMvc,
+            MONTHLY_SUMMARY_TENANT_CODE,
+            "pay-1013",
+            "inv-pay-1011",
+            "4.00",
+            "USD",
+            Instant.parse("2026-03-31T23:30:00Z")
+        ).andExpect(status().isCreated());
+
+        PaymentsWebIntegrationTestSupport.createPayment(
+            mockMvc,
+            MONTHLY_SUMMARY_TENANT_CODE,
+            "pay-1014",
+            "inv-pay-1012",
+            "5.00",
+            "USD",
+            Instant.parse("2026-04-01T00:15:00Z")
+        ).andExpect(status().isCreated());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.monthlyTenantSummaryRequest(
+                MONTHLY_SUMMARY_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "paidAtFrom",
+                "2026-03-01T00:00:00Z",
+                "paidAtTo",
+                "2026-04-30T23:59:59Z"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("TENANT-MONTHLY-SUMMARY"))
+            .andExpect(jsonPath("$.items[0].currencyCode").value("USD"))
+            .andExpect(jsonPath("$.items[0].businessMonth").value("2026-04"))
+            .andExpect(jsonPath("$.items[0].paymentCount").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1))
+            .andExpect(jsonPath("$.items[0].totalCollected").value(5.0))
+            .andExpect(jsonPath("$.items[1].businessMonth").value("2026-03"))
             .andExpect(jsonPath("$.items[1].totalCollected").value(4.0));
     }
 }

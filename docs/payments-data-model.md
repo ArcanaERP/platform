@@ -1,6 +1,6 @@
 # Payments Data Model
 
-Updated: 2026-03-11
+Updated: 2026-03-12
 
 ## Scope
 
@@ -63,6 +63,7 @@ Computation:
 - `GET /api/payments/tenants/{tenantCode}/summary?currencyCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/invoices?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/daily-summary?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/monthly-summary?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`
 
 ## Query Notes
 
@@ -117,3 +118,20 @@ Fields:
 Notes:
 - buckets are derived in the service layer from `paidAt` using UTC date semantics
 - pagination applies to the date buckets after grouping
+
+## Monthly Tenant Summary
+
+Purpose:
+- provide a coarse-grained trend view of payment activity by UTC business month
+
+Fields:
+- `tenantCode`
+- `currencyCode`
+- `businessMonth`
+- `paymentCount`
+- `invoiceCount`
+- `totalCollected`
+
+Notes:
+- buckets are derived in the service layer from `paidAt` using UTC `YearMonth` semantics
+- pagination applies to the month buckets after grouping
