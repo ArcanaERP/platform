@@ -6,6 +6,7 @@ import com.arcanaerp.platform.invoicing.InvoiceManagement;
 import com.arcanaerp.platform.invoicing.InvoiceStatus;
 import com.arcanaerp.platform.invoicing.InvoiceView;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
+import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
@@ -14,6 +15,12 @@ import com.arcanaerp.platform.payments.PaymentView;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
@@ -134,6 +141,56 @@ class PaymentManagementService implements PaymentManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<DailyTenantPaymentSummaryView> listDailyTenantSummaries(
+        String tenantCode,
+        String currencyCode,
+        Instant paidAtFrom,
+        Instant paidAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        List<Payment> payments = paymentRepository.findForTenantSummary(
+            normalizedTenantCode,
+            normalizedCurrencyCode,
+            paidAtFrom,
+            paidAtTo
+        );
+
+        Map<LocalDate, DailySummaryAccumulator> byDate = new LinkedHashMap<>();
+        for (Payment payment : payments) {
+            LocalDate businessDate = payment.getPaidAt().atOffset(ZoneOffset.UTC).toLocalDate();
+            byDate.computeIfAbsent(businessDate, ignored -> new DailySummaryAccumulator())
+                .add(payment);
+        }
+
+        List<DailyTenantPaymentSummaryView> summaries = new ArrayList<>();
+        byDate.forEach((businessDate, summary) -> summaries.add(new DailyTenantPaymentSummaryView(
+            normalizedTenantCode,
+            normalizedCurrencyCode,
+            businessDate,
+            summary.paymentCount,
+            summary.invoiceNumbers.size(),
+            summary.totalCollected
+        )));
+
+        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), summaries.size());
+        int toIndex = Math.min(fromIndex + pageQuery.size(), summaries.size());
+        int totalPages = summaries.isEmpty() ? 0 : (int) Math.ceil((double) summaries.size() / pageQuery.size());
+
+        return new PageResult<>(
+            summaries.subList(fromIndex, toIndex),
+            pageQuery.page(),
+            pageQuery.size(),
+            summaries.size(),
+            totalPages,
+            toIndex < summaries.size(),
+            pageQuery.page() > 0
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public TenantPaymentSummaryView tenantSummary(
         String tenantCode,
         String currencyCode,
@@ -179,5 +236,18 @@ class PaymentManagementService implements PaymentManagement {
 
     private static String normalizeOptional(String value) {
         return value == null ? null : value.trim().toUpperCase();
+    }
+
+    private static final class DailySummaryAccumulator {
+
+        private long paymentCount;
+        private BigDecimal totalCollected = BigDecimal.ZERO;
+        private final java.util.Set<String> invoiceNumbers = new java.util.LinkedHashSet<>();
+
+        void add(Payment payment) {
+            paymentCount++;
+            totalCollected = totalCollected.add(payment.getAmount());
+            invoiceNumbers.add(payment.getInvoiceNumber());
+        }
     }
 }

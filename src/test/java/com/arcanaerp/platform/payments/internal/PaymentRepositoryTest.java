@@ -210,4 +210,36 @@ class PaymentRepositoryTest {
             .orElseThrow()
             .getTotalCollected()).isEqualByComparingTo("7.00");
     }
+
+    @Test
+    void findsPaymentsForTenantSummaryOrderedByPaidAtDesc() {
+        paymentRepository.saveAndFlush(Payment.create(
+            "TENANT-05",
+            "PAY-2011",
+            "INV-2010",
+            new BigDecimal("4.00"),
+            "USD",
+            Instant.parse("2026-03-12T03:00:00Z"),
+            Instant.parse("2026-03-12T03:01:00Z")
+        ));
+        paymentRepository.saveAndFlush(Payment.create(
+            "TENANT-05",
+            "PAY-2012",
+            "INV-2011",
+            new BigDecimal("6.00"),
+            "USD",
+            Instant.parse("2026-03-12T04:00:00Z"),
+            Instant.parse("2026-03-12T04:01:00Z")
+        ));
+
+        var payments = paymentRepository.findForTenantSummary(
+            "TENANT-05",
+            "USD",
+            Instant.parse("2026-03-12T02:30:00Z"),
+            Instant.parse("2026-03-12T04:30:00Z")
+        );
+
+        assertThat(payments).hasSize(2);
+        assertThat(payments).extracting(Payment::getPaymentReference).containsExactly("PAY-2012", "PAY-2011");
+    }
 }

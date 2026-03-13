@@ -3,6 +3,7 @@ package com.arcanaerp.platform.payments.web;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
+import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
@@ -111,6 +112,28 @@ public class PaymentsController {
             .map(this::toInvoiceSummaryResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/daily-summary")
+    public PageResult<DailyTenantPaymentSummaryResponse> dailyTenantSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam String currencyCode,
+        @RequestParam(required = false) String paidAtFrom,
+        @RequestParam(required = false) String paidAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedPaidAtFrom = parseOptionalInstant(paidAtFrom, "paidAtFrom");
+        Instant parsedPaidAtTo = parseOptionalInstant(paidAtTo, "paidAtTo");
+        validatePaidAtRange(parsedPaidAtFrom, parsedPaidAtTo);
+        return paymentManagement.listDailyTenantSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(currencyCode, "currencyCode"),
+                parsedPaidAtFrom,
+                parsedPaidAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toDailySummaryResponse);
+    }
+
     private PaymentResponse toResponse(PaymentView payment) {
         return new PaymentResponse(
             payment.id(),
@@ -151,6 +174,17 @@ public class PaymentsController {
             summary.currencyCode(),
             summary.invoiceNumber(),
             summary.paymentCount(),
+            summary.totalCollected()
+        );
+    }
+
+    private DailyTenantPaymentSummaryResponse toDailySummaryResponse(DailyTenantPaymentSummaryView summary) {
+        return new DailyTenantPaymentSummaryResponse(
+            summary.tenantCode(),
+            summary.currencyCode(),
+            summary.businessDate(),
+            summary.paymentCount(),
+            summary.invoiceCount(),
             summary.totalCollected()
         );
     }

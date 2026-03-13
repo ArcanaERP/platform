@@ -62,6 +62,7 @@ Computation:
 - `GET /api/payments?page=&size=&invoiceNumber=&tenantCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/summary?currencyCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/invoices?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/daily-summary?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`
 
 ## Query Notes
 
@@ -99,3 +100,20 @@ Fields:
 Notes:
 - rows are grouped by `invoiceNumber`
 - endpoint is paged for operational reconciliation screens
+
+## Daily Tenant Summary
+
+Purpose:
+- provide a simple trend view of payment activity by UTC business date
+
+Fields:
+- `tenantCode`
+- `currencyCode`
+- `businessDate`
+- `paymentCount`
+- `invoiceCount`
+- `totalCollected`
+
+Notes:
+- buckets are derived in the service layer from `paidAt` using UTC date semantics
+- pagination applies to the date buckets after grouping

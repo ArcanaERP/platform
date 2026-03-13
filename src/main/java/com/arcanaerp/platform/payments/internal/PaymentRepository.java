@@ -2,6 +2,7 @@ package com.arcanaerp.platform.payments.internal;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -33,6 +34,24 @@ interface PaymentRepository extends JpaRepository<Payment, UUID> {
         @Param("paidAtFrom") Instant paidAtFrom,
         @Param("paidAtTo") Instant paidAtTo,
         Pageable pageable
+    );
+
+    @Query(
+        """
+        select payment
+        from Payment payment
+        where payment.tenantCode = :tenantCode
+          and payment.currencyCode = :currencyCode
+          and (:paidAtFrom is null or payment.paidAt >= :paidAtFrom)
+          and (:paidAtTo is null or payment.paidAt <= :paidAtTo)
+        order by payment.paidAt desc, payment.createdAt desc
+        """
+    )
+    List<Payment> findForTenantSummary(
+        @Param("tenantCode") String tenantCode,
+        @Param("currencyCode") String currencyCode,
+        @Param("paidAtFrom") Instant paidAtFrom,
+        @Param("paidAtTo") Instant paidAtTo
     );
 
     @Query(
