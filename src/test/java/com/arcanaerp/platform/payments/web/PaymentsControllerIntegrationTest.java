@@ -36,6 +36,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_ASSIGNMENT_SUMMARY_TENANT_CODE = "tenant-coll-assign-sum";
     private static final String COLLECTIONS_ASSIGNMENT_DAILY_SUMMARY_TENANT_CODE = "tenant-coll-assign-day";
     private static final String COLLECTIONS_ASSIGNMENT_WEEKLY_SUMMARY_TENANT_CODE = "tenant-coll-assign-week";
+    private static final String COLLECTIONS_ASSIGNMENT_MONTHLY_SUMMARY_TENANT_CODE = "tenant-coll-assign-month";
 
     @Autowired
     private MockMvc mockMvc;
@@ -1342,6 +1343,122 @@ class PaymentsControllerIntegrationTest {
                 .toLocalDate()
                 .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
                 .toString()))
+            .andExpect(jsonPath("$.items[0].assignmentCount").value(2))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(2));
+    }
+
+    @Test
+    void listsMonthlyTenantCollectionsAssignmentSummary() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_MONTHLY_SUMMARY_TENANT_CODE,
+            "Collections Monthly Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_MONTHLY_SUMMARY_TENANT_CODE,
+            "Collections Monthly Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_MONTHLY_SUMMARY_TENANT_CODE,
+            "Collections Monthly Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNMENT_MONTHLY_SUMMARY_TENANT_CODE,
+            "arc-pay-1047",
+            "so-pay-1047",
+            "inv-pay-1047",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNMENT_MONTHLY_SUMMARY_TENANT_CODE,
+            "arc-pay-1048",
+            "so-pay-1048",
+            "inv-pay-1048",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(15 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNMENT_MONTHLY_SUMMARY_TENANT_CODE,
+            "arc-pay-1049",
+            "so-pay-1049",
+            "inv-pay-1049",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(20 * 86400)
+        );
+
+        Instant firstMonth = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130L * 86400);
+        testClock.setInstant(firstMonth);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_MONTHLY_SUMMARY_TENANT_CODE,
+            "inv-pay-1047",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_MONTHLY_SUMMARY_TENANT_CODE,
+            "inv-pay-1048",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant secondMonth = Instant.parse("2026-08-05T00:00:00Z");
+        testClock.setInstant(secondMonth);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_MONTHLY_SUMMARY_TENANT_CODE,
+            "inv-pay-1049",
+            "collector-b@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.monthlyTenantCollectionsAssignmentSummaryRequest(
+                COLLECTIONS_ASSIGNMENT_MONTHLY_SUMMARY_TENANT_CODE,
+                0,
+                10
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessMonth").value("2026-08"))
+            .andExpect(jsonPath("$.items[0].assignmentCount").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1))
+            .andExpect(jsonPath("$.items[1].businessMonth").value(firstMonth.atOffset(java.time.ZoneOffset.UTC).toLocalDate().withDayOfMonth(1).toString().substring(0, 7)))
+            .andExpect(jsonPath("$.items[1].assignmentCount").value(2))
+            .andExpect(jsonPath("$.items[1].invoiceCount").value(2));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.monthlyTenantCollectionsAssignmentSummaryRequest(
+                COLLECTIONS_ASSIGNMENT_MONTHLY_SUMMARY_TENANT_CODE,
+                0,
+                10,
+                "assignedTo",
+                "collector-a@arcanaerp.com",
+                "assignedAtFrom",
+                firstMonth.minusSeconds(1).toString(),
+                "assignedAtTo",
+                firstMonth.plusSeconds(1).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].businessMonth").value(firstMonth.atOffset(java.time.ZoneOffset.UTC).toLocalDate().withDayOfMonth(1).toString().substring(0, 7)))
             .andExpect(jsonPath("$.items[0].assignmentCount").value(2))
             .andExpect(jsonPath("$.items[0].invoiceCount").value(2));
     }

@@ -10,6 +10,7 @@ import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
+import com.arcanaerp.platform.payments.MonthlyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
@@ -260,6 +261,28 @@ public class PaymentsController {
                 PageQuery.of(page, size)
             )
             .map(this::toWeeklyTenantCollectionsAssignmentSummaryResponse);
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/monthly-summary")
+    public PageResult<MonthlyTenantCollectionsAssignmentSummaryResponse> listMonthlyTenantCollectionsAssignmentSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam(required = false) String assignedTo,
+        @RequestParam(required = false) String assignedAtFrom,
+        @RequestParam(required = false) String assignedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedAssignedAtFrom = parseOptionalInstant(assignedAtFrom, "assignedAtFrom");
+        Instant parsedAssignedAtTo = parseOptionalInstant(assignedAtTo, "assignedAtTo");
+        validateInstantRange(parsedAssignedAtFrom, parsedAssignedAtTo, "assignedAtFrom", "assignedAtTo");
+        return paymentManagement.listMonthlyTenantCollectionsAssignmentSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(assignedTo, "assignedTo"),
+                parsedAssignedAtFrom,
+                parsedAssignedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toMonthlyTenantCollectionsAssignmentSummaryResponse);
     }
 
     @GetMapping
@@ -552,6 +575,17 @@ public class PaymentsController {
         return new WeeklyTenantCollectionsAssignmentSummaryResponse(
             summary.tenantCode(),
             summary.businessWeekStart(),
+            summary.assignmentCount(),
+            summary.invoiceCount()
+        );
+    }
+
+    private MonthlyTenantCollectionsAssignmentSummaryResponse toMonthlyTenantCollectionsAssignmentSummaryResponse(
+        MonthlyTenantCollectionsAssignmentSummaryView summary
+    ) {
+        return new MonthlyTenantCollectionsAssignmentSummaryResponse(
+            summary.tenantCode(),
+            summary.businessMonth(),
             summary.assignmentCount(),
             summary.invoiceCount()
         );
