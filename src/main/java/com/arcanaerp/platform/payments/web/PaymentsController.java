@@ -111,6 +111,23 @@ public class PaymentsController {
             .map(this::toAgedReceivableResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/over-90")
+    public PageResult<AgedTenantReceivableResponse> over90CollectionsQueue(
+        @PathVariable String tenantCode,
+        @RequestParam String currencyCode,
+        @RequestParam(required = false) String invoiceNumber,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return paymentManagement.listOver90CollectionsQueue(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(currencyCode, "currencyCode"),
+                normalizeOptional(invoiceNumber, "invoiceNumber"),
+                PageQuery.of(page, size)
+            )
+            .map(this::toAgedReceivableResponse);
+    }
+
     @GetMapping
     public PageResult<PaymentResponse> listPayments(
         @RequestParam(required = false) String invoiceNumber,

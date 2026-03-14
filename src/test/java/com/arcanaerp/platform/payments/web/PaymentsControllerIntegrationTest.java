@@ -26,6 +26,7 @@ class PaymentsControllerIntegrationTest {
     private static final String RECEIVABLES_TENANT_CODE = "tenant-receivables";
     private static final String AGING_TENANT_CODE = "tenant-aging";
     private static final String AGING_BUCKET_TENANT_CODE = "tenant-aging-bucket";
+    private static final String COLLECTIONS_TENANT_CODE = "tenant-collections";
 
     @Autowired
     private MockMvc mockMvc;
@@ -371,6 +372,89 @@ class PaymentsControllerIntegrationTest {
             ))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("Unsupported agingBucket: STALE"));
+    }
+
+    @Test
+    void listsOver90CollectionsQueueAndSupportsInvoiceFilter() throws Exception {
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_TENANT_CODE,
+            "arc-pay-1028",
+            "so-pay-1028",
+            "inv-pay-1028",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_TENANT_CODE,
+            "arc-pay-1029",
+            "so-pay-1029",
+            "inv-pay-1029",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(15 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_TENANT_CODE,
+            "arc-pay-1030",
+            "so-pay-1030",
+            "inv-pay-1030",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(120 * 86400)
+        );
+
+        PaymentsWebIntegrationTestSupport.createPayment(
+            mockMvc,
+            COLLECTIONS_TENANT_CODE,
+            "pay-1028",
+            "inv-pay-1029",
+            "4.00",
+            "USD",
+            PAID_AT
+        ).andExpect(status().isCreated());
+
+        testClock.setInstant(PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400));
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.over90CollectionsQueueRequest(
+                COLLECTIONS_TENANT_CODE,
+                "USD",
+                0,
+                10
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-1028"))
+            .andExpect(jsonPath("$.items[0].daysPastDue").value(120))
+            .andExpect(jsonPath("$.items[1].invoiceNumber").value("INV-PAY-1029"))
+            .andExpect(jsonPath("$.items[1].daysPastDue").value(115))
+            .andExpect(jsonPath("$.items[1].outstandingAmount").value(6.0));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.over90CollectionsQueueRequest(
+                COLLECTIONS_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "invoiceNumber",
+                "inv-pay-1029"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-1029"))
+            .andExpect(jsonPath("$.items[0].agingBucket").value("OVERDUE_OVER_90"));
+    }
+
+    @Test
+    void rejectsBlankOver90CollectionsInvoiceFilter() throws Exception {
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.over90CollectionsQueueRequest(
+                COLLECTIONS_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "invoiceNumber",
+                "   "
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("invoiceNumber query parameter must not be blank"));
     }
 
     @Test

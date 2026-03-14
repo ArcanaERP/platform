@@ -33,6 +33,13 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    PageResult<AgedTenantReceivableView> listOver90CollectionsQueue(
+        String tenantCode,
+        String currencyCode,
+        String invoiceNumber,
+        PageQuery pageQuery
+    );
+
     PageResult<PaymentView> listPayments(
         String invoiceNumber,
         String tenantCode,

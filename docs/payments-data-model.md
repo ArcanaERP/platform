@@ -153,6 +153,22 @@ Notes:
 - bucket drill-down is paged after filtering and ordered by `dueAt ASC`, then `invoiceNumber ASC`
 - `daysPastDue <= 0` maps to `CURRENT`
 
+### Over90CollectionsQueue
+
+Purpose:
+- expose a dedicated collections work queue for invoices more than 90 days past due
+
+Fields:
+- same row shape as `AgedTenantReceivable`
+
+Filters:
+- `invoiceNumber` exact match, optional
+
+Notes:
+- queue is a shortcut over the `OVERDUE_OVER_90` aging bucket
+- rows remain ordered by `dueAt ASC`, then `invoiceNumber ASC`
+- blank `invoiceNumber` query values are rejected at the HTTP boundary
+
 ## Cross-Module Dependency
 
 - `payments` reads invoices through public `InvoiceManagement`
@@ -166,6 +182,7 @@ Notes:
 - `GET /api/payments/tenants/{tenantCode}/receivables/summary?currencyCode=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/aging?currencyCode=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/aging/{agingBucket}?currencyCode=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90?currencyCode=&invoiceNumber=&page=&size=`
 - `GET /api/payments?page=&size=&invoiceNumber=&tenantCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/summary?currencyCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/invoices?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`

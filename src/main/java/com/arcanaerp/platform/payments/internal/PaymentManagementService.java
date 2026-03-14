@@ -244,6 +244,57 @@ class PaymentManagementService implements PaymentManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<AgedTenantReceivableView> listOver90CollectionsQueue(
+        String tenantCode,
+        String currencyCode,
+        String invoiceNumber,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        String normalizedInvoiceNumber = normalizeOptional(invoiceNumber);
+        LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
+        List<AgedTenantReceivableView> filtered = collectOutstandingReceivableSnapshots(
+            normalizedTenantCode,
+            normalizedCurrencyCode,
+            asOfDate
+        ).stream()
+            .filter(snapshot -> snapshot.agingBucket() == ReceivablesAgingBucket.OVERDUE_OVER_90)
+            .filter(snapshot -> normalizedInvoiceNumber == null || snapshot.invoiceNumber().equals(normalizedInvoiceNumber))
+            .sorted(java.util.Comparator
+                .comparing(ReceivableSnapshot::dueAt)
+                .thenComparing(ReceivableSnapshot::invoiceNumber))
+            .map(snapshot -> new AgedTenantReceivableView(
+                snapshot.tenantCode(),
+                snapshot.currencyCode(),
+                snapshot.invoiceNumber(),
+                snapshot.dueAt(),
+                snapshot.issuedAt(),
+                snapshot.totalAmount(),
+                snapshot.paidAmount(),
+                snapshot.outstandingAmount(),
+                snapshot.asOfDate(),
+                snapshot.daysPastDue(),
+                snapshot.agingBucket()
+            ))
+            .toList();
+
+        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), filtered.size());
+        int toIndex = Math.min(fromIndex + pageQuery.size(), filtered.size());
+        int totalPages = filtered.isEmpty() ? 0 : (int) Math.ceil((double) filtered.size() / pageQuery.size());
+        return new PageResult<>(
+            filtered.subList(fromIndex, toIndex),
+            pageQuery.page(),
+            pageQuery.size(),
+            filtered.size(),
+            totalPages,
+            toIndex < filtered.size(),
+            pageQuery.page() > 0
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<PaymentView> listPayments(
         String invoiceNumber,
         String tenantCode,
