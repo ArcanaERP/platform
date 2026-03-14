@@ -156,12 +156,21 @@ public class PaymentsController {
     public PageResult<CollectionsAssignmentChangeResponse> listCollectionsAssignmentHistory(
         @PathVariable String tenantCode,
         @PathVariable String invoiceNumber,
+        @RequestParam(required = false) String assignedTo,
+        @RequestParam(required = false) String assignedAtFrom,
+        @RequestParam(required = false) String assignedAtTo,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
+        Instant parsedAssignedAtFrom = parseOptionalInstant(assignedAtFrom, "assignedAtFrom");
+        Instant parsedAssignedAtTo = parseOptionalInstant(assignedAtTo, "assignedAtTo");
+        validateInstantRange(parsedAssignedAtFrom, parsedAssignedAtTo, "assignedAtFrom", "assignedAtTo");
         return paymentManagement.listCollectionsAssignmentHistory(
                 requirePathValue(tenantCode, "tenantCode"),
                 requirePathValue(invoiceNumber, "invoiceNumber"),
+                normalizeOptional(assignedTo, "assignedTo"),
+                parsedAssignedAtFrom,
+                parsedAssignedAtTo,
                 PageQuery.of(page, size)
             )
             .map(this::toCollectionsAssignmentChangeResponse);
@@ -501,8 +510,17 @@ public class PaymentsController {
     }
 
     private static void validatePaidAtRange(Instant paidAtFrom, Instant paidAtTo) {
-        if (paidAtFrom != null && paidAtTo != null && paidAtFrom.isAfter(paidAtTo)) {
-            throw new IllegalArgumentException("paidAtFrom must be before or equal to paidAtTo");
+        validateInstantRange(paidAtFrom, paidAtTo, "paidAtFrom", "paidAtTo");
+    }
+
+    private static void validateInstantRange(
+        Instant from,
+        Instant to,
+        String fromParameterName,
+        String toParameterName
+    ) {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new IllegalArgumentException(fromParameterName + " must be before or equal to " + toParameterName);
         }
     }
 }

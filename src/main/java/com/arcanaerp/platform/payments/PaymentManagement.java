@@ -47,6 +47,9 @@ public interface PaymentManagement {
     PageResult<CollectionsAssignmentChangeView> listCollectionsAssignmentHistory(
         String tenantCode,
         String invoiceNumber,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
         PageQuery pageQuery
     );
 

@@ -325,10 +325,14 @@ class PaymentManagementService implements PaymentManagement {
     public PageResult<CollectionsAssignmentChangeView> listCollectionsAssignmentHistory(
         String tenantCode,
         String invoiceNumber,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
         PageQuery pageQuery
     ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
         String normalizedInvoiceNumber = normalizeRequired(invoiceNumber, "invoiceNumber").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
         InvoiceView invoice = invoiceManagement.getInvoice(normalizedInvoiceNumber);
         if (!invoice.tenantCode().equals(normalizedTenantCode)) {
             throw new IllegalArgumentException(
@@ -336,9 +340,12 @@ class PaymentManagementService implements PaymentManagement {
             );
         }
 
-        Page<CollectionsAssignmentAudit> audits = collectionsAssignmentAuditRepository.findByTenantCodeAndInvoiceNumber(
+        Page<CollectionsAssignmentAudit> audits = collectionsAssignmentAuditRepository.findHistoryFiltered(
             normalizedTenantCode,
             normalizedInvoiceNumber,
+            normalizedAssignedTo,
+            assignedAtFrom,
+            assignedAtTo,
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "assignedAt").and(Sort.by(Sort.Direction.DESC, "id")))
         );
         return PageResult.from(audits).map(audit -> new CollectionsAssignmentChangeView(
