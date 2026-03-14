@@ -2,12 +2,14 @@ package com.arcanaerp.platform.payments.web;
 
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
 import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
+import com.arcanaerp.platform.payments.ReceivablesAgingBucket;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantReceivableView;
@@ -90,6 +92,23 @@ public class PaymentsController {
             requirePathValue(tenantCode, "tenantCode"),
             normalizeOptional(currencyCode, "currencyCode")
         ));
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables/aging/{agingBucket}")
+    public PageResult<AgedTenantReceivableResponse> tenantReceivablesByAgingBucket(
+        @PathVariable String tenantCode,
+        @PathVariable String agingBucket,
+        @RequestParam String currencyCode,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return paymentManagement.listTenantReceivablesByAgingBucket(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(currencyCode, "currencyCode"),
+                parseAgingBucket(agingBucket),
+                PageQuery.of(page, size)
+            )
+            .map(this::toAgedReceivableResponse);
     }
 
     @GetMapping
@@ -310,6 +329,22 @@ public class PaymentsController {
         );
     }
 
+    private AgedTenantReceivableResponse toAgedReceivableResponse(AgedTenantReceivableView receivable) {
+        return new AgedTenantReceivableResponse(
+            receivable.tenantCode(),
+            receivable.currencyCode(),
+            receivable.invoiceNumber(),
+            receivable.dueAt(),
+            receivable.issuedAt(),
+            receivable.totalAmount(),
+            receivable.paidAmount(),
+            receivable.outstandingAmount(),
+            receivable.asOfDate(),
+            receivable.daysPastDue(),
+            receivable.agingBucket()
+        );
+    }
+
     private DailyTenantPaymentSummaryResponse toDailySummaryResponse(DailyTenantPaymentSummaryView summary) {
         return new DailyTenantPaymentSummaryResponse(
             summary.tenantCode(),
@@ -358,6 +393,15 @@ public class PaymentsController {
             throw new IllegalArgumentException(parameterName + " is required");
         }
         return value.trim();
+    }
+
+    private static ReceivablesAgingBucket parseAgingBucket(String value) {
+        String normalizedValue = requirePathValue(value, "agingBucket").trim().toUpperCase();
+        try {
+            return ReceivablesAgingBucket.valueOf(normalizedValue);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Unsupported agingBucket: " + normalizedValue);
+        }
     }
 
     private static Instant parseOptionalInstant(String value, String parameterName) {

@@ -126,6 +126,33 @@ Notes:
 - overdue bands are fixed at `1-30`, `31-60`, `61-90`, and `>90` days past due
 - the current implementation pages through issued invoices via the public invoicing API and aggregates results in the service layer
 
+### AgedTenantReceivable
+
+Purpose:
+- expose the invoice-level drill-down rows that back a single tenant aging bucket
+
+Fields:
+- `tenantCode`
+- `currencyCode`
+- `invoiceNumber`
+- `dueAt`
+- `issuedAt`
+- `totalAmount`
+- `paidAmount`
+- `outstandingAmount`
+- `asOfDate`
+- `daysPastDue`
+- `agingBucket`
+
+Computation:
+- source invoices come from `InvoiceManagement.listInvoices(...)` filtered to `status=ISSUED`
+- only invoices with positive `outstandingAmount` are eligible
+- `agingBucket` is derived from UTC `daysPastDue`
+
+Notes:
+- bucket drill-down is paged after filtering and ordered by `dueAt ASC`, then `invoiceNumber ASC`
+- `daysPastDue <= 0` maps to `CURRENT`
+
 ## Cross-Module Dependency
 
 - `payments` reads invoices through public `InvoiceManagement`
@@ -138,6 +165,7 @@ Notes:
 - `GET /api/payments/tenants/{tenantCode}/receivables?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/summary?currencyCode=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/aging?currencyCode=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/aging/{agingBucket}?currencyCode=&page=&size=`
 - `GET /api/payments?page=&size=&invoiceNumber=&tenantCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/summary?currencyCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/invoices?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`

@@ -26,6 +26,13 @@ public interface PaymentManagement {
         String currencyCode
     );
 
+    PageResult<AgedTenantReceivableView> listTenantReceivablesByAgingBucket(
+        String tenantCode,
+        String currencyCode,
+        ReceivablesAgingBucket agingBucket,
+        PageQuery pageQuery
+    );
+
     PageResult<PaymentView> listPayments(
         String invoiceNumber,
         String tenantCode,

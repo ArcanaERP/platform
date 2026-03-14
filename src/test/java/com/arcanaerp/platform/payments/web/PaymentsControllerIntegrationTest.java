@@ -25,6 +25,7 @@ class PaymentsControllerIntegrationTest {
     private static final String WEEKLY_SUMMARY_TENANT_CODE = "tenant-weekly-summary";
     private static final String RECEIVABLES_TENANT_CODE = "tenant-receivables";
     private static final String AGING_TENANT_CODE = "tenant-aging";
+    private static final String AGING_BUCKET_TENANT_CODE = "tenant-aging-bucket";
 
     @Autowired
     private MockMvc mockMvc;
@@ -297,6 +298,79 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.overdue61To90Amount").value(10.0))
             .andExpect(jsonPath("$.overdueOver90InvoiceCount").value(0))
             .andExpect(jsonPath("$.overdueOver90Amount").value(0.0));
+    }
+
+    @Test
+    void listsTenantReceivablesForAgingBucket() throws Exception {
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            AGING_BUCKET_TENANT_CODE,
+            "arc-pay-1025",
+            "so-pay-1025",
+            "inv-pay-1025",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(120 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            AGING_BUCKET_TENANT_CODE,
+            "arc-pay-1026",
+            "so-pay-1026",
+            "inv-pay-1026",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(110 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            AGING_BUCKET_TENANT_CODE,
+            "arc-pay-1027",
+            "so-pay-1027",
+            "inv-pay-1027",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(90 * 86400)
+        );
+
+        PaymentsWebIntegrationTestSupport.createPayment(
+            mockMvc,
+            AGING_BUCKET_TENANT_CODE,
+            "pay-1025",
+            "inv-pay-1027",
+            "10.00",
+            "USD",
+            PAID_AT
+        ).andExpect(status().isCreated());
+
+        testClock.setInstant(PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400));
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantReceivablesByAgingBucketRequest(
+                AGING_BUCKET_TENANT_CODE,
+                "OVERDUE_1_TO_30",
+                "USD",
+                0,
+                10
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-1026"))
+            .andExpect(jsonPath("$.items[0].daysPastDue").value(20))
+            .andExpect(jsonPath("$.items[0].agingBucket").value("OVERDUE_1_TO_30"))
+            .andExpect(jsonPath("$.items[0].outstandingAmount").value(10.0))
+            .andExpect(jsonPath("$.items[1].invoiceNumber").value("INV-PAY-1025"))
+            .andExpect(jsonPath("$.items[1].daysPastDue").value(10))
+            .andExpect(jsonPath("$.items[1].agingBucket").value("OVERDUE_1_TO_30"))
+            .andExpect(jsonPath("$.items[1].outstandingAmount").value(10.0));
+    }
+
+    @Test
+    void rejectsUnsupportedReceivablesAgingBucket() throws Exception {
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantReceivablesByAgingBucketRequest(
+                AGING_BUCKET_TENANT_CODE,
+                "stale",
+                "USD",
+                0,
+                10
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("Unsupported agingBucket: STALE"));
     }
 
     @Test

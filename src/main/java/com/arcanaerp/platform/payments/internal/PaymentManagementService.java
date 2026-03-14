@@ -5,12 +5,14 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.invoicing.InvoiceManagement;
 import com.arcanaerp.platform.invoicing.InvoiceStatus;
 import com.arcanaerp.platform.invoicing.InvoiceView;
+import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
 import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
+import com.arcanaerp.platform.payments.ReceivablesAgingBucket;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantReceivableView;
@@ -182,18 +184,62 @@ class PaymentManagementService implements PaymentManagement {
         LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
         ReceivablesAgingAccumulator aging = new ReceivablesAgingAccumulator();
 
-        forEachIssuedInvoice(normalizedTenantCode, normalizedCurrencyCode, invoice -> {
-            BigDecimal paidAmount = paymentRepository.sumAmountByInvoiceNumber(invoice.invoiceNumber());
-            BigDecimal outstandingAmount = invoice.totalAmount().subtract(paidAmount);
-            if (outstandingAmount.signum() <= 0) {
-                return;
-            }
-            LocalDate dueDate = invoice.dueAt().atOffset(ZoneOffset.UTC).toLocalDate();
-            long daysPastDue = java.time.temporal.ChronoUnit.DAYS.between(dueDate, asOfDate);
-            aging.add(outstandingAmount, daysPastDue);
-        });
+        collectOutstandingReceivableSnapshots(normalizedTenantCode, normalizedCurrencyCode, asOfDate)
+            .forEach(snapshot -> aging.add(snapshot.outstandingAmount(), snapshot.daysPastDue()));
 
         return aging.toView(normalizedTenantCode, normalizedCurrencyCode, asOfDate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<AgedTenantReceivableView> listTenantReceivablesByAgingBucket(
+        String tenantCode,
+        String currencyCode,
+        ReceivablesAgingBucket agingBucket,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        if (agingBucket == null) {
+            throw new IllegalArgumentException("agingBucket is required");
+        }
+        LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
+        List<AgedTenantReceivableView> filtered = collectOutstandingReceivableSnapshots(
+            normalizedTenantCode,
+            normalizedCurrencyCode,
+            asOfDate
+        ).stream()
+            .filter(snapshot -> snapshot.agingBucket() == agingBucket)
+            .sorted(java.util.Comparator
+                .comparing(ReceivableSnapshot::dueAt)
+                .thenComparing(ReceivableSnapshot::invoiceNumber))
+            .map(snapshot -> new AgedTenantReceivableView(
+                snapshot.tenantCode(),
+                snapshot.currencyCode(),
+                snapshot.invoiceNumber(),
+                snapshot.dueAt(),
+                snapshot.issuedAt(),
+                snapshot.totalAmount(),
+                snapshot.paidAmount(),
+                snapshot.outstandingAmount(),
+                snapshot.asOfDate(),
+                snapshot.daysPastDue(),
+                snapshot.agingBucket()
+            ))
+            .toList();
+
+        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), filtered.size());
+        int toIndex = Math.min(fromIndex + pageQuery.size(), filtered.size());
+        int totalPages = filtered.isEmpty() ? 0 : (int) Math.ceil((double) filtered.size() / pageQuery.size());
+        return new PageResult<>(
+            filtered.subList(fromIndex, toIndex),
+            pageQuery.page(),
+            pageQuery.size(),
+            filtered.size(),
+            totalPages,
+            toIndex < filtered.size(),
+            pageQuery.page() > 0
+        );
     }
 
     @Override
@@ -417,6 +463,37 @@ class PaymentManagementService implements PaymentManagement {
         }
     }
 
+    private List<ReceivableSnapshot> collectOutstandingReceivableSnapshots(
+        String tenantCode,
+        String currencyCode,
+        LocalDate asOfDate
+    ) {
+        List<ReceivableSnapshot> snapshots = new ArrayList<>();
+        forEachIssuedInvoice(tenantCode, currencyCode, invoice -> {
+            BigDecimal paidAmount = paymentRepository.sumAmountByInvoiceNumber(invoice.invoiceNumber());
+            BigDecimal outstandingAmount = invoice.totalAmount().subtract(paidAmount);
+            if (outstandingAmount.signum() <= 0) {
+                return;
+            }
+            LocalDate dueDate = invoice.dueAt().atOffset(ZoneOffset.UTC).toLocalDate();
+            long daysPastDue = java.time.temporal.ChronoUnit.DAYS.between(dueDate, asOfDate);
+            snapshots.add(new ReceivableSnapshot(
+                invoice.tenantCode(),
+                invoice.currencyCode(),
+                invoice.invoiceNumber(),
+                invoice.dueAt(),
+                invoice.issuedAt(),
+                invoice.totalAmount(),
+                paidAmount,
+                outstandingAmount,
+                asOfDate,
+                daysPastDue,
+                ReceivablesAgingBucket.fromDaysPastDue(daysPastDue)
+            ));
+        });
+        return snapshots;
+    }
+
     private PaymentView toView(Payment payment) {
         return new PaymentView(
             payment.getId(),
@@ -472,22 +549,27 @@ class PaymentManagementService implements PaymentManagement {
         void add(BigDecimal outstandingAmount, long daysPastDue) {
             totalOutstandingInvoiceCount++;
             totalOutstandingAmount = totalOutstandingAmount.add(outstandingAmount);
-
-            if (daysPastDue <= 0) {
-                currentInvoiceCount++;
-                currentAmount = currentAmount.add(outstandingAmount);
-            } else if (daysPastDue <= 30) {
-                overdue1To30InvoiceCount++;
-                overdue1To30Amount = overdue1To30Amount.add(outstandingAmount);
-            } else if (daysPastDue <= 60) {
-                overdue31To60InvoiceCount++;
-                overdue31To60Amount = overdue31To60Amount.add(outstandingAmount);
-            } else if (daysPastDue <= 90) {
-                overdue61To90InvoiceCount++;
-                overdue61To90Amount = overdue61To90Amount.add(outstandingAmount);
-            } else {
-                overdueOver90InvoiceCount++;
-                overdueOver90Amount = overdueOver90Amount.add(outstandingAmount);
+            switch (ReceivablesAgingBucket.fromDaysPastDue(daysPastDue)) {
+                case CURRENT -> {
+                    currentInvoiceCount++;
+                    currentAmount = currentAmount.add(outstandingAmount);
+                }
+                case OVERDUE_1_TO_30 -> {
+                    overdue1To30InvoiceCount++;
+                    overdue1To30Amount = overdue1To30Amount.add(outstandingAmount);
+                }
+                case OVERDUE_31_TO_60 -> {
+                    overdue31To60InvoiceCount++;
+                    overdue31To60Amount = overdue31To60Amount.add(outstandingAmount);
+                }
+                case OVERDUE_61_TO_90 -> {
+                    overdue61To90InvoiceCount++;
+                    overdue61To90Amount = overdue61To90Amount.add(outstandingAmount);
+                }
+                case OVERDUE_OVER_90 -> {
+                    overdueOver90InvoiceCount++;
+                    overdueOver90Amount = overdueOver90Amount.add(outstandingAmount);
+                }
             }
         }
 
@@ -510,6 +592,21 @@ class PaymentManagementService implements PaymentManagement {
                 overdueOver90Amount
             );
         }
+    }
+
+    private record ReceivableSnapshot(
+        String tenantCode,
+        String currencyCode,
+        String invoiceNumber,
+        Instant dueAt,
+        Instant issuedAt,
+        BigDecimal totalAmount,
+        BigDecimal paidAmount,
+        BigDecimal outstandingAmount,
+        LocalDate asOfDate,
+        long daysPastDue,
+        ReceivablesAgingBucket agingBucket
+    ) {
     }
 
     @FunctionalInterface

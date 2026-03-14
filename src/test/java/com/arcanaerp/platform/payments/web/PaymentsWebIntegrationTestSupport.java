@@ -78,6 +78,25 @@ final class PaymentsWebIntegrationTestSupport {
             .param("currencyCode", currencyCode);
     }
 
+    static MockHttpServletRequestBuilder tenantReceivablesByAgingBucketRequest(
+        String tenantCode,
+        String agingBucket,
+        String currencyCode,
+        Integer page,
+        Integer size
+    ) {
+        MockHttpServletRequestBuilder request = get(
+            "/api/payments/tenants/" + tenantCode + "/receivables/aging/" + agingBucket
+        ).param("currencyCode", currencyCode);
+        if (page != null) {
+            request.param("page", String.valueOf(page));
+        }
+        if (size != null) {
+            request.param("size", String.valueOf(size));
+        }
+        return request;
+    }
+
     static MockHttpServletRequestBuilder listPaymentsRequest(int page, int size, String... optionalNameValuePairs) {
         MockHttpServletRequestBuilder request = get("/api/payments")
             .param("page", String.valueOf(page))
