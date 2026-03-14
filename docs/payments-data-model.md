@@ -167,12 +167,14 @@ Fields:
 
 Filters:
 - `invoiceNumber` exact match, optional
+- `assignedTo` exact assignee email, optional
 - `dueAtOnOrBefore` UTC instant cutoff, optional
 
 Notes:
 - queue is a shortcut over the `OVERDUE_OVER_90` aging bucket
 - rows remain ordered by `dueAt ASC`, then `invoiceNumber ASC`
 - blank `invoiceNumber` query values are rejected at the HTTP boundary
+- blank `assignedTo` query values are rejected at the HTTP boundary
 - invalid `dueAtOnOrBefore` values are rejected at the HTTP boundary
 - queue rows now include current assignment metadata when present
 
@@ -225,7 +227,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/summary?currencyCode=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/aging?currencyCode=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/aging/{agingBucket}?currencyCode=&page=&size=`
-- `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90?currencyCode=&invoiceNumber=&dueAtOnOrBefore=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90?currencyCode=&invoiceNumber=&assignedTo=&dueAtOnOrBefore=&page=&size=`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment-history?page=&size=`
 - `GET /api/payments?page=&size=&invoiceNumber=&tenantCode=&paidAtFrom=&paidAtTo=`

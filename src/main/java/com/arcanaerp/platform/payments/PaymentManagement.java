@@ -37,6 +37,7 @@ public interface PaymentManagement {
         String tenantCode,
         String currencyCode,
         String invoiceNumber,
+        String assignedTo,
         Instant dueAtOnOrBefore,
         PageQuery pageQuery
     );

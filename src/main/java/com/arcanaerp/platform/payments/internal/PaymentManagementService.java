@@ -230,12 +230,14 @@ class PaymentManagementService implements PaymentManagement {
         String tenantCode,
         String currencyCode,
         String invoiceNumber,
+        String assignedTo,
         Instant dueAtOnOrBefore,
         PageQuery pageQuery
     ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
         String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
         String normalizedInvoiceNumber = normalizeOptional(invoiceNumber);
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
         LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
         List<ReceivableSnapshot> filtered = collectOutstandingReceivableSnapshots(
             normalizedTenantCode,
@@ -249,7 +251,10 @@ class PaymentManagementService implements PaymentManagement {
                 .comparing(ReceivableSnapshot::dueAt)
                 .thenComparing(ReceivableSnapshot::invoiceNumber))
             .toList();
-        return paginateReceivables(enrichAgedReceivables(filtered), pageQuery);
+        List<AgedTenantReceivableView> enriched = enrichAgedReceivables(filtered).stream()
+            .filter(receivable -> normalizedAssignedTo == null || normalizedAssignedTo.equals(receivable.assignedTo()))
+            .toList();
+        return paginateReceivables(enriched, pageQuery);
     }
 
     @Override

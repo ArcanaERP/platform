@@ -119,6 +119,7 @@ public class PaymentsController {
         @PathVariable String tenantCode,
         @RequestParam String currencyCode,
         @RequestParam(required = false) String invoiceNumber,
+        @RequestParam(required = false) String assignedTo,
         @RequestParam(required = false) String dueAtOnOrBefore,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
@@ -128,6 +129,7 @@ public class PaymentsController {
                 requirePathValue(tenantCode, "tenantCode"),
                 normalizeOptional(currencyCode, "currencyCode"),
                 normalizeOptional(invoiceNumber, "invoiceNumber"),
+                normalizeOptional(assignedTo, "assignedTo"),
                 parsedDueAtOnOrBefore,
                 PageQuery.of(page, size)
             )
