@@ -176,6 +176,30 @@ public class PaymentsController {
             .map(this::toCollectionsAssignmentChangeResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/assignment-history")
+    public PageResult<CollectionsAssignmentChangeResponse> listTenantCollectionsAssignmentHistory(
+        @PathVariable String tenantCode,
+        @RequestParam(required = false) String invoiceNumber,
+        @RequestParam(required = false) String assignedTo,
+        @RequestParam(required = false) String assignedAtFrom,
+        @RequestParam(required = false) String assignedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedAssignedAtFrom = parseOptionalInstant(assignedAtFrom, "assignedAtFrom");
+        Instant parsedAssignedAtTo = parseOptionalInstant(assignedAtTo, "assignedAtTo");
+        validateInstantRange(parsedAssignedAtFrom, parsedAssignedAtTo, "assignedAtFrom", "assignedAtTo");
+        return paymentManagement.listTenantCollectionsAssignmentHistory(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(invoiceNumber, "invoiceNumber"),
+                normalizeOptional(assignedTo, "assignedTo"),
+                parsedAssignedAtFrom,
+                parsedAssignedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toCollectionsAssignmentChangeResponse);
+    }
+
     @GetMapping
     public PageResult<PaymentResponse> listPayments(
         @RequestParam(required = false) String invoiceNumber,

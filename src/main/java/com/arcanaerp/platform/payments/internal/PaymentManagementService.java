@@ -360,6 +360,38 @@ class PaymentManagementService implements PaymentManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<CollectionsAssignmentChangeView> listTenantCollectionsAssignmentHistory(
+        String tenantCode,
+        String invoiceNumber,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedInvoiceNumber = normalizeOptional(invoiceNumber);
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
+
+        Page<CollectionsAssignmentAudit> audits = collectionsAssignmentAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            normalizedInvoiceNumber,
+            normalizedAssignedTo,
+            assignedAtFrom,
+            assignedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "assignedAt").and(Sort.by(Sort.Direction.DESC, "id")))
+        );
+        return PageResult.from(audits).map(audit -> new CollectionsAssignmentChangeView(
+            audit.getId(),
+            audit.getTenantCode(),
+            audit.getInvoiceNumber(),
+            audit.getAssignedTo(),
+            audit.getAssignedBy(),
+            audit.getAssignedAt()
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<PaymentView> listPayments(
         String invoiceNumber,
         String tenantCode,

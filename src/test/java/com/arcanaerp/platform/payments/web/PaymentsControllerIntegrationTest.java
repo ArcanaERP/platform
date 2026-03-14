@@ -32,6 +32,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_ASSIGNMENT_HISTORY_TENANT_CODE = "tenant-coll-assign-history";
     private static final String COLLECTIONS_ASSIGNEE_FILTER_TENANT_CODE = "tenant-coll-assignee-filter";
     private static final String COLLECTIONS_ASSIGNMENT_HISTORY_FILTER_TENANT_CODE = "tenant-coll-assign-histflt";
+    private static final String COLLECTIONS_ASSIGNMENT_TENANT_HISTORY_TENANT_CODE = "tenant-coll-assign-feed";
 
     @Autowired
     private MockMvc mockMvc;
@@ -883,6 +884,128 @@ class PaymentsControllerIntegrationTest {
             ))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("assignedAtFrom must be before or equal to assignedAtTo"));
+    }
+
+    @Test
+    void listsTenantCollectionsAssignmentHistoryWithFilters() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_TENANT_HISTORY_TENANT_CODE,
+            "Collections Feed Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_TENANT_HISTORY_TENANT_CODE,
+            "Collections Feed Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_TENANT_HISTORY_TENANT_CODE,
+            "Collections Feed Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNMENT_TENANT_HISTORY_TENANT_CODE,
+            "arc-pay-1036",
+            "so-pay-1036",
+            "inv-pay-1036",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNMENT_TENANT_HISTORY_TENANT_CODE,
+            "arc-pay-1037",
+            "so-pay-1037",
+            "inv-pay-1037",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+
+        Instant firstAssignedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(firstAssignedAt);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_TENANT_HISTORY_TENANT_CODE,
+            "inv-pay-1036",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant secondAssignedAt = firstAssignedAt.plusSeconds(60);
+        testClock.setInstant(secondAssignedAt);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_TENANT_HISTORY_TENANT_CODE,
+            "inv-pay-1037",
+            "collector-b@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsAssignmentHistoryRequest(
+                COLLECTIONS_ASSIGNMENT_TENANT_HISTORY_TENANT_CODE,
+                0,
+                10,
+                "assignedTo",
+                "collector-b@arcanaerp.com",
+                "assignedAtFrom",
+                secondAssignedAt.minusSeconds(1).toString(),
+                "assignedAtTo",
+                secondAssignedAt.toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("TENANT-COLL-ASSIGN-FEED"))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-1037"))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].assignedAt").value(secondAssignedAt.toString()));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsAssignmentHistoryRequest(
+                COLLECTIONS_ASSIGNMENT_TENANT_HISTORY_TENANT_CODE,
+                0,
+                10,
+                "invoiceNumber",
+                "inv-pay-1036"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-1036"))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-a@arcanaerp.com"));
+    }
+
+    @Test
+    void rejectsInvalidTenantCollectionsAssignmentHistoryFilters() throws Exception {
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsAssignmentHistoryRequest(
+                COLLECTIONS_ASSIGNMENT_TENANT_HISTORY_TENANT_CODE,
+                0,
+                10,
+                "invoiceNumber",
+                "   "
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("invoiceNumber query parameter must not be blank"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsAssignmentHistoryRequest(
+                COLLECTIONS_ASSIGNMENT_TENANT_HISTORY_TENANT_CODE,
+                0,
+                10,
+                "assignedAtFrom",
+                "not-an-instant"
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("assignedAtFrom query parameter must be a valid ISO-8601 instant"));
     }
 
     @Test
