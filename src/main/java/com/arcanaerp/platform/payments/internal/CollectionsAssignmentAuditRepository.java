@@ -49,4 +49,22 @@ interface CollectionsAssignmentAuditRepository extends JpaRepository<Collections
         @Param("assignedAtTo") Instant assignedAtTo,
         Pageable pageable
     );
+
+    @Query(
+        """
+        select audit
+        from CollectionsAssignmentAudit audit
+        where audit.tenantCode = :tenantCode
+          and (:assignedTo is null or audit.assignedTo = :assignedTo)
+          and (:assignedAtFrom is null or audit.assignedAt >= :assignedAtFrom)
+          and (:assignedAtTo is null or audit.assignedAt <= :assignedAtTo)
+        order by audit.assignedAt desc, audit.id desc
+        """
+    )
+    java.util.List<CollectionsAssignmentAudit> findTenantHistoryForSummary(
+        @Param("tenantCode") String tenantCode,
+        @Param("assignedTo") String assignedTo,
+        @Param("assignedAtFrom") Instant assignedAtFrom,
+        @Param("assignedAtTo") Instant assignedAtTo
+    );
 }

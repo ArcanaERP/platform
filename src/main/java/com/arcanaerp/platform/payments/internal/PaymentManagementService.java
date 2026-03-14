@@ -12,6 +12,7 @@ import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
+import com.arcanaerp.platform.payments.DailyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
 import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentManagement;
@@ -425,6 +426,43 @@ class PaymentManagementService implements PaymentManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<DailyTenantCollectionsAssignmentSummaryView> listDailyTenantCollectionsAssignmentSummaries(
+        String tenantCode,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
+        List<CollectionsAssignmentAudit> audits = collectionsAssignmentAuditRepository.findTenantHistoryForSummary(
+            normalizedTenantCode,
+            normalizedAssignedTo,
+            assignedAtFrom,
+            assignedAtTo
+        );
+
+        Map<LocalDate, AssignmentHistoryDailySummaryAccumulator> summariesByDate = new LinkedHashMap<>();
+        for (CollectionsAssignmentAudit audit : audits) {
+            LocalDate businessDate = audit.getAssignedAt().atOffset(ZoneOffset.UTC).toLocalDate();
+            summariesByDate.computeIfAbsent(businessDate, ignored -> new AssignmentHistoryDailySummaryAccumulator())
+                .add(audit);
+        }
+
+        List<DailyTenantCollectionsAssignmentSummaryView> summaries = new ArrayList<>();
+        summariesByDate.forEach((businessDate, summary) -> summaries.add(
+            new DailyTenantCollectionsAssignmentSummaryView(
+                normalizedTenantCode,
+                businessDate,
+                summary.assignmentCount,
+                summary.invoiceNumbers.size()
+            )
+        ));
+        return paginateDailyAssignmentSummaries(summaries, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<PaymentView> listPayments(
         String invoiceNumber,
         String tenantCode,
@@ -711,6 +749,24 @@ class PaymentManagementService implements PaymentManagement {
         );
     }
 
+    private PageResult<DailyTenantCollectionsAssignmentSummaryView> paginateDailyAssignmentSummaries(
+        List<DailyTenantCollectionsAssignmentSummaryView> filtered,
+        PageQuery pageQuery
+    ) {
+        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), filtered.size());
+        int toIndex = Math.min(fromIndex + pageQuery.size(), filtered.size());
+        int totalPages = filtered.isEmpty() ? 0 : (int) Math.ceil((double) filtered.size() / pageQuery.size());
+        return new PageResult<>(
+            filtered.subList(fromIndex, toIndex),
+            pageQuery.page(),
+            pageQuery.size(),
+            filtered.size(),
+            totalPages,
+            toIndex < filtered.size(),
+            pageQuery.page() > 0
+        );
+    }
+
     private List<AgedTenantReceivableView> enrichAgedReceivables(List<ReceivableSnapshot> snapshots) {
         Map<String, CollectionsAssignment> assignmentsByInvoiceNumber = collectionsAssignmentRepository.findByInvoiceNumberIn(
             snapshots.stream().map(ReceivableSnapshot::invoiceNumber).toList()
@@ -873,6 +929,17 @@ class PaymentManagementService implements PaymentManagement {
                 totalOutstandingAmount,
                 oldestDueAt
             );
+        }
+    }
+
+    private static final class AssignmentHistoryDailySummaryAccumulator {
+
+        private long assignmentCount;
+        private final java.util.Set<String> invoiceNumbers = new java.util.LinkedHashSet<>();
+
+        void add(CollectionsAssignmentAudit audit) {
+            assignmentCount++;
+            invoiceNumbers.add(audit.getInvoiceNumber());
         }
     }
 

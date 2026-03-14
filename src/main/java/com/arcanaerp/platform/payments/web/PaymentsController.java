@@ -7,6 +7,7 @@ import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
+import com.arcanaerp.platform.payments.DailyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
 import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
@@ -214,6 +215,28 @@ public class PaymentsController {
                 PageQuery.of(page, size)
             )
             .map(this::toTenantCollectionsAssignmentSummaryResponse);
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/daily-summary")
+    public PageResult<DailyTenantCollectionsAssignmentSummaryResponse> listDailyTenantCollectionsAssignmentSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam(required = false) String assignedTo,
+        @RequestParam(required = false) String assignedAtFrom,
+        @RequestParam(required = false) String assignedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedAssignedAtFrom = parseOptionalInstant(assignedAtFrom, "assignedAtFrom");
+        Instant parsedAssignedAtTo = parseOptionalInstant(assignedAtTo, "assignedAtTo");
+        validateInstantRange(parsedAssignedAtFrom, parsedAssignedAtTo, "assignedAtFrom", "assignedAtTo");
+        return paymentManagement.listDailyTenantCollectionsAssignmentSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(assignedTo, "assignedTo"),
+                parsedAssignedAtFrom,
+                parsedAssignedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toDailyTenantCollectionsAssignmentSummaryResponse);
     }
 
     @GetMapping
@@ -486,6 +509,17 @@ public class PaymentsController {
             summary.assignedInvoiceCount(),
             summary.totalOutstandingAmount(),
             summary.oldestDueAt()
+        );
+    }
+
+    private DailyTenantCollectionsAssignmentSummaryResponse toDailyTenantCollectionsAssignmentSummaryResponse(
+        DailyTenantCollectionsAssignmentSummaryView summary
+    ) {
+        return new DailyTenantCollectionsAssignmentSummaryResponse(
+            summary.tenantCode(),
+            summary.businessDate(),
+            summary.assignmentCount(),
+            summary.invoiceCount()
         );
     }
 
