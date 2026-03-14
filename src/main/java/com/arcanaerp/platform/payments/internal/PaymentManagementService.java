@@ -10,11 +10,12 @@ import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
 import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentManagement;
+import com.arcanaerp.platform.payments.PaymentView;
+import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantReceivableView;
+import com.arcanaerp.platform.payments.TenantReceivablesAgingView;
 import com.arcanaerp.platform.payments.TenantReceivablesSummaryView;
-import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
-import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.WeeklyTenantPaymentSummaryView;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -137,48 +138,62 @@ class PaymentManagementService implements PaymentManagement {
         String tenantCode,
         String currencyCode
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode");
-        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode");
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
         BigDecimal totalAmount = BigDecimal.ZERO;
         BigDecimal paidAmount = BigDecimal.ZERO;
         BigDecimal outstandingAmount = BigDecimal.ZERO;
         long invoiceCount = 0;
         long paidInFullCount = 0;
 
-        PageQuery pageQuery = new PageQuery(0, PageQuery.MAX_SIZE);
-        while (true) {
-            PageResult<InvoiceView> invoices = invoiceManagement.listInvoices(
-                normalizedTenantCode,
-                InvoiceStatus.ISSUED,
-                normalizedCurrencyCode,
-                pageQuery
-            );
-            for (InvoiceView invoice : invoices.items()) {
-                BigDecimal invoicePaidAmount = paymentRepository.sumAmountByInvoiceNumber(invoice.invoiceNumber());
-                BigDecimal invoiceOutstandingAmount = invoice.totalAmount().subtract(invoicePaidAmount);
-                invoiceCount++;
-                totalAmount = totalAmount.add(invoice.totalAmount());
-                paidAmount = paidAmount.add(invoicePaidAmount);
-                outstandingAmount = outstandingAmount.add(invoiceOutstandingAmount);
-                if (invoiceOutstandingAmount.signum() == 0) {
-                    paidInFullCount++;
-                }
+        BigDecimal[] totals = new BigDecimal[] { totalAmount, paidAmount, outstandingAmount };
+        long[] counts = new long[] { invoiceCount, paidInFullCount };
+        forEachIssuedInvoice(normalizedTenantCode, normalizedCurrencyCode, invoice -> {
+            BigDecimal invoicePaidAmount = paymentRepository.sumAmountByInvoiceNumber(invoice.invoiceNumber());
+            BigDecimal invoiceOutstandingAmount = invoice.totalAmount().subtract(invoicePaidAmount);
+            counts[0]++;
+            totals[0] = totals[0].add(invoice.totalAmount());
+            totals[1] = totals[1].add(invoicePaidAmount);
+            totals[2] = totals[2].add(invoiceOutstandingAmount);
+            if (invoiceOutstandingAmount.signum() == 0) {
+                counts[1]++;
             }
-            if (!invoices.hasNext()) {
-                break;
-            }
-            pageQuery = new PageQuery(pageQuery.page() + 1, pageQuery.size());
-        }
+        });
 
         return new TenantReceivablesSummaryView(
-            normalizedTenantCode.toUpperCase(),
-            normalizedCurrencyCode.toUpperCase(),
-            invoiceCount,
-            totalAmount,
-            paidAmount,
-            outstandingAmount,
-            paidInFullCount
+            normalizedTenantCode,
+            normalizedCurrencyCode,
+            counts[0],
+            totals[0],
+            totals[1],
+            totals[2],
+            counts[1]
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TenantReceivablesAgingView tenantReceivablesAging(
+        String tenantCode,
+        String currencyCode
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
+        ReceivablesAgingAccumulator aging = new ReceivablesAgingAccumulator();
+
+        forEachIssuedInvoice(normalizedTenantCode, normalizedCurrencyCode, invoice -> {
+            BigDecimal paidAmount = paymentRepository.sumAmountByInvoiceNumber(invoice.invoiceNumber());
+            BigDecimal outstandingAmount = invoice.totalAmount().subtract(paidAmount);
+            if (outstandingAmount.signum() <= 0) {
+                return;
+            }
+            LocalDate dueDate = invoice.dueAt().atOffset(ZoneOffset.UTC).toLocalDate();
+            long daysPastDue = java.time.temporal.ChronoUnit.DAYS.between(dueDate, asOfDate);
+            aging.add(outstandingAmount, daysPastDue);
+        });
+
+        return aging.toView(normalizedTenantCode, normalizedCurrencyCode, asOfDate);
     }
 
     @Override
@@ -381,6 +396,27 @@ class PaymentManagementService implements PaymentManagement {
         );
     }
 
+    private void forEachIssuedInvoice(
+        String tenantCode,
+        String currencyCode,
+        java.util.function.Consumer<InvoiceView> consumer
+    ) {
+        PageQuery pageQuery = new PageQuery(0, PageQuery.MAX_SIZE);
+        while (true) {
+            PageResult<InvoiceView> invoices = invoiceManagement.listInvoices(
+                tenantCode,
+                InvoiceStatus.ISSUED,
+                currencyCode,
+                pageQuery
+            );
+            invoices.items().forEach(consumer);
+            if (!invoices.hasNext()) {
+                return;
+            }
+            pageQuery = new PageQuery(pageQuery.page() + 1, pageQuery.size());
+        }
+    }
+
     private PaymentView toView(Payment payment) {
         return new PaymentView(
             payment.getId(),
@@ -415,6 +451,64 @@ class PaymentManagementService implements PaymentManagement {
             paymentCount++;
             totalCollected = totalCollected.add(payment.getAmount());
             invoiceNumbers.add(payment.getInvoiceNumber());
+        }
+    }
+
+    private static final class ReceivablesAgingAccumulator {
+
+        private long totalOutstandingInvoiceCount;
+        private BigDecimal totalOutstandingAmount = BigDecimal.ZERO;
+        private long currentInvoiceCount;
+        private BigDecimal currentAmount = BigDecimal.ZERO;
+        private long overdue1To30InvoiceCount;
+        private BigDecimal overdue1To30Amount = BigDecimal.ZERO;
+        private long overdue31To60InvoiceCount;
+        private BigDecimal overdue31To60Amount = BigDecimal.ZERO;
+        private long overdue61To90InvoiceCount;
+        private BigDecimal overdue61To90Amount = BigDecimal.ZERO;
+        private long overdueOver90InvoiceCount;
+        private BigDecimal overdueOver90Amount = BigDecimal.ZERO;
+
+        void add(BigDecimal outstandingAmount, long daysPastDue) {
+            totalOutstandingInvoiceCount++;
+            totalOutstandingAmount = totalOutstandingAmount.add(outstandingAmount);
+
+            if (daysPastDue <= 0) {
+                currentInvoiceCount++;
+                currentAmount = currentAmount.add(outstandingAmount);
+            } else if (daysPastDue <= 30) {
+                overdue1To30InvoiceCount++;
+                overdue1To30Amount = overdue1To30Amount.add(outstandingAmount);
+            } else if (daysPastDue <= 60) {
+                overdue31To60InvoiceCount++;
+                overdue31To60Amount = overdue31To60Amount.add(outstandingAmount);
+            } else if (daysPastDue <= 90) {
+                overdue61To90InvoiceCount++;
+                overdue61To90Amount = overdue61To90Amount.add(outstandingAmount);
+            } else {
+                overdueOver90InvoiceCount++;
+                overdueOver90Amount = overdueOver90Amount.add(outstandingAmount);
+            }
+        }
+
+        TenantReceivablesAgingView toView(String tenantCode, String currencyCode, LocalDate asOfDate) {
+            return new TenantReceivablesAgingView(
+                tenantCode,
+                currencyCode,
+                asOfDate,
+                totalOutstandingInvoiceCount,
+                totalOutstandingAmount,
+                currentInvoiceCount,
+                currentAmount,
+                overdue1To30InvoiceCount,
+                overdue1To30Amount,
+                overdue31To60InvoiceCount,
+                overdue31To60Amount,
+                overdue61To90InvoiceCount,
+                overdue61To90Amount,
+                overdueOver90InvoiceCount,
+                overdueOver90Amount
+            );
         }
     }
 

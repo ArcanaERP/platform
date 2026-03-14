@@ -24,6 +24,7 @@ class PaymentsControllerIntegrationTest {
     private static final String MONTHLY_SUMMARY_TENANT_CODE = "tenant-monthly-summary";
     private static final String WEEKLY_SUMMARY_TENANT_CODE = "tenant-weekly-summary";
     private static final String RECEIVABLES_TENANT_CODE = "tenant-receivables";
+    private static final String AGING_TENANT_CODE = "tenant-aging";
 
     @Autowired
     private MockMvc mockMvc;
@@ -205,6 +206,97 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.paidAmount").value(18.0))
             .andExpect(jsonPath("$.outstandingAmount").value(22.0))
             .andExpect(jsonPath("$.paidInFullCount").value(1));
+    }
+
+    @Test
+    void returnsTenantReceivablesAging() throws Exception {
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            AGING_TENANT_CODE,
+            "arc-pay-1020",
+            "so-pay-1020",
+            "inv-pay-1020",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(132 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            AGING_TENANT_CODE,
+            "arc-pay-1021",
+            "so-pay-1021",
+            "inv-pay-1021",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(120 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            AGING_TENANT_CODE,
+            "arc-pay-1022",
+            "so-pay-1022",
+            "inv-pay-1022",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(85 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            AGING_TENANT_CODE,
+            "arc-pay-1023",
+            "so-pay-1023",
+            "inv-pay-1023",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(55 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            AGING_TENANT_CODE,
+            "arc-pay-1024",
+            "so-pay-1024",
+            "inv-pay-1024",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+
+        PaymentsWebIntegrationTestSupport.createPayment(
+            mockMvc,
+            AGING_TENANT_CODE,
+            "pay-1020",
+            "inv-pay-1021",
+            "4.00",
+            "USD",
+            PAID_AT
+        ).andExpect(status().isCreated());
+
+        PaymentsWebIntegrationTestSupport.createPayment(
+            mockMvc,
+            AGING_TENANT_CODE,
+            "pay-1021",
+            "inv-pay-1024",
+            "10.00",
+            "USD",
+            PAID_AT.plusSeconds(60)
+        ).andExpect(status().isCreated());
+
+        testClock.setInstant(PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400));
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantReceivablesAgingRequest(
+                AGING_TENANT_CODE,
+                "USD"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tenantCode").value("TENANT-AGING"))
+            .andExpect(jsonPath("$.currencyCode").value("USD"))
+            .andExpect(jsonPath("$.asOfDate").value("2026-07-20"))
+            .andExpect(jsonPath("$.totalOutstandingInvoiceCount").value(4))
+            .andExpect(jsonPath("$.totalOutstandingAmount").value(36.0))
+            .andExpect(jsonPath("$.currentInvoiceCount").value(1))
+            .andExpect(jsonPath("$.currentAmount").value(10.0))
+            .andExpect(jsonPath("$.overdue1To30InvoiceCount").value(1))
+            .andExpect(jsonPath("$.overdue1To30Amount").value(6.0))
+            .andExpect(jsonPath("$.overdue31To60InvoiceCount").value(1))
+            .andExpect(jsonPath("$.overdue31To60Amount").value(10.0))
+            .andExpect(jsonPath("$.overdue61To90InvoiceCount").value(1))
+            .andExpect(jsonPath("$.overdue61To90Amount").value(10.0))
+            .andExpect(jsonPath("$.overdueOver90InvoiceCount").value(0))
+            .andExpect(jsonPath("$.overdueOver90Amount").value(0.0));
     }
 
     @Test

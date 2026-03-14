@@ -21,6 +21,11 @@ public interface PaymentManagement {
         String currencyCode
     );
 
+    TenantReceivablesAgingView tenantReceivablesAging(
+        String tenantCode,
+        String currencyCode
+    );
+
     PageResult<PaymentView> listPayments(
         String invoiceNumber,
         String tenantCode,

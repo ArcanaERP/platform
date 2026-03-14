@@ -11,6 +11,7 @@ import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantReceivableView;
+import com.arcanaerp.platform.payments.TenantReceivablesAgingView;
 import com.arcanaerp.platform.payments.TenantReceivablesSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantPaymentSummaryView;
 import jakarta.validation.Valid;
@@ -75,6 +76,17 @@ public class PaymentsController {
         @RequestParam String currencyCode
     ) {
         return toReceivablesSummaryResponse(paymentManagement.tenantReceivablesSummary(
+            requirePathValue(tenantCode, "tenantCode"),
+            normalizeOptional(currencyCode, "currencyCode")
+        ));
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables/aging")
+    public TenantReceivablesAgingResponse tenantReceivablesAging(
+        @PathVariable String tenantCode,
+        @RequestParam String currencyCode
+    ) {
+        return toReceivablesAgingResponse(paymentManagement.tenantReceivablesAging(
             requirePathValue(tenantCode, "tenantCode"),
             normalizeOptional(currencyCode, "currencyCode")
         ));
@@ -275,6 +287,26 @@ public class PaymentsController {
             summary.paidAmount(),
             summary.outstandingAmount(),
             summary.paidInFullCount()
+        );
+    }
+
+    private TenantReceivablesAgingResponse toReceivablesAgingResponse(TenantReceivablesAgingView aging) {
+        return new TenantReceivablesAgingResponse(
+            aging.tenantCode(),
+            aging.currencyCode(),
+            aging.asOfDate(),
+            aging.totalOutstandingInvoiceCount(),
+            aging.totalOutstandingAmount(),
+            aging.currentInvoiceCount(),
+            aging.currentAmount(),
+            aging.overdue1To30InvoiceCount(),
+            aging.overdue1To30Amount(),
+            aging.overdue31To60InvoiceCount(),
+            aging.overdue31To60Amount(),
+            aging.overdue61To90InvoiceCount(),
+            aging.overdue61To90Amount(),
+            aging.overdueOver90InvoiceCount(),
+            aging.overdueOver90Amount()
         );
     }
 
