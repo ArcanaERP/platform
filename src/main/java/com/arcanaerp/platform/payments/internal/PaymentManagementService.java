@@ -248,6 +248,7 @@ class PaymentManagementService implements PaymentManagement {
         String tenantCode,
         String currencyCode,
         String invoiceNumber,
+        Instant dueAtOnOrBefore,
         PageQuery pageQuery
     ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
@@ -261,6 +262,7 @@ class PaymentManagementService implements PaymentManagement {
         ).stream()
             .filter(snapshot -> snapshot.agingBucket() == ReceivablesAgingBucket.OVERDUE_OVER_90)
             .filter(snapshot -> normalizedInvoiceNumber == null || snapshot.invoiceNumber().equals(normalizedInvoiceNumber))
+            .filter(snapshot -> dueAtOnOrBefore == null || !snapshot.dueAt().isAfter(dueAtOnOrBefore))
             .sorted(java.util.Comparator
                 .comparing(ReceivableSnapshot::dueAt)
                 .thenComparing(ReceivableSnapshot::invoiceNumber))

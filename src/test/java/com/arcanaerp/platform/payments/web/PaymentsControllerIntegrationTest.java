@@ -441,6 +441,18 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-1029"))
             .andExpect(jsonPath("$.items[0].agingBucket").value("OVERDUE_OVER_90"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.over90CollectionsQueueRequest(
+                COLLECTIONS_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "dueAtOnOrBefore",
+                PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(12 * 86400).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-1028"));
     }
 
     @Test
@@ -455,6 +467,20 @@ class PaymentsControllerIntegrationTest {
             ))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("invoiceNumber query parameter must not be blank"));
+    }
+
+    @Test
+    void rejectsInvalidOver90CollectionsDueAtCutoff() throws Exception {
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.over90CollectionsQueueRequest(
+                COLLECTIONS_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "dueAtOnOrBefore",
+                "not-an-instant"
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("dueAtOnOrBefore query parameter must be a valid ISO-8601 instant"));
     }
 
     @Test

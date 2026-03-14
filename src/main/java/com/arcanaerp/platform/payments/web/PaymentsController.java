@@ -116,13 +116,16 @@ public class PaymentsController {
         @PathVariable String tenantCode,
         @RequestParam String currencyCode,
         @RequestParam(required = false) String invoiceNumber,
+        @RequestParam(required = false) String dueAtOnOrBefore,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
+        Instant parsedDueAtOnOrBefore = parseOptionalInstant(dueAtOnOrBefore, "dueAtOnOrBefore");
         return paymentManagement.listOver90CollectionsQueue(
                 requirePathValue(tenantCode, "tenantCode"),
                 normalizeOptional(currencyCode, "currencyCode"),
                 normalizeOptional(invoiceNumber, "invoiceNumber"),
+                parsedDueAtOnOrBefore,
                 PageQuery.of(page, size)
             )
             .map(this::toAgedReceivableResponse);
