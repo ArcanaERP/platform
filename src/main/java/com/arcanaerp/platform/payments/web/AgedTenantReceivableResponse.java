@@ -16,6 +16,9 @@ public record AgedTenantReceivableResponse(
     BigDecimal outstandingAmount,
     LocalDate asOfDate,
     long daysPastDue,
-    ReceivablesAgingBucket agingBucket
+    ReceivablesAgingBucket agingBucket,
+    String assignedTo,
+    String assignedBy,
+    Instant assignedAt
 ) {
 }

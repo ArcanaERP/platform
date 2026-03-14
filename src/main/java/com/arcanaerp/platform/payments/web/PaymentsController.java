@@ -3,6 +3,8 @@ package com.arcanaerp.platform.payments.web;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.payments.AgedTenantReceivableView;
+import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
+import com.arcanaerp.platform.payments.CollectionsAssignmentView;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
@@ -129,6 +131,22 @@ public class PaymentsController {
                 PageQuery.of(page, size)
             )
             .map(this::toAgedReceivableResponse);
+    }
+
+    @PostMapping("/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment")
+    public CollectionsAssignmentResponse assignOver90CollectionsInvoice(
+        @PathVariable String tenantCode,
+        @PathVariable String invoiceNumber,
+        @Valid @RequestBody AssignCollectionsInvoiceRequest request
+    ) {
+        return toCollectionsAssignmentResponse(paymentManagement.assignOver90CollectionsInvoice(
+            new AssignCollectionsInvoiceCommand(
+                requirePathValue(tenantCode, "tenantCode"),
+                requirePathValue(invoiceNumber, "invoiceNumber"),
+                request.assignedTo(),
+                request.assignedBy()
+            )
+        ));
     }
 
     @GetMapping
@@ -361,7 +379,20 @@ public class PaymentsController {
             receivable.outstandingAmount(),
             receivable.asOfDate(),
             receivable.daysPastDue(),
-            receivable.agingBucket()
+            receivable.agingBucket(),
+            receivable.assignedTo(),
+            receivable.assignedBy(),
+            receivable.assignedAt()
+        );
+    }
+
+    private CollectionsAssignmentResponse toCollectionsAssignmentResponse(CollectionsAssignmentView assignment) {
+        return new CollectionsAssignmentResponse(
+            assignment.tenantCode(),
+            assignment.invoiceNumber(),
+            assignment.assignedTo(),
+            assignment.assignedBy(),
+            assignment.assignedAt()
         );
     }
 

@@ -143,6 +143,9 @@ Fields:
 - `asOfDate`
 - `daysPastDue`
 - `agingBucket`
+- `assignedTo` (nullable)
+- `assignedBy` (nullable)
+- `assignedAt` (nullable)
 
 Computation:
 - source invoices come from `InvoiceManagement.listInvoices(...)` filtered to `status=ISSUED`
@@ -152,6 +155,7 @@ Computation:
 Notes:
 - bucket drill-down is paged after filtering and ordered by `dueAt ASC`, then `invoiceNumber ASC`
 - `daysPastDue <= 0` maps to `CURRENT`
+- assignment metadata is joined in from the current collections assignment state when present
 
 ### Over90CollectionsQueue
 
@@ -170,10 +174,29 @@ Notes:
 - rows remain ordered by `dueAt ASC`, then `invoiceNumber ASC`
 - blank `invoiceNumber` query values are rejected at the HTTP boundary
 - invalid `dueAtOnOrBefore` values are rejected at the HTTP boundary
+- queue rows now include current assignment metadata when present
+
+### CollectionsAssignment
+
+Purpose:
+- persist the current owner of a collections invoice inside `payments`
+
+Fields:
+- `tenantCode`
+- `invoiceNumber`
+- `assignedTo`
+- `assignedBy`
+- `assignedAt`
+
+Rules:
+- assignment is only allowed for invoices currently in the over-90 queue
+- `assignedTo` and `assignedBy` must both resolve through `IdentityActorLookup`
+- one current assignment row exists per `invoiceNumber`; reassignment updates that row
 
 ## Cross-Module Dependency
 
 - `payments` reads invoices through public `InvoiceManagement`
+- `payments` validates collections actors through public `IdentityActorLookup`
 - no dependency on `invoicing.internal`
 
 ## Minimal HTTP Surface
@@ -185,6 +208,7 @@ Notes:
 - `GET /api/payments/tenants/{tenantCode}/receivables/aging?currencyCode=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/aging/{agingBucket}?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90?currencyCode=&invoiceNumber=&dueAtOnOrBefore=&page=&size=`
+- `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment`
 - `GET /api/payments?page=&size=&invoiceNumber=&tenantCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/summary?currencyCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/invoices?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`

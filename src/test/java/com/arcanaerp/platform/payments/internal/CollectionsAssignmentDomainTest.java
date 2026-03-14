@@ -1,0 +1,39 @@
+package com.arcanaerp.platform.payments.internal;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.time.Instant;
+import org.junit.jupiter.api.Test;
+
+class CollectionsAssignmentDomainTest {
+
+    @Test
+    void createNormalizesAssignmentFields() {
+        CollectionsAssignment assignment = CollectionsAssignment.create(
+            " tenant-01 ",
+            " inv-1000 ",
+            " Collector@ArcanaERP.com ",
+            " Manager@ArcanaERP.com ",
+            Instant.parse("2026-03-12T00:00:00Z")
+        );
+
+        assertThat(assignment.getTenantCode()).isEqualTo("TENANT-01");
+        assertThat(assignment.getInvoiceNumber()).isEqualTo("INV-1000");
+        assertThat(assignment.getAssignedTo()).isEqualTo("collector@arcanaerp.com");
+        assertThat(assignment.getAssignedBy()).isEqualTo("manager@arcanaerp.com");
+    }
+
+    @Test
+    void createRejectsInvalidAssignedTo() {
+        assertThatThrownBy(() -> CollectionsAssignment.create(
+            "TENANT-01",
+            "INV-1001",
+            "not-an-email",
+            "manager@arcanaerp.com",
+            Instant.parse("2026-03-12T00:00:00Z")
+        ))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("assignedTo is invalid");
+    }
+}

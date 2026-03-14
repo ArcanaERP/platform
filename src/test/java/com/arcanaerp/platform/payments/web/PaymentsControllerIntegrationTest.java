@@ -27,6 +27,8 @@ class PaymentsControllerIntegrationTest {
     private static final String AGING_TENANT_CODE = "tenant-aging";
     private static final String AGING_BUCKET_TENANT_CODE = "tenant-aging-bucket";
     private static final String COLLECTIONS_TENANT_CODE = "tenant-collections";
+    private static final String COLLECTIONS_ASSIGNMENT_TENANT_CODE = "tenant-collections-assignment";
+    private static final String COLLECTIONS_ASSIGNMENT_MISSING_TENANT_CODE = "tenant-coll-assign-miss";
 
     @Autowired
     private MockMvc mockMvc;
@@ -481,6 +483,98 @@ class PaymentsControllerIntegrationTest {
             ))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("dueAtOnOrBefore query parameter must be a valid ISO-8601 instant"));
+    }
+
+    @Test
+    void assignsOver90CollectionsInvoiceAndExposesAssignmentOnQueue() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_TENANT_CODE,
+            "Collections Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector@arcanaerp.com",
+            "Collector"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_TENANT_CODE,
+            "Collections Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNMENT_TENANT_CODE,
+            "arc-pay-1031",
+            "so-pay-1031",
+            "inv-pay-1031",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+
+        testClock.setInstant(PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400));
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_TENANT_CODE,
+            "inv-pay-1031",
+            "collector@arcanaerp.com",
+            "manager@arcanaerp.com"
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tenantCode").value("TENANT-COLLECTIONS-ASSIGNMENT"))
+            .andExpect(jsonPath("$.invoiceNumber").value("INV-PAY-1031"))
+            .andExpect(jsonPath("$.assignedTo").value("collector@arcanaerp.com"))
+            .andExpect(jsonPath("$.assignedBy").value("manager@arcanaerp.com"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.over90CollectionsQueueRequest(
+                COLLECTIONS_ASSIGNMENT_TENANT_CODE,
+                "USD",
+                0,
+                10
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-1031"))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].assignedBy").value("manager@arcanaerp.com"));
+    }
+
+    @Test
+    void rejectsCollectionsAssignmentForMissingActor() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_MISSING_TENANT_CODE,
+            "Collections Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNMENT_MISSING_TENANT_CODE,
+            "arc-pay-1032",
+            "so-pay-1032",
+            "inv-pay-1032",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+
+        testClock.setInstant(PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400));
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_MISSING_TENANT_CODE,
+            "inv-pay-1032",
+            "collector@arcanaerp.com",
+            "manager@arcanaerp.com"
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value(
+                "Collections assignee not found in tenant TENANT-COLL-ASSIGN-MISS: collector@arcanaerp.com"
+            ));
     }
 
     @Test

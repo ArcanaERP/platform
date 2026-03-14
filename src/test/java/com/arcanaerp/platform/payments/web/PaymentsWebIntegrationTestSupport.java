@@ -4,13 +4,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-import com.arcanaerp.platform.testsupport.web.OrderManagementWebTestSupport;
-import com.arcanaerp.platform.testsupport.web.ProductCatalogWebTestSupport;
 import java.time.Instant;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import com.arcanaerp.platform.testsupport.web.OrderManagementWebTestSupport;
+import com.arcanaerp.platform.testsupport.web.ProductCatalogWebTestSupport;
 
 final class PaymentsWebIntegrationTestSupport {
 
@@ -124,6 +124,50 @@ final class PaymentsWebIntegrationTestSupport {
             }
         }
         return request;
+    }
+
+    static ResultActions assignOver90CollectionsInvoice(
+        MockMvc mockMvc,
+        String tenantCode,
+        String invoiceNumber,
+        String assignedTo,
+        String assignedBy
+    ) throws Exception {
+        String payload = """
+            {
+              "assignedTo": "%s",
+              "assignedBy": "%s"
+            }
+            """.formatted(assignedTo, assignedBy);
+
+        return mockMvc.perform(post(
+            "/api/payments/tenants/" + tenantCode + "/receivables/collections/over-90/" + invoiceNumber + "/assignment"
+        ).contentType(MediaType.APPLICATION_JSON).content(payload));
+    }
+
+    static ResultActions createIdentityUser(
+        MockMvc mockMvc,
+        String tenantCode,
+        String tenantName,
+        String roleCode,
+        String roleName,
+        String email,
+        String displayName
+    ) throws Exception {
+        String payload = """
+            {
+              "tenantCode": "%s",
+              "tenantName": "%s",
+              "roleCode": "%s",
+              "roleName": "%s",
+              "email": "%s",
+              "displayName": "%s"
+            }
+            """.formatted(tenantCode, tenantName, roleCode, roleName, email, displayName);
+
+        return mockMvc.perform(post("/api/identity/users")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload));
     }
 
     static MockHttpServletRequestBuilder listPaymentsRequest(int page, int size, String... optionalNameValuePairs) {

@@ -2,10 +2,13 @@ package com.arcanaerp.platform.payments.internal;
 
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.identity.IdentityActorLookup;
 import com.arcanaerp.platform.invoicing.InvoiceManagement;
 import com.arcanaerp.platform.invoicing.InvoiceStatus;
 import com.arcanaerp.platform.invoicing.InvoiceView;
 import com.arcanaerp.platform.payments.AgedTenantReceivableView;
+import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
+import com.arcanaerp.platform.payments.CollectionsAssignmentView;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
@@ -44,7 +47,9 @@ import org.springframework.transaction.annotation.Transactional;
 class PaymentManagementService implements PaymentManagement {
 
     private final PaymentRepository paymentRepository;
+    private final CollectionsAssignmentRepository collectionsAssignmentRepository;
     private final InvoiceManagement invoiceManagement;
+    private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
 
     @Override
@@ -204,7 +209,7 @@ class PaymentManagementService implements PaymentManagement {
             throw new IllegalArgumentException("agingBucket is required");
         }
         LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
-        List<AgedTenantReceivableView> filtered = collectOutstandingReceivableSnapshots(
+        List<ReceivableSnapshot> filtered = collectOutstandingReceivableSnapshots(
             normalizedTenantCode,
             normalizedCurrencyCode,
             asOfDate
@@ -213,33 +218,8 @@ class PaymentManagementService implements PaymentManagement {
             .sorted(java.util.Comparator
                 .comparing(ReceivableSnapshot::dueAt)
                 .thenComparing(ReceivableSnapshot::invoiceNumber))
-            .map(snapshot -> new AgedTenantReceivableView(
-                snapshot.tenantCode(),
-                snapshot.currencyCode(),
-                snapshot.invoiceNumber(),
-                snapshot.dueAt(),
-                snapshot.issuedAt(),
-                snapshot.totalAmount(),
-                snapshot.paidAmount(),
-                snapshot.outstandingAmount(),
-                snapshot.asOfDate(),
-                snapshot.daysPastDue(),
-                snapshot.agingBucket()
-            ))
             .toList();
-
-        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), filtered.size());
-        int toIndex = Math.min(fromIndex + pageQuery.size(), filtered.size());
-        int totalPages = filtered.isEmpty() ? 0 : (int) Math.ceil((double) filtered.size() / pageQuery.size());
-        return new PageResult<>(
-            filtered.subList(fromIndex, toIndex),
-            pageQuery.page(),
-            pageQuery.size(),
-            filtered.size(),
-            totalPages,
-            toIndex < filtered.size(),
-            pageQuery.page() > 0
-        );
+        return paginateReceivables(enrichAgedReceivables(filtered), pageQuery);
     }
 
     @Override
@@ -255,7 +235,7 @@ class PaymentManagementService implements PaymentManagement {
         String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
         String normalizedInvoiceNumber = normalizeOptional(invoiceNumber);
         LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
-        List<AgedTenantReceivableView> filtered = collectOutstandingReceivableSnapshots(
+        List<ReceivableSnapshot> filtered = collectOutstandingReceivableSnapshots(
             normalizedTenantCode,
             normalizedCurrencyCode,
             asOfDate
@@ -266,32 +246,63 @@ class PaymentManagementService implements PaymentManagement {
             .sorted(java.util.Comparator
                 .comparing(ReceivableSnapshot::dueAt)
                 .thenComparing(ReceivableSnapshot::invoiceNumber))
-            .map(snapshot -> new AgedTenantReceivableView(
-                snapshot.tenantCode(),
-                snapshot.currencyCode(),
-                snapshot.invoiceNumber(),
-                snapshot.dueAt(),
-                snapshot.issuedAt(),
-                snapshot.totalAmount(),
-                snapshot.paidAmount(),
-                snapshot.outstandingAmount(),
-                snapshot.asOfDate(),
-                snapshot.daysPastDue(),
-                snapshot.agingBucket()
-            ))
             .toList();
+        return paginateReceivables(enrichAgedReceivables(filtered), pageQuery);
+    }
 
-        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), filtered.size());
-        int toIndex = Math.min(fromIndex + pageQuery.size(), filtered.size());
-        int totalPages = filtered.isEmpty() ? 0 : (int) Math.ceil((double) filtered.size() / pageQuery.size());
-        return new PageResult<>(
-            filtered.subList(fromIndex, toIndex),
-            pageQuery.page(),
-            pageQuery.size(),
-            filtered.size(),
-            totalPages,
-            toIndex < filtered.size(),
-            pageQuery.page() > 0
+    @Override
+    public CollectionsAssignmentView assignOver90CollectionsInvoice(AssignCollectionsInvoiceCommand command) {
+        String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
+        String invoiceNumber = normalizeRequired(command.invoiceNumber(), "invoiceNumber").toUpperCase();
+        String assignedTo = normalizeActorEmail(command.assignedTo(), "assignedTo");
+        String assignedBy = normalizeActorEmail(command.assignedBy(), "assignedBy");
+        if (!identityActorLookup.actorExists(tenantCode, assignedTo)) {
+            throw new IllegalArgumentException("Collections assignee not found in tenant " + tenantCode + ": " + assignedTo);
+        }
+        if (!identityActorLookup.actorExists(tenantCode, assignedBy)) {
+            throw new IllegalArgumentException("Collections assignment actor not found in tenant " + tenantCode + ": " + assignedBy);
+        }
+
+        InvoiceView invoice = invoiceManagement.getInvoice(invoiceNumber);
+        if (!invoice.tenantCode().equals(tenantCode)) {
+            throw new IllegalArgumentException("Invoice does not belong to tenant " + tenantCode + ": " + invoiceNumber);
+        }
+        if (invoice.status() != InvoiceStatus.ISSUED) {
+            throw new IllegalArgumentException("Invoice must be ISSUED for collections assignment: " + invoiceNumber);
+        }
+
+        BigDecimal paidAmount = paymentRepository.sumAmountByInvoiceNumber(invoice.invoiceNumber());
+        BigDecimal outstandingAmount = invoice.totalAmount().subtract(paidAmount);
+        if (outstandingAmount.signum() <= 0) {
+            throw new IllegalArgumentException("Invoice has no outstanding balance for collections assignment: " + invoiceNumber);
+        }
+
+        LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
+        long daysPastDue = java.time.temporal.ChronoUnit.DAYS.between(
+            invoice.dueAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            asOfDate
+        );
+        if (ReceivablesAgingBucket.fromDaysPastDue(daysPastDue) != ReceivablesAgingBucket.OVERDUE_OVER_90) {
+            throw new IllegalArgumentException("Invoice is not in the over-90 collections queue: " + invoiceNumber);
+        }
+
+        Instant assignedAt = Instant.now(clock);
+        CollectionsAssignment assignment = collectionsAssignmentRepository.findByInvoiceNumber(invoiceNumber)
+            .map(existing -> existing.reassign(assignedTo, assignedBy, assignedAt))
+            .orElseGet(() -> CollectionsAssignment.create(
+                tenantCode,
+                invoiceNumber,
+                assignedTo,
+                assignedBy,
+                assignedAt
+            ));
+        CollectionsAssignment saved = collectionsAssignmentRepository.save(assignment);
+        return new CollectionsAssignmentView(
+            saved.getTenantCode(),
+            saved.getInvoiceNumber(),
+            saved.getAssignedTo(),
+            saved.getAssignedBy(),
+            saved.getAssignedAt()
         );
     }
 
@@ -547,6 +558,51 @@ class PaymentManagementService implements PaymentManagement {
         return snapshots;
     }
 
+    private PageResult<AgedTenantReceivableView> paginateReceivables(
+        List<AgedTenantReceivableView> filtered,
+        PageQuery pageQuery
+    ) {
+        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), filtered.size());
+        int toIndex = Math.min(fromIndex + pageQuery.size(), filtered.size());
+        int totalPages = filtered.isEmpty() ? 0 : (int) Math.ceil((double) filtered.size() / pageQuery.size());
+        return new PageResult<>(
+            filtered.subList(fromIndex, toIndex),
+            pageQuery.page(),
+            pageQuery.size(),
+            filtered.size(),
+            totalPages,
+            toIndex < filtered.size(),
+            pageQuery.page() > 0
+        );
+    }
+
+    private List<AgedTenantReceivableView> enrichAgedReceivables(List<ReceivableSnapshot> snapshots) {
+        Map<String, CollectionsAssignment> assignmentsByInvoiceNumber = collectionsAssignmentRepository.findByInvoiceNumberIn(
+            snapshots.stream().map(ReceivableSnapshot::invoiceNumber).toList()
+        ).stream().collect(java.util.stream.Collectors.toMap(CollectionsAssignment::getInvoiceNumber, java.util.function.Function.identity()));
+        return snapshots.stream()
+            .map(snapshot -> {
+                CollectionsAssignment assignment = assignmentsByInvoiceNumber.get(snapshot.invoiceNumber());
+                return new AgedTenantReceivableView(
+                    snapshot.tenantCode(),
+                    snapshot.currencyCode(),
+                    snapshot.invoiceNumber(),
+                    snapshot.dueAt(),
+                    snapshot.issuedAt(),
+                    snapshot.totalAmount(),
+                    snapshot.paidAmount(),
+                    snapshot.outstandingAmount(),
+                    snapshot.asOfDate(),
+                    snapshot.daysPastDue(),
+                    snapshot.agingBucket(),
+                    assignment == null ? null : assignment.getAssignedTo(),
+                    assignment == null ? null : assignment.getAssignedBy(),
+                    assignment == null ? null : assignment.getAssignedAt()
+                );
+            })
+            .toList();
+    }
+
     private PaymentView toView(Payment payment) {
         return new PaymentView(
             payment.getId(),
@@ -569,6 +625,14 @@ class PaymentManagementService implements PaymentManagement {
 
     private static String normalizeOptional(String value) {
         return value == null ? null : value.trim().toUpperCase();
+    }
+
+    private static String normalizeActorEmail(String value, String fieldName) {
+        String normalized = normalizeRequired(value, fieldName).toLowerCase();
+        if (!normalized.contains("@")) {
+            throw new IllegalArgumentException(fieldName + " is invalid");
+        }
+        return normalized;
     }
 
     private static final class DailySummaryAccumulator {
