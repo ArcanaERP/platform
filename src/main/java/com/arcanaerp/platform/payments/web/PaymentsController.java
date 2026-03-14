@@ -13,6 +13,7 @@ import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.ReceivablesAgingBucket;
+import com.arcanaerp.platform.payments.TenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantReceivableView;
@@ -198,6 +199,21 @@ public class PaymentsController {
                 PageQuery.of(page, size)
             )
             .map(this::toCollectionsAssignmentChangeResponse);
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/summary")
+    public PageResult<TenantCollectionsAssignmentSummaryResponse> listTenantCollectionsAssignmentSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam String currencyCode,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return paymentManagement.listTenantCollectionsAssignmentSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(currencyCode, "currencyCode"),
+                PageQuery.of(page, size)
+            )
+            .map(this::toTenantCollectionsAssignmentSummaryResponse);
     }
 
     @GetMapping
@@ -457,6 +473,19 @@ public class PaymentsController {
             assignment.assignedTo(),
             assignment.assignedBy(),
             assignment.assignedAt()
+        );
+    }
+
+    private TenantCollectionsAssignmentSummaryResponse toTenantCollectionsAssignmentSummaryResponse(
+        TenantCollectionsAssignmentSummaryView summary
+    ) {
+        return new TenantCollectionsAssignmentSummaryResponse(
+            summary.tenantCode(),
+            summary.currencyCode(),
+            summary.assignedTo(),
+            summary.assignedInvoiceCount(),
+            summary.totalOutstandingAmount(),
+            summary.oldestDueAt()
         );
     }
 

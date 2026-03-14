@@ -215,6 +215,24 @@ Rules:
 - history filters currently support optional exact `assignedTo` plus `assignedAtFrom` / `assignedAtTo`
 - tenant history also supports optional exact `invoiceNumber`
 
+### TenantCollectionsAssignmentSummary
+
+Purpose:
+- expose the current over-90 collections workload grouped by assignee
+
+Fields:
+- `tenantCode`
+- `currencyCode`
+- `assignedTo` (nullable for unassigned bucket)
+- `assignedInvoiceCount`
+- `totalOutstandingAmount`
+- `oldestDueAt`
+
+Rules:
+- summary is built from current over-90 queue rows, not from historical audit rows
+- unassigned invoices are grouped into a nullable `assignedTo` bucket
+- rows are ordered by `assignedTo` ascending with the unassigned bucket last
+
 ## Cross-Module Dependency
 
 - `payments` reads invoices through public `InvoiceManagement`
@@ -233,6 +251,7 @@ Rules:
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment-history?page=&size=&assignedTo=&assignedAtFrom=&assignedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignment-history?page=&size=&invoiceNumber=&assignedTo=&assignedAtFrom=&assignedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/summary?currencyCode=&page=&size=`
 - `GET /api/payments?page=&size=&invoiceNumber=&tenantCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/summary?currencyCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/invoices?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`

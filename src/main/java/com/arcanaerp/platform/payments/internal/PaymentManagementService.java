@@ -17,6 +17,7 @@ import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.ReceivablesAgingBucket;
+import com.arcanaerp.platform.payments.TenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantReceivableView;
@@ -392,6 +393,38 @@ class PaymentManagementService implements PaymentManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<TenantCollectionsAssignmentSummaryView> listTenantCollectionsAssignmentSummaries(
+        String tenantCode,
+        String currencyCode,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
+
+        Map<String, AssignmentSummaryAccumulator> summariesByAssignee = new LinkedHashMap<>();
+        enrichAgedReceivables(collectOutstandingReceivableSnapshots(normalizedTenantCode, normalizedCurrencyCode, asOfDate)
+            .stream()
+            .filter(snapshot -> snapshot.agingBucket() == ReceivablesAgingBucket.OVERDUE_OVER_90)
+            .sorted(java.util.Comparator
+                .comparing(ReceivableSnapshot::dueAt)
+                .thenComparing(ReceivableSnapshot::invoiceNumber))
+            .toList())
+            .forEach(receivable -> summariesByAssignee
+                .computeIfAbsent(receivable.assignedTo(), ignored -> new AssignmentSummaryAccumulator())
+                .add(receivable));
+
+        List<TenantCollectionsAssignmentSummaryView> summaries = summariesByAssignee.entrySet().stream()
+            .map(entry -> entry.getValue().toView(normalizedTenantCode, normalizedCurrencyCode, entry.getKey()))
+            .sorted(java.util.Comparator
+                .comparing((TenantCollectionsAssignmentSummaryView summary) -> summary.assignedTo() == null ? 1 : 0)
+                .thenComparing(summary -> summary.assignedTo() == null ? "" : summary.assignedTo()))
+            .toList();
+        return paginateAssignmentSummaries(summaries, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<PaymentView> listPayments(
         String invoiceNumber,
         String tenantCode,
@@ -660,6 +693,24 @@ class PaymentManagementService implements PaymentManagement {
         );
     }
 
+    private PageResult<TenantCollectionsAssignmentSummaryView> paginateAssignmentSummaries(
+        List<TenantCollectionsAssignmentSummaryView> filtered,
+        PageQuery pageQuery
+    ) {
+        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), filtered.size());
+        int toIndex = Math.min(fromIndex + pageQuery.size(), filtered.size());
+        int totalPages = filtered.isEmpty() ? 0 : (int) Math.ceil((double) filtered.size() / pageQuery.size());
+        return new PageResult<>(
+            filtered.subList(fromIndex, toIndex),
+            pageQuery.page(),
+            pageQuery.size(),
+            filtered.size(),
+            totalPages,
+            toIndex < filtered.size(),
+            pageQuery.page() > 0
+        );
+    }
+
     private List<AgedTenantReceivableView> enrichAgedReceivables(List<ReceivableSnapshot> snapshots) {
         Map<String, CollectionsAssignment> assignmentsByInvoiceNumber = collectionsAssignmentRepository.findByInvoiceNumberIn(
             snapshots.stream().map(ReceivableSnapshot::invoiceNumber).toList()
@@ -791,6 +842,36 @@ class PaymentManagementService implements PaymentManagement {
                 overdue61To90Amount,
                 overdueOver90InvoiceCount,
                 overdueOver90Amount
+            );
+        }
+    }
+
+    private static final class AssignmentSummaryAccumulator {
+
+        private long assignedInvoiceCount;
+        private BigDecimal totalOutstandingAmount = BigDecimal.ZERO;
+        private Instant oldestDueAt;
+
+        void add(AgedTenantReceivableView receivable) {
+            assignedInvoiceCount++;
+            totalOutstandingAmount = totalOutstandingAmount.add(receivable.outstandingAmount());
+            if (oldestDueAt == null || receivable.dueAt().isBefore(oldestDueAt)) {
+                oldestDueAt = receivable.dueAt();
+            }
+        }
+
+        TenantCollectionsAssignmentSummaryView toView(
+            String tenantCode,
+            String currencyCode,
+            String assignedTo
+        ) {
+            return new TenantCollectionsAssignmentSummaryView(
+                tenantCode,
+                currencyCode,
+                assignedTo,
+                assignedInvoiceCount,
+                totalOutstandingAmount,
+                oldestDueAt
             );
         }
     }
