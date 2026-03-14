@@ -71,6 +71,29 @@ Computation:
 - `paidAmount` is the sum of posted `payments.amount` for the invoice
 - `outstandingAmount = totalAmount - paidAmount`
 
+### TenantReceivablesSummary
+
+Purpose:
+- expose tenant-scoped aggregate receivables totals for issued invoices in one currency
+
+Fields:
+- `tenantCode`
+- `currencyCode`
+- `invoiceCount`
+- `totalAmount`
+- `paidAmount`
+- `outstandingAmount`
+- `paidInFullCount`
+
+Computation:
+- source invoices come from `InvoiceManagement.listInvoices(...)` filtered to `status=ISSUED`
+- `paidAmount` is the sum of posted `payments.amount` across those invoices
+- `outstandingAmount = totalAmount - paidAmount`
+
+Notes:
+- summary is intentionally scoped by `currencyCode` to avoid mixing monetary totals across currencies
+- the current implementation pages through issued invoices via the public invoicing API and aggregates results in the service layer
+
 ## Cross-Module Dependency
 
 - `payments` reads invoices through public `InvoiceManagement`
@@ -81,6 +104,7 @@ Computation:
 - `POST /api/payments`
 - `GET /api/payments/invoices/{invoiceNumber}/balance`
 - `GET /api/payments/tenants/{tenantCode}/receivables?currencyCode=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/summary?currencyCode=`
 - `GET /api/payments?page=&size=&invoiceNumber=&tenantCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/summary?currencyCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/invoices?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`

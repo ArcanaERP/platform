@@ -11,6 +11,7 @@ import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantReceivableView;
+import com.arcanaerp.platform.payments.TenantReceivablesSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantPaymentSummaryView;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -66,6 +67,17 @@ public class PaymentsController {
                 PageQuery.of(page, size)
             )
             .map(this::toReceivableResponse);
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables/summary")
+    public TenantReceivablesSummaryResponse tenantReceivablesSummary(
+        @PathVariable String tenantCode,
+        @RequestParam String currencyCode
+    ) {
+        return toReceivablesSummaryResponse(paymentManagement.tenantReceivablesSummary(
+            requirePathValue(tenantCode, "tenantCode"),
+            normalizeOptional(currencyCode, "currencyCode")
+        ));
     }
 
     @GetMapping
@@ -251,6 +263,18 @@ public class PaymentsController {
             receivable.paidAmount(),
             receivable.outstandingAmount(),
             receivable.paidInFull()
+        );
+    }
+
+    private TenantReceivablesSummaryResponse toReceivablesSummaryResponse(TenantReceivablesSummaryView summary) {
+        return new TenantReceivablesSummaryResponse(
+            summary.tenantCode(),
+            summary.currencyCode(),
+            summary.invoiceCount(),
+            summary.totalAmount(),
+            summary.paidAmount(),
+            summary.outstandingAmount(),
+            summary.paidInFullCount()
         );
     }
 

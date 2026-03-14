@@ -62,6 +62,14 @@ final class PaymentsWebIntegrationTestSupport {
         return request;
     }
 
+    static MockHttpServletRequestBuilder tenantReceivablesSummaryRequest(
+        String tenantCode,
+        String currencyCode
+    ) {
+        return get("/api/payments/tenants/" + tenantCode + "/receivables/summary")
+            .param("currencyCode", currencyCode);
+    }
+
     static MockHttpServletRequestBuilder listPaymentsRequest(int page, int size, String... optionalNameValuePairs) {
         MockHttpServletRequestBuilder request = get("/api/payments")
             .param("page", String.valueOf(page))

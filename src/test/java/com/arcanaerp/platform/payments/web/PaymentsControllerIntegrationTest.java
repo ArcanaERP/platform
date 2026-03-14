@@ -155,6 +155,59 @@ class PaymentsControllerIntegrationTest {
     }
 
     @Test
+    void returnsTenantReceivablesSummary() throws Exception {
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            RECEIVABLES_TENANT_CODE,
+            "arc-pay-1017",
+            "so-pay-1017",
+            "inv-pay-1017"
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            RECEIVABLES_TENANT_CODE,
+            "arc-pay-1018",
+            "so-pay-1018",
+            "inv-pay-1018"
+        );
+
+        PaymentsWebIntegrationTestSupport.createPayment(
+            mockMvc,
+            RECEIVABLES_TENANT_CODE,
+            "pay-1018",
+            "inv-pay-1017",
+            "10.00",
+            "USD",
+            PAID_AT
+        ).andExpect(status().isCreated());
+
+        PaymentsWebIntegrationTestSupport.createPayment(
+            mockMvc,
+            RECEIVABLES_TENANT_CODE,
+            "pay-1019",
+            "inv-pay-1018",
+            "4.00",
+            "USD",
+            PAID_AT.plusSeconds(60)
+        ).andExpect(status().isCreated());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantReceivablesSummaryRequest(
+                RECEIVABLES_TENANT_CODE,
+                "USD"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tenantCode").value("TENANT-RECEIVABLES"))
+            .andExpect(jsonPath("$.currencyCode").value("USD"))
+            .andExpect(jsonPath("$.invoiceCount").value(4))
+            .andExpect(jsonPath("$.totalAmount").value(40.0))
+            .andExpect(jsonPath("$.paidAmount").value(18.0))
+            .andExpect(jsonPath("$.outstandingAmount").value(22.0))
+            .andExpect(jsonPath("$.paidInFullCount").value(1));
+    }
+
+    @Test
     void listsPaymentsWithInvoiceAndTenantFilters() throws Exception {
         PaymentsWebIntegrationTestSupport.seedIssuedInvoice(mockMvc, testClock, "arc-pay-1003", "so-pay-1003", "inv-pay-1003");
         PaymentsWebIntegrationTestSupport.seedIssuedInvoice(mockMvc, testClock, "arc-pay-1004", "so-pay-1004", "inv-pay-1004");

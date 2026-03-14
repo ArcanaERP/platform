@@ -16,6 +16,11 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    TenantReceivablesSummaryView tenantReceivablesSummary(
+        String tenantCode,
+        String currencyCode
+    );
+
     PageResult<PaymentView> listPayments(
         String invoiceNumber,
         String tenantCode,

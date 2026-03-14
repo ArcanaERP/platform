@@ -12,6 +12,7 @@ import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantReceivableView;
+import com.arcanaerp.platform.payments.TenantReceivablesSummaryView;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.WeeklyTenantPaymentSummaryView;
@@ -128,6 +129,56 @@ class PaymentManagementService implements PaymentManagement {
                 outstandingAmount.signum() == 0
             );
         });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TenantReceivablesSummaryView tenantReceivablesSummary(
+        String tenantCode,
+        String currencyCode
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode");
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode");
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        BigDecimal paidAmount = BigDecimal.ZERO;
+        BigDecimal outstandingAmount = BigDecimal.ZERO;
+        long invoiceCount = 0;
+        long paidInFullCount = 0;
+
+        PageQuery pageQuery = new PageQuery(0, PageQuery.MAX_SIZE);
+        while (true) {
+            PageResult<InvoiceView> invoices = invoiceManagement.listInvoices(
+                normalizedTenantCode,
+                InvoiceStatus.ISSUED,
+                normalizedCurrencyCode,
+                pageQuery
+            );
+            for (InvoiceView invoice : invoices.items()) {
+                BigDecimal invoicePaidAmount = paymentRepository.sumAmountByInvoiceNumber(invoice.invoiceNumber());
+                BigDecimal invoiceOutstandingAmount = invoice.totalAmount().subtract(invoicePaidAmount);
+                invoiceCount++;
+                totalAmount = totalAmount.add(invoice.totalAmount());
+                paidAmount = paidAmount.add(invoicePaidAmount);
+                outstandingAmount = outstandingAmount.add(invoiceOutstandingAmount);
+                if (invoiceOutstandingAmount.signum() == 0) {
+                    paidInFullCount++;
+                }
+            }
+            if (!invoices.hasNext()) {
+                break;
+            }
+            pageQuery = new PageQuery(pageQuery.page() + 1, pageQuery.size());
+        }
+
+        return new TenantReceivablesSummaryView(
+            normalizedTenantCode.toUpperCase(),
+            normalizedCurrencyCode.toUpperCase(),
+            invoiceCount,
+            totalAmount,
+            paidAmount,
+            outstandingAmount,
+            paidInFullCount
+        );
     }
 
     @Override
