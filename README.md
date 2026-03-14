@@ -102,7 +102,7 @@ Invoicing:
 
 - `POST /api/invoices`
 - `GET /api/invoices/{invoiceNumber}`
-- `GET /api/invoices?page=&size=`
+- `GET /api/invoices?page=&size=&tenantCode=&status=&currencyCode=`
 - `PATCH /api/invoices/{invoiceNumber}/status`
 - `GET /api/invoices/{invoiceNumber}/status-history?page=&size=&previousStatus=&currentStatus=&changedAtFrom=&changedAtTo=`
 - invoice responses currently include snapshot `lines[]` copied from the source order at creation time
@@ -111,6 +111,7 @@ Payments:
 
 - `POST /api/payments`
 - `GET /api/payments/invoices/{invoiceNumber}/balance`
+- `GET /api/payments/tenants/{tenantCode}/receivables?currencyCode=&page=&size=`
 - `GET /api/payments?page=&size=&invoiceNumber=&tenantCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/summary?currencyCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/invoices?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`

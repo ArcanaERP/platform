@@ -1,6 +1,6 @@
 # Invoicing Data Model
 
-Updated: 2026-03-11
+Updated: 2026-03-13
 
 ## Scope
 
@@ -74,6 +74,12 @@ Core fields:
 
 - `POST /api/invoices`
 - `GET /api/invoices/{invoiceNumber}`
-- `GET /api/invoices?page=&size=`
+- `GET /api/invoices?page=&size=&tenantCode=&status=&currencyCode=`
 - `PATCH /api/invoices/{invoiceNumber}/status`
 - `GET /api/invoices/{invoiceNumber}/status-history?page=&size=&previousStatus=&currentStatus=&changedAtFrom=&changedAtTo=`
+
+## Query Notes
+
+- invoice listing is newest-first by `createdAt DESC`
+- optional invoice-list filters currently support `tenantCode`, `status`, and `currencyCode`
+- blank query values are rejected at the HTTP boundary

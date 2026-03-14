@@ -45,6 +45,23 @@ final class PaymentsWebIntegrationTestSupport {
         return get("/api/payments/invoices/" + invoiceNumber + "/balance");
     }
 
+    static MockHttpServletRequestBuilder tenantReceivablesRequest(
+        String tenantCode,
+        String currencyCode,
+        Integer page,
+        Integer size
+    ) {
+        MockHttpServletRequestBuilder request = get("/api/payments/tenants/" + tenantCode + "/receivables")
+            .param("currencyCode", currencyCode);
+        if (page != null) {
+            request.param("page", String.valueOf(page));
+        }
+        if (size != null) {
+            request.param("size", String.valueOf(size));
+        }
+        return request;
+    }
+
     static MockHttpServletRequestBuilder listPaymentsRequest(int page, int size, String... optionalNameValuePairs) {
         MockHttpServletRequestBuilder request = get("/api/payments")
             .param("page", String.valueOf(page))
@@ -201,6 +218,17 @@ final class PaymentsWebIntegrationTestSupport {
         String orderNumber,
         String invoiceNumber
     ) throws Exception {
+        seedIssuedInvoice(mockMvc, testClock, "tenant-pay", sku, orderNumber, invoiceNumber);
+    }
+
+    static void seedIssuedInvoice(
+        MockMvc mockMvc,
+        PaymentsDeterministicClockTestSupport.AdjustableClock testClock,
+        String tenantCode,
+        String sku,
+        String orderNumber,
+        String invoiceNumber
+    ) throws Exception {
         ProductCatalogWebTestSupport.createProductWithDerivedCategory(
             mockMvc,
             sku,
@@ -221,7 +249,7 @@ final class PaymentsWebIntegrationTestSupport {
         testClock.setInstant(PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(60));
         OrderManagementWebTestSupport.transitionOrderStatus(mockMvc, orderNumber, "CONFIRMED").andReturn();
         testClock.resetToBaseInstant();
-        createInvoice(mockMvc, "tenant-pay", invoiceNumber, orderNumber, PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(86400))
+        createInvoice(mockMvc, tenantCode, invoiceNumber, orderNumber, PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(86400))
             .andReturn();
         testClock.setInstant(PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(120));
         transitionInvoiceStatus(mockMvc, invoiceNumber, "ISSUED").andReturn();

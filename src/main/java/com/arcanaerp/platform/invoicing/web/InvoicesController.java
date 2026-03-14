@@ -52,10 +52,19 @@ public class InvoicesController {
 
     @GetMapping
     public PageResult<InvoiceResponse> listInvoices(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String status,
+        @RequestParam(required = false) String currencyCode,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
-        return invoiceManagement.listInvoices(PageQuery.of(page, size)).map(this::toResponse);
+        return invoiceManagement.listInvoices(
+                normalizeOptional(tenantCode, "tenantCode"),
+                parseOptionalStatus(status, "status"),
+                normalizeOptional(currencyCode, "currencyCode"),
+                PageQuery.of(page, size)
+            )
+            .map(this::toResponse);
     }
 
     @PatchMapping("/{invoiceNumber}/status")
@@ -168,5 +177,15 @@ public class InvoicesController {
         if (changedAtFrom != null && changedAtTo != null && changedAtFrom.isAfter(changedAtTo)) {
             throw new IllegalArgumentException("changedAtFrom must be before or equal to changedAtTo");
         }
+    }
+
+    private static String normalizeOptional(String value, String parameterName) {
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
+            throw new IllegalArgumentException(parameterName + " query parameter must not be blank");
+        }
+        return value.trim();
     }
 }

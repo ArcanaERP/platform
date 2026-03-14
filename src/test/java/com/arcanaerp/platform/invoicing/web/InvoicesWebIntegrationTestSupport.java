@@ -84,9 +84,20 @@ final class InvoicesWebIntegrationTestSupport {
         return get("/api/invoices/" + invoiceNumber);
     }
 
-    static MockHttpServletRequestBuilder listInvoicesRequest(int page, int size) {
-        return get("/api/invoices")
+    static MockHttpServletRequestBuilder listInvoicesRequest(int page, int size, String... optionalNameValuePairs) {
+        MockHttpServletRequestBuilder request = get("/api/invoices")
             .param("page", String.valueOf(page))
             .param("size", String.valueOf(size));
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must have an even number of elements");
+        }
+        for (int index = 0; index < optionalNameValuePairs.length; index += 2) {
+            String name = optionalNameValuePairs[index];
+            String value = optionalNameValuePairs[index + 1];
+            if (value != null) {
+                request.param(name, value);
+            }
+        }
+        return request;
     }
 }

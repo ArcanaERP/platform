@@ -10,6 +10,7 @@ import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
+import com.arcanaerp.platform.payments.TenantReceivableView;
 import com.arcanaerp.platform.payments.WeeklyTenantPaymentSummaryView;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -50,6 +51,21 @@ public class PaymentsController {
     @GetMapping("/invoices/{invoiceNumber}/balance")
     public InvoiceBalanceResponse invoiceBalance(@PathVariable String invoiceNumber) {
         return toBalanceResponse(paymentManagement.invoiceBalance(invoiceNumber));
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables")
+    public PageResult<TenantReceivableResponse> tenantReceivables(
+        @PathVariable String tenantCode,
+        @RequestParam String currencyCode,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return paymentManagement.listTenantReceivables(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(currencyCode, "currencyCode"),
+                PageQuery.of(page, size)
+            )
+            .map(this::toReceivableResponse);
     }
 
     @GetMapping
@@ -221,6 +237,20 @@ public class PaymentsController {
             summary.invoiceNumber(),
             summary.paymentCount(),
             summary.totalCollected()
+        );
+    }
+
+    private TenantReceivableResponse toReceivableResponse(TenantReceivableView receivable) {
+        return new TenantReceivableResponse(
+            receivable.tenantCode(),
+            receivable.currencyCode(),
+            receivable.invoiceNumber(),
+            receivable.dueAt(),
+            receivable.issuedAt(),
+            receivable.totalAmount(),
+            receivable.paidAmount(),
+            receivable.outstandingAmount(),
+            receivable.paidInFull()
         );
     }
 

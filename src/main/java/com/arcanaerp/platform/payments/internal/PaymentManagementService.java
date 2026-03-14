@@ -11,6 +11,7 @@ import com.arcanaerp.platform.payments.InvoiceBalanceView;
 import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
+import com.arcanaerp.platform.payments.TenantReceivableView;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.WeeklyTenantPaymentSummaryView;
@@ -97,6 +98,36 @@ class PaymentManagementService implements PaymentManagement {
             outstandingAmount,
             outstandingAmount.signum() == 0
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<TenantReceivableView> listTenantReceivables(
+        String tenantCode,
+        String currencyCode,
+        PageQuery pageQuery
+    ) {
+        PageResult<InvoiceView> invoices = invoiceManagement.listInvoices(
+            normalizeRequired(tenantCode, "tenantCode"),
+            InvoiceStatus.ISSUED,
+            normalizeRequired(currencyCode, "currencyCode"),
+            pageQuery
+        );
+        return invoices.map(invoice -> {
+            BigDecimal paidAmount = paymentRepository.sumAmountByInvoiceNumber(invoice.invoiceNumber());
+            BigDecimal outstandingAmount = invoice.totalAmount().subtract(paidAmount);
+            return new TenantReceivableView(
+                invoice.tenantCode(),
+                invoice.currencyCode(),
+                invoice.invoiceNumber(),
+                invoice.dueAt(),
+                invoice.issuedAt(),
+                invoice.totalAmount(),
+                paidAmount,
+                outstandingAmount,
+                outstandingAmount.signum() == 0
+            );
+        });
     }
 
     @Override

@@ -1,6 +1,6 @@
 # Payments Data Model
 
-Updated: 2026-03-12
+Updated: 2026-03-13
 
 ## Scope
 
@@ -50,6 +50,27 @@ Computation:
 - `paidAmount` is the sum of posted `payments.amount` for the invoice
 - `outstandingAmount = totalAmount - paidAmount`
 
+### TenantReceivable
+
+Purpose:
+- expose a tenant-scoped receivables worklist of issued invoices and their current outstanding balances
+
+Fields:
+- `tenantCode`
+- `currencyCode`
+- `invoiceNumber`
+- `dueAt`
+- `issuedAt`
+- `totalAmount`
+- `paidAmount`
+- `outstandingAmount`
+- `paidInFull`
+
+Computation:
+- source invoices come from `InvoiceManagement.listInvoices(...)` filtered to `status=ISSUED`
+- `paidAmount` is the sum of posted `payments.amount` for the invoice
+- `outstandingAmount = totalAmount - paidAmount`
+
 ## Cross-Module Dependency
 
 - `payments` reads invoices through public `InvoiceManagement`
@@ -59,6 +80,7 @@ Computation:
 
 - `POST /api/payments`
 - `GET /api/payments/invoices/{invoiceNumber}/balance`
+- `GET /api/payments/tenants/{tenantCode}/receivables?currencyCode=&page=&size=`
 - `GET /api/payments?page=&size=&invoiceNumber=&tenantCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/summary?currencyCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/invoices?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`

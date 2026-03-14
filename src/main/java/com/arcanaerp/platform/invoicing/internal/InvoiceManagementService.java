@@ -86,18 +86,28 @@ class InvoiceManagementService implements InvoiceManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<InvoiceView> listInvoices(
+        String tenantCode,
+        InvoiceStatus status,
+        String currencyCode,
+        PageQuery pageQuery
+    ) {
+        Page<Invoice> invoices = invoiceRepository.findFiltered(
+            normalizeOptional(tenantCode),
+            status,
+            normalizeOptional(currencyCode),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return toViewPage(invoices);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<InvoiceView> listInvoices(PageQuery pageQuery) {
         Page<Invoice> invoices = invoiceRepository.findAll(
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
-        Set<UUID> invoiceIds = invoices.stream().map(Invoice::getId).collect(java.util.stream.Collectors.toSet());
-        Map<UUID, List<InvoiceLine>> linesByInvoiceId = new HashMap<>();
-        if (!invoiceIds.isEmpty()) {
-            invoiceLineRepository.findByInvoiceIdInOrderByInvoiceIdAscLineNoAsc(invoiceIds)
-                .forEach(line -> linesByInvoiceId.computeIfAbsent(line.getInvoiceId(), ignored -> new ArrayList<>()).add(line));
-        }
-        return PageResult.from(invoices)
-            .map(invoice -> toView(invoice, linesByInvoiceId.getOrDefault(invoice.getId(), List.of())));
+        return toViewPage(invoices);
     }
 
     @Override
@@ -163,6 +173,21 @@ class InvoiceManagementService implements InvoiceManagement {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private static String normalizeOptional(String value) {
+        return value == null ? null : value.trim().toUpperCase();
+    }
+
+    private PageResult<InvoiceView> toViewPage(Page<Invoice> invoices) {
+        Set<UUID> invoiceIds = invoices.stream().map(Invoice::getId).collect(java.util.stream.Collectors.toSet());
+        Map<UUID, List<InvoiceLine>> linesByInvoiceId = new HashMap<>();
+        if (!invoiceIds.isEmpty()) {
+            invoiceLineRepository.findByInvoiceIdInOrderByInvoiceIdAscLineNoAsc(invoiceIds)
+                .forEach(line -> linesByInvoiceId.computeIfAbsent(line.getInvoiceId(), ignored -> new ArrayList<>()).add(line));
+        }
+        return PageResult.from(invoices)
+            .map(invoice -> toView(invoice, linesByInvoiceId.getOrDefault(invoice.getId(), List.of())));
     }
 
     private InvoiceView toView(Invoice invoice, List<InvoiceLine> lines) {

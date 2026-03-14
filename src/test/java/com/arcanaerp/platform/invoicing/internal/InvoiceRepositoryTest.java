@@ -5,9 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import com.arcanaerp.platform.invoicing.InvoiceStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.dao.DataIntegrityViolationException;
 
 @DataJpaTest
@@ -55,5 +57,49 @@ class InvoiceRepositoryTest {
             Instant.parse("2026-03-16T00:00:00Z")
         )))
             .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void filtersInvoicesByTenantStatusAndCurrency() {
+        Invoice issuedUsd = invoiceRepository.saveAndFlush(Invoice.create(
+            "TENANT-03",
+            "INV-2003",
+            "SO-2003",
+            "USD",
+            new BigDecimal("25.00"),
+            Instant.parse("2026-03-01T00:00:00Z"),
+            Instant.parse("2026-03-15T00:00:00Z")
+        ));
+        issuedUsd.transitionTo(InvoiceStatus.ISSUED, Instant.parse("2026-03-02T00:00:00Z"));
+        invoiceRepository.saveAndFlush(issuedUsd);
+
+        invoiceRepository.saveAndFlush(Invoice.create(
+            "TENANT-03",
+            "INV-2004",
+            "SO-2004",
+            "EUR",
+            new BigDecimal("30.00"),
+            Instant.parse("2026-03-01T00:00:00Z"),
+            Instant.parse("2026-03-16T00:00:00Z")
+        ));
+        invoiceRepository.saveAndFlush(Invoice.create(
+            "TENANT-04",
+            "INV-2005",
+            "SO-2005",
+            "USD",
+            new BigDecimal("35.00"),
+            Instant.parse("2026-03-01T00:00:00Z"),
+            Instant.parse("2026-03-17T00:00:00Z")
+        ));
+
+        var page = invoiceRepository.findFiltered(
+            "TENANT-03",
+            InvoiceStatus.ISSUED,
+            "USD",
+            PageRequest.of(0, 10)
+        );
+
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getContent().get(0).getInvoiceNumber()).isEqualTo("INV-2003");
     }
 }

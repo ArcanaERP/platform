@@ -10,6 +10,12 @@ public interface PaymentManagement {
 
     InvoiceBalanceView invoiceBalance(String invoiceNumber);
 
+    PageResult<TenantReceivableView> listTenantReceivables(
+        String tenantCode,
+        String currencyCode,
+        PageQuery pageQuery
+    );
+
     PageResult<PaymentView> listPayments(
         String invoiceNumber,
         String tenantCode,

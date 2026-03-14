@@ -23,6 +23,7 @@ class PaymentsControllerIntegrationTest {
     private static final String DAILY_SUMMARY_TENANT_CODE = "tenant-daily-summary";
     private static final String MONTHLY_SUMMARY_TENANT_CODE = "tenant-monthly-summary";
     private static final String WEEKLY_SUMMARY_TENANT_CODE = "tenant-weekly-summary";
+    private static final String RECEIVABLES_TENANT_CODE = "tenant-receivables";
 
     @Autowired
     private MockMvc mockMvc;
@@ -104,6 +105,53 @@ class PaymentsControllerIntegrationTest {
         )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("Payment amount exceeds outstanding invoice balance: INV-PAY-1002"));
+    }
+
+    @Test
+    void listsTenantReceivablesForIssuedInvoices() throws Exception {
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            RECEIVABLES_TENANT_CODE,
+            "arc-pay-1015",
+            "so-pay-1015",
+            "inv-pay-1015"
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            RECEIVABLES_TENANT_CODE,
+            "arc-pay-1016",
+            "so-pay-1016",
+            "inv-pay-1016"
+        );
+
+        PaymentsWebIntegrationTestSupport.createPayment(
+            mockMvc,
+            RECEIVABLES_TENANT_CODE,
+            "pay-1017",
+            "inv-pay-1015",
+            "4.00",
+            "USD",
+            PAID_AT
+        ).andExpect(status().isCreated());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantReceivablesRequest(
+                RECEIVABLES_TENANT_CODE,
+                "USD",
+                0,
+                10
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[?(@.invoiceNumber=='INV-PAY-1015')].tenantCode").value(org.hamcrest.Matchers.hasItem("TENANT-RECEIVABLES")))
+            .andExpect(jsonPath("$.items[?(@.invoiceNumber=='INV-PAY-1015')].currencyCode").value(org.hamcrest.Matchers.hasItem("USD")))
+            .andExpect(jsonPath("$.items[?(@.invoiceNumber=='INV-PAY-1015')].paidAmount").value(org.hamcrest.Matchers.hasItem(4.0)))
+            .andExpect(jsonPath("$.items[?(@.invoiceNumber=='INV-PAY-1015')].outstandingAmount").value(org.hamcrest.Matchers.hasItem(6.0)))
+            .andExpect(jsonPath("$.items[?(@.invoiceNumber=='INV-PAY-1016')].totalAmount").value(org.hamcrest.Matchers.hasItem(10.0)))
+            .andExpect(jsonPath("$.items[?(@.invoiceNumber=='INV-PAY-1016')].paidAmount").value(org.hamcrest.Matchers.hasItem(0)))
+            .andExpect(jsonPath("$.items[?(@.invoiceNumber=='INV-PAY-1016')].outstandingAmount").value(org.hamcrest.Matchers.hasItem(10.0)))
+            .andExpect(jsonPath("$.items[?(@.invoiceNumber=='INV-PAY-1016')].paidInFull").value(org.hamcrest.Matchers.hasItem(false)));
     }
 
     @Test

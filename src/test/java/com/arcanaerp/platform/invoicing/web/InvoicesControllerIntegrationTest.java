@@ -24,6 +24,7 @@ class InvoicesControllerIntegrationTest {
     private static final Instant DUE_AT = InvoicesDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(86400);
     private static final Instant ISSUED_AT = InvoicesDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(120);
     private static final Instant VOIDED_AT = InvoicesDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(180);
+    private static final String FILTER_TENANT_CODE = "tenant-inv-filter";
 
     @Autowired
     private MockMvc mockMvc;
@@ -199,7 +200,37 @@ class InvoicesControllerIntegrationTest {
             .andExpect(jsonPath("$.message").value("changedAtFrom must be before or equal to changedAtTo"));
     }
 
+    @Test
+    void listsInvoicesWithTenantStatusAndCurrencyFilters() throws Exception {
+        seedConfirmedOrderAndInvoice(FILTER_TENANT_CODE, "arc-6105", "so-6105", "inv-6105");
+        seedConfirmedOrderAndInvoice(FILTER_TENANT_CODE, "arc-6106", "so-6106", "inv-6106");
+
+        testClock.setInstant(ISSUED_AT);
+        InvoicesWebIntegrationTestSupport.transitionInvoiceStatus(mockMvc, "inv-6105", "ISSUED")
+            .andExpect(status().isOk());
+
+        mockMvc.perform(InvoicesWebIntegrationTestSupport.listInvoicesRequest(
+                0,
+                10,
+                "tenantCode",
+                FILTER_TENANT_CODE,
+                "status",
+                "issued",
+                "currencyCode",
+                "usd"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-6105"))
+            .andExpect(jsonPath("$.items[0].status").value("ISSUED"))
+            .andExpect(jsonPath("$.items[0].currencyCode").value("USD"));
+    }
+
     private void seedConfirmedOrderAndInvoice(String sku, String orderNumber, String invoiceNumber) throws Exception {
+        seedConfirmedOrderAndInvoice("tenant-inv", sku, orderNumber, invoiceNumber);
+    }
+
+    private void seedConfirmedOrderAndInvoice(String tenantCode, String sku, String orderNumber, String invoiceNumber) throws Exception {
         InvoicesWebIntegrationTestSupport.registerProduct(mockMvc, sku)
             .andExpect(status().isCreated());
         OrderManagementWebTestSupport.createSingleLineOrder(
@@ -215,7 +246,7 @@ class InvoicesControllerIntegrationTest {
         OrderManagementWebTestSupport.transitionOrderStatus(mockMvc, orderNumber, "CONFIRMED")
             .andExpect(status().isOk());
         testClock.resetToBaseInstant();
-        InvoicesWebIntegrationTestSupport.createInvoice(mockMvc, "tenant-inv", invoiceNumber, orderNumber, DUE_AT)
+        InvoicesWebIntegrationTestSupport.createInvoice(mockMvc, tenantCode, invoiceNumber, orderNumber, DUE_AT)
             .andExpect(status().isCreated());
     }
 }

@@ -10,6 +10,13 @@ public interface InvoiceManagement {
 
     InvoiceView getInvoice(String invoiceNumber);
 
+    PageResult<InvoiceView> listInvoices(
+        String tenantCode,
+        InvoiceStatus status,
+        String currencyCode,
+        PageQuery pageQuery
+    );
+
     PageResult<InvoiceView> listInvoices(PageQuery pageQuery);
 
     InvoiceView changeInvoiceStatus(ChangeInvoiceStatusCommand command);
