@@ -249,6 +249,23 @@ Rules:
 - optional filters currently support exact `assignedTo` plus `assignedAtFrom` / `assignedAtTo`
 - `invoiceCount` counts distinct invoices touched on that day
 
+### WeeklyTenantCollectionsAssignmentSummary
+
+Purpose:
+- expose week-bucketed assignment activity for a tenant from the append-only audit trail
+
+Fields:
+- `tenantCode`
+- `businessWeekStart`
+- `assignmentCount`
+- `invoiceCount`
+
+Rules:
+- summary is built from `CollectionsAssignmentAudit` rows using UTC business-week buckets
+- business weeks start on Monday
+- optional filters currently support exact `assignedTo` plus `assignedAtFrom` / `assignedAtTo`
+- `invoiceCount` counts distinct invoices touched in that week
+
 ## Cross-Module Dependency
 
 - `payments` reads invoices through public `InvoiceManagement`
@@ -269,6 +286,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignment-history?page=&size=&invoiceNumber=&assignedTo=&assignedAtFrom=&assignedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/daily-summary?page=&size=&assignedTo=&assignedAtFrom=&assignedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/weekly-summary?page=&size=&assignedTo=&assignedAtFrom=&assignedAtTo=`
 - `GET /api/payments?page=&size=&invoiceNumber=&tenantCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/summary?currencyCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/invoices?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`

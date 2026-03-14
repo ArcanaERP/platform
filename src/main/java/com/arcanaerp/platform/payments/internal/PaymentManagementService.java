@@ -24,6 +24,7 @@ import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantReceivableView;
 import com.arcanaerp.platform.payments.TenantReceivablesAgingView;
 import com.arcanaerp.platform.payments.TenantReceivablesSummaryView;
+import com.arcanaerp.platform.payments.WeeklyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantPaymentSummaryView;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -463,6 +464,46 @@ class PaymentManagementService implements PaymentManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<WeeklyTenantCollectionsAssignmentSummaryView> listWeeklyTenantCollectionsAssignmentSummaries(
+        String tenantCode,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
+        List<CollectionsAssignmentAudit> audits = collectionsAssignmentAuditRepository.findTenantHistoryForSummary(
+            normalizedTenantCode,
+            normalizedAssignedTo,
+            assignedAtFrom,
+            assignedAtTo
+        );
+
+        Map<LocalDate, AssignmentHistoryDailySummaryAccumulator> summariesByWeek = new LinkedHashMap<>();
+        for (CollectionsAssignmentAudit audit : audits) {
+            LocalDate businessWeekStart = audit.getAssignedAt()
+                .atOffset(ZoneOffset.UTC)
+                .toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            summariesByWeek.computeIfAbsent(businessWeekStart, ignored -> new AssignmentHistoryDailySummaryAccumulator())
+                .add(audit);
+        }
+
+        List<WeeklyTenantCollectionsAssignmentSummaryView> summaries = new ArrayList<>();
+        summariesByWeek.forEach((businessWeekStart, summary) -> summaries.add(
+            new WeeklyTenantCollectionsAssignmentSummaryView(
+                normalizedTenantCode,
+                businessWeekStart,
+                summary.assignmentCount,
+                summary.invoiceNumbers.size()
+            )
+        ));
+        return paginateWeeklyAssignmentSummaries(summaries, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<PaymentView> listPayments(
         String invoiceNumber,
         String tenantCode,
@@ -751,6 +792,24 @@ class PaymentManagementService implements PaymentManagement {
 
     private PageResult<DailyTenantCollectionsAssignmentSummaryView> paginateDailyAssignmentSummaries(
         List<DailyTenantCollectionsAssignmentSummaryView> filtered,
+        PageQuery pageQuery
+    ) {
+        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), filtered.size());
+        int toIndex = Math.min(fromIndex + pageQuery.size(), filtered.size());
+        int totalPages = filtered.isEmpty() ? 0 : (int) Math.ceil((double) filtered.size() / pageQuery.size());
+        return new PageResult<>(
+            filtered.subList(fromIndex, toIndex),
+            pageQuery.page(),
+            pageQuery.size(),
+            filtered.size(),
+            totalPages,
+            toIndex < filtered.size(),
+            pageQuery.page() > 0
+        );
+    }
+
+    private PageResult<WeeklyTenantCollectionsAssignmentSummaryView> paginateWeeklyAssignmentSummaries(
+        List<WeeklyTenantCollectionsAssignmentSummaryView> filtered,
         PageQuery pageQuery
     ) {
         int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), filtered.size());

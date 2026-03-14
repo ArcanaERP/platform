@@ -20,6 +20,7 @@ import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantReceivableView;
 import com.arcanaerp.platform.payments.TenantReceivablesAgingView;
 import com.arcanaerp.platform.payments.TenantReceivablesSummaryView;
+import com.arcanaerp.platform.payments.WeeklyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantPaymentSummaryView;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -237,6 +238,28 @@ public class PaymentsController {
                 PageQuery.of(page, size)
             )
             .map(this::toDailyTenantCollectionsAssignmentSummaryResponse);
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/weekly-summary")
+    public PageResult<WeeklyTenantCollectionsAssignmentSummaryResponse> listWeeklyTenantCollectionsAssignmentSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam(required = false) String assignedTo,
+        @RequestParam(required = false) String assignedAtFrom,
+        @RequestParam(required = false) String assignedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedAssignedAtFrom = parseOptionalInstant(assignedAtFrom, "assignedAtFrom");
+        Instant parsedAssignedAtTo = parseOptionalInstant(assignedAtTo, "assignedAtTo");
+        validateInstantRange(parsedAssignedAtFrom, parsedAssignedAtTo, "assignedAtFrom", "assignedAtTo");
+        return paymentManagement.listWeeklyTenantCollectionsAssignmentSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(assignedTo, "assignedTo"),
+                parsedAssignedAtFrom,
+                parsedAssignedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toWeeklyTenantCollectionsAssignmentSummaryResponse);
     }
 
     @GetMapping
@@ -518,6 +541,17 @@ public class PaymentsController {
         return new DailyTenantCollectionsAssignmentSummaryResponse(
             summary.tenantCode(),
             summary.businessDate(),
+            summary.assignmentCount(),
+            summary.invoiceCount()
+        );
+    }
+
+    private WeeklyTenantCollectionsAssignmentSummaryResponse toWeeklyTenantCollectionsAssignmentSummaryResponse(
+        WeeklyTenantCollectionsAssignmentSummaryView summary
+    ) {
+        return new WeeklyTenantCollectionsAssignmentSummaryResponse(
+            summary.tenantCode(),
+            summary.businessWeekStart(),
             summary.assignmentCount(),
             summary.invoiceCount()
         );

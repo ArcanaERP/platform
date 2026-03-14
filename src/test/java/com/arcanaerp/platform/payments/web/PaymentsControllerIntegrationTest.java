@@ -35,6 +35,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_ASSIGNMENT_TENANT_HISTORY_TENANT_CODE = "tenant-coll-assign-feed";
     private static final String COLLECTIONS_ASSIGNMENT_SUMMARY_TENANT_CODE = "tenant-coll-assign-sum";
     private static final String COLLECTIONS_ASSIGNMENT_DAILY_SUMMARY_TENANT_CODE = "tenant-coll-assign-day";
+    private static final String COLLECTIONS_ASSIGNMENT_WEEKLY_SUMMARY_TENANT_CODE = "tenant-coll-assign-week";
 
     @Autowired
     private MockMvc mockMvc;
@@ -1213,6 +1214,134 @@ class PaymentsControllerIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].businessDate").value(firstDay.atOffset(java.time.ZoneOffset.UTC).toLocalDate().toString()))
+            .andExpect(jsonPath("$.items[0].assignmentCount").value(2))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(2));
+    }
+
+    @Test
+    void listsWeeklyTenantCollectionsAssignmentSummary() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_WEEKLY_SUMMARY_TENANT_CODE,
+            "Collections Weekly Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_WEEKLY_SUMMARY_TENANT_CODE,
+            "Collections Weekly Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_WEEKLY_SUMMARY_TENANT_CODE,
+            "Collections Weekly Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNMENT_WEEKLY_SUMMARY_TENANT_CODE,
+            "arc-pay-1044",
+            "so-pay-1044",
+            "inv-pay-1044",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNMENT_WEEKLY_SUMMARY_TENANT_CODE,
+            "arc-pay-1045",
+            "so-pay-1045",
+            "inv-pay-1045",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(15 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNMENT_WEEKLY_SUMMARY_TENANT_CODE,
+            "arc-pay-1046",
+            "so-pay-1046",
+            "inv-pay-1046",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(20 * 86400)
+        );
+
+        Instant firstWeek = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(firstWeek);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_WEEKLY_SUMMARY_TENANT_CODE,
+            "inv-pay-1044",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_WEEKLY_SUMMARY_TENANT_CODE,
+            "inv-pay-1045",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant secondWeek = firstWeek.plusSeconds(7 * 86400);
+        testClock.setInstant(secondWeek);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_WEEKLY_SUMMARY_TENANT_CODE,
+            "inv-pay-1046",
+            "collector-b@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.weeklyTenantCollectionsAssignmentSummaryRequest(
+                COLLECTIONS_ASSIGNMENT_WEEKLY_SUMMARY_TENANT_CODE,
+                0,
+                10
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessWeekStart").value(secondWeek
+                .atOffset(java.time.ZoneOffset.UTC)
+                .toLocalDate()
+                .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+                .toString()))
+            .andExpect(jsonPath("$.items[0].assignmentCount").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1))
+            .andExpect(jsonPath("$.items[1].businessWeekStart").value(firstWeek
+                .atOffset(java.time.ZoneOffset.UTC)
+                .toLocalDate()
+                .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+                .toString()))
+            .andExpect(jsonPath("$.items[1].assignmentCount").value(2))
+            .andExpect(jsonPath("$.items[1].invoiceCount").value(2));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.weeklyTenantCollectionsAssignmentSummaryRequest(
+                COLLECTIONS_ASSIGNMENT_WEEKLY_SUMMARY_TENANT_CODE,
+                0,
+                10,
+                "assignedTo",
+                "collector-a@arcanaerp.com",
+                "assignedAtFrom",
+                firstWeek.minusSeconds(1).toString(),
+                "assignedAtTo",
+                firstWeek.plusSeconds(1).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].businessWeekStart").value(firstWeek
+                .atOffset(java.time.ZoneOffset.UTC)
+                .toLocalDate()
+                .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+                .toString()))
             .andExpect(jsonPath("$.items[0].assignmentCount").value(2))
             .andExpect(jsonPath("$.items[0].invoiceCount").value(2));
     }
