@@ -43,6 +43,12 @@ public interface PaymentManagement {
 
     CollectionsAssignmentView assignOver90CollectionsInvoice(AssignCollectionsInvoiceCommand command);
 
+    PageResult<CollectionsAssignmentChangeView> listCollectionsAssignmentHistory(
+        String tenantCode,
+        String invoiceNumber,
+        PageQuery pageQuery
+    );
+
     PageResult<PaymentView> listPayments(
         String invoiceNumber,
         String tenantCode,

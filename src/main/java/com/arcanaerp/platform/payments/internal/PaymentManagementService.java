@@ -8,6 +8,7 @@ import com.arcanaerp.platform.invoicing.InvoiceStatus;
 import com.arcanaerp.platform.invoicing.InvoiceView;
 import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
+import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
@@ -48,6 +49,7 @@ class PaymentManagementService implements PaymentManagement {
 
     private final PaymentRepository paymentRepository;
     private final CollectionsAssignmentRepository collectionsAssignmentRepository;
+    private final CollectionsAssignmentAuditRepository collectionsAssignmentAuditRepository;
     private final InvoiceManagement invoiceManagement;
     private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
@@ -297,6 +299,13 @@ class PaymentManagementService implements PaymentManagement {
                 assignedAt
             ));
         CollectionsAssignment saved = collectionsAssignmentRepository.save(assignment);
+        collectionsAssignmentAuditRepository.save(CollectionsAssignmentAudit.create(
+            saved.getTenantCode(),
+            saved.getInvoiceNumber(),
+            saved.getAssignedTo(),
+            saved.getAssignedBy(),
+            saved.getAssignedAt()
+        ));
         return new CollectionsAssignmentView(
             saved.getTenantCode(),
             saved.getInvoiceNumber(),
@@ -304,6 +313,37 @@ class PaymentManagementService implements PaymentManagement {
             saved.getAssignedBy(),
             saved.getAssignedAt()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<CollectionsAssignmentChangeView> listCollectionsAssignmentHistory(
+        String tenantCode,
+        String invoiceNumber,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedInvoiceNumber = normalizeRequired(invoiceNumber, "invoiceNumber").toUpperCase();
+        InvoiceView invoice = invoiceManagement.getInvoice(normalizedInvoiceNumber);
+        if (!invoice.tenantCode().equals(normalizedTenantCode)) {
+            throw new IllegalArgumentException(
+                "Invoice does not belong to tenant " + normalizedTenantCode + ": " + normalizedInvoiceNumber
+            );
+        }
+
+        Page<CollectionsAssignmentAudit> audits = collectionsAssignmentAuditRepository.findByTenantCodeAndInvoiceNumber(
+            normalizedTenantCode,
+            normalizedInvoiceNumber,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "assignedAt").and(Sort.by(Sort.Direction.DESC, "id")))
+        );
+        return PageResult.from(audits).map(audit -> new CollectionsAssignmentChangeView(
+            audit.getId(),
+            audit.getTenantCode(),
+            audit.getInvoiceNumber(),
+            audit.getAssignedTo(),
+            audit.getAssignedBy(),
+            audit.getAssignedAt()
+        ));
     }
 
     @Override

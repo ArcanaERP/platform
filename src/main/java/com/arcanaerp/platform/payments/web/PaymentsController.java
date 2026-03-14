@@ -4,6 +4,7 @@ import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
+import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
@@ -147,6 +148,21 @@ public class PaymentsController {
                 request.assignedBy()
             )
         ));
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment-history")
+    public PageResult<CollectionsAssignmentChangeResponse> listCollectionsAssignmentHistory(
+        @PathVariable String tenantCode,
+        @PathVariable String invoiceNumber,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return paymentManagement.listCollectionsAssignmentHistory(
+                requirePathValue(tenantCode, "tenantCode"),
+                requirePathValue(invoiceNumber, "invoiceNumber"),
+                PageQuery.of(page, size)
+            )
+            .map(this::toCollectionsAssignmentChangeResponse);
     }
 
     @GetMapping
@@ -388,6 +404,19 @@ public class PaymentsController {
 
     private CollectionsAssignmentResponse toCollectionsAssignmentResponse(CollectionsAssignmentView assignment) {
         return new CollectionsAssignmentResponse(
+            assignment.tenantCode(),
+            assignment.invoiceNumber(),
+            assignment.assignedTo(),
+            assignment.assignedBy(),
+            assignment.assignedAt()
+        );
+    }
+
+    private CollectionsAssignmentChangeResponse toCollectionsAssignmentChangeResponse(
+        CollectionsAssignmentChangeView assignment
+    ) {
+        return new CollectionsAssignmentChangeResponse(
+            assignment.id(),
             assignment.tenantCode(),
             assignment.invoiceNumber(),
             assignment.assignedTo(),

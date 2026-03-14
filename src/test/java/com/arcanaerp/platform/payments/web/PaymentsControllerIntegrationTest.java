@@ -29,6 +29,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_TENANT_CODE = "tenant-collections";
     private static final String COLLECTIONS_ASSIGNMENT_TENANT_CODE = "tenant-collections-assignment";
     private static final String COLLECTIONS_ASSIGNMENT_MISSING_TENANT_CODE = "tenant-coll-assign-miss";
+    private static final String COLLECTIONS_ASSIGNMENT_HISTORY_TENANT_CODE = "tenant-coll-assign-history";
 
     @Autowired
     private MockMvc mockMvc;
@@ -575,6 +576,90 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.message").value(
                 "Collections assignee not found in tenant TENANT-COLL-ASSIGN-MISS: collector@arcanaerp.com"
             ));
+    }
+
+    @Test
+    void listsCollectionsAssignmentHistoryNewestFirst() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_HISTORY_TENANT_CODE,
+            "Collections History Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_HISTORY_TENANT_CODE,
+            "Collections History Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_HISTORY_TENANT_CODE,
+            "Collections History Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNMENT_HISTORY_TENANT_CODE,
+            "arc-pay-1033",
+            "so-pay-1033",
+            "inv-pay-1033",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+
+        testClock.setInstant(PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400));
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_HISTORY_TENANT_CODE,
+            "inv-pay-1033",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant reassignedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400 + 60);
+        testClock.setInstant(reassignedAt);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNMENT_HISTORY_TENANT_CODE,
+            "inv-pay-1033",
+            "collector-b@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.collectionsAssignmentHistoryRequest(
+                COLLECTIONS_ASSIGNMENT_HISTORY_TENANT_CODE,
+                "inv-pay-1033",
+                0,
+                1
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.totalPages").value(2))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("TENANT-COLL-ASSIGN-HISTORY"))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-1033"))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].assignedBy").value("manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].assignedAt").value(reassignedAt.toString()));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.collectionsAssignmentHistoryRequest(
+                COLLECTIONS_ASSIGNMENT_HISTORY_TENANT_CODE,
+                "inv-pay-1033",
+                1,
+                1
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].assignedBy").value("manager@arcanaerp.com"));
     }
 
     @Test

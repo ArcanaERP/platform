@@ -36,4 +36,20 @@ class CollectionsAssignmentDomainTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("assignedTo is invalid");
     }
+
+    @Test
+    void auditCreateNormalizesAssignmentFields() {
+        CollectionsAssignmentAudit audit = CollectionsAssignmentAudit.create(
+            " tenant-01 ",
+            " inv-1000 ",
+            " Collector@ArcanaERP.com ",
+            " Manager@ArcanaERP.com ",
+            Instant.parse("2026-03-12T00:00:00Z")
+        );
+
+        assertThat(audit.getTenantCode()).isEqualTo("TENANT-01");
+        assertThat(audit.getInvoiceNumber()).isEqualTo("INV-1000");
+        assertThat(audit.getAssignedTo()).isEqualTo("collector@arcanaerp.com");
+        assertThat(audit.getAssignedBy()).isEqualTo("manager@arcanaerp.com");
+    }
 }

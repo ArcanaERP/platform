@@ -193,6 +193,24 @@ Rules:
 - `assignedTo` and `assignedBy` must both resolve through `IdentityActorLookup`
 - one current assignment row exists per `invoiceNumber`; reassignment updates that row
 
+### CollectionsAssignmentAudit
+
+Purpose:
+- preserve an append-only ownership trail for collections assignments
+
+Fields:
+- `id` (`UUID`)
+- `tenantCode`
+- `invoiceNumber`
+- `assignedTo`
+- `assignedBy`
+- `assignedAt`
+
+Rules:
+- every successful assignment write appends one audit row
+- history is read newest-first by `assignedAt`
+- history remains tenant-scoped and invoice-scoped
+
 ## Cross-Module Dependency
 
 - `payments` reads invoices through public `InvoiceManagement`
@@ -209,6 +227,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/aging/{agingBucket}?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90?currencyCode=&invoiceNumber=&dueAtOnOrBefore=&page=&size=`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment-history?page=&size=`
 - `GET /api/payments?page=&size=&invoiceNumber=&tenantCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/summary?currencyCode=&paidAtFrom=&paidAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/invoices?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`
