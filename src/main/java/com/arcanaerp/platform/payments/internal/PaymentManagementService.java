@@ -10,6 +10,8 @@ import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
+import com.arcanaerp.platform.payments.CollectionsNoteView;
+import com.arcanaerp.platform.payments.CreateCollectionsNoteCommand;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsAssignmentSummaryView;
@@ -54,6 +56,7 @@ class PaymentManagementService implements PaymentManagement {
     private final PaymentRepository paymentRepository;
     private final CollectionsAssignmentRepository collectionsAssignmentRepository;
     private final CollectionsAssignmentAuditRepository collectionsAssignmentAuditRepository;
+    private final CollectionsNoteRepository collectionsNoteRepository;
     private final InvoiceManagement invoiceManagement;
     private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
@@ -274,28 +277,7 @@ class PaymentManagementService implements PaymentManagement {
             throw new IllegalArgumentException("Collections assignment actor not found in tenant " + tenantCode + ": " + assignedBy);
         }
 
-        InvoiceView invoice = invoiceManagement.getInvoice(invoiceNumber);
-        if (!invoice.tenantCode().equals(tenantCode)) {
-            throw new IllegalArgumentException("Invoice does not belong to tenant " + tenantCode + ": " + invoiceNumber);
-        }
-        if (invoice.status() != InvoiceStatus.ISSUED) {
-            throw new IllegalArgumentException("Invoice must be ISSUED for collections assignment: " + invoiceNumber);
-        }
-
-        BigDecimal paidAmount = paymentRepository.sumAmountByInvoiceNumber(invoice.invoiceNumber());
-        BigDecimal outstandingAmount = invoice.totalAmount().subtract(paidAmount);
-        if (outstandingAmount.signum() <= 0) {
-            throw new IllegalArgumentException("Invoice has no outstanding balance for collections assignment: " + invoiceNumber);
-        }
-
-        LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
-        long daysPastDue = java.time.temporal.ChronoUnit.DAYS.between(
-            invoice.dueAt().atOffset(ZoneOffset.UTC).toLocalDate(),
-            asOfDate
-        );
-        if (ReceivablesAgingBucket.fromDaysPastDue(daysPastDue) != ReceivablesAgingBucket.OVERDUE_OVER_90) {
-            throw new IllegalArgumentException("Invoice is not in the over-90 collections queue: " + invoiceNumber);
-        }
+        validateOver90CollectionsInvoice(tenantCode, invoiceNumber);
 
         Instant assignedAt = Instant.now(clock);
         CollectionsAssignment assignment = collectionsAssignmentRepository.findByInvoiceNumber(invoiceNumber)
@@ -322,6 +304,34 @@ class PaymentManagementService implements PaymentManagement {
             saved.getAssignedBy(),
             saved.getAssignedAt()
         );
+    }
+
+    @Override
+    public CollectionsNoteView addCollectionsNote(CreateCollectionsNoteCommand command) {
+        String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
+        String invoiceNumber = normalizeRequired(command.invoiceNumber(), "invoiceNumber").toUpperCase();
+        String notedBy = normalizeActorEmail(command.notedBy(), "notedBy");
+        if (!identityActorLookup.actorExists(tenantCode, notedBy)) {
+            throw new IllegalArgumentException("Collections note actor not found in tenant " + tenantCode + ": " + notedBy);
+        }
+
+        validateOver90CollectionsInvoice(tenantCode, invoiceNumber);
+        CollectionsAssignment assignment = collectionsAssignmentRepository.findByInvoiceNumber(invoiceNumber)
+            .orElseThrow(() -> new IllegalArgumentException(
+                "Invoice is not currently assigned for collections notes: " + invoiceNumber
+            ));
+        if (!assignment.getTenantCode().equals(tenantCode)) {
+            throw new IllegalArgumentException("Invoice does not belong to tenant " + tenantCode + ": " + invoiceNumber);
+        }
+
+        CollectionsNote saved = collectionsNoteRepository.save(CollectionsNote.create(
+            tenantCode,
+            invoiceNumber,
+            command.note(),
+            notedBy,
+            Instant.now(clock)
+        ));
+        return toCollectionsNoteView(saved);
     }
 
     @Override
@@ -392,6 +402,35 @@ class PaymentManagementService implements PaymentManagement {
             audit.getAssignedBy(),
             audit.getAssignedAt()
         ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<CollectionsNoteView> listCollectionsNotes(
+        String tenantCode,
+        String invoiceNumber,
+        String notedBy,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedInvoiceNumber = normalizeRequired(invoiceNumber, "invoiceNumber").toUpperCase();
+        String normalizedNotedBy = notedBy == null ? null : normalizeActorEmail(notedBy, "notedBy");
+        InvoiceView invoice = invoiceManagement.getInvoice(normalizedInvoiceNumber);
+        if (!invoice.tenantCode().equals(normalizedTenantCode)) {
+            throw new IllegalArgumentException("Invoice does not belong to tenant " + normalizedTenantCode + ": " + normalizedInvoiceNumber);
+        }
+
+        Page<CollectionsNote> notes = collectionsNoteRepository.findHistoryFiltered(
+            normalizedTenantCode,
+            normalizedInvoiceNumber,
+            normalizedNotedBy,
+            notedAtFrom,
+            notedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "notedAt").and(Sort.by(Sort.Direction.DESC, "id")))
+        );
+        return PageResult.from(notes).map(this::toCollectionsNoteView);
     }
 
     @Override
@@ -788,6 +827,34 @@ class PaymentManagementService implements PaymentManagement {
         return snapshots;
     }
 
+    private void validateOver90CollectionsInvoice(
+        String tenantCode,
+        String invoiceNumber
+    ) {
+        InvoiceView invoice = invoiceManagement.getInvoice(invoiceNumber);
+        if (!invoice.tenantCode().equals(tenantCode)) {
+            throw new IllegalArgumentException("Invoice does not belong to tenant " + tenantCode + ": " + invoiceNumber);
+        }
+        if (invoice.status() != InvoiceStatus.ISSUED) {
+            throw new IllegalArgumentException("Invoice must be ISSUED for collections assignment: " + invoiceNumber);
+        }
+
+        BigDecimal paidAmount = paymentRepository.sumAmountByInvoiceNumber(invoice.invoiceNumber());
+        BigDecimal outstandingAmount = invoice.totalAmount().subtract(paidAmount);
+        if (outstandingAmount.signum() <= 0) {
+            throw new IllegalArgumentException("Invoice has no outstanding balance for collections assignment: " + invoiceNumber);
+        }
+
+        LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
+        long daysPastDue = java.time.temporal.ChronoUnit.DAYS.between(
+            invoice.dueAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            asOfDate
+        );
+        if (ReceivablesAgingBucket.fromDaysPastDue(daysPastDue) != ReceivablesAgingBucket.OVERDUE_OVER_90) {
+            throw new IllegalArgumentException("Invoice is not in the over-90 collections queue: " + invoiceNumber);
+        }
+    }
+
     private PageResult<AgedTenantReceivableView> paginateReceivables(
         List<AgedTenantReceivableView> filtered,
         PageQuery pageQuery
@@ -868,6 +935,17 @@ class PaymentManagementService implements PaymentManagement {
             payment.getCurrencyCode(),
             payment.getPaidAt(),
             payment.getCreatedAt()
+        );
+    }
+
+    private CollectionsNoteView toCollectionsNoteView(CollectionsNote note) {
+        return new CollectionsNoteView(
+            note.getId(),
+            note.getTenantCode(),
+            note.getInvoiceNumber(),
+            note.getNote(),
+            note.getNotedBy(),
+            note.getNotedAt()
         );
     }
 

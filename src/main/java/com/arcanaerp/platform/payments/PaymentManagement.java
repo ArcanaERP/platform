@@ -44,6 +44,8 @@ public interface PaymentManagement {
 
     CollectionsAssignmentView assignOver90CollectionsInvoice(AssignCollectionsInvoiceCommand command);
 
+    CollectionsNoteView addCollectionsNote(CreateCollectionsNoteCommand command);
+
     PageResult<CollectionsAssignmentChangeView> listCollectionsAssignmentHistory(
         String tenantCode,
         String invoiceNumber,
@@ -59,6 +61,15 @@ public interface PaymentManagement {
         String assignedTo,
         Instant assignedAtFrom,
         Instant assignedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<CollectionsNoteView> listCollectionsNotes(
+        String tenantCode,
+        String invoiceNumber,
+        String notedBy,
+        Instant notedAtFrom,
+        Instant notedAtTo,
         PageQuery pageQuery
     );
 

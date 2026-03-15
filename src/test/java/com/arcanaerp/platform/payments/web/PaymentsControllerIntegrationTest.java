@@ -37,6 +37,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_ASSIGNMENT_DAILY_SUMMARY_TENANT_CODE = "tenant-coll-assign-day";
     private static final String COLLECTIONS_ASSIGNMENT_WEEKLY_SUMMARY_TENANT_CODE = "tenant-coll-assign-week";
     private static final String COLLECTIONS_ASSIGNMENT_MONTHLY_SUMMARY_TENANT_CODE = "tenant-coll-assign-month";
+    private static final String COLLECTIONS_NOTES_TENANT_CODE = "tenant-coll-notes";
 
     @Autowired
     private MockMvc mockMvc;
@@ -673,6 +674,167 @@ class PaymentsControllerIntegrationTest {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value(
                 "Collections assignee not found in tenant TENANT-COLL-ASSIGN-MISS: collector@arcanaerp.com"
+            ));
+    }
+
+    @Test
+    void createsAndListsCollectionsNotesNewestFirst() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_NOTES_TENANT_CODE,
+            "Collections Notes Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_NOTES_TENANT_CODE,
+            "Collections Notes Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_NOTES_TENANT_CODE,
+            "Collections Notes Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_NOTES_TENANT_CODE,
+            "arc-pay-1050",
+            "so-pay-1050",
+            "inv-pay-1050",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+
+        Instant assignedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(assignedAt);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_NOTES_TENANT_CODE,
+            "inv-pay-1050",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        PaymentsWebIntegrationTestSupport.addCollectionsNote(
+            mockMvc,
+            COLLECTIONS_NOTES_TENANT_CODE,
+            "inv-pay-1050",
+            "Called customer, promised payment next week.",
+            "collector-a@arcanaerp.com"
+        ).andExpect(status().isCreated())
+            .andExpect(jsonPath("$.tenantCode").value("TENANT-COLL-NOTES"))
+            .andExpect(jsonPath("$.invoiceNumber").value("INV-PAY-1050"))
+            .andExpect(jsonPath("$.note").value("Called customer, promised payment next week."))
+            .andExpect(jsonPath("$.notedBy").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.notedAt").value(assignedAt.toString()));
+
+        Instant secondNoteAt = assignedAt.plusSeconds(60);
+        testClock.setInstant(secondNoteAt);
+        PaymentsWebIntegrationTestSupport.addCollectionsNote(
+            mockMvc,
+            COLLECTIONS_NOTES_TENANT_CODE,
+            "inv-pay-1050",
+            "Escalated to collector B for follow-up.",
+            "collector-b@arcanaerp.com"
+        ).andExpect(status().isCreated())
+            .andExpect(jsonPath("$.notedAt").value(secondNoteAt.toString()));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.collectionsNotesRequest(
+                COLLECTIONS_NOTES_TENANT_CODE,
+                "inv-pay-1050",
+                0,
+                10
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].note").value("Escalated to collector B for follow-up."))
+            .andExpect(jsonPath("$.items[0].notedBy").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].note").value("Called customer, promised payment next week."))
+            .andExpect(jsonPath("$.items[1].notedBy").value("collector-a@arcanaerp.com"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.collectionsNotesRequest(
+                COLLECTIONS_NOTES_TENANT_CODE,
+                "inv-pay-1050",
+                0,
+                10,
+                "notedBy",
+                "collector-b@arcanaerp.com",
+                "notedAtFrom",
+                secondNoteAt.minusSeconds(1).toString(),
+                "notedAtTo",
+                secondNoteAt.toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].note").value("Escalated to collector B for follow-up."));
+    }
+
+    @Test
+    void rejectsCollectionsNotesForInvalidFiltersAndUnassignedInvoices() throws Exception {
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.collectionsNotesRequest(
+                COLLECTIONS_NOTES_TENANT_CODE,
+                "inv-pay-1050",
+                0,
+                10,
+                "notedBy",
+                "   "
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("notedBy query parameter must not be blank"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.collectionsNotesRequest(
+                COLLECTIONS_NOTES_TENANT_CODE,
+                "inv-pay-1050",
+                0,
+                10,
+                "notedAtFrom",
+                Instant.parse("2026-03-12T00:01:00Z").toString(),
+                "notedAtTo",
+                Instant.parse("2026-03-12T00:00:00Z").toString()
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("notedAtFrom must be before or equal to notedAtTo"));
+
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_NOTES_TENANT_CODE,
+            "Collections Notes Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-c@arcanaerp.com",
+            "Collector C"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_NOTES_TENANT_CODE,
+            "arc-pay-1051",
+            "so-pay-1051",
+            "inv-pay-1051",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        testClock.setInstant(PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400));
+        PaymentsWebIntegrationTestSupport.addCollectionsNote(
+            mockMvc,
+            COLLECTIONS_NOTES_TENANT_CODE,
+            "inv-pay-1051",
+            "Attempted note without assignment.",
+            "collector-c@arcanaerp.com"
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value(
+                "Invoice is not currently assigned for collections notes: INV-PAY-1051"
             ));
     }
 

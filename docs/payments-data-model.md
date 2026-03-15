@@ -282,6 +282,24 @@ Rules:
 - optional filters currently support exact `assignedTo` plus `assignedAtFrom` / `assignedAtTo`
 - `invoiceCount` counts distinct invoices touched in that month
 
+### CollectionsNote
+
+Purpose:
+- capture append-only collections worklog entries against an assigned over-90 invoice
+
+Fields:
+- `id`
+- `tenantCode`
+- `invoiceNumber`
+- `note`
+- `notedBy`
+- `notedAt`
+
+Rules:
+- note creation requires the invoice to still be in the over-90 queue and to already have a current assignment
+- `notedBy` must resolve through the public `IdentityActorLookup`
+- notes are immutable and exposed newest-first with optional `notedBy` and noted-at range filters
+
 ## Cross-Module Dependency
 
 - `payments` reads invoices through public `InvoiceManagement`
@@ -299,6 +317,8 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90?currencyCode=&invoiceNumber=&assignedTo=&dueAtOnOrBefore=&page=&size=`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment-history?page=&size=&assignedTo=&assignedAtFrom=&assignedAtTo=`
+- `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/notes`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/notes?page=&size=&notedBy=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignment-history?page=&size=&invoiceNumber=&assignedTo=&assignedAtFrom=&assignedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/daily-summary?page=&size=&assignedTo=&assignedAtFrom=&assignedAtTo=`

@@ -6,6 +6,8 @@ import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
+import com.arcanaerp.platform.payments.CollectionsNoteView;
+import com.arcanaerp.platform.payments.CreateCollectionsNoteCommand;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
@@ -156,6 +158,23 @@ public class PaymentsController {
         ));
     }
 
+    @PostMapping("/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/notes")
+    @ResponseStatus(HttpStatus.CREATED)
+    public CollectionsNoteResponse addCollectionsNote(
+        @PathVariable String tenantCode,
+        @PathVariable String invoiceNumber,
+        @Valid @RequestBody CreateCollectionsNoteRequest request
+    ) {
+        return toCollectionsNoteResponse(paymentManagement.addCollectionsNote(
+            new CreateCollectionsNoteCommand(
+                requirePathValue(tenantCode, "tenantCode"),
+                requirePathValue(invoiceNumber, "invoiceNumber"),
+                request.note(),
+                request.notedBy()
+            )
+        ));
+    }
+
     @GetMapping("/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment-history")
     public PageResult<CollectionsAssignmentChangeResponse> listCollectionsAssignmentHistory(
         @PathVariable String tenantCode,
@@ -178,6 +197,30 @@ public class PaymentsController {
                 PageQuery.of(page, size)
             )
             .map(this::toCollectionsAssignmentChangeResponse);
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/notes")
+    public PageResult<CollectionsNoteResponse> listCollectionsNotes(
+        @PathVariable String tenantCode,
+        @PathVariable String invoiceNumber,
+        @RequestParam(required = false) String notedBy,
+        @RequestParam(required = false) String notedAtFrom,
+        @RequestParam(required = false) String notedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedNotedAtFrom = parseOptionalInstant(notedAtFrom, "notedAtFrom");
+        Instant parsedNotedAtTo = parseOptionalInstant(notedAtTo, "notedAtTo");
+        validateInstantRange(parsedNotedAtFrom, parsedNotedAtTo, "notedAtFrom", "notedAtTo");
+        return paymentManagement.listCollectionsNotes(
+                requirePathValue(tenantCode, "tenantCode"),
+                requirePathValue(invoiceNumber, "invoiceNumber"),
+                normalizeOptional(notedBy, "notedBy"),
+                parsedNotedAtFrom,
+                parsedNotedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toCollectionsNoteResponse);
     }
 
     @GetMapping("/tenants/{tenantCode}/receivables/collections/assignment-history")
@@ -542,6 +585,17 @@ public class PaymentsController {
             assignment.assignedTo(),
             assignment.assignedBy(),
             assignment.assignedAt()
+        );
+    }
+
+    private CollectionsNoteResponse toCollectionsNoteResponse(CollectionsNoteView note) {
+        return new CollectionsNoteResponse(
+            note.id(),
+            note.tenantCode(),
+            note.invoiceNumber(),
+            note.note(),
+            note.notedBy(),
+            note.notedAt()
         );
     }
 
