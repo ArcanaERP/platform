@@ -14,6 +14,7 @@ import com.arcanaerp.platform.payments.CollectionsNoteCategory;
 import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import com.arcanaerp.platform.payments.CollectionsNoteView;
 import com.arcanaerp.platform.payments.CreateCollectionsNoteCommand;
+import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteSummaryView;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsAssignmentSummaryView;
@@ -549,6 +550,50 @@ class PaymentManagementService implements PaymentManagement {
             new TenantCollectionsNoteCategorySummaryView(
                 normalizedTenantCode,
                 category,
+                summary.noteCount,
+                summary.invoiceNumbers.size()
+            )
+        ));
+        return paginateList(summaries, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DailyTenantCollectionsNoteSummaryView> listDailyTenantCollectionsNoteSummaries(
+        String tenantCode,
+        String assignedTo,
+        String notedBy,
+        CollectionsNoteCategory category,
+        CollectionsNoteOutcome outcome,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
+        String normalizedNotedBy = notedBy == null ? null : normalizeActorEmail(notedBy, "notedBy");
+        List<CollectionsNote> notes = collectionsNoteRepository.findTenantHistoryForDailySummary(
+            normalizedTenantCode,
+            normalizedAssignedTo,
+            normalizedNotedBy,
+            category,
+            outcome,
+            notedAtFrom,
+            notedAtTo
+        );
+
+        Map<LocalDate, CollectionsNoteSummaryAccumulator> summariesByDate = new LinkedHashMap<>();
+        for (CollectionsNote note : notes) {
+            LocalDate businessDate = note.getNotedAt().atOffset(ZoneOffset.UTC).toLocalDate();
+            summariesByDate.computeIfAbsent(businessDate, ignored -> new CollectionsNoteSummaryAccumulator())
+                .add(note);
+        }
+
+        List<DailyTenantCollectionsNoteSummaryView> summaries = new ArrayList<>();
+        summariesByDate.forEach((businessDate, summary) -> summaries.add(
+            new DailyTenantCollectionsNoteSummaryView(
+                normalizedTenantCode,
+                businessDate,
                 summary.noteCount,
                 summary.invoiceNumbers.size()
             )
@@ -1222,6 +1267,17 @@ class PaymentManagementService implements PaymentManagement {
     }
 
     private static final class CollectionsNoteCategorySummaryAccumulator {
+
+        private long noteCount;
+        private final java.util.Set<String> invoiceNumbers = new java.util.LinkedHashSet<>();
+
+        void add(CollectionsNote note) {
+            noteCount++;
+            invoiceNumbers.add(note.getInvoiceNumber());
+        }
+    }
+
+    private static final class CollectionsNoteSummaryAccumulator {
 
         private long noteCount;
         private final java.util.Set<String> invoiceNumbers = new java.util.LinkedHashSet<>();

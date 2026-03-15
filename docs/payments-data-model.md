@@ -336,6 +336,22 @@ Rules:
 - optional filters currently support exact current `assignedTo`, exact `notedBy`, exact `outcome`, and noted-at range bounds
 - `invoiceCount` counts distinct invoices touched within one category bucket
 
+### DailyTenantCollectionsNoteSummary
+
+Purpose:
+- expose tenant-scoped collections note activity grouped by UTC business date
+
+Fields:
+- `tenantCode`
+- `businessDate`
+- `noteCount`
+- `invoiceCount`
+
+Rules:
+- summary is built from immutable `CollectionsNote` rows
+- optional filters currently support exact current `assignedTo`, exact `notedBy`, exact `category`, exact `outcome`, and noted-at range bounds
+- `invoiceCount` counts distinct invoices touched within one UTC business-date bucket
+
 ## Cross-Module Dependency
 
 - `payments` reads invoices through public `InvoiceManagement`
@@ -358,6 +374,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes?page=&size=&invoiceNumber=&assignedTo=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/outcome-summary?page=&size=&assignedTo=&notedBy=&category=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/category-summary?page=&size=&assignedTo=&notedBy=&outcome=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/daily-summary?page=&size=&assignedTo=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignment-history?page=&size=&invoiceNumber=&assignedTo=&assignedAtFrom=&assignedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/daily-summary?page=&size=&assignedTo=&assignedAtFrom=&assignedAtTo=`

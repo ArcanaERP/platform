@@ -362,4 +362,55 @@ class CollectionsNoteRepositoryTest {
         assertThat(notes).extracting(CollectionsNote::getInvoiceNumber)
             .containsExactly("INV-1000");
     }
+
+    @Test
+    void listsTenantDailySummaryNotesFilteredByCurrentAssignedTo() {
+        collectionsNoteRepository.saveAndFlush(CollectionsNote.create(
+            "tenant-a",
+            "inv-1000",
+            "Promise noted",
+            "collector-a@arcanaerp.com",
+            CollectionsNoteCategory.PAYMENT_PROMISE,
+            CollectionsNoteOutcome.PROMISE_TO_PAY,
+            Instant.parse("2026-03-14T12:00:00Z")
+        ));
+        collectionsNoteRepository.saveAndFlush(CollectionsNote.create(
+            "tenant-a",
+            "inv-1001",
+            "Escalated",
+            "collector-b@arcanaerp.com",
+            CollectionsNoteCategory.ESCALATION,
+            CollectionsNoteOutcome.ESCALATED,
+            Instant.parse("2026-03-15T12:05:00Z")
+        ));
+
+        collectionsAssignmentRepository.saveAndFlush(CollectionsAssignment.create(
+            "tenant-a",
+            "inv-1000",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com",
+            Instant.parse("2026-03-14T11:55:00Z")
+        ));
+        collectionsAssignmentRepository.saveAndFlush(CollectionsAssignment.create(
+            "tenant-a",
+            "inv-1001",
+            "collector-b@arcanaerp.com",
+            "manager@arcanaerp.com",
+            Instant.parse("2026-03-15T11:56:00Z")
+        ));
+
+        var notes = collectionsNoteRepository.findTenantHistoryForDailySummary(
+            "TENANT-A",
+            "collector-b@arcanaerp.com",
+            null,
+            null,
+            null,
+            null,
+            null
+        );
+
+        assertThat(notes).hasSize(1);
+        assertThat(notes).extracting(CollectionsNote::getInvoiceNumber)
+            .containsExactly("INV-1001");
+    }
 }
