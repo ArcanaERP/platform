@@ -1,7 +1,11 @@
 package com.arcanaerp.platform.payments.internal;
 
+import com.arcanaerp.platform.payments.CollectionsNoteCategory;
+import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -41,6 +45,14 @@ class CollectionsNote {
     @Column(nullable = false, length = 128)
     private String notedBy;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private CollectionsNoteCategory category;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private CollectionsNoteOutcome outcome;
+
     @Column(nullable = false, updatable = false)
     private Instant notedAt;
 
@@ -50,6 +62,8 @@ class CollectionsNote {
         String invoiceNumber,
         String note,
         String notedBy,
+        CollectionsNoteCategory category,
+        CollectionsNoteOutcome outcome,
         Instant notedAt
     ) {
         this.id = id;
@@ -57,6 +71,8 @@ class CollectionsNote {
         this.invoiceNumber = invoiceNumber;
         this.note = note;
         this.notedBy = notedBy;
+        this.category = category;
+        this.outcome = outcome;
         this.notedAt = notedAt;
     }
 
@@ -65,6 +81,8 @@ class CollectionsNote {
         String invoiceNumber,
         String note,
         String notedBy,
+        CollectionsNoteCategory category,
+        CollectionsNoteOutcome outcome,
         Instant notedAt
     ) {
         if (notedAt == null) {
@@ -76,8 +94,24 @@ class CollectionsNote {
             normalizeRequired(invoiceNumber, "invoiceNumber").toUpperCase(),
             normalizeNote(note),
             normalizeActorEmail(notedBy, "notedBy"),
+            normalizeCategory(category),
+            normalizeOutcome(outcome),
             notedAt
         );
+    }
+
+    private static CollectionsNoteCategory normalizeCategory(CollectionsNoteCategory value) {
+        if (value == null) {
+            throw new IllegalArgumentException("category is required");
+        }
+        return value;
+    }
+
+    private static CollectionsNoteOutcome normalizeOutcome(CollectionsNoteOutcome value) {
+        if (value == null) {
+            throw new IllegalArgumentException("outcome is required");
+        }
+        return value;
     }
 
     private static String normalizeRequired(String value, String fieldName) {

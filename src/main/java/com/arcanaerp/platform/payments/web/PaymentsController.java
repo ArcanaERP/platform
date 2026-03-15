@@ -4,6 +4,8 @@ import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
+import com.arcanaerp.platform.payments.CollectionsNoteCategory;
+import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
 import com.arcanaerp.platform.payments.CollectionsNoteView;
@@ -170,7 +172,9 @@ public class PaymentsController {
                 requirePathValue(tenantCode, "tenantCode"),
                 requirePathValue(invoiceNumber, "invoiceNumber"),
                 request.note(),
-                request.notedBy()
+                request.notedBy(),
+                parseCollectionsNoteCategory(request.category()),
+                parseCollectionsNoteOutcome(request.outcome())
             )
         ));
     }
@@ -204,6 +208,8 @@ public class PaymentsController {
         @PathVariable String tenantCode,
         @PathVariable String invoiceNumber,
         @RequestParam(required = false) String notedBy,
+        @RequestParam(required = false) String category,
+        @RequestParam(required = false) String outcome,
         @RequestParam(required = false) String notedAtFrom,
         @RequestParam(required = false) String notedAtTo,
         @RequestParam(required = false) Integer page,
@@ -216,6 +222,8 @@ public class PaymentsController {
                 requirePathValue(tenantCode, "tenantCode"),
                 requirePathValue(invoiceNumber, "invoiceNumber"),
                 normalizeOptional(notedBy, "notedBy"),
+                parseOptionalCollectionsNoteCategory(category),
+                parseOptionalCollectionsNoteOutcome(outcome),
                 parsedNotedAtFrom,
                 parsedNotedAtTo,
                 PageQuery.of(page, size)
@@ -228,6 +236,8 @@ public class PaymentsController {
         @PathVariable String tenantCode,
         @RequestParam(required = false) String invoiceNumber,
         @RequestParam(required = false) String notedBy,
+        @RequestParam(required = false) String category,
+        @RequestParam(required = false) String outcome,
         @RequestParam(required = false) String notedAtFrom,
         @RequestParam(required = false) String notedAtTo,
         @RequestParam(required = false) Integer page,
@@ -240,6 +250,8 @@ public class PaymentsController {
                 requirePathValue(tenantCode, "tenantCode"),
                 normalizeOptional(invoiceNumber, "invoiceNumber"),
                 normalizeOptional(notedBy, "notedBy"),
+                parseOptionalCollectionsNoteCategory(category),
+                parseOptionalCollectionsNoteOutcome(outcome),
                 parsedNotedAtFrom,
                 parsedNotedAtTo,
                 PageQuery.of(page, size)
@@ -619,6 +631,8 @@ public class PaymentsController {
             note.invoiceNumber(),
             note.note(),
             note.notedBy(),
+            note.category().name(),
+            note.outcome().name(),
             note.notedAt()
         );
     }
@@ -726,6 +740,44 @@ public class PaymentsController {
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException("Unsupported agingBucket: " + normalizedValue);
         }
+    }
+
+    private static CollectionsNoteCategory parseCollectionsNoteCategory(String value) {
+        String normalizedValue = requirePathValue(value, "category").toUpperCase();
+        try {
+            return CollectionsNoteCategory.valueOf(normalizedValue);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Unsupported category: " + normalizedValue);
+        }
+    }
+
+    private static CollectionsNoteCategory parseOptionalCollectionsNoteCategory(String value) {
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
+            throw new IllegalArgumentException("category query parameter must not be blank");
+        }
+        return parseCollectionsNoteCategory(value);
+    }
+
+    private static CollectionsNoteOutcome parseCollectionsNoteOutcome(String value) {
+        String normalizedValue = requirePathValue(value, "outcome").toUpperCase();
+        try {
+            return CollectionsNoteOutcome.valueOf(normalizedValue);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Unsupported outcome: " + normalizedValue);
+        }
+    }
+
+    private static CollectionsNoteOutcome parseOptionalCollectionsNoteOutcome(String value) {
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
+            throw new IllegalArgumentException("outcome query parameter must not be blank");
+        }
+        return parseCollectionsNoteOutcome(value);
     }
 
     private static Instant parseOptionalInstant(String value, String parameterName) {

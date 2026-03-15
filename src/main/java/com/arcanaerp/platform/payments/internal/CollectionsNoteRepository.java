@@ -1,5 +1,7 @@
 package com.arcanaerp.platform.payments.internal;
 
+import com.arcanaerp.platform.payments.CollectionsNoteCategory;
+import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -17,6 +19,8 @@ interface CollectionsNoteRepository extends JpaRepository<CollectionsNote, UUID>
         where note.tenantCode = :tenantCode
           and note.invoiceNumber = :invoiceNumber
           and (:notedBy is null or note.notedBy = :notedBy)
+          and (:category is null or note.category = :category)
+          and (:outcome is null or note.outcome = :outcome)
           and (:notedAtFrom is null or note.notedAt >= :notedAtFrom)
           and (:notedAtTo is null or note.notedAt <= :notedAtTo)
         """
@@ -25,6 +29,8 @@ interface CollectionsNoteRepository extends JpaRepository<CollectionsNote, UUID>
         @Param("tenantCode") String tenantCode,
         @Param("invoiceNumber") String invoiceNumber,
         @Param("notedBy") String notedBy,
+        @Param("category") CollectionsNoteCategory category,
+        @Param("outcome") CollectionsNoteOutcome outcome,
         @Param("notedAtFrom") Instant notedAtFrom,
         @Param("notedAtTo") Instant notedAtTo,
         Pageable pageable
@@ -37,6 +43,8 @@ interface CollectionsNoteRepository extends JpaRepository<CollectionsNote, UUID>
         where note.tenantCode = :tenantCode
           and (:invoiceNumber is null or note.invoiceNumber = :invoiceNumber)
           and (:notedBy is null or note.notedBy = :notedBy)
+          and (:category is null or note.category = :category)
+          and (:outcome is null or note.outcome = :outcome)
           and (:notedAtFrom is null or note.notedAt >= :notedAtFrom)
           and (:notedAtTo is null or note.notedAt <= :notedAtTo)
         """
@@ -45,6 +53,8 @@ interface CollectionsNoteRepository extends JpaRepository<CollectionsNote, UUID>
         @Param("tenantCode") String tenantCode,
         @Param("invoiceNumber") String invoiceNumber,
         @Param("notedBy") String notedBy,
+        @Param("category") CollectionsNoteCategory category,
+        @Param("outcome") CollectionsNoteOutcome outcome,
         @Param("notedAtFrom") Instant notedAtFrom,
         @Param("notedAtTo") Instant notedAtTo,
         Pageable pageable

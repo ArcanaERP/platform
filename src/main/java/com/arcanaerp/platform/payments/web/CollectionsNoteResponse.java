@@ -9,6 +9,8 @@ public record CollectionsNoteResponse(
     String invoiceNumber,
     String note,
     String notedBy,
+    String category,
+    String outcome,
     Instant notedAt
 ) {
 }

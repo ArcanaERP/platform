@@ -732,12 +732,16 @@ class PaymentsControllerIntegrationTest {
             COLLECTIONS_NOTES_TENANT_CODE,
             "inv-pay-1050",
             "Called customer, promised payment next week.",
-            "collector-a@arcanaerp.com"
+            "collector-a@arcanaerp.com",
+            "PAYMENT_PROMISE",
+            "PROMISE_TO_PAY"
         ).andExpect(status().isCreated())
             .andExpect(jsonPath("$.tenantCode").value("TENANT-COLL-NOTES"))
             .andExpect(jsonPath("$.invoiceNumber").value("INV-PAY-1050"))
             .andExpect(jsonPath("$.note").value("Called customer, promised payment next week."))
             .andExpect(jsonPath("$.notedBy").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.category").value("PAYMENT_PROMISE"))
+            .andExpect(jsonPath("$.outcome").value("PROMISE_TO_PAY"))
             .andExpect(jsonPath("$.notedAt").value(assignedAt.toString()));
 
         Instant secondNoteAt = assignedAt.plusSeconds(60);
@@ -747,7 +751,9 @@ class PaymentsControllerIntegrationTest {
             COLLECTIONS_NOTES_TENANT_CODE,
             "inv-pay-1050",
             "Escalated to collector B for follow-up.",
-            "collector-b@arcanaerp.com"
+            "collector-b@arcanaerp.com",
+            "ESCALATION",
+            "ESCALATED"
         ).andExpect(status().isCreated())
             .andExpect(jsonPath("$.notedAt").value(secondNoteAt.toString()));
 
@@ -761,6 +767,8 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(2))
             .andExpect(jsonPath("$.items[0].note").value("Escalated to collector B for follow-up."))
             .andExpect(jsonPath("$.items[0].notedBy").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].category").value("ESCALATION"))
+            .andExpect(jsonPath("$.items[0].outcome").value("ESCALATED"))
             .andExpect(jsonPath("$.items[1].note").value("Called customer, promised payment next week."))
             .andExpect(jsonPath("$.items[1].notedBy").value("collector-a@arcanaerp.com"));
 
@@ -771,6 +779,10 @@ class PaymentsControllerIntegrationTest {
                 10,
                 "notedBy",
                 "collector-b@arcanaerp.com",
+                "category",
+                "ESCALATION",
+                "outcome",
+                "ESCALATED",
                 "notedAtFrom",
                 secondNoteAt.minusSeconds(1).toString(),
                 "notedAtTo",
@@ -831,7 +843,9 @@ class PaymentsControllerIntegrationTest {
             COLLECTIONS_NOTES_TENANT_CODE,
             "inv-pay-1051",
             "Attempted note without assignment.",
-            "collector-c@arcanaerp.com"
+            "collector-c@arcanaerp.com",
+            "CONTACT_ATTEMPT",
+            "NO_CONTACT"
         )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value(
@@ -908,7 +922,9 @@ class PaymentsControllerIntegrationTest {
             COLLECTIONS_NOTES_FEED_TENANT_CODE,
             "inv-pay-1052",
             "Left voicemail for AP team.",
-            "collector-a@arcanaerp.com"
+            "collector-a@arcanaerp.com",
+            "CONTACT_ATTEMPT",
+            "NO_CONTACT"
         ).andExpect(status().isCreated());
 
         Instant secondNoteAt = firstAssignedAt.plusSeconds(60);
@@ -918,7 +934,9 @@ class PaymentsControllerIntegrationTest {
             COLLECTIONS_NOTES_FEED_TENANT_CODE,
             "inv-pay-1053",
             "Confirmed dispute review is underway.",
-            "collector-b@arcanaerp.com"
+            "collector-b@arcanaerp.com",
+            "DISPUTE",
+            "DISPUTE_OPENED"
         ).andExpect(status().isCreated());
 
         mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsNotesRequest(
@@ -941,6 +959,10 @@ class PaymentsControllerIntegrationTest {
                 "inv-pay-1053",
                 "notedBy",
                 "collector-b@arcanaerp.com",
+                "category",
+                "DISPUTE",
+                "outcome",
+                "DISPUTE_OPENED",
                 "notedAtFrom",
                 secondNoteAt.minusSeconds(1).toString(),
                 "notedAtTo",

@@ -179,14 +179,18 @@ final class PaymentsWebIntegrationTestSupport {
         String tenantCode,
         String invoiceNumber,
         String note,
-        String notedBy
+        String notedBy,
+        String category,
+        String outcome
     ) throws Exception {
         String payload = """
             {
               "note": "%s",
-              "notedBy": "%s"
+              "notedBy": "%s",
+              "category": "%s",
+              "outcome": "%s"
             }
-            """.formatted(note, notedBy);
+            """.formatted(note, notedBy, category, outcome);
 
         return mockMvc.perform(post(
             "/api/payments/tenants/" + tenantCode + "/receivables/collections/over-90/" + invoiceNumber + "/notes"

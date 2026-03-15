@@ -10,6 +10,8 @@ import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
+import com.arcanaerp.platform.payments.CollectionsNoteCategory;
+import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import com.arcanaerp.platform.payments.CollectionsNoteView;
 import com.arcanaerp.platform.payments.CreateCollectionsNoteCommand;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
@@ -329,6 +331,8 @@ class PaymentManagementService implements PaymentManagement {
             invoiceNumber,
             command.note(),
             notedBy,
+            command.category(),
+            command.outcome(),
             Instant.now(clock)
         ));
         return toCollectionsNoteView(saved);
@@ -410,6 +414,8 @@ class PaymentManagementService implements PaymentManagement {
         String tenantCode,
         String invoiceNumber,
         String notedBy,
+        CollectionsNoteCategory category,
+        CollectionsNoteOutcome outcome,
         Instant notedAtFrom,
         Instant notedAtTo,
         PageQuery pageQuery
@@ -426,6 +432,8 @@ class PaymentManagementService implements PaymentManagement {
             normalizedTenantCode,
             normalizedInvoiceNumber,
             normalizedNotedBy,
+            category,
+            outcome,
             notedAtFrom,
             notedAtTo,
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "notedAt").and(Sort.by(Sort.Direction.DESC, "id")))
@@ -439,6 +447,8 @@ class PaymentManagementService implements PaymentManagement {
         String tenantCode,
         String invoiceNumber,
         String notedBy,
+        CollectionsNoteCategory category,
+        CollectionsNoteOutcome outcome,
         Instant notedAtFrom,
         Instant notedAtTo,
         PageQuery pageQuery
@@ -450,6 +460,8 @@ class PaymentManagementService implements PaymentManagement {
             normalizedTenantCode,
             normalizedInvoiceNumber,
             normalizedNotedBy,
+            category,
+            outcome,
             notedAtFrom,
             notedAtTo,
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "notedAt").and(Sort.by(Sort.Direction.DESC, "id")))
@@ -969,6 +981,8 @@ class PaymentManagementService implements PaymentManagement {
             note.getInvoiceNumber(),
             note.getNote(),
             note.getNotedBy(),
+            note.getCategory(),
+            note.getOutcome(),
             note.getNotedAt()
         );
     }

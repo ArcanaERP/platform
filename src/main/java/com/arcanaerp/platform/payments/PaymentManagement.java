@@ -68,6 +68,8 @@ public interface PaymentManagement {
         String tenantCode,
         String invoiceNumber,
         String notedBy,
+        CollectionsNoteCategory category,
+        CollectionsNoteOutcome outcome,
         Instant notedAtFrom,
         Instant notedAtTo,
         PageQuery pageQuery
@@ -77,6 +79,8 @@ public interface PaymentManagement {
         String tenantCode,
         String invoiceNumber,
         String notedBy,
+        CollectionsNoteCategory category,
+        CollectionsNoteOutcome outcome,
         Instant notedAtFrom,
         Instant notedAtTo,
         PageQuery pageQuery

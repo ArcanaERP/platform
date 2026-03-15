@@ -2,6 +2,8 @@ package com.arcanaerp.platform.payments.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.arcanaerp.platform.payments.CollectionsNoteCategory;
+import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,8 @@ class CollectionsNoteRepositoryTest {
             "inv-1000",
             "First note",
             "collector-a@arcanaerp.com",
+            CollectionsNoteCategory.CONTACT_ATTEMPT,
+            CollectionsNoteOutcome.AWAITING_RESPONSE,
             Instant.parse("2026-03-14T12:00:00Z")
         ));
         collectionsNoteRepository.saveAndFlush(CollectionsNote.create(
@@ -29,6 +33,8 @@ class CollectionsNoteRepositoryTest {
             "inv-1000",
             "Second note",
             "collector-b@arcanaerp.com",
+            CollectionsNoteCategory.ESCALATION,
+            CollectionsNoteOutcome.ESCALATED,
             Instant.parse("2026-03-14T12:05:00Z")
         ));
         collectionsNoteRepository.saveAndFlush(CollectionsNote.create(
@@ -36,6 +42,8 @@ class CollectionsNoteRepositoryTest {
             "inv-1001",
             "Other invoice",
             "collector-b@arcanaerp.com",
+            CollectionsNoteCategory.INTERNAL_UPDATE,
+            CollectionsNoteOutcome.RESOLVED,
             Instant.parse("2026-03-14T12:10:00Z")
         ));
 
@@ -43,6 +51,8 @@ class CollectionsNoteRepositoryTest {
             "TENANT-A",
             "INV-1000",
             "collector-b@arcanaerp.com",
+            CollectionsNoteCategory.ESCALATION,
+            CollectionsNoteOutcome.ESCALATED,
             Instant.parse("2026-03-14T12:04:00Z"),
             Instant.parse("2026-03-14T12:06:00Z"),
             PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "notedAt").and(Sort.by(Sort.Direction.DESC, "id")))
@@ -60,6 +70,8 @@ class CollectionsNoteRepositoryTest {
             "inv-1000",
             "First invoice note",
             "collector-a@arcanaerp.com",
+            CollectionsNoteCategory.CONTACT_ATTEMPT,
+            CollectionsNoteOutcome.NO_CONTACT,
             Instant.parse("2026-03-14T12:00:00Z")
         ));
         collectionsNoteRepository.saveAndFlush(CollectionsNote.create(
@@ -67,6 +79,8 @@ class CollectionsNoteRepositoryTest {
             "inv-1001",
             "Second invoice note",
             "collector-b@arcanaerp.com",
+            CollectionsNoteCategory.DISPUTE,
+            CollectionsNoteOutcome.DISPUTE_OPENED,
             Instant.parse("2026-03-14T12:05:00Z")
         ));
         collectionsNoteRepository.saveAndFlush(CollectionsNote.create(
@@ -74,6 +88,8 @@ class CollectionsNoteRepositoryTest {
             "inv-1002",
             "Other tenant",
             "collector-b@arcanaerp.com",
+            CollectionsNoteCategory.INTERNAL_UPDATE,
+            CollectionsNoteOutcome.RESOLVED,
             Instant.parse("2026-03-14T12:10:00Z")
         ));
 
@@ -81,6 +97,8 @@ class CollectionsNoteRepositoryTest {
             "TENANT-A",
             "INV-1001",
             "collector-b@arcanaerp.com",
+            CollectionsNoteCategory.DISPUTE,
+            CollectionsNoteOutcome.DISPUTE_OPENED,
             Instant.parse("2026-03-14T12:04:00Z"),
             Instant.parse("2026-03-14T12:06:00Z"),
             PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "notedAt").and(Sort.by(Sort.Direction.DESC, "id")))

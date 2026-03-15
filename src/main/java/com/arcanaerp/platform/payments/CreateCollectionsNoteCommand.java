@@ -4,6 +4,8 @@ public record CreateCollectionsNoteCommand(
     String tenantCode,
     String invoiceNumber,
     String note,
-    String notedBy
+    String notedBy,
+    CollectionsNoteCategory category,
+    CollectionsNoteOutcome outcome
 ) {
 }

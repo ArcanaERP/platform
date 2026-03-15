@@ -9,6 +9,8 @@ public record CollectionsNoteView(
     String invoiceNumber,
     String note,
     String notedBy,
+    CollectionsNoteCategory category,
+    CollectionsNoteOutcome outcome,
     Instant notedAt
 ) {
 }

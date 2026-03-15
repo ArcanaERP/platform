@@ -3,6 +3,8 @@ package com.arcanaerp.platform.payments.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.arcanaerp.platform.payments.CollectionsNoteCategory;
+import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
@@ -17,6 +19,8 @@ class CollectionsNoteDomainTest {
             "inv-1000",
             "  Call customer before Friday.  ",
             "Collector@ArcanaERP.com",
+            CollectionsNoteCategory.CONTACT_ATTEMPT,
+            CollectionsNoteOutcome.AWAITING_RESPONSE,
             notedAt
         );
 
@@ -24,6 +28,8 @@ class CollectionsNoteDomainTest {
         assertThat(note.getInvoiceNumber()).isEqualTo("INV-1000");
         assertThat(note.getNote()).isEqualTo("Call customer before Friday.");
         assertThat(note.getNotedBy()).isEqualTo("collector@arcanaerp.com");
+        assertThat(note.getCategory()).isEqualTo(CollectionsNoteCategory.CONTACT_ATTEMPT);
+        assertThat(note.getOutcome()).isEqualTo(CollectionsNoteOutcome.AWAITING_RESPONSE);
         assertThat(note.getNotedAt()).isEqualTo(notedAt);
     }
 
@@ -36,6 +42,8 @@ class CollectionsNoteDomainTest {
             "inv-1000",
             "   ",
             "collector@arcanaerp.com",
+            CollectionsNoteCategory.CONTACT_ATTEMPT,
+            CollectionsNoteOutcome.AWAITING_RESPONSE,
             notedAt
         )).isInstanceOf(IllegalArgumentException.class)
             .hasMessage("note is required");
@@ -45,6 +53,8 @@ class CollectionsNoteDomainTest {
             "inv-1000",
             "x".repeat(1001),
             "collector@arcanaerp.com",
+            CollectionsNoteCategory.CONTACT_ATTEMPT,
+            CollectionsNoteOutcome.AWAITING_RESPONSE,
             notedAt
         )).isInstanceOf(IllegalArgumentException.class)
             .hasMessage("note must be at most 1000 characters");
