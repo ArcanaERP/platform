@@ -73,6 +73,13 @@ interface CollectionsNoteRepository extends JpaRepository<CollectionsNote, UUID>
         select note
         from CollectionsNote note
         where note.tenantCode = :tenantCode
+          and (:assignedTo is null or exists (
+              select assignment.id
+              from CollectionsAssignment assignment
+              where assignment.tenantCode = note.tenantCode
+                and assignment.invoiceNumber = note.invoiceNumber
+                and assignment.assignedTo = :assignedTo
+          ))
           and (:notedBy is null or note.notedBy = :notedBy)
           and (:category is null or note.category = :category)
           and (:notedAtFrom is null or note.notedAt >= :notedAtFrom)
@@ -82,6 +89,7 @@ interface CollectionsNoteRepository extends JpaRepository<CollectionsNote, UUID>
     )
     java.util.List<CollectionsNote> findTenantHistoryForOutcomeSummary(
         @Param("tenantCode") String tenantCode,
+        @Param("assignedTo") String assignedTo,
         @Param("notedBy") String notedBy,
         @Param("category") CollectionsNoteCategory category,
         @Param("notedAtFrom") Instant notedAtFrom,
@@ -93,6 +101,13 @@ interface CollectionsNoteRepository extends JpaRepository<CollectionsNote, UUID>
         select note
         from CollectionsNote note
         where note.tenantCode = :tenantCode
+          and (:assignedTo is null or exists (
+              select assignment.id
+              from CollectionsAssignment assignment
+              where assignment.tenantCode = note.tenantCode
+                and assignment.invoiceNumber = note.invoiceNumber
+                and assignment.assignedTo = :assignedTo
+          ))
           and (:notedBy is null or note.notedBy = :notedBy)
           and (:outcome is null or note.outcome = :outcome)
           and (:notedAtFrom is null or note.notedAt >= :notedAtFrom)
@@ -102,6 +117,7 @@ interface CollectionsNoteRepository extends JpaRepository<CollectionsNote, UUID>
     )
     java.util.List<CollectionsNote> findTenantHistoryForCategorySummary(
         @Param("tenantCode") String tenantCode,
+        @Param("assignedTo") String assignedTo,
         @Param("notedBy") String notedBy,
         @Param("outcome") CollectionsNoteOutcome outcome,
         @Param("notedAtFrom") Instant notedAtFrom,

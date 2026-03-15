@@ -266,6 +266,7 @@ public class PaymentsController {
     @GetMapping("/tenants/{tenantCode}/receivables/collections/notes/outcome-summary")
     public PageResult<TenantCollectionsNoteOutcomeSummaryResponse> listTenantCollectionsNoteOutcomeSummaries(
         @PathVariable String tenantCode,
+        @RequestParam(required = false) String assignedTo,
         @RequestParam(required = false) String notedBy,
         @RequestParam(required = false) String category,
         @RequestParam(required = false) String notedAtFrom,
@@ -278,6 +279,7 @@ public class PaymentsController {
         validateInstantRange(parsedNotedAtFrom, parsedNotedAtTo, "notedAtFrom", "notedAtTo");
         return paymentManagement.listTenantCollectionsNoteOutcomeSummaries(
                 requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(assignedTo, "assignedTo"),
                 normalizeOptional(notedBy, "notedBy"),
                 parseOptionalCollectionsNoteCategory(category),
                 parsedNotedAtFrom,
@@ -290,6 +292,7 @@ public class PaymentsController {
     @GetMapping("/tenants/{tenantCode}/receivables/collections/notes/category-summary")
     public PageResult<TenantCollectionsNoteCategorySummaryResponse> listTenantCollectionsNoteCategorySummaries(
         @PathVariable String tenantCode,
+        @RequestParam(required = false) String assignedTo,
         @RequestParam(required = false) String notedBy,
         @RequestParam(required = false) String outcome,
         @RequestParam(required = false) String notedAtFrom,
@@ -302,6 +305,7 @@ public class PaymentsController {
         validateInstantRange(parsedNotedAtFrom, parsedNotedAtTo, "notedAtFrom", "notedAtTo");
         return paymentManagement.listTenantCollectionsNoteCategorySummaries(
                 requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(assignedTo, "assignedTo"),
                 normalizeOptional(notedBy, "notedBy"),
                 parseOptionalCollectionsNoteOutcome(outcome),
                 parsedNotedAtFrom,

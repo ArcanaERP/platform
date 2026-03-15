@@ -1201,6 +1201,37 @@ class PaymentsControllerIntegrationTest {
                 COLLECTIONS_NOTES_OUTCOME_SUM_TENANT_CODE,
                 0,
                 10,
+                "assignedTo",
+                "collector-b@arcanaerp.com",
+                "notedBy",
+                "collector-a@arcanaerp.com",
+                "category",
+                "DISPUTE",
+                "notedAtFrom",
+                secondNoteAt.minusSeconds(1).toString(),
+                "notedAtTo",
+                secondNoteAt.plusSeconds(1).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].outcome").value("DISPUTE_OPENED"))
+            .andExpect(jsonPath("$.items[0].noteCount").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsNoteOutcomeSummaryRequest(
+                COLLECTIONS_NOTES_OUTCOME_SUM_TENANT_CODE,
+                0,
+                10,
+                "assignedTo",
+                "   "
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("assignedTo query parameter must not be blank"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsNoteOutcomeSummaryRequest(
+                COLLECTIONS_NOTES_OUTCOME_SUM_TENANT_CODE,
+                0,
+                10,
                 "notedBy",
                 "collector-a@arcanaerp.com",
                 "notedAtFrom",
@@ -1325,6 +1356,27 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].invoiceCount").value(1))
             .andExpect(jsonPath("$.items[1].category").value("DISPUTE"))
             .andExpect(jsonPath("$.items[2].category").value("CONTACT_ATTEMPT"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsNoteCategorySummaryRequest(
+                COLLECTIONS_NOTES_CATEGORY_SUM_TENANT_CODE,
+                0,
+                10,
+                "assignedTo",
+                "collector-a@arcanaerp.com",
+                "notedBy",
+                "collector-a@arcanaerp.com",
+                "outcome",
+                "NO_CONTACT",
+                "notedAtFrom",
+                assignedAt.minusSeconds(1).toString(),
+                "notedAtTo",
+                assignedAt.plusSeconds(1).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].category").value("CONTACT_ATTEMPT"))
+            .andExpect(jsonPath("$.items[0].noteCount").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1));
 
         mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsNoteCategorySummaryRequest(
                 COLLECTIONS_NOTES_CATEGORY_SUM_TENANT_CODE,

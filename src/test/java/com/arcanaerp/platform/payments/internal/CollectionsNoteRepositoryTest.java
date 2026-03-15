@@ -145,6 +145,7 @@ class CollectionsNoteRepositoryTest {
 
         var notes = collectionsNoteRepository.findTenantHistoryForOutcomeSummary(
             "TENANT-A",
+            null,
             "collector-a@arcanaerp.com",
             null,
             Instant.parse("2026-03-14T11:59:00Z"),
@@ -188,6 +189,7 @@ class CollectionsNoteRepositoryTest {
 
         var notes = collectionsNoteRepository.findTenantHistoryForCategorySummary(
             "TENANT-A",
+            null,
             "collector-a@arcanaerp.com",
             CollectionsNoteOutcome.PROMISE_TO_PAY,
             Instant.parse("2026-03-14T11:59:00Z"),
@@ -259,5 +261,105 @@ class CollectionsNoteRepositoryTest {
         assertThat(notes.getContent()).hasSize(1);
         assertThat(notes.getContent()).extracting(CollectionsNote::getInvoiceNumber)
             .containsExactly("INV-1001");
+    }
+
+    @Test
+    void listsTenantOutcomeSummaryNotesFilteredByCurrentAssignedTo() {
+        collectionsNoteRepository.saveAndFlush(CollectionsNote.create(
+            "tenant-a",
+            "inv-1000",
+            "Promise noted",
+            "collector-a@arcanaerp.com",
+            CollectionsNoteCategory.PAYMENT_PROMISE,
+            CollectionsNoteOutcome.PROMISE_TO_PAY,
+            Instant.parse("2026-03-14T12:00:00Z")
+        ));
+        collectionsNoteRepository.saveAndFlush(CollectionsNote.create(
+            "tenant-a",
+            "inv-1001",
+            "Dispute opened",
+            "collector-b@arcanaerp.com",
+            CollectionsNoteCategory.DISPUTE,
+            CollectionsNoteOutcome.DISPUTE_OPENED,
+            Instant.parse("2026-03-14T12:05:00Z")
+        ));
+
+        collectionsAssignmentRepository.saveAndFlush(CollectionsAssignment.create(
+            "tenant-a",
+            "inv-1000",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com",
+            Instant.parse("2026-03-14T11:55:00Z")
+        ));
+        collectionsAssignmentRepository.saveAndFlush(CollectionsAssignment.create(
+            "tenant-a",
+            "inv-1001",
+            "collector-b@arcanaerp.com",
+            "manager@arcanaerp.com",
+            Instant.parse("2026-03-14T11:56:00Z")
+        ));
+
+        var notes = collectionsNoteRepository.findTenantHistoryForOutcomeSummary(
+            "TENANT-A",
+            "collector-b@arcanaerp.com",
+            null,
+            null,
+            null,
+            null
+        );
+
+        assertThat(notes).hasSize(1);
+        assertThat(notes).extracting(CollectionsNote::getInvoiceNumber)
+            .containsExactly("INV-1001");
+    }
+
+    @Test
+    void listsTenantCategorySummaryNotesFilteredByCurrentAssignedTo() {
+        collectionsNoteRepository.saveAndFlush(CollectionsNote.create(
+            "tenant-a",
+            "inv-1000",
+            "Promise noted",
+            "collector-a@arcanaerp.com",
+            CollectionsNoteCategory.PAYMENT_PROMISE,
+            CollectionsNoteOutcome.PROMISE_TO_PAY,
+            Instant.parse("2026-03-14T12:00:00Z")
+        ));
+        collectionsNoteRepository.saveAndFlush(CollectionsNote.create(
+            "tenant-a",
+            "inv-1001",
+            "Escalated",
+            "collector-b@arcanaerp.com",
+            CollectionsNoteCategory.ESCALATION,
+            CollectionsNoteOutcome.ESCALATED,
+            Instant.parse("2026-03-14T12:05:00Z")
+        ));
+
+        collectionsAssignmentRepository.saveAndFlush(CollectionsAssignment.create(
+            "tenant-a",
+            "inv-1000",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com",
+            Instant.parse("2026-03-14T11:55:00Z")
+        ));
+        collectionsAssignmentRepository.saveAndFlush(CollectionsAssignment.create(
+            "tenant-a",
+            "inv-1001",
+            "collector-b@arcanaerp.com",
+            "manager@arcanaerp.com",
+            Instant.parse("2026-03-14T11:56:00Z")
+        ));
+
+        var notes = collectionsNoteRepository.findTenantHistoryForCategorySummary(
+            "TENANT-A",
+            "collector-a@arcanaerp.com",
+            null,
+            null,
+            null,
+            null
+        );
+
+        assertThat(notes).hasSize(1);
+        assertThat(notes).extracting(CollectionsNote::getInvoiceNumber)
+            .containsExactly("INV-1000");
     }
 }

@@ -478,6 +478,7 @@ class PaymentManagementService implements PaymentManagement {
     @Transactional(readOnly = true)
     public PageResult<TenantCollectionsNoteOutcomeSummaryView> listTenantCollectionsNoteOutcomeSummaries(
         String tenantCode,
+        String assignedTo,
         String notedBy,
         CollectionsNoteCategory category,
         Instant notedAtFrom,
@@ -485,9 +486,11 @@ class PaymentManagementService implements PaymentManagement {
         PageQuery pageQuery
     ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
         String normalizedNotedBy = notedBy == null ? null : normalizeActorEmail(notedBy, "notedBy");
         List<CollectionsNote> notes = collectionsNoteRepository.findTenantHistoryForOutcomeSummary(
             normalizedTenantCode,
+            normalizedAssignedTo,
             normalizedNotedBy,
             category,
             notedAtFrom,
@@ -516,6 +519,7 @@ class PaymentManagementService implements PaymentManagement {
     @Transactional(readOnly = true)
     public PageResult<TenantCollectionsNoteCategorySummaryView> listTenantCollectionsNoteCategorySummaries(
         String tenantCode,
+        String assignedTo,
         String notedBy,
         CollectionsNoteOutcome outcome,
         Instant notedAtFrom,
@@ -523,9 +527,11 @@ class PaymentManagementService implements PaymentManagement {
         PageQuery pageQuery
     ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
         String normalizedNotedBy = notedBy == null ? null : normalizeActorEmail(notedBy, "notedBy");
         List<CollectionsNote> notes = collectionsNoteRepository.findTenantHistoryForCategorySummary(
             normalizedTenantCode,
+            normalizedAssignedTo,
             normalizedNotedBy,
             outcome,
             notedAtFrom,

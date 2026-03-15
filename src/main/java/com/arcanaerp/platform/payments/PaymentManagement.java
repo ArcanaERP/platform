@@ -89,6 +89,7 @@ public interface PaymentManagement {
 
     PageResult<TenantCollectionsNoteOutcomeSummaryView> listTenantCollectionsNoteOutcomeSummaries(
         String tenantCode,
+        String assignedTo,
         String notedBy,
         CollectionsNoteCategory category,
         Instant notedAtFrom,
@@ -98,6 +99,7 @@ public interface PaymentManagement {
 
     PageResult<TenantCollectionsNoteCategorySummaryView> listTenantCollectionsNoteCategorySummaries(
         String tenantCode,
+        String assignedTo,
         String notedBy,
         CollectionsNoteOutcome outcome,
         Instant notedAtFrom,
