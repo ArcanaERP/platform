@@ -571,36 +571,23 @@ class PaymentManagementService implements PaymentManagement {
         Instant notedAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
-        String normalizedNotedBy = notedBy == null ? null : normalizeActorEmail(notedBy, "notedBy");
-        List<CollectionsNote> notes = collectionsNoteRepository.findTenantHistoryForDailySummary(
-            normalizedTenantCode,
-            normalizedAssignedTo,
-            normalizedNotedBy,
+        return summarizeTenantCollectionsNotes(
+            tenantCode,
+            assignedTo,
+            notedBy,
             category,
             outcome,
             notedAtFrom,
-            notedAtTo
-        );
-
-        Map<LocalDate, CollectionsNoteSummaryAccumulator> summariesByDate = new LinkedHashMap<>();
-        for (CollectionsNote note : notes) {
-            LocalDate businessDate = note.getNotedAt().atOffset(ZoneOffset.UTC).toLocalDate();
-            summariesByDate.computeIfAbsent(businessDate, ignored -> new CollectionsNoteSummaryAccumulator())
-                .add(note);
-        }
-
-        List<DailyTenantCollectionsNoteSummaryView> summaries = new ArrayList<>();
-        summariesByDate.forEach((businessDate, summary) -> summaries.add(
-            new DailyTenantCollectionsNoteSummaryView(
+            notedAtTo,
+            pageQuery,
+            note -> note.getNotedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            (normalizedTenantCode, businessDate, summary) -> new DailyTenantCollectionsNoteSummaryView(
                 normalizedTenantCode,
                 businessDate,
                 summary.noteCount,
                 summary.invoiceNumbers.size()
             )
-        ));
-        return paginateList(summaries, pageQuery);
+        );
     }
 
     @Override
@@ -615,39 +602,26 @@ class PaymentManagementService implements PaymentManagement {
         Instant notedAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
-        String normalizedNotedBy = notedBy == null ? null : normalizeActorEmail(notedBy, "notedBy");
-        List<CollectionsNote> notes = collectionsNoteRepository.findTenantHistoryForDailySummary(
-            normalizedTenantCode,
-            normalizedAssignedTo,
-            normalizedNotedBy,
+        return summarizeTenantCollectionsNotes(
+            tenantCode,
+            assignedTo,
+            notedBy,
             category,
             outcome,
             notedAtFrom,
-            notedAtTo
-        );
-
-        Map<LocalDate, CollectionsNoteSummaryAccumulator> summariesByWeekStart = new LinkedHashMap<>();
-        for (CollectionsNote note : notes) {
-            LocalDate businessWeekStart = note.getNotedAt()
+            notedAtTo,
+            pageQuery,
+            note -> note.getNotedAt()
                 .atOffset(ZoneOffset.UTC)
                 .toLocalDate()
-                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-            summariesByWeekStart.computeIfAbsent(businessWeekStart, ignored -> new CollectionsNoteSummaryAccumulator())
-                .add(note);
-        }
-
-        List<WeeklyTenantCollectionsNoteSummaryView> summaries = new ArrayList<>();
-        summariesByWeekStart.forEach((businessWeekStart, summary) -> summaries.add(
-            new WeeklyTenantCollectionsNoteSummaryView(
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            (normalizedTenantCode, businessWeekStart, summary) -> new WeeklyTenantCollectionsNoteSummaryView(
                 normalizedTenantCode,
                 businessWeekStart,
                 summary.noteCount,
                 summary.invoiceNumbers.size()
             )
-        ));
-        return paginateList(summaries, pageQuery);
+        );
     }
 
     @Override
@@ -662,36 +636,23 @@ class PaymentManagementService implements PaymentManagement {
         Instant notedAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
-        String normalizedNotedBy = notedBy == null ? null : normalizeActorEmail(notedBy, "notedBy");
-        List<CollectionsNote> notes = collectionsNoteRepository.findTenantHistoryForDailySummary(
-            normalizedTenantCode,
-            normalizedAssignedTo,
-            normalizedNotedBy,
+        return summarizeTenantCollectionsNotes(
+            tenantCode,
+            assignedTo,
+            notedBy,
             category,
             outcome,
             notedAtFrom,
-            notedAtTo
-        );
-
-        Map<YearMonth, CollectionsNoteSummaryAccumulator> summariesByMonth = new LinkedHashMap<>();
-        for (CollectionsNote note : notes) {
-            YearMonth businessMonth = YearMonth.from(note.getNotedAt().atOffset(ZoneOffset.UTC));
-            summariesByMonth.computeIfAbsent(businessMonth, ignored -> new CollectionsNoteSummaryAccumulator())
-                .add(note);
-        }
-
-        List<MonthlyTenantCollectionsNoteSummaryView> summaries = new ArrayList<>();
-        summariesByMonth.forEach((businessMonth, summary) -> summaries.add(
-            new MonthlyTenantCollectionsNoteSummaryView(
+            notedAtTo,
+            pageQuery,
+            note -> YearMonth.from(note.getNotedAt().atOffset(ZoneOffset.UTC)),
+            (normalizedTenantCode, businessMonth, summary) -> new MonthlyTenantCollectionsNoteSummaryView(
                 normalizedTenantCode,
                 businessMonth,
                 summary.noteCount,
                 summary.invoiceNumbers.size()
             )
-        ));
-        return paginateList(summaries, pageQuery);
+        );
     }
 
     @Override
@@ -1159,6 +1120,45 @@ class PaymentManagementService implements PaymentManagement {
         );
     }
 
+    private <B, V> PageResult<V> summarizeTenantCollectionsNotes(
+        String tenantCode,
+        String assignedTo,
+        String notedBy,
+        CollectionsNoteCategory category,
+        CollectionsNoteOutcome outcome,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery,
+        Function<CollectionsNote, B> bucketExtractor,
+        CollectionsNoteBucketViewFactory<B, V> viewFactory
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
+        String normalizedNotedBy = notedBy == null ? null : normalizeActorEmail(notedBy, "notedBy");
+        List<CollectionsNote> notes = collectionsNoteRepository.findTenantHistoryForDailySummary(
+            normalizedTenantCode,
+            normalizedAssignedTo,
+            normalizedNotedBy,
+            category,
+            outcome,
+            notedAtFrom,
+            notedAtTo
+        );
+
+        Map<B, CollectionsNoteSummaryAccumulator> summariesByBucket = new LinkedHashMap<>();
+        for (CollectionsNote note : notes) {
+            B bucket = bucketExtractor.apply(note);
+            summariesByBucket.computeIfAbsent(bucket, ignored -> new CollectionsNoteSummaryAccumulator())
+                .add(note);
+        }
+
+        List<V> summaries = new ArrayList<>();
+        summariesByBucket.forEach((bucket, summary) -> summaries.add(
+            viewFactory.create(normalizedTenantCode, bucket, summary)
+        ));
+        return paginateList(summaries, pageQuery);
+    }
+
     private List<AgedTenantReceivableView> enrichAgedReceivables(List<ReceivableSnapshot> snapshots) {
         Map<String, CollectionsAssignment> assignmentsByInvoiceNumber = collectionsAssignmentRepository.findByInvoiceNumberIn(
             snapshots.stream().map(ReceivableSnapshot::invoiceNumber).toList()
@@ -1385,6 +1385,12 @@ class PaymentManagementService implements PaymentManagement {
     private interface AssignmentHistoryBucketViewFactory<B, V> {
 
         V create(String tenantCode, B bucket, AssignmentHistoryDailySummaryAccumulator summary);
+    }
+
+    @FunctionalInterface
+    private interface CollectionsNoteBucketViewFactory<B, V> {
+
+        V create(String tenantCode, B bucket, CollectionsNoteSummaryAccumulator summary);
     }
 
     private record ReceivableSnapshot(
