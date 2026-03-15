@@ -435,6 +435,30 @@ class PaymentManagementService implements PaymentManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<CollectionsNoteView> listTenantCollectionsNotes(
+        String tenantCode,
+        String invoiceNumber,
+        String notedBy,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedInvoiceNumber = invoiceNumber == null ? null : normalizeRequired(invoiceNumber, "invoiceNumber").toUpperCase();
+        String normalizedNotedBy = notedBy == null ? null : normalizeActorEmail(notedBy, "notedBy");
+        Page<CollectionsNote> notes = collectionsNoteRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            normalizedInvoiceNumber,
+            normalizedNotedBy,
+            notedAtFrom,
+            notedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "notedAt").and(Sort.by(Sort.Direction.DESC, "id")))
+        );
+        return PageResult.from(notes).map(this::toCollectionsNoteView);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<TenantCollectionsAssignmentSummaryView> listTenantCollectionsAssignmentSummaries(
         String tenantCode,
         String currencyCode,

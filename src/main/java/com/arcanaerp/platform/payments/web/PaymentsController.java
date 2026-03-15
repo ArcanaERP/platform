@@ -223,6 +223,30 @@ public class PaymentsController {
             .map(this::toCollectionsNoteResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/notes")
+    public PageResult<CollectionsNoteResponse> listTenantCollectionsNotes(
+        @PathVariable String tenantCode,
+        @RequestParam(required = false) String invoiceNumber,
+        @RequestParam(required = false) String notedBy,
+        @RequestParam(required = false) String notedAtFrom,
+        @RequestParam(required = false) String notedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedNotedAtFrom = parseOptionalInstant(notedAtFrom, "notedAtFrom");
+        Instant parsedNotedAtTo = parseOptionalInstant(notedAtTo, "notedAtTo");
+        validateInstantRange(parsedNotedAtFrom, parsedNotedAtTo, "notedAtFrom", "notedAtTo");
+        return paymentManagement.listTenantCollectionsNotes(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(invoiceNumber, "invoiceNumber"),
+                normalizeOptional(notedBy, "notedBy"),
+                parsedNotedAtFrom,
+                parsedNotedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toCollectionsNoteResponse);
+    }
+
     @GetMapping("/tenants/{tenantCode}/receivables/collections/assignment-history")
     public PageResult<CollectionsAssignmentChangeResponse> listTenantCollectionsAssignmentHistory(
         @PathVariable String tenantCode,

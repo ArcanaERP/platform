@@ -52,4 +52,42 @@ class CollectionsNoteRepositoryTest {
         assertThat(page.getContent().get(0).getNote()).isEqualTo("Second note");
         assertThat(page.getContent().get(0).getInvoiceNumber()).isEqualTo("INV-1000");
     }
+
+    @Test
+    void filtersTenantNotesByInvoiceActorAndRange() {
+        collectionsNoteRepository.saveAndFlush(CollectionsNote.create(
+            "tenant-a",
+            "inv-1000",
+            "First invoice note",
+            "collector-a@arcanaerp.com",
+            Instant.parse("2026-03-14T12:00:00Z")
+        ));
+        collectionsNoteRepository.saveAndFlush(CollectionsNote.create(
+            "tenant-a",
+            "inv-1001",
+            "Second invoice note",
+            "collector-b@arcanaerp.com",
+            Instant.parse("2026-03-14T12:05:00Z")
+        ));
+        collectionsNoteRepository.saveAndFlush(CollectionsNote.create(
+            "tenant-b",
+            "inv-1002",
+            "Other tenant",
+            "collector-b@arcanaerp.com",
+            Instant.parse("2026-03-14T12:10:00Z")
+        ));
+
+        var page = collectionsNoteRepository.findTenantHistoryFiltered(
+            "TENANT-A",
+            "INV-1001",
+            "collector-b@arcanaerp.com",
+            Instant.parse("2026-03-14T12:04:00Z"),
+            Instant.parse("2026-03-14T12:06:00Z"),
+            PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "notedAt").and(Sort.by(Sort.Direction.DESC, "id")))
+        );
+
+        assertThat(page.getContent()).hasSize(1);
+        assertThat(page.getContent().get(0).getInvoiceNumber()).isEqualTo("INV-1001");
+        assertThat(page.getContent().get(0).getNotedBy()).isEqualTo("collector-b@arcanaerp.com");
+    }
 }

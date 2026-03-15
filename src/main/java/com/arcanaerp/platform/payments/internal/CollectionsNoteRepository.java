@@ -29,4 +29,24 @@ interface CollectionsNoteRepository extends JpaRepository<CollectionsNote, UUID>
         @Param("notedAtTo") Instant notedAtTo,
         Pageable pageable
     );
+
+    @Query(
+        """
+        select note
+        from CollectionsNote note
+        where note.tenantCode = :tenantCode
+          and (:invoiceNumber is null or note.invoiceNumber = :invoiceNumber)
+          and (:notedBy is null or note.notedBy = :notedBy)
+          and (:notedAtFrom is null or note.notedAt >= :notedAtFrom)
+          and (:notedAtTo is null or note.notedAt <= :notedAtTo)
+        """
+    )
+    Page<CollectionsNote> findTenantHistoryFiltered(
+        @Param("tenantCode") String tenantCode,
+        @Param("invoiceNumber") String invoiceNumber,
+        @Param("notedBy") String notedBy,
+        @Param("notedAtFrom") Instant notedAtFrom,
+        @Param("notedAtTo") Instant notedAtTo,
+        Pageable pageable
+    );
 }
