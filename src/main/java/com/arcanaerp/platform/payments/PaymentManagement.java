@@ -86,6 +86,15 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    PageResult<TenantCollectionsNoteOutcomeSummaryView> listTenantCollectionsNoteOutcomeSummaries(
+        String tenantCode,
+        String notedBy,
+        CollectionsNoteCategory category,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<TenantCollectionsAssignmentSummaryView> listTenantCollectionsAssignmentSummaries(
         String tenantCode,
         String currencyCode,

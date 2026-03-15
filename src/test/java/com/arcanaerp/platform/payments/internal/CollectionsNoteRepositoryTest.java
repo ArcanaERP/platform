@@ -108,4 +108,47 @@ class CollectionsNoteRepositoryTest {
         assertThat(page.getContent().get(0).getInvoiceNumber()).isEqualTo("INV-1001");
         assertThat(page.getContent().get(0).getNotedBy()).isEqualTo("collector-b@arcanaerp.com");
     }
+
+    @Test
+    void listsTenantNotesForOutcomeSummaryFilters() {
+        collectionsNoteRepository.saveAndFlush(CollectionsNote.create(
+            "tenant-a",
+            "inv-1000",
+            "Promise noted",
+            "collector-a@arcanaerp.com",
+            CollectionsNoteCategory.PAYMENT_PROMISE,
+            CollectionsNoteOutcome.PROMISE_TO_PAY,
+            Instant.parse("2026-03-14T12:00:00Z")
+        ));
+        collectionsNoteRepository.saveAndFlush(CollectionsNote.create(
+            "tenant-a",
+            "inv-1001",
+            "Dispute logged",
+            "collector-a@arcanaerp.com",
+            CollectionsNoteCategory.DISPUTE,
+            CollectionsNoteOutcome.DISPUTE_OPENED,
+            Instant.parse("2026-03-14T12:05:00Z")
+        ));
+        collectionsNoteRepository.saveAndFlush(CollectionsNote.create(
+            "tenant-a",
+            "inv-1002",
+            "Escalated",
+            "collector-b@arcanaerp.com",
+            CollectionsNoteCategory.ESCALATION,
+            CollectionsNoteOutcome.ESCALATED,
+            Instant.parse("2026-03-14T12:10:00Z")
+        ));
+
+        var notes = collectionsNoteRepository.findTenantHistoryForOutcomeSummary(
+            "TENANT-A",
+            "collector-a@arcanaerp.com",
+            null,
+            Instant.parse("2026-03-14T11:59:00Z"),
+            Instant.parse("2026-03-14T12:06:00Z")
+        );
+
+        assertThat(notes).hasSize(2);
+        assertThat(notes).extracting(CollectionsNote::getOutcome)
+            .containsExactly(CollectionsNoteOutcome.DISPUTE_OPENED, CollectionsNoteOutcome.PROMISE_TO_PAY);
+    }
 }

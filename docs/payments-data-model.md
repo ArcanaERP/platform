@@ -303,6 +303,22 @@ Rules:
 - notes are immutable and exposed newest-first with optional `notedBy`, `category`, `outcome`, and noted-at range filters
 - tenant-wide notes feed also supports optional exact `invoiceNumber` filtering
 
+### TenantCollectionsNoteOutcomeSummary
+
+Purpose:
+- expose tenant-scoped collections note activity grouped by `outcome`
+
+Fields:
+- `tenantCode`
+- `outcome`
+- `noteCount`
+- `invoiceCount`
+
+Rules:
+- summary is built from immutable `CollectionsNote` rows
+- optional filters currently support exact `notedBy`, exact `category`, and noted-at range bounds
+- `invoiceCount` counts distinct invoices touched within one outcome bucket
+
 ## Cross-Module Dependency
 
 - `payments` reads invoices through public `InvoiceManagement`
@@ -323,6 +339,7 @@ Rules:
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/notes`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/notes?page=&size=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes?page=&size=&invoiceNumber=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/outcome-summary?page=&size=&notedBy=&category=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignment-history?page=&size=&invoiceNumber=&assignedTo=&assignedAtFrom=&assignedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/daily-summary?page=&size=&assignedTo=&assignedAtFrom=&assignedAtTo=`
