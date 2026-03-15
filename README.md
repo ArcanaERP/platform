@@ -120,7 +120,7 @@ Payments:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment-history?page=&size=&assignedTo=&assignedAtFrom=&assignedAtTo=`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/notes`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/notes?page=&size=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
-- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes?page=&size=&invoiceNumber=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes?page=&size=&invoiceNumber=&assignedTo=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/outcome-summary?page=&size=&notedBy=&category=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/category-summary?page=&size=&notedBy=&outcome=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignment-history?page=&size=&invoiceNumber=&assignedTo=&assignedAtFrom=&assignedAtTo=`

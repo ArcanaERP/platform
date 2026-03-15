@@ -301,7 +301,8 @@ Rules:
 - note creation requires the invoice to still be in the over-90 queue and to already have a current assignment
 - `notedBy` must resolve through the public `IdentityActorLookup`
 - notes are immutable and exposed newest-first with optional `notedBy`, `category`, `outcome`, and noted-at range filters
-- tenant-wide notes feed also supports optional exact `invoiceNumber` filtering
+- tenant-wide notes feed also supports optional exact `invoiceNumber` filtering and exact current `assignedTo` filtering
+- `assignedTo` is resolved against the current `CollectionsAssignment` row for each invoice, not against note authorship
 
 ### TenantCollectionsNoteOutcomeSummary
 
@@ -354,7 +355,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment-history?page=&size=&assignedTo=&assignedAtFrom=&assignedAtTo=`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/notes`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/notes?page=&size=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
-- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes?page=&size=&invoiceNumber=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes?page=&size=&invoiceNumber=&assignedTo=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/outcome-summary?page=&size=&notedBy=&category=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/category-summary?page=&size=&notedBy=&outcome=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignment-history?page=&size=&invoiceNumber=&assignedTo=&assignedAtFrom=&assignedAtTo=`

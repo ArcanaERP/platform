@@ -42,6 +42,13 @@ interface CollectionsNoteRepository extends JpaRepository<CollectionsNote, UUID>
         from CollectionsNote note
         where note.tenantCode = :tenantCode
           and (:invoiceNumber is null or note.invoiceNumber = :invoiceNumber)
+          and (:assignedTo is null or exists (
+              select assignment.id
+              from CollectionsAssignment assignment
+              where assignment.tenantCode = note.tenantCode
+                and assignment.invoiceNumber = note.invoiceNumber
+                and assignment.assignedTo = :assignedTo
+          ))
           and (:notedBy is null or note.notedBy = :notedBy)
           and (:category is null or note.category = :category)
           and (:outcome is null or note.outcome = :outcome)
@@ -52,6 +59,7 @@ interface CollectionsNoteRepository extends JpaRepository<CollectionsNote, UUID>
     Page<CollectionsNote> findTenantHistoryFiltered(
         @Param("tenantCode") String tenantCode,
         @Param("invoiceNumber") String invoiceNumber,
+        @Param("assignedTo") String assignedTo,
         @Param("notedBy") String notedBy,
         @Param("category") CollectionsNoteCategory category,
         @Param("outcome") CollectionsNoteOutcome outcome,

@@ -78,6 +78,7 @@ public interface PaymentManagement {
     PageResult<CollectionsNoteView> listTenantCollectionsNotes(
         String tenantCode,
         String invoiceNumber,
+        String assignedTo,
         String notedBy,
         CollectionsNoteCategory category,
         CollectionsNoteOutcome outcome,

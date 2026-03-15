@@ -448,6 +448,7 @@ class PaymentManagementService implements PaymentManagement {
     public PageResult<CollectionsNoteView> listTenantCollectionsNotes(
         String tenantCode,
         String invoiceNumber,
+        String assignedTo,
         String notedBy,
         CollectionsNoteCategory category,
         CollectionsNoteOutcome outcome,
@@ -457,10 +458,12 @@ class PaymentManagementService implements PaymentManagement {
     ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
         String normalizedInvoiceNumber = invoiceNumber == null ? null : normalizeRequired(invoiceNumber, "invoiceNumber").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
         String normalizedNotedBy = notedBy == null ? null : normalizeActorEmail(notedBy, "notedBy");
         Page<CollectionsNote> notes = collectionsNoteRepository.findTenantHistoryFiltered(
             normalizedTenantCode,
             normalizedInvoiceNumber,
+            normalizedAssignedTo,
             normalizedNotedBy,
             category,
             outcome,

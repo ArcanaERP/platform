@@ -237,6 +237,7 @@ public class PaymentsController {
     public PageResult<CollectionsNoteResponse> listTenantCollectionsNotes(
         @PathVariable String tenantCode,
         @RequestParam(required = false) String invoiceNumber,
+        @RequestParam(required = false) String assignedTo,
         @RequestParam(required = false) String notedBy,
         @RequestParam(required = false) String category,
         @RequestParam(required = false) String outcome,
@@ -251,6 +252,7 @@ public class PaymentsController {
         return paymentManagement.listTenantCollectionsNotes(
                 requirePathValue(tenantCode, "tenantCode"),
                 normalizeOptional(invoiceNumber, "invoiceNumber"),
+                normalizeOptional(assignedTo, "assignedTo"),
                 normalizeOptional(notedBy, "notedBy"),
                 parseOptionalCollectionsNoteCategory(category),
                 parseOptionalCollectionsNoteOutcome(outcome),
