@@ -79,4 +79,24 @@ interface CollectionsNoteRepository extends JpaRepository<CollectionsNote, UUID>
         @Param("notedAtFrom") Instant notedAtFrom,
         @Param("notedAtTo") Instant notedAtTo
     );
+
+    @Query(
+        """
+        select note
+        from CollectionsNote note
+        where note.tenantCode = :tenantCode
+          and (:notedBy is null or note.notedBy = :notedBy)
+          and (:outcome is null or note.outcome = :outcome)
+          and (:notedAtFrom is null or note.notedAt >= :notedAtFrom)
+          and (:notedAtTo is null or note.notedAt <= :notedAtTo)
+        order by note.notedAt desc, note.id desc
+        """
+    )
+    java.util.List<CollectionsNote> findTenantHistoryForCategorySummary(
+        @Param("tenantCode") String tenantCode,
+        @Param("notedBy") String notedBy,
+        @Param("outcome") CollectionsNoteOutcome outcome,
+        @Param("notedAtFrom") Instant notedAtFrom,
+        @Param("notedAtTo") Instant notedAtTo
+    );
 }

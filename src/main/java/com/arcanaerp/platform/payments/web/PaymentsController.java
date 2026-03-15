@@ -20,6 +20,7 @@ import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.ReceivablesAgingBucket;
 import com.arcanaerp.platform.payments.TenantCollectionsAssignmentSummaryView;
+import com.arcanaerp.platform.payments.TenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
@@ -282,6 +283,30 @@ public class PaymentsController {
                 PageQuery.of(page, size)
             )
             .map(this::toTenantCollectionsNoteOutcomeSummaryResponse);
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/notes/category-summary")
+    public PageResult<TenantCollectionsNoteCategorySummaryResponse> listTenantCollectionsNoteCategorySummaries(
+        @PathVariable String tenantCode,
+        @RequestParam(required = false) String notedBy,
+        @RequestParam(required = false) String outcome,
+        @RequestParam(required = false) String notedAtFrom,
+        @RequestParam(required = false) String notedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedNotedAtFrom = parseOptionalInstant(notedAtFrom, "notedAtFrom");
+        Instant parsedNotedAtTo = parseOptionalInstant(notedAtTo, "notedAtTo");
+        validateInstantRange(parsedNotedAtFrom, parsedNotedAtTo, "notedAtFrom", "notedAtTo");
+        return paymentManagement.listTenantCollectionsNoteCategorySummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(notedBy, "notedBy"),
+                parseOptionalCollectionsNoteOutcome(outcome),
+                parsedNotedAtFrom,
+                parsedNotedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toTenantCollectionsNoteCategorySummaryResponse);
     }
 
     @GetMapping("/tenants/{tenantCode}/receivables/collections/assignment-history")
@@ -668,6 +693,17 @@ public class PaymentsController {
         return new TenantCollectionsNoteOutcomeSummaryResponse(
             summary.tenantCode(),
             summary.outcome().name(),
+            summary.noteCount(),
+            summary.invoiceCount()
+        );
+    }
+
+    private TenantCollectionsNoteCategorySummaryResponse toTenantCollectionsNoteCategorySummaryResponse(
+        TenantCollectionsNoteCategorySummaryView summary
+    ) {
+        return new TenantCollectionsNoteCategorySummaryResponse(
+            summary.tenantCode(),
+            summary.category().name(),
             summary.noteCount(),
             summary.invoiceCount()
         );

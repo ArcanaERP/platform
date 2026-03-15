@@ -24,6 +24,7 @@ import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.ReceivablesAgingBucket;
 import com.arcanaerp.platform.payments.TenantCollectionsAssignmentSummaryView;
+import com.arcanaerp.platform.payments.TenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
@@ -501,6 +502,44 @@ class PaymentManagementService implements PaymentManagement {
             new TenantCollectionsNoteOutcomeSummaryView(
                 normalizedTenantCode,
                 outcome,
+                summary.noteCount,
+                summary.invoiceNumbers.size()
+            )
+        ));
+        return paginateList(summaries, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<TenantCollectionsNoteCategorySummaryView> listTenantCollectionsNoteCategorySummaries(
+        String tenantCode,
+        String notedBy,
+        CollectionsNoteOutcome outcome,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedNotedBy = notedBy == null ? null : normalizeActorEmail(notedBy, "notedBy");
+        List<CollectionsNote> notes = collectionsNoteRepository.findTenantHistoryForCategorySummary(
+            normalizedTenantCode,
+            normalizedNotedBy,
+            outcome,
+            notedAtFrom,
+            notedAtTo
+        );
+
+        Map<CollectionsNoteCategory, CollectionsNoteCategorySummaryAccumulator> summariesByCategory = new LinkedHashMap<>();
+        for (CollectionsNote note : notes) {
+            summariesByCategory.computeIfAbsent(note.getCategory(), ignored -> new CollectionsNoteCategorySummaryAccumulator())
+                .add(note);
+        }
+
+        List<TenantCollectionsNoteCategorySummaryView> summaries = new ArrayList<>();
+        summariesByCategory.forEach((category, summary) -> summaries.add(
+            new TenantCollectionsNoteCategorySummaryView(
+                normalizedTenantCode,
+                category,
                 summary.noteCount,
                 summary.invoiceNumbers.size()
             )
@@ -1163,6 +1202,17 @@ class PaymentManagementService implements PaymentManagement {
     }
 
     private static final class CollectionsNoteOutcomeSummaryAccumulator {
+
+        private long noteCount;
+        private final java.util.Set<String> invoiceNumbers = new java.util.LinkedHashSet<>();
+
+        void add(CollectionsNote note) {
+            noteCount++;
+            invoiceNumbers.add(note.getInvoiceNumber());
+        }
+    }
+
+    private static final class CollectionsNoteCategorySummaryAccumulator {
 
         private long noteCount;
         private final java.util.Set<String> invoiceNumbers = new java.util.LinkedHashSet<>();
