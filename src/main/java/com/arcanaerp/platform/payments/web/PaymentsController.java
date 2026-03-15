@@ -29,6 +29,7 @@ import com.arcanaerp.platform.payments.TenantReceivableView;
 import com.arcanaerp.platform.payments.TenantReceivablesAgingView;
 import com.arcanaerp.platform.payments.TenantReceivablesSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsAssignmentSummaryView;
+import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNoteSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantPaymentSummaryView;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -342,6 +343,34 @@ public class PaymentsController {
                 PageQuery.of(page, size)
             )
             .map(this::toDailyTenantCollectionsNoteSummaryResponse);
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/notes/weekly-summary")
+    public PageResult<WeeklyTenantCollectionsNoteSummaryResponse> listWeeklyTenantCollectionsNoteSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam(required = false) String assignedTo,
+        @RequestParam(required = false) String notedBy,
+        @RequestParam(required = false) String category,
+        @RequestParam(required = false) String outcome,
+        @RequestParam(required = false) String notedAtFrom,
+        @RequestParam(required = false) String notedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedNotedAtFrom = parseOptionalInstant(notedAtFrom, "notedAtFrom");
+        Instant parsedNotedAtTo = parseOptionalInstant(notedAtTo, "notedAtTo");
+        validateInstantRange(parsedNotedAtFrom, parsedNotedAtTo, "notedAtFrom", "notedAtTo");
+        return paymentManagement.listWeeklyTenantCollectionsNoteSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(assignedTo, "assignedTo"),
+                normalizeOptional(notedBy, "notedBy"),
+                parseOptionalCollectionsNoteCategory(category),
+                parseOptionalCollectionsNoteOutcome(outcome),
+                parsedNotedAtFrom,
+                parsedNotedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toWeeklyTenantCollectionsNoteSummaryResponse);
     }
 
     @GetMapping("/tenants/{tenantCode}/receivables/collections/assignment-history")
@@ -750,6 +779,17 @@ public class PaymentsController {
         return new DailyTenantCollectionsNoteSummaryResponse(
             summary.tenantCode(),
             summary.businessDate(),
+            summary.noteCount(),
+            summary.invoiceCount()
+        );
+    }
+
+    private WeeklyTenantCollectionsNoteSummaryResponse toWeeklyTenantCollectionsNoteSummaryResponse(
+        WeeklyTenantCollectionsNoteSummaryView summary
+    ) {
+        return new WeeklyTenantCollectionsNoteSummaryResponse(
+            summary.tenantCode(),
+            summary.businessWeekStart(),
             summary.noteCount(),
             summary.invoiceCount()
         );

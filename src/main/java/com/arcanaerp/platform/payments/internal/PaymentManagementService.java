@@ -33,6 +33,7 @@ import com.arcanaerp.platform.payments.TenantReceivableView;
 import com.arcanaerp.platform.payments.TenantReceivablesAgingView;
 import com.arcanaerp.platform.payments.TenantReceivablesSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsAssignmentSummaryView;
+import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNoteSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantPaymentSummaryView;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -594,6 +595,53 @@ class PaymentManagementService implements PaymentManagement {
             new DailyTenantCollectionsNoteSummaryView(
                 normalizedTenantCode,
                 businessDate,
+                summary.noteCount,
+                summary.invoiceNumbers.size()
+            )
+        ));
+        return paginateList(summaries, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WeeklyTenantCollectionsNoteSummaryView> listWeeklyTenantCollectionsNoteSummaries(
+        String tenantCode,
+        String assignedTo,
+        String notedBy,
+        CollectionsNoteCategory category,
+        CollectionsNoteOutcome outcome,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
+        String normalizedNotedBy = notedBy == null ? null : normalizeActorEmail(notedBy, "notedBy");
+        List<CollectionsNote> notes = collectionsNoteRepository.findTenantHistoryForDailySummary(
+            normalizedTenantCode,
+            normalizedAssignedTo,
+            normalizedNotedBy,
+            category,
+            outcome,
+            notedAtFrom,
+            notedAtTo
+        );
+
+        Map<LocalDate, CollectionsNoteSummaryAccumulator> summariesByWeekStart = new LinkedHashMap<>();
+        for (CollectionsNote note : notes) {
+            LocalDate businessWeekStart = note.getNotedAt()
+                .atOffset(ZoneOffset.UTC)
+                .toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            summariesByWeekStart.computeIfAbsent(businessWeekStart, ignored -> new CollectionsNoteSummaryAccumulator())
+                .add(note);
+        }
+
+        List<WeeklyTenantCollectionsNoteSummaryView> summaries = new ArrayList<>();
+        summariesByWeekStart.forEach((businessWeekStart, summary) -> summaries.add(
+            new WeeklyTenantCollectionsNoteSummaryView(
+                normalizedTenantCode,
+                businessWeekStart,
                 summary.noteCount,
                 summary.invoiceNumbers.size()
             )
