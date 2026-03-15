@@ -435,32 +435,20 @@ class PaymentManagementService implements PaymentManagement {
         Instant assignedAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
-        List<CollectionsAssignmentAudit> audits = collectionsAssignmentAuditRepository.findTenantHistoryForSummary(
-            normalizedTenantCode,
-            normalizedAssignedTo,
+        return summarizeCollectionsAssignmentHistory(
+            tenantCode,
+            assignedTo,
             assignedAtFrom,
-            assignedAtTo
-        );
-
-        Map<LocalDate, AssignmentHistoryDailySummaryAccumulator> summariesByDate = new LinkedHashMap<>();
-        for (CollectionsAssignmentAudit audit : audits) {
-            LocalDate businessDate = audit.getAssignedAt().atOffset(ZoneOffset.UTC).toLocalDate();
-            summariesByDate.computeIfAbsent(businessDate, ignored -> new AssignmentHistoryDailySummaryAccumulator())
-                .add(audit);
-        }
-
-        List<DailyTenantCollectionsAssignmentSummaryView> summaries = new ArrayList<>();
-        summariesByDate.forEach((businessDate, summary) -> summaries.add(
-            new DailyTenantCollectionsAssignmentSummaryView(
+            assignedAtTo,
+            pageQuery,
+            audit -> audit.getAssignedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            (normalizedTenantCode, businessDate, summary) -> new DailyTenantCollectionsAssignmentSummaryView(
                 normalizedTenantCode,
                 businessDate,
                 summary.assignmentCount,
                 summary.invoiceNumbers.size()
             )
-        ));
-        return paginateDailyAssignmentSummaries(summaries, pageQuery);
+        );
     }
 
     @Override
@@ -472,35 +460,23 @@ class PaymentManagementService implements PaymentManagement {
         Instant assignedAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
-        List<CollectionsAssignmentAudit> audits = collectionsAssignmentAuditRepository.findTenantHistoryForSummary(
-            normalizedTenantCode,
-            normalizedAssignedTo,
+        return summarizeCollectionsAssignmentHistory(
+            tenantCode,
+            assignedTo,
             assignedAtFrom,
-            assignedAtTo
-        );
-
-        Map<LocalDate, AssignmentHistoryDailySummaryAccumulator> summariesByWeek = new LinkedHashMap<>();
-        for (CollectionsAssignmentAudit audit : audits) {
-            LocalDate businessWeekStart = audit.getAssignedAt()
+            assignedAtTo,
+            pageQuery,
+            audit -> audit.getAssignedAt()
                 .atOffset(ZoneOffset.UTC)
                 .toLocalDate()
-                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-            summariesByWeek.computeIfAbsent(businessWeekStart, ignored -> new AssignmentHistoryDailySummaryAccumulator())
-                .add(audit);
-        }
-
-        List<WeeklyTenantCollectionsAssignmentSummaryView> summaries = new ArrayList<>();
-        summariesByWeek.forEach((businessWeekStart, summary) -> summaries.add(
-            new WeeklyTenantCollectionsAssignmentSummaryView(
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            (normalizedTenantCode, businessWeekStart, summary) -> new WeeklyTenantCollectionsAssignmentSummaryView(
                 normalizedTenantCode,
                 businessWeekStart,
                 summary.assignmentCount,
                 summary.invoiceNumbers.size()
             )
-        ));
-        return paginateWeeklyAssignmentSummaries(summaries, pageQuery);
+        );
     }
 
     @Override
@@ -512,32 +488,20 @@ class PaymentManagementService implements PaymentManagement {
         Instant assignedAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
-        List<CollectionsAssignmentAudit> audits = collectionsAssignmentAuditRepository.findTenantHistoryForSummary(
-            normalizedTenantCode,
-            normalizedAssignedTo,
+        return summarizeCollectionsAssignmentHistory(
+            tenantCode,
+            assignedTo,
             assignedAtFrom,
-            assignedAtTo
-        );
-
-        Map<YearMonth, AssignmentHistoryDailySummaryAccumulator> summariesByMonth = new LinkedHashMap<>();
-        for (CollectionsAssignmentAudit audit : audits) {
-            YearMonth businessMonth = YearMonth.from(audit.getAssignedAt().atOffset(ZoneOffset.UTC));
-            summariesByMonth.computeIfAbsent(businessMonth, ignored -> new AssignmentHistoryDailySummaryAccumulator())
-                .add(audit);
-        }
-
-        List<MonthlyTenantCollectionsAssignmentSummaryView> summaries = new ArrayList<>();
-        summariesByMonth.forEach((businessMonth, summary) -> summaries.add(
-            new MonthlyTenantCollectionsAssignmentSummaryView(
+            assignedAtTo,
+            pageQuery,
+            audit -> YearMonth.from(audit.getAssignedAt().atOffset(ZoneOffset.UTC)),
+            (normalizedTenantCode, businessMonth, summary) -> new MonthlyTenantCollectionsAssignmentSummaryView(
                 normalizedTenantCode,
                 businessMonth,
                 summary.assignmentCount,
                 summary.invoiceNumbers.size()
             )
-        ));
-        return paginateMonthlyAssignmentSummaries(summaries, pageQuery);
+        );
     }
 
     @Override
@@ -740,6 +704,38 @@ class PaymentManagementService implements PaymentManagement {
         );
     }
 
+    private <B, V> PageResult<V> summarizeCollectionsAssignmentHistory(
+        String tenantCode,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery,
+        Function<CollectionsAssignmentAudit, B> bucketExtractor,
+        AssignmentHistoryBucketViewFactory<B, V> viewFactory
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
+        List<CollectionsAssignmentAudit> audits = collectionsAssignmentAuditRepository.findTenantHistoryForSummary(
+            normalizedTenantCode,
+            normalizedAssignedTo,
+            assignedAtFrom,
+            assignedAtTo
+        );
+
+        Map<B, AssignmentHistoryDailySummaryAccumulator> summariesByBucket = new LinkedHashMap<>();
+        for (CollectionsAssignmentAudit audit : audits) {
+            B bucket = bucketExtractor.apply(audit);
+            summariesByBucket.computeIfAbsent(bucket, ignored -> new AssignmentHistoryDailySummaryAccumulator())
+                .add(audit);
+        }
+
+        List<V> summaries = new ArrayList<>();
+        summariesByBucket.forEach((bucket, summary) -> summaries.add(
+            viewFactory.create(normalizedTenantCode, bucket, summary)
+        ));
+        return paginateList(summaries, pageQuery);
+    }
+
     private void forEachIssuedInvoice(
         String tenantCode,
         String currencyCode,
@@ -814,58 +810,11 @@ class PaymentManagementService implements PaymentManagement {
         List<TenantCollectionsAssignmentSummaryView> filtered,
         PageQuery pageQuery
     ) {
-        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), filtered.size());
-        int toIndex = Math.min(fromIndex + pageQuery.size(), filtered.size());
-        int totalPages = filtered.isEmpty() ? 0 : (int) Math.ceil((double) filtered.size() / pageQuery.size());
-        return new PageResult<>(
-            filtered.subList(fromIndex, toIndex),
-            pageQuery.page(),
-            pageQuery.size(),
-            filtered.size(),
-            totalPages,
-            toIndex < filtered.size(),
-            pageQuery.page() > 0
-        );
+        return paginateList(filtered, pageQuery);
     }
 
-    private PageResult<DailyTenantCollectionsAssignmentSummaryView> paginateDailyAssignmentSummaries(
-        List<DailyTenantCollectionsAssignmentSummaryView> filtered,
-        PageQuery pageQuery
-    ) {
-        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), filtered.size());
-        int toIndex = Math.min(fromIndex + pageQuery.size(), filtered.size());
-        int totalPages = filtered.isEmpty() ? 0 : (int) Math.ceil((double) filtered.size() / pageQuery.size());
-        return new PageResult<>(
-            filtered.subList(fromIndex, toIndex),
-            pageQuery.page(),
-            pageQuery.size(),
-            filtered.size(),
-            totalPages,
-            toIndex < filtered.size(),
-            pageQuery.page() > 0
-        );
-    }
-
-    private PageResult<WeeklyTenantCollectionsAssignmentSummaryView> paginateWeeklyAssignmentSummaries(
-        List<WeeklyTenantCollectionsAssignmentSummaryView> filtered,
-        PageQuery pageQuery
-    ) {
-        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), filtered.size());
-        int toIndex = Math.min(fromIndex + pageQuery.size(), filtered.size());
-        int totalPages = filtered.isEmpty() ? 0 : (int) Math.ceil((double) filtered.size() / pageQuery.size());
-        return new PageResult<>(
-            filtered.subList(fromIndex, toIndex),
-            pageQuery.page(),
-            pageQuery.size(),
-            filtered.size(),
-            totalPages,
-            toIndex < filtered.size(),
-            pageQuery.page() > 0
-        );
-    }
-
-    private PageResult<MonthlyTenantCollectionsAssignmentSummaryView> paginateMonthlyAssignmentSummaries(
-        List<MonthlyTenantCollectionsAssignmentSummaryView> filtered,
+    private <T> PageResult<T> paginateList(
+        List<T> filtered,
         PageQuery pageQuery
     ) {
         int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), filtered.size());
@@ -1056,6 +1005,12 @@ class PaymentManagementService implements PaymentManagement {
             assignmentCount++;
             invoiceNumbers.add(audit.getInvoiceNumber());
         }
+    }
+
+    @FunctionalInterface
+    private interface AssignmentHistoryBucketViewFactory<B, V> {
+
+        V create(String tenantCode, B bucket, AssignmentHistoryDailySummaryAccumulator summary);
     }
 
     private record ReceivableSnapshot(
