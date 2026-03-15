@@ -369,6 +369,23 @@ Rules:
 - week buckets use Monday as `businessWeekStart`
 - `invoiceCount` counts distinct invoices touched within one UTC business-week bucket
 
+### MonthlyTenantCollectionsNoteSummary
+
+Purpose:
+- expose tenant-scoped collections note activity grouped by UTC business month
+
+Fields:
+- `tenantCode`
+- `businessMonth`
+- `noteCount`
+- `invoiceCount`
+
+Rules:
+- summary is built from immutable `CollectionsNote` rows
+- optional filters currently support exact current `assignedTo`, exact `notedBy`, exact `category`, exact `outcome`, and noted-at range bounds
+- month buckets use UTC `YearMonth`
+- `invoiceCount` counts distinct invoices touched within one UTC business-month bucket
+
 ## Cross-Module Dependency
 
 - `payments` reads invoices through public `InvoiceManagement`
@@ -393,6 +410,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/category-summary?page=&size=&assignedTo=&notedBy=&outcome=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/daily-summary?page=&size=&assignedTo=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/weekly-summary?page=&size=&assignedTo=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/monthly-summary?page=&size=&assignedTo=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignment-history?page=&size=&invoiceNumber=&assignedTo=&assignedAtFrom=&assignedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/daily-summary?page=&size=&assignedTo=&assignedAtFrom=&assignedAtTo=`

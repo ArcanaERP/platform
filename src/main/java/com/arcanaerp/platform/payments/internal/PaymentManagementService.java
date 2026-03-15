@@ -19,6 +19,7 @@ import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
+import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.PaymentManagement;
@@ -642,6 +643,50 @@ class PaymentManagementService implements PaymentManagement {
             new WeeklyTenantCollectionsNoteSummaryView(
                 normalizedTenantCode,
                 businessWeekStart,
+                summary.noteCount,
+                summary.invoiceNumbers.size()
+            )
+        ));
+        return paginateList(summaries, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyTenantCollectionsNoteSummaryView> listMonthlyTenantCollectionsNoteSummaries(
+        String tenantCode,
+        String assignedTo,
+        String notedBy,
+        CollectionsNoteCategory category,
+        CollectionsNoteOutcome outcome,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
+        String normalizedNotedBy = notedBy == null ? null : normalizeActorEmail(notedBy, "notedBy");
+        List<CollectionsNote> notes = collectionsNoteRepository.findTenantHistoryForDailySummary(
+            normalizedTenantCode,
+            normalizedAssignedTo,
+            normalizedNotedBy,
+            category,
+            outcome,
+            notedAtFrom,
+            notedAtTo
+        );
+
+        Map<YearMonth, CollectionsNoteSummaryAccumulator> summariesByMonth = new LinkedHashMap<>();
+        for (CollectionsNote note : notes) {
+            YearMonth businessMonth = YearMonth.from(note.getNotedAt().atOffset(ZoneOffset.UTC));
+            summariesByMonth.computeIfAbsent(businessMonth, ignored -> new CollectionsNoteSummaryAccumulator())
+                .add(note);
+        }
+
+        List<MonthlyTenantCollectionsNoteSummaryView> summaries = new ArrayList<>();
+        summariesByMonth.forEach((businessMonth, summary) -> summaries.add(
+            new MonthlyTenantCollectionsNoteSummaryView(
+                normalizedTenantCode,
+                businessMonth,
                 summary.noteCount,
                 summary.invoiceNumbers.size()
             )

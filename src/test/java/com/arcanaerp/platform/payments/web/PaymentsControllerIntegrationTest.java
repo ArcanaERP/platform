@@ -44,6 +44,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_NOTES_ASSIGNEE_TENANT_CODE = "tenant-coll-note-assignee";
     private static final String COLLECTIONS_NOTES_DAILY_SUM_TENANT_CODE = "tenant-coll-note-daysum";
     private static final String COLLECTIONS_NOTES_WEEKLY_SUM_TENANT_CODE = "tenant-coll-note-weeksum";
+    private static final String COLLECTIONS_NOTES_MONTHLY_SUM_TENANT_CODE = "tenant-coll-note-monthsum";
 
     @Autowired
     private MockMvc mockMvc;
@@ -1655,6 +1656,138 @@ class PaymentsControllerIntegrationTest {
 
         mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsNoteWeeklySummaryRequest(
                 COLLECTIONS_NOTES_WEEKLY_SUM_TENANT_CODE,
+                0,
+                10,
+                "assignedTo",
+                "   "
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("assignedTo query parameter must not be blank"));
+    }
+
+    @Test
+    void listsMonthlyTenantCollectionsNoteSummaries() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_NOTES_MONTHLY_SUM_TENANT_CODE,
+            "Collections Note Monthly Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_NOTES_MONTHLY_SUM_TENANT_CODE,
+            "Collections Note Monthly Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_NOTES_MONTHLY_SUM_TENANT_CODE,
+            "Collections Note Monthly Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_NOTES_MONTHLY_SUM_TENANT_CODE,
+            "arc-pay-1064",
+            "so-pay-1064",
+            "inv-pay-1064",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_NOTES_MONTHLY_SUM_TENANT_CODE,
+            "arc-pay-1065",
+            "so-pay-1065",
+            "inv-pay-1065",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(15 * 86400)
+        );
+
+        Instant firstMonth = Instant.parse("2026-07-15T12:00:00Z");
+        testClock.setInstant(firstMonth);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_NOTES_MONTHLY_SUM_TENANT_CODE,
+            "inv-pay-1064",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_NOTES_MONTHLY_SUM_TENANT_CODE,
+            "inv-pay-1065",
+            "collector-b@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.addCollectionsNote(
+            mockMvc,
+            COLLECTIONS_NOTES_MONTHLY_SUM_TENANT_CODE,
+            "inv-pay-1064",
+            "Collector A month one note.",
+            "collector-a@arcanaerp.com",
+            "CONTACT_ATTEMPT",
+            "AWAITING_RESPONSE"
+        ).andExpect(status().isCreated());
+
+        Instant secondMonth = Instant.parse("2026-08-15T12:00:00Z");
+        testClock.setInstant(secondMonth);
+        PaymentsWebIntegrationTestSupport.addCollectionsNote(
+            mockMvc,
+            COLLECTIONS_NOTES_MONTHLY_SUM_TENANT_CODE,
+            "inv-pay-1065",
+            "Collector B month two note.",
+            "collector-b@arcanaerp.com",
+            "DISPUTE",
+            "DISPUTE_OPENED"
+        ).andExpect(status().isCreated());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsNoteMonthlySummaryRequest(
+                COLLECTIONS_NOTES_MONTHLY_SUM_TENANT_CODE,
+                0,
+                10
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessMonth").value("2026-08"))
+            .andExpect(jsonPath("$.items[0].noteCount").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1))
+            .andExpect(jsonPath("$.items[1].businessMonth").value("2026-07"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsNoteMonthlySummaryRequest(
+                COLLECTIONS_NOTES_MONTHLY_SUM_TENANT_CODE,
+                0,
+                10,
+                "assignedTo",
+                "collector-b@arcanaerp.com",
+                "notedBy",
+                "collector-b@arcanaerp.com",
+                "category",
+                "DISPUTE",
+                "outcome",
+                "DISPUTE_OPENED",
+                "notedAtFrom",
+                secondMonth.minusSeconds(1).toString(),
+                "notedAtTo",
+                secondMonth.plusSeconds(1).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].businessMonth").value("2026-08"))
+            .andExpect(jsonPath("$.items[0].noteCount").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsNoteMonthlySummaryRequest(
+                COLLECTIONS_NOTES_MONTHLY_SUM_TENANT_CODE,
                 0,
                 10,
                 "assignedTo",
