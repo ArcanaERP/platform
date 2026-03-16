@@ -20,6 +20,7 @@ import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
+import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteOutcomeSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsAssignmentSummaryView;
@@ -721,6 +722,40 @@ class PaymentManagementService implements PaymentManagement {
             (normalizedTenantCode, bucket, summary) -> new WeeklyTenantCollectionsNoteOutcomeSummaryView(
                 normalizedTenantCode,
                 bucket.businessWeekStart(),
+                bucket.outcome(),
+                summary.noteCount,
+                summary.invoiceNumbers.size()
+            )
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyTenantCollectionsNoteOutcomeSummaryView> listMonthlyTenantCollectionsNoteOutcomeSummaries(
+        String tenantCode,
+        String assignedTo,
+        String notedBy,
+        CollectionsNoteCategory category,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeTenantCollectionsNotes(
+            tenantCode,
+            assignedTo,
+            notedBy,
+            category,
+            null,
+            notedAtFrom,
+            notedAtTo,
+            pageQuery,
+            note -> new MonthlyCollectionsNoteOutcomeBucket(
+                YearMonth.from(note.getNotedAt().atOffset(ZoneOffset.UTC)),
+                note.getOutcome()
+            ),
+            (normalizedTenantCode, bucket, summary) -> new MonthlyTenantCollectionsNoteOutcomeSummaryView(
+                normalizedTenantCode,
+                bucket.businessMonth(),
                 bucket.outcome(),
                 summary.noteCount,
                 summary.invoiceNumbers.size()
@@ -1462,6 +1497,12 @@ class PaymentManagementService implements PaymentManagement {
 
     private record WeeklyCollectionsNoteOutcomeBucket(
         LocalDate businessWeekStart,
+        CollectionsNoteOutcome outcome
+    ) {
+    }
+
+    private record MonthlyCollectionsNoteOutcomeBucket(
+        YearMonth businessMonth,
         CollectionsNoteOutcome outcome
     ) {
     }

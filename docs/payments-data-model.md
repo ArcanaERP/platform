@@ -413,6 +413,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/monthly-summary?page=&size=&assignedTo=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/outcome/daily-summary?page=&size=&assignedTo=&notedBy=&category=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/outcome/weekly-summary?page=&size=&assignedTo=&notedBy=&category=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/outcome/monthly-summary?page=&size=&assignedTo=&notedBy=&category=&notedAtFrom=&notedAtTo=`
 
 ### DailyTenantCollectionsNoteOutcomeSummary
 
@@ -447,6 +448,23 @@ Rules:
 - summary is built from immutable `CollectionsNote` rows
 - optional filters support exact current `assignedTo`, exact `notedBy`, exact `category`, and noted-at range bounds
 - `invoiceCount` counts distinct invoices touched within one `businessWeekStart + outcome` bucket
+
+### MonthlyTenantCollectionsNoteOutcomeSummary
+
+Purpose:
+- expose tenant-scoped collections note activity grouped by UTC `YearMonth` and note `outcome`
+
+Fields:
+- `tenantCode`
+- `businessMonth`
+- `outcome`
+- `noteCount`
+- `invoiceCount`
+
+Rules:
+- summary is built from immutable `CollectionsNote` rows
+- optional filters support exact current `assignedTo`, exact `notedBy`, exact `category`, and noted-at range bounds
+- `invoiceCount` counts distinct invoices touched within one `businessMonth + outcome` bucket
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignment-history?page=&size=&invoiceNumber=&assignedTo=&assignedAtFrom=&assignedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/daily-summary?page=&size=&assignedTo=&assignedAtFrom=&assignedAtTo=`
