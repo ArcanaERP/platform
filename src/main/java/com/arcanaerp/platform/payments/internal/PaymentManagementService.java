@@ -35,6 +35,7 @@ import com.arcanaerp.platform.payments.TenantReceivableView;
 import com.arcanaerp.platform.payments.TenantReceivablesAgingView;
 import com.arcanaerp.platform.payments.TenantReceivablesSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsAssignmentSummaryView;
+import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNoteOutcomeSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNoteSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantPaymentSummaryView;
 import java.math.BigDecimal;
@@ -683,6 +684,43 @@ class PaymentManagementService implements PaymentManagement {
             (normalizedTenantCode, bucket, summary) -> new DailyTenantCollectionsNoteOutcomeSummaryView(
                 normalizedTenantCode,
                 bucket.businessDate(),
+                bucket.outcome(),
+                summary.noteCount,
+                summary.invoiceNumbers.size()
+            )
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WeeklyTenantCollectionsNoteOutcomeSummaryView> listWeeklyTenantCollectionsNoteOutcomeSummaries(
+        String tenantCode,
+        String assignedTo,
+        String notedBy,
+        CollectionsNoteCategory category,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeTenantCollectionsNotes(
+            tenantCode,
+            assignedTo,
+            notedBy,
+            category,
+            null,
+            notedAtFrom,
+            notedAtTo,
+            pageQuery,
+            note -> {
+                LocalDate businessDate = note.getNotedAt().atOffset(ZoneOffset.UTC).toLocalDate();
+                return new WeeklyCollectionsNoteOutcomeBucket(
+                    businessDate.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY)),
+                    note.getOutcome()
+                );
+            },
+            (normalizedTenantCode, bucket, summary) -> new WeeklyTenantCollectionsNoteOutcomeSummaryView(
+                normalizedTenantCode,
+                bucket.businessWeekStart(),
                 bucket.outcome(),
                 summary.noteCount,
                 summary.invoiceNumbers.size()
@@ -1418,6 +1456,12 @@ class PaymentManagementService implements PaymentManagement {
 
     private record DailyCollectionsNoteOutcomeBucket(
         LocalDate businessDate,
+        CollectionsNoteOutcome outcome
+    ) {
+    }
+
+    private record WeeklyCollectionsNoteOutcomeBucket(
+        LocalDate businessWeekStart,
         CollectionsNoteOutcome outcome
     ) {
     }
