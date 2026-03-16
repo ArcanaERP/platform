@@ -669,12 +669,11 @@ class PaymentManagementService implements PaymentManagement {
         Instant notedAtTo,
         PageQuery pageQuery
     ) {
-        return summarizeTenantCollectionsNotes(
+        return summarizeTenantCollectionsNoteOutcomes(
             tenantCode,
             assignedTo,
             notedBy,
             category,
-            null,
             notedAtFrom,
             notedAtTo,
             pageQuery,
@@ -703,12 +702,11 @@ class PaymentManagementService implements PaymentManagement {
         Instant notedAtTo,
         PageQuery pageQuery
     ) {
-        return summarizeTenantCollectionsNotes(
+        return summarizeTenantCollectionsNoteOutcomes(
             tenantCode,
             assignedTo,
             notedBy,
             category,
-            null,
             notedAtFrom,
             notedAtTo,
             pageQuery,
@@ -740,12 +738,11 @@ class PaymentManagementService implements PaymentManagement {
         Instant notedAtTo,
         PageQuery pageQuery
     ) {
-        return summarizeTenantCollectionsNotes(
+        return summarizeTenantCollectionsNoteOutcomes(
             tenantCode,
             assignedTo,
             notedBy,
             category,
-            null,
             notedAtFrom,
             notedAtTo,
             pageQuery,
@@ -1267,6 +1264,31 @@ class PaymentManagementService implements PaymentManagement {
         return paginateList(summaries, pageQuery);
     }
 
+    private <B, V> PageResult<V> summarizeTenantCollectionsNoteOutcomes(
+        String tenantCode,
+        String assignedTo,
+        String notedBy,
+        CollectionsNoteCategory category,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery,
+        Function<CollectionsNote, B> bucketExtractor,
+        CollectionsNoteOutcomeBucketViewFactory<B, V> viewFactory
+    ) {
+        return summarizeTenantCollectionsNotes(
+            tenantCode,
+            assignedTo,
+            notedBy,
+            category,
+            null,
+            notedAtFrom,
+            notedAtTo,
+            pageQuery,
+            bucketExtractor,
+            viewFactory::create
+        );
+    }
+
     private List<AgedTenantReceivableView> enrichAgedReceivables(List<ReceivableSnapshot> snapshots) {
         Map<String, CollectionsAssignment> assignmentsByInvoiceNumber = collectionsAssignmentRepository.findByInvoiceNumberIn(
             snapshots.stream().map(ReceivableSnapshot::invoiceNumber).toList()
@@ -1515,6 +1537,12 @@ class PaymentManagementService implements PaymentManagement {
 
     @FunctionalInterface
     private interface CollectionsNoteBucketViewFactory<B, V> {
+
+        V create(String tenantCode, B bucket, CollectionsNoteSummaryAccumulator summary);
+    }
+
+    @FunctionalInterface
+    private interface CollectionsNoteOutcomeBucketViewFactory<B, V> {
 
         V create(String tenantCode, B bucket, CollectionsNoteSummaryAccumulator summary);
     }
