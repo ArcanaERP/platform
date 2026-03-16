@@ -353,6 +353,23 @@ Rules:
 - optional filters currently support exact current `assignedTo`, exact `notedBy`, exact `outcome`, and noted-at range bounds
 - `invoiceCount` counts distinct invoices touched within one `businessDate + category` bucket
 
+### WeeklyTenantCollectionsNoteCategorySummary
+
+Purpose:
+- expose tenant-scoped collections note activity grouped by Monday-based UTC business week and note `category`
+
+Fields:
+- `tenantCode`
+- `businessWeekStart`
+- `category`
+- `noteCount`
+- `invoiceCount`
+
+Rules:
+- summary is built from immutable `CollectionsNote` rows
+- optional filters currently support exact current `assignedTo`, exact `notedBy`, exact `outcome`, and noted-at range bounds
+- `invoiceCount` counts distinct invoices touched within one `businessWeekStart + category` bucket
+
 ### DailyTenantCollectionsNoteSummary
 
 Purpose:
@@ -426,6 +443,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/outcome-summary?page=&size=&assignedTo=&notedBy=&category=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/category-summary?page=&size=&assignedTo=&notedBy=&outcome=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/category/daily-summary?page=&size=&assignedTo=&notedBy=&outcome=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/category/weekly-summary?page=&size=&assignedTo=&notedBy=&outcome=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/daily-summary?page=&size=&assignedTo=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/weekly-summary?page=&size=&assignedTo=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/monthly-summary?page=&size=&assignedTo=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
