@@ -15,6 +15,7 @@ import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import com.arcanaerp.platform.payments.CollectionsNoteView;
 import com.arcanaerp.platform.payments.CreateCollectionsNoteCommand;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteSummaryView;
+import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteOutcomeSummaryView;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsAssignmentSummaryView;
@@ -649,6 +650,40 @@ class PaymentManagementService implements PaymentManagement {
             (normalizedTenantCode, businessMonth, summary) -> new MonthlyTenantCollectionsNoteSummaryView(
                 normalizedTenantCode,
                 businessMonth,
+                summary.noteCount,
+                summary.invoiceNumbers.size()
+            )
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DailyTenantCollectionsNoteOutcomeSummaryView> listDailyTenantCollectionsNoteOutcomeSummaries(
+        String tenantCode,
+        String assignedTo,
+        String notedBy,
+        CollectionsNoteCategory category,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeTenantCollectionsNotes(
+            tenantCode,
+            assignedTo,
+            notedBy,
+            category,
+            null,
+            notedAtFrom,
+            notedAtTo,
+            pageQuery,
+            note -> new DailyCollectionsNoteOutcomeBucket(
+                note.getNotedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+                note.getOutcome()
+            ),
+            (normalizedTenantCode, bucket, summary) -> new DailyTenantCollectionsNoteOutcomeSummaryView(
+                normalizedTenantCode,
+                bucket.businessDate(),
+                bucket.outcome(),
                 summary.noteCount,
                 summary.invoiceNumbers.size()
             )
@@ -1379,6 +1414,12 @@ class PaymentManagementService implements PaymentManagement {
             noteCount++;
             invoiceNumbers.add(note.getInvoiceNumber());
         }
+    }
+
+    private record DailyCollectionsNoteOutcomeBucket(
+        LocalDate businessDate,
+        CollectionsNoteOutcome outcome
+    ) {
     }
 
     @FunctionalInterface

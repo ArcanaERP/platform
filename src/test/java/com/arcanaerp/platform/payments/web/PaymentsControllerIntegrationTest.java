@@ -45,6 +45,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_NOTES_DAILY_SUM_TENANT_CODE = "tenant-coll-note-daysum";
     private static final String COLLECTIONS_NOTES_WEEKLY_SUM_TENANT_CODE = "tenant-coll-note-weeksum";
     private static final String COLLECTIONS_NOTES_MONTHLY_SUM_TENANT_CODE = "tenant-coll-note-monthsum";
+    private static final String COLLECTIONS_NOTES_OUTCOME_DAY_TENANT_CODE = "tenant-coll-note-outday";
 
     @Autowired
     private MockMvc mockMvc;
@@ -1788,6 +1789,150 @@ class PaymentsControllerIntegrationTest {
 
         mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsNoteMonthlySummaryRequest(
                 COLLECTIONS_NOTES_MONTHLY_SUM_TENANT_CODE,
+                0,
+                10,
+                "assignedTo",
+                "   "
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("assignedTo query parameter must not be blank"));
+    }
+
+    @Test
+    void listsDailyTenantCollectionsNoteOutcomeSummaries() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_NOTES_OUTCOME_DAY_TENANT_CODE,
+            "Collections Note Outcome Day Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_NOTES_OUTCOME_DAY_TENANT_CODE,
+            "Collections Note Outcome Day Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_NOTES_OUTCOME_DAY_TENANT_CODE,
+            "Collections Note Outcome Day Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_NOTES_OUTCOME_DAY_TENANT_CODE,
+            "arc-pay-1080",
+            "so-pay-1080",
+            "inv-pay-1080",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_NOTES_OUTCOME_DAY_TENANT_CODE,
+            "arc-pay-1081",
+            "so-pay-1081",
+            "inv-pay-1081",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(15 * 86400)
+        );
+
+        Instant firstDay = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400L);
+        testClock.setInstant(firstDay);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_NOTES_OUTCOME_DAY_TENANT_CODE,
+            "inv-pay-1080",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_NOTES_OUTCOME_DAY_TENANT_CODE,
+            "inv-pay-1081",
+            "collector-b@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.addCollectionsNote(
+            mockMvc,
+            COLLECTIONS_NOTES_OUTCOME_DAY_TENANT_CODE,
+            "inv-pay-1080",
+            "Collector A day one contact note.",
+            "collector-a@arcanaerp.com",
+            "CONTACT_ATTEMPT",
+            "AWAITING_RESPONSE"
+        ).andExpect(status().isCreated());
+
+        Instant secondDay = firstDay.plusSeconds(86400);
+        testClock.setInstant(secondDay);
+        PaymentsWebIntegrationTestSupport.addCollectionsNote(
+            mockMvc,
+            COLLECTIONS_NOTES_OUTCOME_DAY_TENANT_CODE,
+            "inv-pay-1081",
+            "Collector B dispute note.",
+            "collector-b@arcanaerp.com",
+            "DISPUTE",
+            "DISPUTE_OPENED"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.addCollectionsNote(
+            mockMvc,
+            COLLECTIONS_NOTES_OUTCOME_DAY_TENANT_CODE,
+            "inv-pay-1081",
+            "Collector B escalated the dispute.",
+            "collector-b@arcanaerp.com",
+            "ESCALATION",
+            "ESCALATED"
+        ).andExpect(status().isCreated());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsNoteOutcomeDailySummaryRequest(
+                COLLECTIONS_NOTES_OUTCOME_DAY_TENANT_CODE,
+                0,
+                10
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].businessDate").value(secondDay.atOffset(java.time.ZoneOffset.UTC).toLocalDate().toString()))
+            .andExpect(jsonPath("$.items[0].outcome").value("DISPUTE_OPENED"))
+            .andExpect(jsonPath("$.items[0].noteCount").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1))
+            .andExpect(jsonPath("$.items[1].businessDate").value(secondDay.atOffset(java.time.ZoneOffset.UTC).toLocalDate().toString()))
+            .andExpect(jsonPath("$.items[1].outcome").value("ESCALATED"))
+            .andExpect(jsonPath("$.items[2].businessDate").value(firstDay.atOffset(java.time.ZoneOffset.UTC).toLocalDate().toString()))
+            .andExpect(jsonPath("$.items[2].outcome").value("AWAITING_RESPONSE"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsNoteOutcomeDailySummaryRequest(
+                COLLECTIONS_NOTES_OUTCOME_DAY_TENANT_CODE,
+                0,
+                10,
+                "assignedTo",
+                "collector-b@arcanaerp.com",
+                "notedBy",
+                "collector-b@arcanaerp.com",
+                "category",
+                "DISPUTE",
+                "notedAtFrom",
+                secondDay.minusSeconds(1).toString(),
+                "notedAtTo",
+                secondDay.plusSeconds(1).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].businessDate").value(secondDay.atOffset(java.time.ZoneOffset.UTC).toLocalDate().toString()))
+            .andExpect(jsonPath("$.items[0].outcome").value("DISPUTE_OPENED"))
+            .andExpect(jsonPath("$.items[0].noteCount").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsNoteOutcomeDailySummaryRequest(
+                COLLECTIONS_NOTES_OUTCOME_DAY_TENANT_CODE,
                 0,
                 10,
                 "assignedTo",
