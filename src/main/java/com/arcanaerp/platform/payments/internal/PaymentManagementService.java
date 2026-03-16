@@ -15,6 +15,7 @@ import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import com.arcanaerp.platform.payments.CollectionsNoteView;
 import com.arcanaerp.platform.payments.CreateCollectionsNoteCommand;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteSummaryView;
+import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteOutcomeSummaryView;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
@@ -560,6 +561,40 @@ class PaymentManagementService implements PaymentManagement {
             )
         ));
         return paginateList(summaries, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DailyTenantCollectionsNoteCategorySummaryView> listDailyTenantCollectionsNoteCategorySummaries(
+        String tenantCode,
+        String assignedTo,
+        String notedBy,
+        CollectionsNoteOutcome outcome,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeTenantCollectionsNotes(
+            tenantCode,
+            assignedTo,
+            notedBy,
+            null,
+            outcome,
+            notedAtFrom,
+            notedAtTo,
+            pageQuery,
+            note -> new DailyCollectionsNoteCategoryBucket(
+                note.getNotedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+                note.getCategory()
+            ),
+            (normalizedTenantCode, bucket, summary) -> new DailyTenantCollectionsNoteCategorySummaryView(
+                normalizedTenantCode,
+                bucket.businessDate(),
+                bucket.category(),
+                summary.noteCount,
+                summary.invoiceNumbers.size()
+            )
+        );
     }
 
     @Override
@@ -1514,6 +1549,12 @@ class PaymentManagementService implements PaymentManagement {
     private record DailyCollectionsNoteOutcomeBucket(
         LocalDate businessDate,
         CollectionsNoteOutcome outcome
+    ) {
+    }
+
+    private record DailyCollectionsNoteCategoryBucket(
+        LocalDate businessDate,
+        CollectionsNoteCategory category
     ) {
     }
 
