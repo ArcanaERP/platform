@@ -144,16 +144,23 @@ public class PaymentsController {
         @RequestParam(required = false) String invoiceNumber,
         @RequestParam(required = false) String assignedTo,
         @RequestParam(required = false) String dueAtOnOrBefore,
+        @RequestParam(required = false) String followUpAtFrom,
+        @RequestParam(required = false) String followUpAtTo,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
         Instant parsedDueAtOnOrBefore = parseOptionalInstant(dueAtOnOrBefore, "dueAtOnOrBefore");
+        Instant parsedFollowUpAtFrom = parseOptionalInstant(followUpAtFrom, "followUpAtFrom");
+        Instant parsedFollowUpAtTo = parseOptionalInstant(followUpAtTo, "followUpAtTo");
+        validateInstantRange(parsedFollowUpAtFrom, parsedFollowUpAtTo, "followUpAtFrom", "followUpAtTo");
         return paymentManagement.listOver90CollectionsQueue(
                 requirePathValue(tenantCode, "tenantCode"),
                 normalizeOptional(currencyCode, "currencyCode"),
                 normalizeOptional(invoiceNumber, "invoiceNumber"),
                 normalizeOptional(assignedTo, "assignedTo"),
                 parsedDueAtOnOrBefore,
+                parsedFollowUpAtFrom,
+                parsedFollowUpAtTo,
                 PageQuery.of(page, size)
             )
             .map(this::toAgedReceivableResponse);

@@ -638,6 +638,47 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].followUpAt").value(followUpAt.toString()))
             .andExpect(jsonPath("$.items[0].followUpSetBy").value("manager@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].followUpSetAt").value(scheduledAt.toString()));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.over90CollectionsQueueRequest(
+                COLLECTIONS_FOLLOW_UP_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "followUpAtFrom",
+                followUpAt.minusSeconds(1).toString(),
+                "followUpAtTo",
+                followUpAt.plusSeconds(1).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-1032"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.over90CollectionsQueueRequest(
+                COLLECTIONS_FOLLOW_UP_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "followUpAtFrom",
+                followUpAt.plusSeconds(1).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(0));
+    }
+
+    @Test
+    void rejectsInvalidOver90CollectionsFollowUpWindow() throws Exception {
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.over90CollectionsQueueRequest(
+                COLLECTIONS_FOLLOW_UP_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "followUpAtFrom",
+                "2026-03-10T00:00:00Z",
+                "followUpAtTo",
+                "2026-03-09T00:00:00Z"
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("followUpAtFrom must be before or equal to followUpAtTo"));
     }
 
     @Test

@@ -256,6 +256,8 @@ class PaymentManagementService implements PaymentManagement {
         String invoiceNumber,
         String assignedTo,
         Instant dueAtOnOrBefore,
+        Instant followUpAtFrom,
+        Instant followUpAtTo,
         PageQuery pageQuery
     ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
@@ -277,6 +279,12 @@ class PaymentManagementService implements PaymentManagement {
             .toList();
         List<AgedTenantReceivableView> enriched = enrichAgedReceivables(filtered).stream()
             .filter(receivable -> normalizedAssignedTo == null || normalizedAssignedTo.equals(receivable.assignedTo()))
+            .filter(receivable -> followUpAtFrom == null || (
+                receivable.followUpAt() != null && !receivable.followUpAt().isBefore(followUpAtFrom)
+            ))
+            .filter(receivable -> followUpAtTo == null || (
+                receivable.followUpAt() != null && !receivable.followUpAt().isAfter(followUpAtTo)
+            ))
             .toList();
         return paginateReceivables(enriched, pageQuery);
     }

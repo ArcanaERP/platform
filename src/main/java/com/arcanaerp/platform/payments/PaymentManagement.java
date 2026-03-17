@@ -39,6 +39,8 @@ public interface PaymentManagement {
         String invoiceNumber,
         String assignedTo,
         Instant dueAtOnOrBefore,
+        Instant followUpAtFrom,
+        Instant followUpAtTo,
         PageQuery pageQuery
     );
 
