@@ -24,6 +24,7 @@ import com.arcanaerp.platform.payments.DailyTenantCollectionsAssignmentSummaryVi
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteOutcomeSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteCategorySummaryView;
+import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteCategoryOutcomeSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsAssignmentSummaryView;
@@ -863,6 +864,41 @@ class PaymentManagementService implements PaymentManagement {
             (normalizedTenantCode, bucket, summary) -> new WeeklyTenantCollectionsNoteCategoryOutcomeSummaryView(
                 normalizedTenantCode,
                 bucket.businessWeekStart(),
+                bucket.category(),
+                bucket.outcome(),
+                summary.noteCount,
+                summary.invoiceNumbers.size()
+            )
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyTenantCollectionsNoteCategoryOutcomeSummaryView> listMonthlyTenantCollectionsNoteCategoryOutcomeSummaries(
+        String tenantCode,
+        String assignedTo,
+        String notedBy,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeTenantCollectionsNotes(
+            tenantCode,
+            assignedTo,
+            notedBy,
+            null,
+            null,
+            notedAtFrom,
+            notedAtTo,
+            pageQuery,
+            note -> new MonthlyCollectionsNoteCategoryOutcomeBucket(
+                YearMonth.from(note.getNotedAt().atOffset(ZoneOffset.UTC)),
+                note.getCategory(),
+                note.getOutcome()
+            ),
+            (normalizedTenantCode, bucket, summary) -> new MonthlyTenantCollectionsNoteCategoryOutcomeSummaryView(
+                normalizedTenantCode,
+                bucket.businessMonth(),
                 bucket.category(),
                 bucket.outcome(),
                 summary.noteCount,
@@ -1731,6 +1767,13 @@ class PaymentManagementService implements PaymentManagement {
 
     private record WeeklyCollectionsNoteCategoryOutcomeBucket(
         LocalDate businessWeekStart,
+        CollectionsNoteCategory category,
+        CollectionsNoteOutcome outcome
+    ) {
+    }
+
+    private record MonthlyCollectionsNoteCategoryOutcomeBucket(
+        YearMonth businessMonth,
         CollectionsNoteCategory category,
         CollectionsNoteOutcome outcome
     ) {
