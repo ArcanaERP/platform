@@ -22,6 +22,7 @@ import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteOutcomeSummaryView;
+import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsAssignmentSummaryView;
@@ -628,6 +629,40 @@ class PaymentManagementService implements PaymentManagement {
             (normalizedTenantCode, bucket, summary) -> new WeeklyTenantCollectionsNoteCategorySummaryView(
                 normalizedTenantCode,
                 bucket.businessWeekStart(),
+                bucket.category(),
+                summary.noteCount,
+                summary.invoiceNumbers.size()
+            )
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyTenantCollectionsNoteCategorySummaryView> listMonthlyTenantCollectionsNoteCategorySummaries(
+        String tenantCode,
+        String assignedTo,
+        String notedBy,
+        CollectionsNoteOutcome outcome,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeTenantCollectionsNotes(
+            tenantCode,
+            assignedTo,
+            notedBy,
+            null,
+            outcome,
+            notedAtFrom,
+            notedAtTo,
+            pageQuery,
+            note -> new MonthlyCollectionsNoteCategoryBucket(
+                YearMonth.from(note.getNotedAt().atOffset(ZoneOffset.UTC)),
+                note.getCategory()
+            ),
+            (normalizedTenantCode, bucket, summary) -> new MonthlyTenantCollectionsNoteCategorySummaryView(
+                normalizedTenantCode,
+                bucket.businessMonth(),
                 bucket.category(),
                 summary.noteCount,
                 summary.invoiceNumbers.size()
@@ -1598,6 +1633,12 @@ class PaymentManagementService implements PaymentManagement {
 
     private record WeeklyCollectionsNoteCategoryBucket(
         LocalDate businessWeekStart,
+        CollectionsNoteCategory category
+    ) {
+    }
+
+    private record MonthlyCollectionsNoteCategoryBucket(
+        YearMonth businessMonth,
         CollectionsNoteCategory category
     ) {
     }
