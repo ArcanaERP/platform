@@ -16,6 +16,7 @@ import com.arcanaerp.platform.payments.CollectionsNoteView;
 import com.arcanaerp.platform.payments.CreateCollectionsNoteCommand;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteCategorySummaryView;
+import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteCategoryOutcomeSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteOutcomeSummaryView;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
@@ -789,6 +790,41 @@ class PaymentManagementService implements PaymentManagement {
             (normalizedTenantCode, bucket, summary) -> new DailyTenantCollectionsNoteOutcomeSummaryView(
                 normalizedTenantCode,
                 bucket.businessDate(),
+                bucket.outcome(),
+                summary.noteCount,
+                summary.invoiceNumbers.size()
+            )
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DailyTenantCollectionsNoteCategoryOutcomeSummaryView> listDailyTenantCollectionsNoteCategoryOutcomeSummaries(
+        String tenantCode,
+        String assignedTo,
+        String notedBy,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeTenantCollectionsNotes(
+            tenantCode,
+            assignedTo,
+            notedBy,
+            null,
+            null,
+            notedAtFrom,
+            notedAtTo,
+            pageQuery,
+            note -> new DailyCollectionsNoteCategoryOutcomeBucket(
+                note.getNotedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+                note.getCategory(),
+                note.getOutcome()
+            ),
+            (normalizedTenantCode, bucket, summary) -> new DailyTenantCollectionsNoteCategoryOutcomeSummaryView(
+                normalizedTenantCode,
+                bucket.businessDate(),
+                bucket.category(),
                 bucket.outcome(),
                 summary.noteCount,
                 summary.invoiceNumbers.size()
@@ -1643,6 +1679,13 @@ class PaymentManagementService implements PaymentManagement {
 
     private record DailyCollectionsNoteOutcomeBucket(
         LocalDate businessDate,
+        CollectionsNoteOutcome outcome
+    ) {
+    }
+
+    private record DailyCollectionsNoteCategoryOutcomeBucket(
+        LocalDate businessDate,
+        CollectionsNoteCategory category,
         CollectionsNoteOutcome outcome
     ) {
     }
