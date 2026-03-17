@@ -28,6 +28,7 @@ class PaymentsControllerIntegrationTest {
     private static final String AGING_BUCKET_TENANT_CODE = "tenant-aging-bucket";
     private static final String COLLECTIONS_TENANT_CODE = "tenant-collections";
     private static final String COLLECTIONS_ASSIGNMENT_TENANT_CODE = "tenant-collections-assignment";
+    private static final String COLLECTIONS_FOLLOW_UP_TENANT_CODE = "tenant-collections-follow-up";
     private static final String COLLECTIONS_ASSIGNMENT_MISSING_TENANT_CODE = "tenant-coll-assign-miss";
     private static final String COLLECTIONS_ASSIGNMENT_HISTORY_TENANT_CODE = "tenant-coll-assign-history";
     private static final String COLLECTIONS_ASSIGNEE_FILTER_TENANT_CODE = "tenant-coll-assignee-filter";
@@ -565,6 +566,78 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-1031"))
             .andExpect(jsonPath("$.items[0].assignedTo").value("collector@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].assignedBy").value("manager@arcanaerp.com"));
+    }
+
+    @Test
+    void schedulesCollectionsFollowUpAndExposesItOnQueue() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_TENANT_CODE,
+            "Collections Follow Up Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector@arcanaerp.com",
+            "Collector"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_TENANT_CODE,
+            "Collections Follow Up Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_FOLLOW_UP_TENANT_CODE,
+            "arc-pay-1032",
+            "so-pay-1032",
+            "inv-pay-1032",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+
+        Instant assignedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(assignedAt);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_TENANT_CODE,
+            "inv-pay-1032",
+            "collector@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant scheduledAt = assignedAt.plusSeconds(60);
+        Instant followUpAt = assignedAt.plusSeconds(2 * 86400);
+        testClock.setInstant(scheduledAt);
+        PaymentsWebIntegrationTestSupport.scheduleCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_TENANT_CODE,
+            "inv-pay-1032",
+            followUpAt,
+            "manager@arcanaerp.com"
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tenantCode").value("TENANT-COLLECTIONS-FOLLOW-UP"))
+            .andExpect(jsonPath("$.invoiceNumber").value("INV-PAY-1032"))
+            .andExpect(jsonPath("$.followUpAt").value(followUpAt.toString()))
+            .andExpect(jsonPath("$.followUpSetBy").value("manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.followUpSetAt").value(scheduledAt.toString()));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.over90CollectionsQueueRequest(
+                COLLECTIONS_FOLLOW_UP_TENANT_CODE,
+                "USD",
+                0,
+                10
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-1032"))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].followUpAt").value(followUpAt.toString()))
+            .andExpect(jsonPath("$.items[0].followUpSetBy").value("manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].followUpSetAt").value(scheduledAt.toString()));
     }
 
     @Test

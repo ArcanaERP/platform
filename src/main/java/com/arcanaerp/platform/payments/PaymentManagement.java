@@ -44,6 +44,8 @@ public interface PaymentManagement {
 
     CollectionsAssignmentView assignOver90CollectionsInvoice(AssignCollectionsInvoiceCommand command);
 
+    CollectionsAssignmentView scheduleCollectionsFollowUp(ScheduleCollectionsFollowUpCommand command);
+
     CollectionsNoteView addCollectionsNote(CreateCollectionsNoteCommand command);
 
     PageResult<CollectionsAssignmentChangeView> listCollectionsAssignmentHistory(

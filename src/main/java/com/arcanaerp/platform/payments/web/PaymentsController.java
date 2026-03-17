@@ -27,6 +27,7 @@ import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.ReceivablesAgingBucket;
+import com.arcanaerp.platform.payments.ScheduleCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.TenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteOutcomeSummaryView;
@@ -170,6 +171,22 @@ public class PaymentsController {
                 requirePathValue(invoiceNumber, "invoiceNumber"),
                 request.assignedTo(),
                 request.assignedBy()
+            )
+        ));
+    }
+
+    @PostMapping("/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/follow-up")
+    public CollectionsAssignmentResponse scheduleCollectionsFollowUp(
+        @PathVariable String tenantCode,
+        @PathVariable String invoiceNumber,
+        @Valid @RequestBody ScheduleCollectionsFollowUpRequest request
+    ) {
+        return toCollectionsAssignmentResponse(paymentManagement.scheduleCollectionsFollowUp(
+            new ScheduleCollectionsFollowUpCommand(
+                requirePathValue(tenantCode, "tenantCode"),
+                requirePathValue(invoiceNumber, "invoiceNumber"),
+                request.followUpAt(),
+                request.scheduledBy()
             )
         ));
     }
@@ -977,7 +994,10 @@ public class PaymentsController {
             receivable.agingBucket(),
             receivable.assignedTo(),
             receivable.assignedBy(),
-            receivable.assignedAt()
+            receivable.assignedAt(),
+            receivable.followUpAt(),
+            receivable.followUpSetBy(),
+            receivable.followUpSetAt()
         );
     }
 
@@ -987,7 +1007,10 @@ public class PaymentsController {
             assignment.invoiceNumber(),
             assignment.assignedTo(),
             assignment.assignedBy(),
-            assignment.assignedAt()
+            assignment.assignedAt(),
+            assignment.followUpAt(),
+            assignment.followUpSetBy(),
+            assignment.followUpSetAt()
         );
     }
 

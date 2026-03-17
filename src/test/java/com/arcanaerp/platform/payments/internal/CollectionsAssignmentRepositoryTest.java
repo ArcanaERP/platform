@@ -61,4 +61,26 @@ class CollectionsAssignmentRepositoryTest {
         assertThat(assignments).extracting(CollectionsAssignment::getInvoiceNumber)
             .containsExactlyInAnyOrder("INV-3001", "INV-3002");
     }
+
+    @Test
+    void persistsFollowUpSchedulingFields() {
+        CollectionsAssignment assignment = collectionsAssignmentRepository.saveAndFlush(CollectionsAssignment.create(
+            "TENANT-03",
+            "INV-3003",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com",
+            Instant.parse("2026-03-12T00:00:00Z")
+        ).scheduleFollowUp(
+            Instant.parse("2026-03-13T09:00:00Z"),
+            "manager@arcanaerp.com",
+            Instant.parse("2026-03-12T01:00:00Z")
+        ));
+
+        CollectionsAssignment reloaded = collectionsAssignmentRepository.findByInvoiceNumber(assignment.getInvoiceNumber())
+            .orElseThrow();
+
+        assertThat(reloaded.getFollowUpAt()).isEqualTo(Instant.parse("2026-03-13T09:00:00Z"));
+        assertThat(reloaded.getFollowUpSetBy()).isEqualTo("manager@arcanaerp.com");
+        assertThat(reloaded.getFollowUpSetAt()).isEqualTo(Instant.parse("2026-03-12T01:00:00Z"));
+    }
 }

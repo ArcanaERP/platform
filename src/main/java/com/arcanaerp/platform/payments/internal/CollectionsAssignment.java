@@ -46,13 +46,23 @@ class CollectionsAssignment {
     @Column(nullable = false)
     private Instant assignedAt;
 
+    private Instant followUpAt;
+
+    @Column(length = 128)
+    private String followUpSetBy;
+
+    private Instant followUpSetAt;
+
     private CollectionsAssignment(
         UUID id,
         String tenantCode,
         String invoiceNumber,
         String assignedTo,
         String assignedBy,
-        Instant assignedAt
+        Instant assignedAt,
+        Instant followUpAt,
+        String followUpSetBy,
+        Instant followUpSetAt
     ) {
         this.id = id;
         this.tenantCode = tenantCode;
@@ -60,6 +70,9 @@ class CollectionsAssignment {
         this.assignedTo = assignedTo;
         this.assignedBy = assignedBy;
         this.assignedAt = assignedAt;
+        this.followUpAt = followUpAt;
+        this.followUpSetBy = followUpSetBy;
+        this.followUpSetAt = followUpSetAt;
     }
 
     static CollectionsAssignment create(
@@ -78,7 +91,10 @@ class CollectionsAssignment {
             normalizeRequired(invoiceNumber, "invoiceNumber").toUpperCase(),
             normalizeActorEmail(assignedTo, "assignedTo"),
             normalizeActorEmail(assignedBy, "assignedBy"),
-            assignedAt
+            assignedAt,
+            null,
+            null,
+            null
         );
     }
 
@@ -93,6 +109,23 @@ class CollectionsAssignment {
         this.assignedTo = normalizeActorEmail(assignedTo, "assignedTo");
         this.assignedBy = normalizeActorEmail(assignedBy, "assignedBy");
         this.assignedAt = assignedAt;
+        return this;
+    }
+
+    CollectionsAssignment scheduleFollowUp(
+        Instant followUpAt,
+        String followUpSetBy,
+        Instant followUpSetAt
+    ) {
+        if (followUpAt == null) {
+            throw new IllegalArgumentException("followUpAt is required");
+        }
+        if (followUpSetAt == null) {
+            throw new IllegalArgumentException("followUpSetAt is required");
+        }
+        this.followUpAt = followUpAt;
+        this.followUpSetBy = normalizeActorEmail(followUpSetBy, "scheduledBy");
+        this.followUpSetAt = followUpSetAt;
         return this;
     }
 

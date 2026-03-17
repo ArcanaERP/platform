@@ -31,6 +31,7 @@ import com.arcanaerp.platform.payments.MonthlyTenantCollectionsAssignmentSummary
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.ReceivablesAgingBucket;
+import com.arcanaerp.platform.payments.ScheduleCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.TenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteOutcomeSummaryView;
@@ -318,7 +319,51 @@ class PaymentManagementService implements PaymentManagement {
             saved.getInvoiceNumber(),
             saved.getAssignedTo(),
             saved.getAssignedBy(),
-            saved.getAssignedAt()
+            saved.getAssignedAt(),
+            saved.getFollowUpAt(),
+            saved.getFollowUpSetBy(),
+            saved.getFollowUpSetAt()
+        );
+    }
+
+    @Override
+    public CollectionsAssignmentView scheduleCollectionsFollowUp(ScheduleCollectionsFollowUpCommand command) {
+        String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
+        String invoiceNumber = normalizeRequired(command.invoiceNumber(), "invoiceNumber").toUpperCase();
+        String scheduledBy = normalizeActorEmail(command.scheduledBy(), "scheduledBy");
+        if (!identityActorLookup.actorExists(tenantCode, scheduledBy)) {
+            throw new IllegalArgumentException("Collections follow-up actor not found in tenant " + tenantCode + ": " + scheduledBy);
+        }
+        if (command.followUpAt() == null) {
+            throw new IllegalArgumentException("followUpAt is required");
+        }
+
+        validateOver90CollectionsInvoice(tenantCode, invoiceNumber);
+        CollectionsAssignment assignment = collectionsAssignmentRepository.findByInvoiceNumber(invoiceNumber)
+            .orElseThrow(() -> new IllegalArgumentException(
+                "Invoice is not currently assigned for collections follow-up: " + invoiceNumber
+            ));
+        if (!assignment.getTenantCode().equals(tenantCode)) {
+            throw new IllegalArgumentException("Invoice does not belong to tenant " + tenantCode + ": " + invoiceNumber);
+        }
+
+        Instant now = Instant.now(clock);
+        if (command.followUpAt().isBefore(now)) {
+            throw new IllegalArgumentException("followUpAt must not be before current time");
+        }
+
+        CollectionsAssignment saved = collectionsAssignmentRepository.save(
+            assignment.scheduleFollowUp(command.followUpAt(), scheduledBy, now)
+        );
+        return new CollectionsAssignmentView(
+            saved.getTenantCode(),
+            saved.getInvoiceNumber(),
+            saved.getAssignedTo(),
+            saved.getAssignedBy(),
+            saved.getAssignedAt(),
+            saved.getFollowUpAt(),
+            saved.getFollowUpSetBy(),
+            saved.getFollowUpSetAt()
         );
     }
 
@@ -1569,7 +1614,10 @@ class PaymentManagementService implements PaymentManagement {
                     snapshot.agingBucket(),
                     assignment == null ? null : assignment.getAssignedTo(),
                     assignment == null ? null : assignment.getAssignedBy(),
-                    assignment == null ? null : assignment.getAssignedAt()
+                    assignment == null ? null : assignment.getAssignedAt(),
+                    assignment == null ? null : assignment.getFollowUpAt(),
+                    assignment == null ? null : assignment.getFollowUpSetBy(),
+                    assignment == null ? null : assignment.getFollowUpSetAt()
                 );
             })
             .toList();

@@ -52,4 +52,25 @@ class CollectionsAssignmentDomainTest {
         assertThat(audit.getAssignedTo()).isEqualTo("collector@arcanaerp.com");
         assertThat(audit.getAssignedBy()).isEqualTo("manager@arcanaerp.com");
     }
+
+    @Test
+    void scheduleFollowUpNormalizesScheduler() {
+        CollectionsAssignment assignment = CollectionsAssignment.create(
+            "TENANT-01",
+            "INV-1002",
+            "collector@arcanaerp.com",
+            "manager@arcanaerp.com",
+            Instant.parse("2026-03-12T00:00:00Z")
+        );
+
+        assignment.scheduleFollowUp(
+            Instant.parse("2026-03-13T00:00:00Z"),
+            " Manager@ArcanaERP.com ",
+            Instant.parse("2026-03-12T01:00:00Z")
+        );
+
+        assertThat(assignment.getFollowUpAt()).isEqualTo(Instant.parse("2026-03-13T00:00:00Z"));
+        assertThat(assignment.getFollowUpSetBy()).isEqualTo("manager@arcanaerp.com");
+        assertThat(assignment.getFollowUpSetAt()).isEqualTo(Instant.parse("2026-03-12T01:00:00Z"));
+    }
 }

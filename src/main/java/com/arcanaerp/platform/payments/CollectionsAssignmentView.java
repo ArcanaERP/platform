@@ -7,6 +7,9 @@ public record CollectionsAssignmentView(
     String invoiceNumber,
     String assignedTo,
     String assignedBy,
-    Instant assignedAt
+    Instant assignedAt,
+    Instant followUpAt,
+    String followUpSetBy,
+    Instant followUpSetAt
 ) {
 }
