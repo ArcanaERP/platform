@@ -576,11 +576,10 @@ class PaymentManagementService implements PaymentManagement {
         Instant notedAtTo,
         PageQuery pageQuery
     ) {
-        return summarizeTenantCollectionsNotes(
+        return summarizeTenantCollectionsNoteCategories(
             tenantCode,
             assignedTo,
             notedBy,
-            null,
             outcome,
             notedAtFrom,
             notedAtTo,
@@ -610,11 +609,10 @@ class PaymentManagementService implements PaymentManagement {
         Instant notedAtTo,
         PageQuery pageQuery
     ) {
-        return summarizeTenantCollectionsNotes(
+        return summarizeTenantCollectionsNoteCategories(
             tenantCode,
             assignedTo,
             notedBy,
-            null,
             outcome,
             notedAtFrom,
             notedAtTo,
@@ -647,11 +645,10 @@ class PaymentManagementService implements PaymentManagement {
         Instant notedAtTo,
         PageQuery pageQuery
     ) {
-        return summarizeTenantCollectionsNotes(
+        return summarizeTenantCollectionsNoteCategories(
             tenantCode,
             assignedTo,
             notedBy,
-            null,
             outcome,
             notedAtFrom,
             notedAtTo,
@@ -1394,6 +1391,31 @@ class PaymentManagementService implements PaymentManagement {
             pageQuery,
             bucketExtractor,
             viewFactory::create
+        );
+    }
+
+    private <B, V> PageResult<V> summarizeTenantCollectionsNoteCategories(
+        String tenantCode,
+        String assignedTo,
+        String notedBy,
+        CollectionsNoteOutcome outcome,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery,
+        Function<CollectionsNote, B> bucketExtractor,
+        CollectionsNoteBucketViewFactory<B, V> viewFactory
+    ) {
+        return summarizeTenantCollectionsNotes(
+            tenantCode,
+            assignedTo,
+            notedBy,
+            null,
+            outcome,
+            notedAtFrom,
+            notedAtTo,
+            pageQuery,
+            bucketExtractor,
+            viewFactory
         );
     }
 
