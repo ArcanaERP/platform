@@ -40,6 +40,7 @@ import com.arcanaerp.platform.payments.TenantReceivablesAgingView;
 import com.arcanaerp.platform.payments.TenantReceivablesSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNoteCategorySummaryView;
+import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNoteCategoryOutcomeSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNoteOutcomeSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNoteSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantPaymentSummaryView;
@@ -824,6 +825,44 @@ class PaymentManagementService implements PaymentManagement {
             (normalizedTenantCode, bucket, summary) -> new DailyTenantCollectionsNoteCategoryOutcomeSummaryView(
                 normalizedTenantCode,
                 bucket.businessDate(),
+                bucket.category(),
+                bucket.outcome(),
+                summary.noteCount,
+                summary.invoiceNumbers.size()
+            )
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WeeklyTenantCollectionsNoteCategoryOutcomeSummaryView> listWeeklyTenantCollectionsNoteCategoryOutcomeSummaries(
+        String tenantCode,
+        String assignedTo,
+        String notedBy,
+        Instant notedAtFrom,
+        Instant notedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeTenantCollectionsNotes(
+            tenantCode,
+            assignedTo,
+            notedBy,
+            null,
+            null,
+            notedAtFrom,
+            notedAtTo,
+            pageQuery,
+            note -> {
+                LocalDate businessDate = note.getNotedAt().atOffset(ZoneOffset.UTC).toLocalDate();
+                return new WeeklyCollectionsNoteCategoryOutcomeBucket(
+                    businessDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+                    note.getCategory(),
+                    note.getOutcome()
+                );
+            },
+            (normalizedTenantCode, bucket, summary) -> new WeeklyTenantCollectionsNoteCategoryOutcomeSummaryView(
+                normalizedTenantCode,
+                bucket.businessWeekStart(),
                 bucket.category(),
                 bucket.outcome(),
                 summary.noteCount,
@@ -1685,6 +1724,13 @@ class PaymentManagementService implements PaymentManagement {
 
     private record DailyCollectionsNoteCategoryOutcomeBucket(
         LocalDate businessDate,
+        CollectionsNoteCategory category,
+        CollectionsNoteOutcome outcome
+    ) {
+    }
+
+    private record WeeklyCollectionsNoteCategoryOutcomeBucket(
+        LocalDate businessWeekStart,
         CollectionsNoteCategory category,
         CollectionsNoteOutcome outcome
     ) {
