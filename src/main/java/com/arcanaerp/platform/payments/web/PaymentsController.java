@@ -149,6 +149,7 @@ public class PaymentsController {
         @RequestParam(required = false) String dueAtOnOrBefore,
         @RequestParam(required = false) String followUpAtFrom,
         @RequestParam(required = false) String followUpAtTo,
+        @RequestParam(required = false) String followUpScheduled,
         @RequestParam(required = false) String sortBy,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
@@ -165,6 +166,7 @@ public class PaymentsController {
                 parsedDueAtOnOrBefore,
                 parsedFollowUpAtFrom,
                 parsedFollowUpAtTo,
+                parseOptionalBoolean(followUpScheduled, "followUpScheduled"),
                 parseCollectionsQueueSortBy(sortBy),
                 PageQuery.of(page, size)
             )
@@ -1377,6 +1379,20 @@ public class PaymentsController {
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException("sortBy query parameter is invalid");
         }
+    }
+
+    private static Boolean parseOptionalBoolean(String value, String parameterName) {
+        String normalizedValue = normalizeOptional(value, parameterName);
+        if (normalizedValue == null) {
+            return null;
+        }
+        if ("true".equalsIgnoreCase(normalizedValue)) {
+            return true;
+        }
+        if ("false".equalsIgnoreCase(normalizedValue)) {
+            return false;
+        }
+        throw new IllegalArgumentException(parameterName + " query parameter is invalid");
     }
 
     private static CollectionsNoteCategory parseCollectionsNoteCategory(String value) {

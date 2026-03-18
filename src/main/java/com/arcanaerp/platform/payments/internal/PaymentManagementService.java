@@ -262,6 +262,7 @@ class PaymentManagementService implements PaymentManagement {
         Instant dueAtOnOrBefore,
         Instant followUpAtFrom,
         Instant followUpAtTo,
+        Boolean followUpScheduled,
         CollectionsQueueSortBy sortBy,
         PageQuery pageQuery
     ) {
@@ -290,6 +291,7 @@ class PaymentManagementService implements PaymentManagement {
             .filter(receivable -> followUpAtTo == null || (
                 receivable.followUpAt() != null && !receivable.followUpAt().isAfter(followUpAtTo)
             ))
+            .filter(receivable -> followUpScheduled == null || (followUpScheduled ? receivable.followUpAt() != null : receivable.followUpAt() == null))
             .sorted(over90CollectionsQueueComparator(sortBy))
             .toList();
         return paginateReceivables(enriched, pageQuery);
