@@ -13,6 +13,7 @@ import com.arcanaerp.platform.payments.CollectionsAssignmentView;
 import com.arcanaerp.platform.payments.CollectionsNoteCategory;
 import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import com.arcanaerp.platform.payments.CollectionsNoteView;
+import com.arcanaerp.platform.payments.CollectionsQueueSortBy;
 import com.arcanaerp.platform.payments.CreateCollectionsNoteCommand;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteCategorySummaryView;
@@ -258,6 +259,7 @@ class PaymentManagementService implements PaymentManagement {
         Instant dueAtOnOrBefore,
         Instant followUpAtFrom,
         Instant followUpAtTo,
+        CollectionsQueueSortBy sortBy,
         PageQuery pageQuery
     ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
@@ -285,6 +287,7 @@ class PaymentManagementService implements PaymentManagement {
             .filter(receivable -> followUpAtTo == null || (
                 receivable.followUpAt() != null && !receivable.followUpAt().isAfter(followUpAtTo)
             ))
+            .sorted(over90CollectionsQueueComparator(sortBy))
             .toList();
         return paginateReceivables(enriched, pageQuery);
     }
@@ -1599,6 +1602,19 @@ class PaymentManagementService implements PaymentManagement {
             bucketExtractor,
             viewFactory
         );
+    }
+
+    private java.util.Comparator<AgedTenantReceivableView> over90CollectionsQueueComparator(CollectionsQueueSortBy sortBy) {
+        CollectionsQueueSortBy normalizedSortBy = sortBy == null ? CollectionsQueueSortBy.DUE_AT : sortBy;
+        if (normalizedSortBy == CollectionsQueueSortBy.FOLLOW_UP_AT) {
+            return java.util.Comparator
+                .comparing(AgedTenantReceivableView::followUpAt, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+                .thenComparing(AgedTenantReceivableView::dueAt)
+                .thenComparing(AgedTenantReceivableView::invoiceNumber);
+        }
+        return java.util.Comparator
+            .comparing(AgedTenantReceivableView::dueAt)
+            .thenComparing(AgedTenantReceivableView::invoiceNumber);
     }
 
     private List<AgedTenantReceivableView> enrichAgedReceivables(List<ReceivableSnapshot> snapshots) {

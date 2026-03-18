@@ -29,6 +29,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_TENANT_CODE = "tenant-collections";
     private static final String COLLECTIONS_ASSIGNMENT_TENANT_CODE = "tenant-collections-assignment";
     private static final String COLLECTIONS_FOLLOW_UP_TENANT_CODE = "tenant-collections-follow-up";
+    private static final String COLLECTIONS_FOLLOW_UP_SORT_TENANT_CODE = "tenant-collections-fup-sort";
     private static final String COLLECTIONS_ASSIGNMENT_MISSING_TENANT_CODE = "tenant-coll-assign-miss";
     private static final String COLLECTIONS_ASSIGNMENT_HISTORY_TENANT_CODE = "tenant-coll-assign-history";
     private static final String COLLECTIONS_ASSIGNEE_FILTER_TENANT_CODE = "tenant-coll-assignee-filter";
@@ -666,6 +667,92 @@ class PaymentsControllerIntegrationTest {
     }
 
     @Test
+    void sortsOver90CollectionsQueueByFollowUpAtWhenRequested() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_SORT_TENANT_CODE,
+            "Collections Follow Up Sort Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector@arcanaerp.com",
+            "Collector"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_SORT_TENANT_CODE,
+            "Collections Follow Up Sort Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_FOLLOW_UP_SORT_TENANT_CODE,
+            "arc-pay-2033",
+            "so-pay-2033",
+            "inv-pay-2033",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_FOLLOW_UP_SORT_TENANT_CODE,
+            "arc-pay-2034",
+            "so-pay-2034",
+            "inv-pay-2034",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(20 * 86400)
+        );
+
+        Instant assignedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(assignedAt);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_SORT_TENANT_CODE,
+            "inv-pay-2033",
+            "collector@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_SORT_TENANT_CODE,
+            "inv-pay-2034",
+            "collector@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        testClock.setInstant(assignedAt.plusSeconds(60));
+        PaymentsWebIntegrationTestSupport.scheduleCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_SORT_TENANT_CODE,
+            "inv-pay-2033",
+            assignedAt.plusSeconds(3 * 86400),
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.scheduleCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_SORT_TENANT_CODE,
+            "inv-pay-2034",
+            assignedAt.plusSeconds(86400),
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.over90CollectionsQueueRequest(
+                COLLECTIONS_FOLLOW_UP_SORT_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "sortBy",
+                "FOLLOW_UP_AT"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-2034"))
+            .andExpect(jsonPath("$.items[1].invoiceNumber").value("INV-PAY-2033"));
+    }
+
+    @Test
     void rejectsInvalidOver90CollectionsFollowUpWindow() throws Exception {
         mockMvc.perform(PaymentsWebIntegrationTestSupport.over90CollectionsQueueRequest(
                 COLLECTIONS_FOLLOW_UP_TENANT_CODE,
@@ -679,6 +766,20 @@ class PaymentsControllerIntegrationTest {
             ))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("followUpAtFrom must be before or equal to followUpAtTo"));
+    }
+
+    @Test
+    void rejectsInvalidOver90CollectionsQueueSortBy() throws Exception {
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.over90CollectionsQueueRequest(
+                COLLECTIONS_FOLLOW_UP_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "sortBy",
+                "not-a-sort"
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("sortBy query parameter is invalid"));
     }
 
     @Test

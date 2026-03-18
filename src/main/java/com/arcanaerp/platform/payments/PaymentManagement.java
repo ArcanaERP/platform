@@ -41,6 +41,7 @@ public interface PaymentManagement {
         Instant dueAtOnOrBefore,
         Instant followUpAtFrom,
         Instant followUpAtTo,
+        CollectionsQueueSortBy sortBy,
         PageQuery pageQuery
     );
 

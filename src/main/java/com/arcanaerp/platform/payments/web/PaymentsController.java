@@ -9,6 +9,7 @@ import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
 import com.arcanaerp.platform.payments.CollectionsNoteView;
+import com.arcanaerp.platform.payments.CollectionsQueueSortBy;
 import com.arcanaerp.platform.payments.CreateCollectionsNoteCommand;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteSummaryView;
@@ -146,6 +147,7 @@ public class PaymentsController {
         @RequestParam(required = false) String dueAtOnOrBefore,
         @RequestParam(required = false) String followUpAtFrom,
         @RequestParam(required = false) String followUpAtTo,
+        @RequestParam(required = false) String sortBy,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
@@ -161,6 +163,7 @@ public class PaymentsController {
                 parsedDueAtOnOrBefore,
                 parsedFollowUpAtFrom,
                 parsedFollowUpAtTo,
+                parseCollectionsQueueSortBy(sortBy),
                 PageQuery.of(page, size)
             )
             .map(this::toAgedReceivableResponse);
@@ -1315,6 +1318,18 @@ public class PaymentsController {
             return ReceivablesAgingBucket.valueOf(normalizedValue);
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException("Unsupported agingBucket: " + normalizedValue);
+        }
+    }
+
+    private static CollectionsQueueSortBy parseCollectionsQueueSortBy(String value) {
+        String normalizedValue = normalizeOptional(value, "sortBy");
+        if (normalizedValue == null) {
+            return CollectionsQueueSortBy.DUE_AT;
+        }
+        try {
+            return CollectionsQueueSortBy.valueOf(normalizedValue.toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("sortBy query parameter is invalid");
         }
     }
 
