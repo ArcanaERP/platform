@@ -49,6 +49,12 @@ public interface PaymentManagement {
 
     CollectionsAssignmentView scheduleCollectionsFollowUp(ScheduleCollectionsFollowUpCommand command);
 
+    PageResult<CollectionsFollowUpChangeView> listCollectionsFollowUpHistory(
+        String tenantCode,
+        String invoiceNumber,
+        PageQuery pageQuery
+    );
+
     CollectionsNoteView addCollectionsNote(CreateCollectionsNoteCommand command);
 
     PageResult<CollectionsAssignmentChangeView> listCollectionsAssignmentHistory(

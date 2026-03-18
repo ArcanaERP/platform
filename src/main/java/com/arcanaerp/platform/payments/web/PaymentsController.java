@@ -8,6 +8,7 @@ import com.arcanaerp.platform.payments.CollectionsNoteCategory;
 import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
+import com.arcanaerp.platform.payments.CollectionsFollowUpChangeView;
 import com.arcanaerp.platform.payments.CollectionsNoteView;
 import com.arcanaerp.platform.payments.CollectionsQueueSortBy;
 import com.arcanaerp.platform.payments.CreateCollectionsNoteCommand;
@@ -199,6 +200,21 @@ public class PaymentsController {
                 request.scheduledBy()
             )
         ));
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/follow-up-history")
+    public PageResult<CollectionsFollowUpChangeResponse> listCollectionsFollowUpHistory(
+        @PathVariable String tenantCode,
+        @PathVariable String invoiceNumber,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return paymentManagement.listCollectionsFollowUpHistory(
+                requirePathValue(tenantCode, "tenantCode"),
+                requirePathValue(invoiceNumber, "invoiceNumber"),
+                PageQuery.of(page, size)
+            )
+            .map(this::toCollectionsFollowUpChangeResponse);
     }
 
     @PostMapping("/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/notes")
@@ -1034,6 +1050,20 @@ public class PaymentsController {
             assignment.assignedTo(),
             assignment.assignedBy(),
             assignment.assignedAt()
+        );
+    }
+
+    private CollectionsFollowUpChangeResponse toCollectionsFollowUpChangeResponse(
+        CollectionsFollowUpChangeView change
+    ) {
+        return new CollectionsFollowUpChangeResponse(
+            change.id(),
+            change.tenantCode(),
+            change.invoiceNumber(),
+            change.previousFollowUpAt(),
+            change.followUpAt(),
+            change.changedBy(),
+            change.changedAt()
         );
     }
 

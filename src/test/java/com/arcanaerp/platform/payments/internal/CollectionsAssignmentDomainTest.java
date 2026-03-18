@@ -73,4 +73,22 @@ class CollectionsAssignmentDomainTest {
         assertThat(assignment.getFollowUpSetBy()).isEqualTo("manager@arcanaerp.com");
         assertThat(assignment.getFollowUpSetAt()).isEqualTo(Instant.parse("2026-03-12T01:00:00Z"));
     }
+
+    @Test
+    void followUpAuditCreateNormalizesFields() {
+        CollectionsFollowUpAudit audit = CollectionsFollowUpAudit.create(
+            " tenant-01 ",
+            " inv-1003 ",
+            Instant.parse("2026-03-13T00:00:00Z"),
+            Instant.parse("2026-03-14T00:00:00Z"),
+            " Manager@ArcanaERP.com ",
+            Instant.parse("2026-03-12T02:00:00Z")
+        );
+
+        assertThat(audit.getTenantCode()).isEqualTo("TENANT-01");
+        assertThat(audit.getInvoiceNumber()).isEqualTo("INV-1003");
+        assertThat(audit.getPreviousFollowUpAt()).isEqualTo(Instant.parse("2026-03-13T00:00:00Z"));
+        assertThat(audit.getFollowUpAt()).isEqualTo(Instant.parse("2026-03-14T00:00:00Z"));
+        assertThat(audit.getChangedBy()).isEqualTo("manager@arcanaerp.com");
+    }
 }

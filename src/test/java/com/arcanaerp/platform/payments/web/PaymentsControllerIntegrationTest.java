@@ -30,6 +30,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_ASSIGNMENT_TENANT_CODE = "tenant-collections-assignment";
     private static final String COLLECTIONS_FOLLOW_UP_TENANT_CODE = "tenant-collections-follow-up";
     private static final String COLLECTIONS_FOLLOW_UP_SORT_TENANT_CODE = "tenant-collections-fup-sort";
+    private static final String COLLECTIONS_FOLLOW_UP_HISTORY_TENANT_CODE = "tenant-coll-fup-history";
     private static final String COLLECTIONS_ASSIGNMENT_MISSING_TENANT_CODE = "tenant-coll-assign-miss";
     private static final String COLLECTIONS_ASSIGNMENT_HISTORY_TENANT_CODE = "tenant-coll-assign-history";
     private static final String COLLECTIONS_ASSIGNEE_FILTER_TENANT_CODE = "tenant-coll-assignee-filter";
@@ -664,6 +665,87 @@ class PaymentsControllerIntegrationTest {
             ))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(0));
+    }
+
+    @Test
+    void listsCollectionsFollowUpHistoryNewestFirst() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_HISTORY_TENANT_CODE,
+            "Collections Follow Up History Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector@arcanaerp.com",
+            "Collector"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_HISTORY_TENANT_CODE,
+            "Collections Follow Up History Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_FOLLOW_UP_HISTORY_TENANT_CODE,
+            "arc-pay-3032",
+            "so-pay-3032",
+            "inv-pay-3032",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+
+        Instant assignedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(assignedAt);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_HISTORY_TENANT_CODE,
+            "inv-pay-3032",
+            "collector@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant firstChangedAt = assignedAt.plusSeconds(60);
+        Instant firstFollowUpAt = assignedAt.plusSeconds(2 * 86400);
+        testClock.setInstant(firstChangedAt);
+        PaymentsWebIntegrationTestSupport.scheduleCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_HISTORY_TENANT_CODE,
+            "inv-pay-3032",
+            firstFollowUpAt,
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant secondChangedAt = assignedAt.plusSeconds(120);
+        Instant secondFollowUpAt = assignedAt.plusSeconds(3 * 86400);
+        testClock.setInstant(secondChangedAt);
+        PaymentsWebIntegrationTestSupport.scheduleCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_HISTORY_TENANT_CODE,
+            "inv-pay-3032",
+            secondFollowUpAt,
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.collectionsFollowUpHistoryRequest(
+                COLLECTIONS_FOLLOW_UP_HISTORY_TENANT_CODE,
+                "inv-pay-3032",
+                0,
+                10
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("TENANT-COLL-FUP-HISTORY"))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-3032"))
+            .andExpect(jsonPath("$.items[0].followUpAt").value(secondFollowUpAt.toString()))
+            .andExpect(jsonPath("$.items[0].previousFollowUpAt").value(firstFollowUpAt.toString()))
+            .andExpect(jsonPath("$.items[0].changedBy").value("manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedAt").value(secondChangedAt.toString()))
+            .andExpect(jsonPath("$.items[1].followUpAt").value(firstFollowUpAt.toString()))
+            .andExpect(jsonPath("$.items[1].previousFollowUpAt").doesNotExist())
+            .andExpect(jsonPath("$.items[1].changedAt").value(firstChangedAt.toString()));
     }
 
     @Test

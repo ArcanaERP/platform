@@ -10,6 +10,7 @@ import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
+import com.arcanaerp.platform.payments.CollectionsFollowUpChangeView;
 import com.arcanaerp.platform.payments.CollectionsNoteCategory;
 import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import com.arcanaerp.platform.payments.CollectionsNoteView;
@@ -74,6 +75,7 @@ class PaymentManagementService implements PaymentManagement {
     private final PaymentRepository paymentRepository;
     private final CollectionsAssignmentRepository collectionsAssignmentRepository;
     private final CollectionsAssignmentAuditRepository collectionsAssignmentAuditRepository;
+    private final CollectionsFollowUpAuditRepository collectionsFollowUpAuditRepository;
     private final CollectionsNoteRepository collectionsNoteRepository;
     private final InvoiceManagement invoiceManagement;
     private final IdentityActorLookup identityActorLookup;
@@ -363,9 +365,18 @@ class PaymentManagementService implements PaymentManagement {
             throw new IllegalArgumentException("followUpAt must not be before current time");
         }
 
+        Instant previousFollowUpAt = assignment.getFollowUpAt();
         CollectionsAssignment saved = collectionsAssignmentRepository.save(
             assignment.scheduleFollowUp(command.followUpAt(), scheduledBy, now)
         );
+        collectionsFollowUpAuditRepository.save(CollectionsFollowUpAudit.create(
+            saved.getTenantCode(),
+            saved.getInvoiceNumber(),
+            previousFollowUpAt,
+            saved.getFollowUpAt(),
+            scheduledBy,
+            now
+        ));
         return new CollectionsAssignmentView(
             saved.getTenantCode(),
             saved.getInvoiceNumber(),
@@ -406,6 +417,38 @@ class PaymentManagementService implements PaymentManagement {
             Instant.now(clock)
         ));
         return toCollectionsNoteView(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<CollectionsFollowUpChangeView> listCollectionsFollowUpHistory(
+        String tenantCode,
+        String invoiceNumber,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedInvoiceNumber = normalizeRequired(invoiceNumber, "invoiceNumber").toUpperCase();
+        InvoiceView invoice = invoiceManagement.getInvoice(normalizedInvoiceNumber);
+        if (!invoice.tenantCode().equals(normalizedTenantCode)) {
+            throw new IllegalArgumentException(
+                "Invoice does not belong to tenant " + normalizedTenantCode + ": " + normalizedInvoiceNumber
+            );
+        }
+
+        Page<CollectionsFollowUpAudit> audits = collectionsFollowUpAuditRepository.findHistory(
+            normalizedTenantCode,
+            normalizedInvoiceNumber,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt").and(Sort.by(Sort.Direction.DESC, "id")))
+        );
+        return PageResult.from(audits).map(audit -> new CollectionsFollowUpChangeView(
+            audit.getId(),
+            audit.getTenantCode(),
+            audit.getInvoiceNumber(),
+            audit.getPreviousFollowUpAt(),
+            audit.getFollowUpAt(),
+            audit.getChangedBy(),
+            audit.getChangedAt()
+        ));
     }
 
     @Override

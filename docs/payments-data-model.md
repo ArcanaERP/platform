@@ -215,6 +215,25 @@ Rules:
 - history filters currently support optional exact `assignedTo` plus `assignedAtFrom` / `assignedAtTo`
 - tenant history also supports optional exact `invoiceNumber`
 
+### CollectionsFollowUpAudit
+
+Purpose:
+- preserve an append-only history of follow-up scheduling and rescheduling
+
+Fields:
+- `id` (`UUID`)
+- `tenantCode`
+- `invoiceNumber`
+- `previousFollowUpAt`
+- `followUpAt`
+- `changedBy`
+- `changedAt`
+
+Rules:
+- every successful follow-up schedule or reschedule appends one audit row
+- history is read newest-first by `changedAt`
+- history remains tenant-scoped and invoice-scoped
+
 ### TenantCollectionsAssignmentSummary
 
 Purpose:
@@ -508,6 +527,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90?currencyCode=&invoiceNumber=&assignedTo=&dueAtOnOrBefore=&followUpAtFrom=&followUpAtTo=&sortBy=&page=&size=`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/follow-up`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/follow-up-history?page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment-history?page=&size=&assignedTo=&assignedAtFrom=&assignedAtTo=`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/notes`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/notes?page=&size=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
