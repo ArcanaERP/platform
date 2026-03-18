@@ -151,6 +151,7 @@ public class PaymentsController {
         @RequestParam(required = false) String followUpAtFrom,
         @RequestParam(required = false) String followUpAtTo,
         @RequestParam(required = false) String followUpScheduled,
+        @RequestParam(required = false) String latestFollowUpOutcome,
         @RequestParam(required = false) String sortBy,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
@@ -168,6 +169,7 @@ public class PaymentsController {
                 parsedFollowUpAtFrom,
                 parsedFollowUpAtTo,
                 parseOptionalBoolean(followUpScheduled, "followUpScheduled"),
+                parseOptionalCollectionsFollowUpOutcome(latestFollowUpOutcome),
                 parseCollectionsQueueSortBy(sortBy),
                 PageQuery.of(page, size)
             )
@@ -1043,7 +1045,8 @@ public class PaymentsController {
             receivable.assignedAt(),
             receivable.followUpAt(),
             receivable.followUpSetBy(),
-            receivable.followUpSetAt()
+            receivable.followUpSetAt(),
+            receivable.latestFollowUpOutcome() == null ? null : receivable.latestFollowUpOutcome().name()
         );
     }
 
@@ -1407,6 +1410,18 @@ public class PaymentsController {
             return CollectionsFollowUpOutcome.valueOf(normalizedValue.toUpperCase());
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException("outcome is invalid");
+        }
+    }
+
+    private static CollectionsFollowUpOutcome parseOptionalCollectionsFollowUpOutcome(String value) {
+        String normalizedValue = normalizeOptional(value, "latestFollowUpOutcome");
+        if (normalizedValue == null) {
+            return null;
+        }
+        try {
+            return CollectionsFollowUpOutcome.valueOf(normalizedValue.toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("latestFollowUpOutcome query parameter is invalid");
         }
     }
 

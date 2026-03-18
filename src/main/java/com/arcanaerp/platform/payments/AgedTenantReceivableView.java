@@ -21,6 +21,7 @@ public record AgedTenantReceivableView(
     Instant assignedAt,
     Instant followUpAt,
     String followUpSetBy,
-    Instant followUpSetAt
+    Instant followUpSetAt,
+    CollectionsFollowUpOutcome latestFollowUpOutcome
 ) {
 }

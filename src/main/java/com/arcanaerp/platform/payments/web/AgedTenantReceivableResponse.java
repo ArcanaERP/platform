@@ -22,6 +22,7 @@ public record AgedTenantReceivableResponse(
     Instant assignedAt,
     Instant followUpAt,
     String followUpSetBy,
-    Instant followUpSetAt
+    Instant followUpSetAt,
+    String latestFollowUpOutcome
 ) {
 }

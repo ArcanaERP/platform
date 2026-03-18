@@ -42,6 +42,7 @@ public interface PaymentManagement {
         Instant followUpAtFrom,
         Instant followUpAtTo,
         Boolean followUpScheduled,
+        CollectionsFollowUpOutcome latestFollowUpOutcome,
         CollectionsQueueSortBy sortBy,
         PageQuery pageQuery
     );

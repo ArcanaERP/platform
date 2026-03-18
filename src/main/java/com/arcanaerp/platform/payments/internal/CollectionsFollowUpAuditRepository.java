@@ -22,4 +22,19 @@ interface CollectionsFollowUpAuditRepository extends JpaRepository<CollectionsFo
         @Param("invoiceNumber") String invoiceNumber,
         Pageable pageable
     );
+
+    @Query(
+        """
+        select audit
+        from CollectionsFollowUpAudit audit
+        where audit.tenantCode = :tenantCode
+          and audit.invoiceNumber in :invoiceNumbers
+          and audit.outcome is not null
+        order by audit.changedAt desc, audit.id desc
+        """
+    )
+    java.util.List<CollectionsFollowUpAudit> findOutcomeHistoryForInvoices(
+        @Param("tenantCode") String tenantCode,
+        @Param("invoiceNumbers") java.util.Collection<String> invoiceNumbers
+    );
 }

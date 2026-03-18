@@ -264,6 +264,7 @@ class PaymentManagementService implements PaymentManagement {
         Instant followUpAtFrom,
         Instant followUpAtTo,
         Boolean followUpScheduled,
+        CollectionsFollowUpOutcome latestFollowUpOutcome,
         CollectionsQueueSortBy sortBy,
         PageQuery pageQuery
     ) {
@@ -293,6 +294,7 @@ class PaymentManagementService implements PaymentManagement {
                 receivable.followUpAt() != null && !receivable.followUpAt().isAfter(followUpAtTo)
             ))
             .filter(receivable -> followUpScheduled == null || (followUpScheduled ? receivable.followUpAt() != null : receivable.followUpAt() == null))
+            .filter(receivable -> latestFollowUpOutcome == null || latestFollowUpOutcome == receivable.latestFollowUpOutcome())
             .sorted(over90CollectionsQueueComparator(sortBy))
             .toList();
         return paginateReceivables(enriched, pageQuery);
@@ -1715,9 +1717,20 @@ class PaymentManagementService implements PaymentManagement {
     }
 
     private List<AgedTenantReceivableView> enrichAgedReceivables(List<ReceivableSnapshot> snapshots) {
+        if (snapshots.isEmpty()) {
+            return List.of();
+        }
+        List<String> invoiceNumbers = snapshots.stream().map(ReceivableSnapshot::invoiceNumber).toList();
         Map<String, CollectionsAssignment> assignmentsByInvoiceNumber = collectionsAssignmentRepository.findByInvoiceNumberIn(
-            snapshots.stream().map(ReceivableSnapshot::invoiceNumber).toList()
+            invoiceNumbers
         ).stream().collect(java.util.stream.Collectors.toMap(CollectionsAssignment::getInvoiceNumber, java.util.function.Function.identity()));
+        Map<String, CollectionsFollowUpOutcome> latestFollowUpOutcomeByInvoiceNumber = new java.util.HashMap<>();
+        for (CollectionsFollowUpAudit audit : collectionsFollowUpAuditRepository.findOutcomeHistoryForInvoices(
+            snapshots.getFirst().tenantCode(),
+            invoiceNumbers
+        )) {
+            latestFollowUpOutcomeByInvoiceNumber.putIfAbsent(audit.getInvoiceNumber(), audit.getOutcome());
+        }
         return snapshots.stream()
             .map(snapshot -> {
                 CollectionsAssignment assignment = assignmentsByInvoiceNumber.get(snapshot.invoiceNumber());
@@ -1738,7 +1751,8 @@ class PaymentManagementService implements PaymentManagement {
                     assignment == null ? null : assignment.getAssignedAt(),
                     assignment == null ? null : assignment.getFollowUpAt(),
                     assignment == null ? null : assignment.getFollowUpSetBy(),
-                    assignment == null ? null : assignment.getFollowUpSetAt()
+                    assignment == null ? null : assignment.getFollowUpSetAt(),
+                    latestFollowUpOutcomeByInvoiceNumber.get(snapshot.invoiceNumber())
                 );
             })
             .toList();
