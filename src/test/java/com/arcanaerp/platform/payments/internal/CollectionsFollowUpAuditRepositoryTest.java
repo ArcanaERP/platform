@@ -29,7 +29,7 @@ class CollectionsFollowUpAuditRepositoryTest {
             "TENANT-01",
             "INV-6000",
             Instant.parse("2026-03-13T00:00:00Z"),
-            Instant.parse("2026-03-14T00:00:00Z"),
+            null,
             "manager@arcanaerp.com",
             Instant.parse("2026-03-12T00:05:00Z")
         ));
@@ -51,7 +51,7 @@ class CollectionsFollowUpAuditRepositoryTest {
         assertThat(page.getContent()).hasSize(2);
         assertThat(page.getContent()).extracting(CollectionsFollowUpAudit::getFollowUpAt)
             .containsExactly(
-                Instant.parse("2026-03-14T00:00:00Z"),
+                null,
                 Instant.parse("2026-03-13T00:00:00Z")
             );
         assertThat(page.getContent().getFirst().getPreviousFollowUpAt()).isEqualTo(Instant.parse("2026-03-13T00:00:00Z"));

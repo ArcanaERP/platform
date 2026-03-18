@@ -230,9 +230,10 @@ Fields:
 - `changedAt`
 
 Rules:
-- every successful follow-up schedule or reschedule appends one audit row
+- every successful follow-up schedule, reschedule, or completion appends one audit row
 - history is read newest-first by `changedAt`
 - history remains tenant-scoped and invoice-scoped
+- completion rows clear current assignment follow-up state and use `followUpAt = null`
 
 ### TenantCollectionsAssignmentSummary
 
@@ -527,6 +528,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90?currencyCode=&invoiceNumber=&assignedTo=&dueAtOnOrBefore=&followUpAtFrom=&followUpAtTo=&sortBy=&page=&size=`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/follow-up`
+- `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/follow-up/complete`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/follow-up-history?page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment-history?page=&size=&assignedTo=&assignedAtFrom=&assignedAtTo=`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/notes`

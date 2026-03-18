@@ -164,6 +164,23 @@ final class PaymentsWebIntegrationTestSupport {
         ).contentType(MediaType.APPLICATION_JSON).content(payload));
     }
 
+    static ResultActions completeCollectionsFollowUp(
+        MockMvc mockMvc,
+        String tenantCode,
+        String invoiceNumber,
+        String completedBy
+    ) throws Exception {
+        String payload = """
+            {
+              "completedBy": "%s"
+            }
+            """.formatted(completedBy);
+
+        return mockMvc.perform(post(
+            "/api/payments/tenants/" + tenantCode + "/receivables/collections/over-90/" + invoiceNumber + "/follow-up/complete"
+        ).contentType(MediaType.APPLICATION_JSON).content(payload));
+    }
+
     static MockHttpServletRequestBuilder collectionsAssignmentHistoryRequest(
         String tenantCode,
         String invoiceNumber,

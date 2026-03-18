@@ -37,7 +37,6 @@ class CollectionsFollowUpAudit {
 
     private Instant previousFollowUpAt;
 
-    @Column(nullable = false)
     private Instant followUpAt;
 
     @Column(nullable = false, length = 128)
@@ -72,9 +71,6 @@ class CollectionsFollowUpAudit {
         String changedBy,
         Instant changedAt
     ) {
-        if (followUpAt == null) {
-            throw new IllegalArgumentException("followUpAt is required");
-        }
         if (changedAt == null) {
             throw new IllegalArgumentException("changedAt is required");
         }

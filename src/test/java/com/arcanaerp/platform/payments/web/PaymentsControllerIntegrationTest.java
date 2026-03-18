@@ -31,6 +31,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_FOLLOW_UP_TENANT_CODE = "tenant-collections-follow-up";
     private static final String COLLECTIONS_FOLLOW_UP_SORT_TENANT_CODE = "tenant-collections-fup-sort";
     private static final String COLLECTIONS_FOLLOW_UP_HISTORY_TENANT_CODE = "tenant-coll-fup-history";
+    private static final String COLLECTIONS_FOLLOW_UP_COMPLETE_TENANT_CODE = "tenant-coll-fup-complete";
     private static final String COLLECTIONS_ASSIGNMENT_MISSING_TENANT_CODE = "tenant-coll-assign-miss";
     private static final String COLLECTIONS_ASSIGNMENT_HISTORY_TENANT_CODE = "tenant-coll-assign-history";
     private static final String COLLECTIONS_ASSIGNEE_FILTER_TENANT_CODE = "tenant-coll-assignee-filter";
@@ -746,6 +747,100 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[1].followUpAt").value(firstFollowUpAt.toString()))
             .andExpect(jsonPath("$.items[1].previousFollowUpAt").doesNotExist())
             .andExpect(jsonPath("$.items[1].changedAt").value(firstChangedAt.toString()));
+    }
+
+    @Test
+    void completesCollectionsFollowUpAndClearsQueueState() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_COMPLETE_TENANT_CODE,
+            "Collections Follow Up Complete Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector@arcanaerp.com",
+            "Collector"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_COMPLETE_TENANT_CODE,
+            "Collections Follow Up Complete Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_FOLLOW_UP_COMPLETE_TENANT_CODE,
+            "arc-pay-4032",
+            "so-pay-4032",
+            "inv-pay-4032",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+
+        Instant assignedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(assignedAt);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_COMPLETE_TENANT_CODE,
+            "inv-pay-4032",
+            "collector@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant scheduledAt = assignedAt.plusSeconds(60);
+        Instant followUpAt = assignedAt.plusSeconds(2 * 86400);
+        testClock.setInstant(scheduledAt);
+        PaymentsWebIntegrationTestSupport.scheduleCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_COMPLETE_TENANT_CODE,
+            "inv-pay-4032",
+            followUpAt,
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant completedAt = assignedAt.plusSeconds(120);
+        testClock.setInstant(completedAt);
+        PaymentsWebIntegrationTestSupport.completeCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_COMPLETE_TENANT_CODE,
+            "inv-pay-4032",
+            "manager@arcanaerp.com"
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tenantCode").value("TENANT-COLL-FUP-COMPLETE"))
+            .andExpect(jsonPath("$.invoiceNumber").value("INV-PAY-4032"))
+            .andExpect(jsonPath("$.followUpAt").doesNotExist())
+            .andExpect(jsonPath("$.followUpSetBy").doesNotExist())
+            .andExpect(jsonPath("$.followUpSetAt").doesNotExist());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.over90CollectionsQueueRequest(
+                COLLECTIONS_FOLLOW_UP_COMPLETE_TENANT_CODE,
+                "USD",
+                0,
+                10
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-4032"))
+            .andExpect(jsonPath("$.items[0].followUpAt").doesNotExist())
+            .andExpect(jsonPath("$.items[0].followUpSetBy").doesNotExist())
+            .andExpect(jsonPath("$.items[0].followUpSetAt").doesNotExist());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.collectionsFollowUpHistoryRequest(
+                COLLECTIONS_FOLLOW_UP_COMPLETE_TENANT_CODE,
+                "inv-pay-4032",
+                0,
+                10
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].previousFollowUpAt").value(followUpAt.toString()))
+            .andExpect(jsonPath("$.items[0].followUpAt").doesNotExist())
+            .andExpect(jsonPath("$.items[0].changedBy").value("manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedAt").value(completedAt.toString()))
+            .andExpect(jsonPath("$.items[1].followUpAt").value(followUpAt.toString()));
     }
 
     @Test

@@ -129,6 +129,16 @@ class CollectionsAssignment {
         return this;
     }
 
+    CollectionsAssignment completeFollowUp() {
+        if (followUpAt == null) {
+            throw new IllegalStateException("followUpAt is not scheduled");
+        }
+        this.followUpAt = null;
+        this.followUpSetBy = null;
+        this.followUpSetAt = null;
+        return this;
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");

@@ -8,6 +8,7 @@ import com.arcanaerp.platform.payments.CollectionsNoteCategory;
 import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
+import com.arcanaerp.platform.payments.CompleteCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.CollectionsFollowUpChangeView;
 import com.arcanaerp.platform.payments.CollectionsNoteView;
 import com.arcanaerp.platform.payments.CollectionsQueueSortBy;
@@ -198,6 +199,21 @@ public class PaymentsController {
                 requirePathValue(invoiceNumber, "invoiceNumber"),
                 request.followUpAt(),
                 request.scheduledBy()
+            )
+        ));
+    }
+
+    @PostMapping("/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/follow-up/complete")
+    public CollectionsAssignmentResponse completeCollectionsFollowUp(
+        @PathVariable String tenantCode,
+        @PathVariable String invoiceNumber,
+        @Valid @RequestBody CompleteCollectionsFollowUpRequest request
+    ) {
+        return toCollectionsAssignmentResponse(paymentManagement.completeCollectionsFollowUp(
+            new CompleteCollectionsFollowUpCommand(
+                requirePathValue(tenantCode, "tenantCode"),
+                requirePathValue(invoiceNumber, "invoiceNumber"),
+                request.completedBy()
             )
         ));
     }

@@ -10,6 +10,7 @@ import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
+import com.arcanaerp.platform.payments.CompleteCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.CollectionsFollowUpChangeView;
 import com.arcanaerp.platform.payments.CollectionsNoteCategory;
 import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
@@ -375,6 +376,52 @@ class PaymentManagementService implements PaymentManagement {
             previousFollowUpAt,
             saved.getFollowUpAt(),
             scheduledBy,
+            now
+        ));
+        return new CollectionsAssignmentView(
+            saved.getTenantCode(),
+            saved.getInvoiceNumber(),
+            saved.getAssignedTo(),
+            saved.getAssignedBy(),
+            saved.getAssignedAt(),
+            saved.getFollowUpAt(),
+            saved.getFollowUpSetBy(),
+            saved.getFollowUpSetAt()
+        );
+    }
+
+    @Override
+    public CollectionsAssignmentView completeCollectionsFollowUp(CompleteCollectionsFollowUpCommand command) {
+        String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
+        String invoiceNumber = normalizeRequired(command.invoiceNumber(), "invoiceNumber").toUpperCase();
+        String completedBy = normalizeActorEmail(command.completedBy(), "completedBy");
+        if (!identityActorLookup.actorExists(tenantCode, completedBy)) {
+            throw new IllegalArgumentException("Collections follow-up actor not found in tenant " + tenantCode + ": " + completedBy);
+        }
+
+        validateOver90CollectionsInvoice(tenantCode, invoiceNumber);
+        CollectionsAssignment assignment = collectionsAssignmentRepository.findByInvoiceNumber(invoiceNumber)
+            .orElseThrow(() -> new IllegalArgumentException(
+                "Invoice is not currently assigned for collections follow-up: " + invoiceNumber
+            ));
+        if (!assignment.getTenantCode().equals(tenantCode)) {
+            throw new IllegalArgumentException("Invoice does not belong to tenant " + tenantCode + ": " + invoiceNumber);
+        }
+        if (assignment.getFollowUpAt() == null) {
+            throw new IllegalArgumentException(
+                "Invoice does not currently have a scheduled collections follow-up: " + invoiceNumber
+            );
+        }
+
+        Instant now = Instant.now(clock);
+        Instant previousFollowUpAt = assignment.getFollowUpAt();
+        CollectionsAssignment saved = collectionsAssignmentRepository.save(assignment.completeFollowUp());
+        collectionsFollowUpAuditRepository.save(CollectionsFollowUpAudit.create(
+            saved.getTenantCode(),
+            saved.getInvoiceNumber(),
+            previousFollowUpAt,
+            null,
+            completedBy,
             now
         ));
         return new CollectionsAssignmentView(
