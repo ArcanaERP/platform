@@ -37,6 +37,7 @@ import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.ReceivablesAgingBucket;
 import com.arcanaerp.platform.payments.ScheduleCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.TenantCollectionsAssignmentSummaryView;
+import com.arcanaerp.platform.payments.TenantCollectionsFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
@@ -1159,6 +1160,38 @@ class PaymentManagementService implements PaymentManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<TenantCollectionsFollowUpOutcomeSummaryView> listTenantCollectionsFollowUpOutcomeSummaries(
+        String tenantCode,
+        String currencyCode,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
+
+        Map<CollectionsFollowUpOutcome, FollowUpOutcomeSummaryAccumulator> summariesByOutcome = new LinkedHashMap<>();
+        enrichAgedReceivables(collectOutstandingReceivableSnapshots(normalizedTenantCode, normalizedCurrencyCode, asOfDate)
+            .stream()
+            .filter(snapshot -> snapshot.agingBucket() == ReceivablesAgingBucket.OVERDUE_OVER_90)
+            .sorted(java.util.Comparator
+                .comparing(ReceivableSnapshot::dueAt)
+                .thenComparing(ReceivableSnapshot::invoiceNumber))
+            .toList())
+            .stream()
+            .filter(receivable -> receivable.latestFollowUpOutcome() != null)
+            .forEach(receivable -> summariesByOutcome
+                .computeIfAbsent(receivable.latestFollowUpOutcome(), ignored -> new FollowUpOutcomeSummaryAccumulator())
+                .add(receivable));
+
+        List<TenantCollectionsFollowUpOutcomeSummaryView> summaries = summariesByOutcome.entrySet().stream()
+            .map(entry -> entry.getValue().toView(normalizedTenantCode, normalizedCurrencyCode, entry.getKey()))
+            .sorted(java.util.Comparator.comparing(summary -> summary.latestFollowUpOutcome().name()))
+            .toList();
+        return paginateList(summaries, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<DailyTenantCollectionsAssignmentSummaryView> listDailyTenantCollectionsAssignmentSummaries(
         String tenantCode,
         String assignedTo,
@@ -1903,6 +1936,36 @@ class PaymentManagementService implements PaymentManagement {
                 currencyCode,
                 assignedTo,
                 assignedInvoiceCount,
+                totalOutstandingAmount,
+                oldestDueAt
+            );
+        }
+    }
+
+    private static final class FollowUpOutcomeSummaryAccumulator {
+
+        private long invoiceCount;
+        private java.math.BigDecimal totalOutstandingAmount = java.math.BigDecimal.ZERO;
+        private Instant oldestDueAt;
+
+        void add(AgedTenantReceivableView receivable) {
+            invoiceCount++;
+            totalOutstandingAmount = totalOutstandingAmount.add(receivable.outstandingAmount());
+            if (oldestDueAt == null || receivable.dueAt().isBefore(oldestDueAt)) {
+                oldestDueAt = receivable.dueAt();
+            }
+        }
+
+        TenantCollectionsFollowUpOutcomeSummaryView toView(
+            String tenantCode,
+            String currencyCode,
+            CollectionsFollowUpOutcome latestFollowUpOutcome
+        ) {
+            return new TenantCollectionsFollowUpOutcomeSummaryView(
+                tenantCode,
+                currencyCode,
+                latestFollowUpOutcome,
+                invoiceCount,
                 totalOutstandingAmount,
                 oldestDueAt
             );

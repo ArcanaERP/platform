@@ -33,6 +33,7 @@ import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.ReceivablesAgingBucket;
 import com.arcanaerp.platform.payments.ScheduleCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.TenantCollectionsAssignmentSummaryView;
+import com.arcanaerp.platform.payments.TenantCollectionsFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
@@ -743,6 +744,21 @@ public class PaymentsController {
             .map(this::toTenantCollectionsAssignmentSummaryResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary")
+    public PageResult<TenantCollectionsFollowUpOutcomeSummaryResponse> listTenantCollectionsFollowUpOutcomeSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam String currencyCode,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return paymentManagement.listTenantCollectionsFollowUpOutcomeSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(currencyCode, "currencyCode"),
+                PageQuery.of(page, size)
+            )
+            .map(this::toTenantCollectionsFollowUpOutcomeSummaryResponse);
+    }
+
     @GetMapping("/tenants/{tenantCode}/receivables/collections/daily-summary")
     public PageResult<DailyTenantCollectionsAssignmentSummaryResponse> listDailyTenantCollectionsAssignmentSummaries(
         @PathVariable String tenantCode,
@@ -1278,6 +1294,19 @@ public class PaymentsController {
             summary.currencyCode(),
             summary.assignedTo(),
             summary.assignedInvoiceCount(),
+            summary.totalOutstandingAmount(),
+            summary.oldestDueAt()
+        );
+    }
+
+    private TenantCollectionsFollowUpOutcomeSummaryResponse toTenantCollectionsFollowUpOutcomeSummaryResponse(
+        TenantCollectionsFollowUpOutcomeSummaryView summary
+    ) {
+        return new TenantCollectionsFollowUpOutcomeSummaryResponse(
+            summary.tenantCode(),
+            summary.currencyCode(),
+            summary.latestFollowUpOutcome().name(),
+            summary.invoiceCount(),
             summary.totalOutstandingAmount(),
             summary.oldestDueAt()
         );

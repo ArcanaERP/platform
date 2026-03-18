@@ -248,6 +248,12 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    PageResult<TenantCollectionsFollowUpOutcomeSummaryView> listTenantCollectionsFollowUpOutcomeSummaries(
+        String tenantCode,
+        String currencyCode,
+        PageQuery pageQuery
+    );
+
     PageResult<DailyTenantCollectionsAssignmentSummaryView> listDailyTenantCollectionsAssignmentSummaries(
         String tenantCode,
         String assignedTo,
