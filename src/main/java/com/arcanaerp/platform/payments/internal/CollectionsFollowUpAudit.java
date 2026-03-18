@@ -1,6 +1,9 @@
 package com.arcanaerp.platform.payments.internal;
 
+import com.arcanaerp.platform.payments.CollectionsFollowUpOutcome;
 import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -39,6 +42,10 @@ class CollectionsFollowUpAudit {
 
     private Instant followUpAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 32)
+    private CollectionsFollowUpOutcome outcome;
+
     @Column(nullable = false, length = 128)
     private String changedBy;
 
@@ -51,6 +58,7 @@ class CollectionsFollowUpAudit {
         String invoiceNumber,
         Instant previousFollowUpAt,
         Instant followUpAt,
+        CollectionsFollowUpOutcome outcome,
         String changedBy,
         Instant changedAt
     ) {
@@ -59,6 +67,7 @@ class CollectionsFollowUpAudit {
         this.invoiceNumber = invoiceNumber;
         this.previousFollowUpAt = previousFollowUpAt;
         this.followUpAt = followUpAt;
+        this.outcome = outcome;
         this.changedBy = changedBy;
         this.changedAt = changedAt;
     }
@@ -68,6 +77,7 @@ class CollectionsFollowUpAudit {
         String invoiceNumber,
         Instant previousFollowUpAt,
         Instant followUpAt,
+        CollectionsFollowUpOutcome outcome,
         String changedBy,
         Instant changedAt
     ) {
@@ -80,6 +90,7 @@ class CollectionsFollowUpAudit {
             normalizeRequired(invoiceNumber, "invoiceNumber").toUpperCase(),
             previousFollowUpAt,
             followUpAt,
+            outcome,
             normalizeActorEmail(changedBy, "changedBy"),
             changedAt
         );

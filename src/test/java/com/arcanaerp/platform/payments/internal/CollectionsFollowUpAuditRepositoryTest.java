@@ -2,6 +2,7 @@ package com.arcanaerp.platform.payments.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.arcanaerp.platform.payments.CollectionsFollowUpOutcome;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,7 @@ class CollectionsFollowUpAuditRepositoryTest {
             "INV-6000",
             null,
             Instant.parse("2026-03-13T00:00:00Z"),
+            null,
             "manager@arcanaerp.com",
             Instant.parse("2026-03-12T00:00:00Z")
         ));
@@ -30,6 +32,7 @@ class CollectionsFollowUpAuditRepositoryTest {
             "INV-6000",
             Instant.parse("2026-03-13T00:00:00Z"),
             null,
+            CollectionsFollowUpOutcome.PROMISE_TO_PAY,
             "manager@arcanaerp.com",
             Instant.parse("2026-03-12T00:05:00Z")
         ));
@@ -38,6 +41,7 @@ class CollectionsFollowUpAuditRepositoryTest {
             "INV-6001",
             null,
             Instant.parse("2026-03-15T00:00:00Z"),
+            null,
             "manager@arcanaerp.com",
             Instant.parse("2026-03-12T00:10:00Z")
         ));
@@ -54,6 +58,7 @@ class CollectionsFollowUpAuditRepositoryTest {
                 null,
                 Instant.parse("2026-03-13T00:00:00Z")
             );
+        assertThat(page.getContent().getFirst().getOutcome()).isEqualTo(CollectionsFollowUpOutcome.PROMISE_TO_PAY);
         assertThat(page.getContent().getFirst().getPreviousFollowUpAt()).isEqualTo(Instant.parse("2026-03-13T00:00:00Z"));
     }
 }

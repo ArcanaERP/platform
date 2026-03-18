@@ -226,6 +226,7 @@ Fields:
 - `invoiceNumber`
 - `previousFollowUpAt`
 - `followUpAt`
+- `outcome`
 - `changedBy`
 - `changedAt`
 
@@ -234,6 +235,7 @@ Rules:
 - history is read newest-first by `changedAt`
 - history remains tenant-scoped and invoice-scoped
 - completion rows clear current assignment follow-up state and use `followUpAt = null`
+- completion rows require an outcome such as `CONTACTED`, `LEFT_VOICEMAIL`, `PROMISE_TO_PAY`, or `NO_RESPONSE`
 
 ### TenantCollectionsAssignmentSummary
 

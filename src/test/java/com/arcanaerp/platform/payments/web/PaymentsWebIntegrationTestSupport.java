@@ -168,13 +168,15 @@ final class PaymentsWebIntegrationTestSupport {
         MockMvc mockMvc,
         String tenantCode,
         String invoiceNumber,
-        String completedBy
+        String completedBy,
+        String outcome
     ) throws Exception {
         String payload = """
             {
-              "completedBy": "%s"
+              "completedBy": "%s",
+              "outcome": "%s"
             }
-            """.formatted(completedBy);
+            """.formatted(completedBy, outcome);
 
         return mockMvc.perform(post(
             "/api/payments/tenants/" + tenantCode + "/receivables/collections/over-90/" + invoiceNumber + "/follow-up/complete"

@@ -807,7 +807,8 @@ class PaymentsControllerIntegrationTest {
             mockMvc,
             COLLECTIONS_FOLLOW_UP_COMPLETE_TENANT_CODE,
             "inv-pay-4032",
-            "manager@arcanaerp.com"
+            "manager@arcanaerp.com",
+            "PROMISE_TO_PAY"
         )
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.tenantCode").value("TENANT-COLL-FUP-COMPLETE"))
@@ -839,9 +840,11 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(2))
             .andExpect(jsonPath("$.items[0].previousFollowUpAt").value(followUpAt.toString()))
             .andExpect(jsonPath("$.items[0].followUpAt").doesNotExist())
+            .andExpect(jsonPath("$.items[0].outcome").value("PROMISE_TO_PAY"))
             .andExpect(jsonPath("$.items[0].changedBy").value("manager@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].changedAt").value(completedAt.toString()))
-            .andExpect(jsonPath("$.items[1].followUpAt").value(followUpAt.toString()));
+            .andExpect(jsonPath("$.items[1].followUpAt").value(followUpAt.toString()))
+            .andExpect(jsonPath("$.items[1].outcome").doesNotExist());
     }
 
     @Test

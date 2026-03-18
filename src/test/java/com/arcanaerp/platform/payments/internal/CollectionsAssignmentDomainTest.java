@@ -3,6 +3,7 @@ package com.arcanaerp.platform.payments.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.arcanaerp.platform.payments.CollectionsFollowUpOutcome;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
@@ -81,6 +82,7 @@ class CollectionsAssignmentDomainTest {
             " inv-1003 ",
             Instant.parse("2026-03-13T00:00:00Z"),
             Instant.parse("2026-03-14T00:00:00Z"),
+            CollectionsFollowUpOutcome.CONTACTED,
             " Manager@ArcanaERP.com ",
             Instant.parse("2026-03-12T02:00:00Z")
         );
@@ -89,6 +91,7 @@ class CollectionsAssignmentDomainTest {
         assertThat(audit.getInvoiceNumber()).isEqualTo("INV-1003");
         assertThat(audit.getPreviousFollowUpAt()).isEqualTo(Instant.parse("2026-03-13T00:00:00Z"));
         assertThat(audit.getFollowUpAt()).isEqualTo(Instant.parse("2026-03-14T00:00:00Z"));
+        assertThat(audit.getOutcome()).isEqualTo(CollectionsFollowUpOutcome.CONTACTED);
         assertThat(audit.getChangedBy()).isEqualTo("manager@arcanaerp.com");
     }
 

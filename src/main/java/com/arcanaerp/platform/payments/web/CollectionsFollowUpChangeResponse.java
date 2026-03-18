@@ -9,6 +9,7 @@ public record CollectionsFollowUpChangeResponse(
     String invoiceNumber,
     Instant previousFollowUpAt,
     Instant followUpAt,
+    String outcome,
     String changedBy,
     Instant changedAt
 ) {

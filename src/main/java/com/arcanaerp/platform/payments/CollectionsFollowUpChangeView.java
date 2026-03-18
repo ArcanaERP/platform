@@ -9,6 +9,7 @@ public record CollectionsFollowUpChangeView(
     String invoiceNumber,
     Instant previousFollowUpAt,
     Instant followUpAt,
+    CollectionsFollowUpOutcome outcome,
     String changedBy,
     Instant changedAt
 ) {

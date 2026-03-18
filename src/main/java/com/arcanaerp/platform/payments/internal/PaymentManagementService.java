@@ -12,6 +12,7 @@ import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
 import com.arcanaerp.platform.payments.CompleteCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.CollectionsFollowUpChangeView;
+import com.arcanaerp.platform.payments.CollectionsFollowUpOutcome;
 import com.arcanaerp.platform.payments.CollectionsNoteCategory;
 import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import com.arcanaerp.platform.payments.CollectionsNoteView;
@@ -377,6 +378,7 @@ class PaymentManagementService implements PaymentManagement {
             saved.getInvoiceNumber(),
             previousFollowUpAt,
             saved.getFollowUpAt(),
+            null,
             scheduledBy,
             now
         ));
@@ -397,6 +399,7 @@ class PaymentManagementService implements PaymentManagement {
         String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
         String invoiceNumber = normalizeRequired(command.invoiceNumber(), "invoiceNumber").toUpperCase();
         String completedBy = normalizeActorEmail(command.completedBy(), "completedBy");
+        CollectionsFollowUpOutcome outcome = java.util.Objects.requireNonNull(command.outcome(), "outcome is required");
         if (!identityActorLookup.actorExists(tenantCode, completedBy)) {
             throw new IllegalArgumentException("Collections follow-up actor not found in tenant " + tenantCode + ": " + completedBy);
         }
@@ -423,6 +426,7 @@ class PaymentManagementService implements PaymentManagement {
             saved.getInvoiceNumber(),
             previousFollowUpAt,
             null,
+            outcome,
             completedBy,
             now
         ));
@@ -495,6 +499,7 @@ class PaymentManagementService implements PaymentManagement {
             audit.getInvoiceNumber(),
             audit.getPreviousFollowUpAt(),
             audit.getFollowUpAt(),
+            audit.getOutcome(),
             audit.getChangedBy(),
             audit.getChangedAt()
         ));

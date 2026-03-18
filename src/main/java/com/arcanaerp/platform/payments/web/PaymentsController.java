@@ -10,6 +10,7 @@ import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
 import com.arcanaerp.platform.payments.CompleteCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.CollectionsFollowUpChangeView;
+import com.arcanaerp.platform.payments.CollectionsFollowUpOutcome;
 import com.arcanaerp.platform.payments.CollectionsNoteView;
 import com.arcanaerp.platform.payments.CollectionsQueueSortBy;
 import com.arcanaerp.platform.payments.CreateCollectionsNoteCommand;
@@ -215,7 +216,8 @@ public class PaymentsController {
             new CompleteCollectionsFollowUpCommand(
                 requirePathValue(tenantCode, "tenantCode"),
                 requirePathValue(invoiceNumber, "invoiceNumber"),
-                request.completedBy()
+                request.completedBy(),
+                parseCollectionsFollowUpOutcome(request.outcome())
             )
         ));
     }
@@ -1080,6 +1082,7 @@ public class PaymentsController {
             change.invoiceNumber(),
             change.previousFollowUpAt(),
             change.followUpAt(),
+            change.outcome() == null ? null : change.outcome().name(),
             change.changedBy(),
             change.changedAt()
         );
@@ -1393,6 +1396,18 @@ public class PaymentsController {
             return false;
         }
         throw new IllegalArgumentException(parameterName + " query parameter is invalid");
+    }
+
+    private static CollectionsFollowUpOutcome parseCollectionsFollowUpOutcome(String value) {
+        String normalizedValue = normalizeOptional(value, "outcome");
+        if (normalizedValue == null) {
+            throw new IllegalArgumentException("outcome is required");
+        }
+        try {
+            return CollectionsFollowUpOutcome.valueOf(normalizedValue.toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("outcome is invalid");
+        }
     }
 
     private static CollectionsNoteCategory parseCollectionsNoteCategory(String value) {
