@@ -61,4 +61,56 @@ class CollectionsFollowUpAuditRepositoryTest {
         assertThat(page.getContent().getFirst().getOutcome()).isEqualTo(CollectionsFollowUpOutcome.PROMISE_TO_PAY);
         assertThat(page.getContent().getFirst().getPreviousFollowUpAt()).isEqualTo(Instant.parse("2026-03-13T00:00:00Z"));
     }
+
+    @Test
+    void filtersOutcomeHistoryForDailySummary() {
+        collectionsFollowUpAuditRepository.saveAndFlush(CollectionsFollowUpAudit.create(
+            "TENANT-02",
+            "INV-7000",
+            Instant.parse("2026-03-13T00:00:00Z"),
+            null,
+            CollectionsFollowUpOutcome.NO_RESPONSE,
+            "collector@arcanaerp.com",
+            Instant.parse("2026-03-14T09:00:00Z")
+        ));
+        collectionsFollowUpAuditRepository.saveAndFlush(CollectionsFollowUpAudit.create(
+            "TENANT-02",
+            "INV-7001",
+            Instant.parse("2026-03-13T00:00:00Z"),
+            null,
+            CollectionsFollowUpOutcome.PROMISE_TO_PAY,
+            "collector@arcanaerp.com",
+            Instant.parse("2026-03-14T10:00:00Z")
+        ));
+        collectionsFollowUpAuditRepository.saveAndFlush(CollectionsFollowUpAudit.create(
+            "TENANT-02",
+            "INV-7002",
+            null,
+            Instant.parse("2026-03-16T00:00:00Z"),
+            null,
+            "collector@arcanaerp.com",
+            Instant.parse("2026-03-14T11:00:00Z")
+        ));
+        collectionsFollowUpAuditRepository.saveAndFlush(CollectionsFollowUpAudit.create(
+            "TENANT-03",
+            "INV-7003",
+            Instant.parse("2026-03-13T00:00:00Z"),
+            null,
+            CollectionsFollowUpOutcome.NO_RESPONSE,
+            "collector@arcanaerp.com",
+            Instant.parse("2026-03-14T12:00:00Z")
+        ));
+
+        var audits = collectionsFollowUpAuditRepository.findOutcomeHistoryForSummary(
+            "TENANT-02",
+            CollectionsFollowUpOutcome.NO_RESPONSE,
+            "collector@arcanaerp.com",
+            Instant.parse("2026-03-14T08:30:00Z"),
+            Instant.parse("2026-03-14T09:30:00Z")
+        );
+
+        assertThat(audits).hasSize(1);
+        assertThat(audits.getFirst().getInvoiceNumber()).isEqualTo("INV-7000");
+        assertThat(audits.getFirst().getOutcome()).isEqualTo(CollectionsFollowUpOutcome.NO_RESPONSE);
+    }
 }

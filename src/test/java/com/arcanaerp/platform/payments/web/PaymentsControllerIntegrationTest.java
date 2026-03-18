@@ -35,6 +35,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_FOLLOW_UP_STATUS_TENANT_CODE = "tenant-coll-fup-status";
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_TENANT_CODE = "tenant-coll-fup-outcome";
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_SUMMARY_TENANT_CODE = "tenant-coll-fup-outsum";
+    private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE = "tenant-coll-fup-outday";
     private static final String COLLECTIONS_ASSIGNMENT_MISSING_TENANT_CODE = "tenant-coll-assign-miss";
     private static final String COLLECTIONS_ASSIGNMENT_HISTORY_TENANT_CODE = "tenant-coll-assign-history";
     private static final String COLLECTIONS_ASSIGNEE_FILTER_TENANT_CODE = "tenant-coll-assignee-filter";
@@ -1232,6 +1233,118 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(2))
             .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-2034"))
             .andExpect(jsonPath("$.items[1].invoiceNumber").value("INV-PAY-2033"));
+    }
+
+    @Test
+    void listsDailyCollectionsFollowUpOutcomeSummaries() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
+            "Collections Follow Up Outcome Daily Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector@arcanaerp.com",
+            "Collector"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
+            "Collections Follow Up Outcome Daily Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
+            "arc-pay-7040",
+            "so-pay-7040",
+            "inv-pay-7040",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
+            "arc-pay-7041",
+            "so-pay-7041",
+            "inv-pay-7041",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(11 * 86400)
+        );
+        Instant assignedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(assignedAt);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
+            "inv-pay-7040",
+            "collector@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
+            "inv-pay-7041",
+            "collector@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant firstScheduledAt = assignedAt.plusSeconds(86400);
+        testClock.setInstant(assignedAt.plusSeconds(60));
+        PaymentsWebIntegrationTestSupport.scheduleCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
+            "inv-pay-7040",
+            firstScheduledAt,
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.scheduleCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
+            "inv-pay-7041",
+            firstScheduledAt.plusSeconds(60),
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant firstCompletedAt = assignedAt.plusSeconds(2 * 86400).plusSeconds(9 * 3600);
+        Instant secondCompletedAt = assignedAt.plusSeconds(3 * 86400).plusSeconds(10 * 3600);
+        testClock.setInstant(firstCompletedAt);
+        PaymentsWebIntegrationTestSupport.completeCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
+            "inv-pay-7040",
+            "manager@arcanaerp.com",
+            "NO_RESPONSE"
+        ).andExpect(status().isOk());
+
+        testClock.setInstant(secondCompletedAt);
+        PaymentsWebIntegrationTestSupport.completeCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
+            "inv-pay-7041",
+            "manager@arcanaerp.com",
+            "PROMISE_TO_PAY"
+        ).andExpect(status().isOk());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.dailyTenantCollectionsFollowUpOutcomeSummaryRequest(
+                COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
+                0,
+                10,
+                "changedBy", "manager@arcanaerp.com",
+                "changedAtFrom", assignedAt.plusSeconds(2 * 86400).toString(),
+                "changedAtTo", assignedAt.plusSeconds(4 * 86400).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessDate").value(secondCompletedAt.atOffset(java.time.ZoneOffset.UTC).toLocalDate().toString()))
+            .andExpect(jsonPath("$.items[0].outcome").value("PROMISE_TO_PAY"))
+            .andExpect(jsonPath("$.items[0].completionCount").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1))
+            .andExpect(jsonPath("$.items[1].businessDate").value(firstCompletedAt.atOffset(java.time.ZoneOffset.UTC).toLocalDate().toString()))
+            .andExpect(jsonPath("$.items[1].outcome").value("NO_RESPONSE"))
+            .andExpect(jsonPath("$.items[1].completionCount").value(1))
+            .andExpect(jsonPath("$.items[1].invoiceCount").value(1));
     }
 
     @Test

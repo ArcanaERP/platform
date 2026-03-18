@@ -18,6 +18,7 @@ import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import com.arcanaerp.platform.payments.CollectionsNoteView;
 import com.arcanaerp.platform.payments.CollectionsQueueSortBy;
 import com.arcanaerp.platform.payments.CreateCollectionsNoteCommand;
+import com.arcanaerp.platform.payments.DailyTenantCollectionsFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteCategoryOutcomeSummaryView;
@@ -1192,6 +1193,41 @@ class PaymentManagementService implements PaymentManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<DailyTenantCollectionsFollowUpOutcomeSummaryView> listDailyTenantCollectionsFollowUpOutcomeSummaries(
+        String tenantCode,
+        CollectionsFollowUpOutcome outcome,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeCollectionsFollowUpOutcomes(
+            tenantCode,
+            outcome,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> new DailyCollectionsFollowUpOutcomeBucket(
+                audit.getChangedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+                audit.getOutcome()
+            ),
+            (normalizedTenantCode, bucket, summary) -> new DailyTenantCollectionsFollowUpOutcomeSummaryView(
+                normalizedTenantCode,
+                bucket.businessDate(),
+                bucket.outcome(),
+                summary.completionCount,
+                summary.invoiceNumbers.size()
+            ),
+            java.util.Comparator
+                .comparing(DailyTenantCollectionsFollowUpOutcomeSummaryView::businessDate)
+                .reversed()
+                .thenComparing(summary -> summary.outcome().name())
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<DailyTenantCollectionsAssignmentSummaryView> listDailyTenantCollectionsAssignmentSummaries(
         String tenantCode,
         String assignedTo,
@@ -1662,6 +1698,42 @@ class PaymentManagementService implements PaymentManagement {
         return paginateList(summaries, pageQuery);
     }
 
+    private <B, V> PageResult<V> summarizeCollectionsFollowUpOutcomes(
+        String tenantCode,
+        CollectionsFollowUpOutcome outcome,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery,
+        Function<CollectionsFollowUpAudit, B> bucketExtractor,
+        CollectionsFollowUpOutcomeBucketViewFactory<B, V> viewFactory,
+        java.util.Comparator<V> comparator
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy, "changedBy");
+        List<CollectionsFollowUpAudit> audits = collectionsFollowUpAuditRepository.findOutcomeHistoryForSummary(
+            normalizedTenantCode,
+            outcome,
+            normalizedChangedBy,
+            changedAtFrom,
+            changedAtTo
+        );
+
+        Map<B, CollectionsFollowUpOutcomeSummaryAccumulator> summariesByBucket = new LinkedHashMap<>();
+        for (CollectionsFollowUpAudit audit : audits) {
+            B bucket = bucketExtractor.apply(audit);
+            summariesByBucket.computeIfAbsent(bucket, ignored -> new CollectionsFollowUpOutcomeSummaryAccumulator())
+                .add(audit);
+        }
+
+        List<V> summaries = new ArrayList<>();
+        summariesByBucket.forEach((bucket, summary) -> summaries.add(
+            viewFactory.create(normalizedTenantCode, bucket, summary)
+        ));
+        summaries.sort(comparator);
+        return paginateList(summaries, pageQuery);
+    }
+
     private <B, V> PageResult<V> summarizeTenantCollectionsNoteOutcomes(
         String tenantCode,
         String assignedTo,
@@ -1972,6 +2044,17 @@ class PaymentManagementService implements PaymentManagement {
         }
     }
 
+    private static final class CollectionsFollowUpOutcomeSummaryAccumulator {
+
+        private long completionCount;
+        private final java.util.Set<String> invoiceNumbers = new java.util.LinkedHashSet<>();
+
+        void add(CollectionsFollowUpAudit audit) {
+            completionCount++;
+            invoiceNumbers.add(audit.getInvoiceNumber());
+        }
+    }
+
     private static final class AssignmentHistoryDailySummaryAccumulator {
 
         private long assignmentCount;
@@ -2019,6 +2102,12 @@ class PaymentManagementService implements PaymentManagement {
     private record DailyCollectionsNoteOutcomeBucket(
         LocalDate businessDate,
         CollectionsNoteOutcome outcome
+    ) {
+    }
+
+    private record DailyCollectionsFollowUpOutcomeBucket(
+        LocalDate businessDate,
+        CollectionsFollowUpOutcome outcome
     ) {
     }
 
@@ -2089,6 +2178,12 @@ class PaymentManagementService implements PaymentManagement {
     private interface CollectionsNoteOutcomeBucketViewFactory<B, V> {
 
         V create(String tenantCode, B bucket, CollectionsNoteSummaryAccumulator summary);
+    }
+
+    @FunctionalInterface
+    private interface CollectionsFollowUpOutcomeBucketViewFactory<B, V> {
+
+        V create(String tenantCode, B bucket, CollectionsFollowUpOutcomeSummaryAccumulator summary);
     }
 
     private record ReceivableSnapshot(
