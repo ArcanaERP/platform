@@ -273,6 +273,7 @@ Rules:
 - summary is built from the current over-90 receivables queue, not from historical completion totals
 - only invoices with a non-null latest follow-up outcome contribute to the summary
 - latest follow-up outcome is derived from the most recent non-null `CollectionsFollowUpAudit.outcome` per invoice
+- optional exact `assignedTo` and exact `latestFollowUpOutcome` filters narrow the current-state rollup before grouping
 - rows are ordered by `assignedTo` ascending with null assignees last, then by `latestFollowUpOutcome`
 
 ### DailyTenantCollectionsAssignmentSummary

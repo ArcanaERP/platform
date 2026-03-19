@@ -257,6 +257,8 @@ public interface PaymentManagement {
     PageResult<TenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryView> listTenantCollectionsCurrentAssigneeFollowUpOutcomeSummaries(
         String tenantCode,
         String currencyCode,
+        String assignedTo,
+        CollectionsFollowUpOutcome latestFollowUpOutcome,
         PageQuery pageQuery
     );
 

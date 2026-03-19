@@ -117,7 +117,7 @@ Payments:
 - `GET /api/payments/tenants/{tenantCode}/receivables/aging/{agingBucket}?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90?currencyCode=&invoiceNumber=&assignedTo=&dueAtOnOrBefore=&followUpAtFrom=&followUpAtTo=&followUpScheduled=&latestFollowUpOutcome=&sortBy=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary?currencyCode=&page=&size=`
-- `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/current-assignee-summary?currencyCode=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/current-assignee-summary?currencyCode=&assignedTo=&latestFollowUpOutcome=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/assignee-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/daily-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/weekly-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`

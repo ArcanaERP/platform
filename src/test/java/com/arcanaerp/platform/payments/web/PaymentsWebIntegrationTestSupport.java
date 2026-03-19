@@ -770,7 +770,8 @@ final class PaymentsWebIntegrationTestSupport {
         String tenantCode,
         String currencyCode,
         Integer page,
-        Integer size
+        Integer size,
+        String... optionalNameValuePairs
     ) {
         MockHttpServletRequestBuilder request = get(
             "/api/payments/tenants/" + tenantCode + "/receivables/collections/follow-up-outcome/current-assignee-summary"
@@ -780,6 +781,16 @@ final class PaymentsWebIntegrationTestSupport {
         }
         if (size != null) {
             request.param("size", String.valueOf(size));
+        }
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must have an even number of elements");
+        }
+        for (int index = 0; index < optionalNameValuePairs.length; index += 2) {
+            String name = optionalNameValuePairs[index];
+            String value = optionalNameValuePairs[index + 1];
+            if (value != null) {
+                request.param(name, value);
+            }
         }
         return request;
     }

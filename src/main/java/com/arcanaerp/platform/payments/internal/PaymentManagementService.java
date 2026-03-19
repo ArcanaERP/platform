@@ -1200,10 +1200,13 @@ class PaymentManagementService implements PaymentManagement {
     public PageResult<TenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryView> listTenantCollectionsCurrentAssigneeFollowUpOutcomeSummaries(
         String tenantCode,
         String currencyCode,
+        String assignedTo,
+        CollectionsFollowUpOutcome latestFollowUpOutcome,
         PageQuery pageQuery
     ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
         String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
         LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
 
         Map<TenantCollectionsCurrentAssigneeFollowUpOutcomeBucket, CurrentAssigneeFollowUpOutcomeSummaryAccumulator> summariesByBucket =
@@ -1217,6 +1220,8 @@ class PaymentManagementService implements PaymentManagement {
             .toList())
             .stream()
             .filter(receivable -> receivable.latestFollowUpOutcome() != null)
+            .filter(receivable -> normalizedAssignedTo == null || normalizedAssignedTo.equals(receivable.assignedTo()))
+            .filter(receivable -> latestFollowUpOutcome == null || latestFollowUpOutcome == receivable.latestFollowUpOutcome())
             .forEach(receivable -> summariesByBucket
                 .computeIfAbsent(
                     new TenantCollectionsCurrentAssigneeFollowUpOutcomeBucket(

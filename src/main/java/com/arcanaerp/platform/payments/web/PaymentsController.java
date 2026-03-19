@@ -768,12 +768,16 @@ public class PaymentsController {
     public PageResult<TenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryResponse> listTenantCollectionsCurrentAssigneeFollowUpOutcomeSummaries(
         @PathVariable String tenantCode,
         @RequestParam String currencyCode,
+        @RequestParam(required = false) String assignedTo,
+        @RequestParam(required = false) String latestFollowUpOutcome,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
         return paymentManagement.listTenantCollectionsCurrentAssigneeFollowUpOutcomeSummaries(
                 requirePathValue(tenantCode, "tenantCode"),
                 normalizeOptional(currencyCode, "currencyCode"),
+                normalizeOptional(assignedTo, "assignedTo"),
+                parseOptionalCollectionsFollowUpOutcome(latestFollowUpOutcome),
                 PageQuery.of(page, size)
             )
             .map(this::toTenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryResponse);
