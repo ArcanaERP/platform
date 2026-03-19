@@ -40,6 +40,7 @@ import com.arcanaerp.platform.payments.ReceivablesAgingBucket;
 import com.arcanaerp.platform.payments.ScheduleCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.TenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsAssigneeFollowUpOutcomeSummaryView;
+import com.arcanaerp.platform.payments.TenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteOutcomeSummaryView;
@@ -1196,6 +1197,53 @@ class PaymentManagementService implements PaymentManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<TenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryView> listTenantCollectionsCurrentAssigneeFollowUpOutcomeSummaries(
+        String tenantCode,
+        String currencyCode,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
+
+        Map<TenantCollectionsCurrentAssigneeFollowUpOutcomeBucket, CurrentAssigneeFollowUpOutcomeSummaryAccumulator> summariesByBucket =
+            new LinkedHashMap<>();
+        enrichAgedReceivables(collectOutstandingReceivableSnapshots(normalizedTenantCode, normalizedCurrencyCode, asOfDate)
+            .stream()
+            .filter(snapshot -> snapshot.agingBucket() == ReceivablesAgingBucket.OVERDUE_OVER_90)
+            .sorted(java.util.Comparator
+                .comparing(ReceivableSnapshot::dueAt)
+                .thenComparing(ReceivableSnapshot::invoiceNumber))
+            .toList())
+            .stream()
+            .filter(receivable -> receivable.latestFollowUpOutcome() != null)
+            .forEach(receivable -> summariesByBucket
+                .computeIfAbsent(
+                    new TenantCollectionsCurrentAssigneeFollowUpOutcomeBucket(
+                        receivable.assignedTo(),
+                        receivable.latestFollowUpOutcome()
+                    ),
+                    ignored -> new CurrentAssigneeFollowUpOutcomeSummaryAccumulator()
+                )
+                .add(receivable));
+
+        List<TenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryView> summaries = summariesByBucket.entrySet().stream()
+            .map(entry -> entry.getValue().toView(
+                normalizedTenantCode,
+                normalizedCurrencyCode,
+                entry.getKey().assignedTo(),
+                entry.getKey().latestFollowUpOutcome()
+            ))
+            .sorted(java.util.Comparator
+                .comparing((TenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryView summary) -> summary.assignedTo() == null ? 1 : 0)
+                .thenComparing(summary -> summary.assignedTo() == null ? "" : summary.assignedTo())
+                .thenComparing(summary -> summary.latestFollowUpOutcome().name()))
+            .toList();
+        return paginateList(summaries, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<TenantCollectionsAssigneeFollowUpOutcomeSummaryView> listTenantCollectionsAssigneeFollowUpOutcomeSummaries(
         String tenantCode,
         CollectionsFollowUpOutcome outcome,
@@ -2219,6 +2267,38 @@ class PaymentManagementService implements PaymentManagement {
         }
     }
 
+    private static final class CurrentAssigneeFollowUpOutcomeSummaryAccumulator {
+
+        private long invoiceCount;
+        private BigDecimal totalOutstandingAmount = BigDecimal.ZERO;
+        private Instant oldestDueAt;
+
+        void add(AgedTenantReceivableView receivable) {
+            invoiceCount++;
+            totalOutstandingAmount = totalOutstandingAmount.add(receivable.outstandingAmount());
+            if (oldestDueAt == null || receivable.dueAt().isBefore(oldestDueAt)) {
+                oldestDueAt = receivable.dueAt();
+            }
+        }
+
+        TenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryView toView(
+            String tenantCode,
+            String currencyCode,
+            String assignedTo,
+            CollectionsFollowUpOutcome latestFollowUpOutcome
+        ) {
+            return new TenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryView(
+                tenantCode,
+                currencyCode,
+                assignedTo,
+                latestFollowUpOutcome,
+                invoiceCount,
+                totalOutstandingAmount,
+                oldestDueAt
+            );
+        }
+    }
+
     private static final class AssignmentHistoryDailySummaryAccumulator {
 
         private long assignmentCount;
@@ -2284,6 +2364,12 @@ class PaymentManagementService implements PaymentManagement {
     private record MonthlyCollectionsFollowUpOutcomeBucket(
         YearMonth businessMonth,
         CollectionsFollowUpOutcome outcome
+    ) {
+    }
+
+    private record TenantCollectionsCurrentAssigneeFollowUpOutcomeBucket(
+        String assignedTo,
+        CollectionsFollowUpOutcome latestFollowUpOutcome
     ) {
     }
 

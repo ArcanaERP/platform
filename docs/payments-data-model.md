@@ -255,6 +255,26 @@ Rules:
 - unassigned invoices are grouped into a nullable `assignedTo` bucket
 - rows are ordered by `assignedTo` ascending with the unassigned bucket last
 
+### TenantCollectionsCurrentAssigneeFollowUpOutcomeSummary
+
+Purpose:
+- expose the current over-90 collections workload grouped by current assignee plus latest follow-up outcome
+
+Fields:
+- `tenantCode`
+- `currencyCode`
+- `assignedTo`
+- `latestFollowUpOutcome`
+- `invoiceCount`
+- `totalOutstandingAmount`
+- `oldestDueAt`
+
+Rules:
+- summary is built from the current over-90 receivables queue, not from historical completion totals
+- only invoices with a non-null latest follow-up outcome contribute to the summary
+- latest follow-up outcome is derived from the most recent non-null `CollectionsFollowUpAudit.outcome` per invoice
+- rows are ordered by `assignedTo` ascending with null assignees last, then by `latestFollowUpOutcome`
+
 ### DailyTenantCollectionsAssignmentSummary
 
 Purpose:

@@ -766,6 +766,24 @@ final class PaymentsWebIntegrationTestSupport {
         return request;
     }
 
+    static MockHttpServletRequestBuilder tenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryRequest(
+        String tenantCode,
+        String currencyCode,
+        Integer page,
+        Integer size
+    ) {
+        MockHttpServletRequestBuilder request = get(
+            "/api/payments/tenants/" + tenantCode + "/receivables/collections/follow-up-outcome/current-assignee-summary"
+        ).param("currencyCode", currencyCode);
+        if (page != null) {
+            request.param("page", String.valueOf(page));
+        }
+        if (size != null) {
+            request.param("size", String.valueOf(size));
+        }
+        return request;
+    }
+
     static MockHttpServletRequestBuilder tenantCollectionsAssigneeFollowUpOutcomeSummaryRequest(
         String tenantCode,
         Integer page,
