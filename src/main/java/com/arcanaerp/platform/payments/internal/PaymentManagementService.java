@@ -1203,7 +1203,7 @@ class PaymentManagementService implements PaymentManagement {
         Instant changedAtTo,
         PageQuery pageQuery
     ) {
-        return summarizeCollectionsFollowUpOutcomes(
+        return summarizeCollectionsFollowUpOutcomeSeries(
             tenantCode,
             outcome,
             changedBy,
@@ -1238,7 +1238,7 @@ class PaymentManagementService implements PaymentManagement {
         Instant changedAtTo,
         PageQuery pageQuery
     ) {
-        return summarizeCollectionsFollowUpOutcomes(
+        return summarizeCollectionsFollowUpOutcomeSeries(
             tenantCode,
             outcome,
             changedBy,
@@ -1276,7 +1276,7 @@ class PaymentManagementService implements PaymentManagement {
         Instant changedAtTo,
         PageQuery pageQuery
     ) {
-        return summarizeCollectionsFollowUpOutcomes(
+        return summarizeCollectionsFollowUpOutcomeSeries(
             tenantCode,
             outcome,
             changedBy,
@@ -1807,6 +1807,30 @@ class PaymentManagementService implements PaymentManagement {
         ));
         summaries.sort(comparator);
         return paginateList(summaries, pageQuery);
+    }
+
+    private <B, V> PageResult<V> summarizeCollectionsFollowUpOutcomeSeries(
+        String tenantCode,
+        CollectionsFollowUpOutcome outcome,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery,
+        Function<CollectionsFollowUpAudit, B> bucketExtractor,
+        CollectionsFollowUpOutcomeBucketViewFactory<B, V> viewFactory,
+        java.util.Comparator<V> comparator
+    ) {
+        return summarizeCollectionsFollowUpOutcomes(
+            tenantCode,
+            outcome,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            bucketExtractor,
+            viewFactory,
+            comparator
+        );
     }
 
     private <B, V> PageResult<V> summarizeTenantCollectionsNoteOutcomes(
