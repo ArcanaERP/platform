@@ -39,6 +39,7 @@ import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.ReceivablesAgingBucket;
 import com.arcanaerp.platform.payments.ScheduleCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.TenantCollectionsAssignmentSummaryView;
+import com.arcanaerp.platform.payments.TenantCollectionsAssigneeFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteOutcomeSummaryView;
@@ -1195,6 +1196,46 @@ class PaymentManagementService implements PaymentManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<TenantCollectionsAssigneeFollowUpOutcomeSummaryView> listTenantCollectionsAssigneeFollowUpOutcomeSummaries(
+        String tenantCode,
+        CollectionsFollowUpOutcome outcome,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeCollectionsFollowUpOutcomes(
+            tenantCode,
+            outcome,
+            null,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> {
+                CollectionsAssignment assignment = collectionsAssignmentRepository.findByInvoiceNumber(audit.getInvoiceNumber())
+                    .orElse(null);
+                return new TenantCollectionsAssigneeFollowUpOutcomeBucket(
+                    assignment == null ? null : assignment.getAssignedTo(),
+                    audit.getOutcome()
+                );
+            },
+            (normalizedTenantCode, bucket, summary) -> new TenantCollectionsAssigneeFollowUpOutcomeSummaryView(
+                normalizedTenantCode,
+                bucket.assignedTo(),
+                bucket.outcome(),
+                summary.completionCount,
+                summary.invoiceNumbers.size()
+            ),
+            java.util.Comparator
+                .comparing((TenantCollectionsAssigneeFollowUpOutcomeSummaryView summary) -> summary.assignedTo() == null ? 1 : 0)
+                .thenComparing(summary -> summary.assignedTo() == null ? "" : summary.assignedTo())
+                .thenComparing(summary -> summary.outcome().name())
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<DailyTenantCollectionsFollowUpOutcomeSummaryView> listDailyTenantCollectionsFollowUpOutcomeSummaries(
         String tenantCode,
         CollectionsFollowUpOutcome outcome,
@@ -2242,6 +2283,12 @@ class PaymentManagementService implements PaymentManagement {
 
     private record MonthlyCollectionsFollowUpOutcomeBucket(
         YearMonth businessMonth,
+        CollectionsFollowUpOutcome outcome
+    ) {
+    }
+
+    private record TenantCollectionsAssigneeFollowUpOutcomeBucket(
+        String assignedTo,
         CollectionsFollowUpOutcome outcome
     ) {
     }

@@ -254,6 +254,15 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    PageResult<TenantCollectionsAssigneeFollowUpOutcomeSummaryView> listTenantCollectionsAssigneeFollowUpOutcomeSummaries(
+        String tenantCode,
+        CollectionsFollowUpOutcome outcome,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<DailyTenantCollectionsFollowUpOutcomeSummaryView> listDailyTenantCollectionsFollowUpOutcomeSummaries(
         String tenantCode,
         CollectionsFollowUpOutcome outcome,
