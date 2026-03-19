@@ -792,6 +792,7 @@ public class PaymentsController {
     public PageResult<WeeklyTenantCollectionsFollowUpOutcomeSummaryResponse> listWeeklyTenantCollectionsFollowUpOutcomeSummaries(
         @PathVariable String tenantCode,
         @RequestParam(required = false) String outcome,
+        @RequestParam(required = false) String assignedTo,
         @RequestParam(required = false) String changedBy,
         @RequestParam(required = false) String changedAtFrom,
         @RequestParam(required = false) String changedAtTo,
@@ -804,6 +805,7 @@ public class PaymentsController {
         return paymentManagement.listWeeklyTenantCollectionsFollowUpOutcomeSummaries(
                 requirePathValue(tenantCode, "tenantCode"),
                 parseOptionalCollectionsFollowUpOutcome(outcome),
+                normalizeOptional(assignedTo, "assignedTo"),
                 normalizeOptional(changedBy, "changedBy"),
                 parsedChangedAtFrom,
                 parsedChangedAtTo,
@@ -816,6 +818,7 @@ public class PaymentsController {
     public PageResult<MonthlyTenantCollectionsFollowUpOutcomeSummaryResponse> listMonthlyTenantCollectionsFollowUpOutcomeSummaries(
         @PathVariable String tenantCode,
         @RequestParam(required = false) String outcome,
+        @RequestParam(required = false) String assignedTo,
         @RequestParam(required = false) String changedBy,
         @RequestParam(required = false) String changedAtFrom,
         @RequestParam(required = false) String changedAtTo,
@@ -828,6 +831,7 @@ public class PaymentsController {
         return paymentManagement.listMonthlyTenantCollectionsFollowUpOutcomeSummaries(
                 requirePathValue(tenantCode, "tenantCode"),
                 parseOptionalCollectionsFollowUpOutcome(outcome),
+                normalizeOptional(assignedTo, "assignedTo"),
                 normalizeOptional(changedBy, "changedBy"),
                 parsedChangedAtFrom,
                 parsedChangedAtTo,

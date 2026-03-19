@@ -267,6 +267,7 @@ public interface PaymentManagement {
     PageResult<WeeklyTenantCollectionsFollowUpOutcomeSummaryView> listWeeklyTenantCollectionsFollowUpOutcomeSummaries(
         String tenantCode,
         CollectionsFollowUpOutcome outcome,
+        String assignedTo,
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
@@ -276,6 +277,7 @@ public interface PaymentManagement {
     PageResult<MonthlyTenantCollectionsFollowUpOutcomeSummaryView> listMonthlyTenantCollectionsFollowUpOutcomeSummaries(
         String tenantCode,
         CollectionsFollowUpOutcome outcome,
+        String assignedTo,
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,

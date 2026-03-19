@@ -1235,6 +1235,7 @@ class PaymentManagementService implements PaymentManagement {
     public PageResult<WeeklyTenantCollectionsFollowUpOutcomeSummaryView> listWeeklyTenantCollectionsFollowUpOutcomeSummaries(
         String tenantCode,
         CollectionsFollowUpOutcome outcome,
+        String assignedTo,
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
@@ -1243,7 +1244,7 @@ class PaymentManagementService implements PaymentManagement {
         return summarizeCollectionsFollowUpOutcomeSeries(
             tenantCode,
             outcome,
-            null,
+            assignedTo,
             changedBy,
             changedAtFrom,
             changedAtTo,
@@ -1274,6 +1275,7 @@ class PaymentManagementService implements PaymentManagement {
     public PageResult<MonthlyTenantCollectionsFollowUpOutcomeSummaryView> listMonthlyTenantCollectionsFollowUpOutcomeSummaries(
         String tenantCode,
         CollectionsFollowUpOutcome outcome,
+        String assignedTo,
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
@@ -1282,7 +1284,7 @@ class PaymentManagementService implements PaymentManagement {
         return summarizeCollectionsFollowUpOutcomeSeries(
             tenantCode,
             outcome,
-            null,
+            assignedTo,
             changedBy,
             changedAtFrom,
             changedAtTo,

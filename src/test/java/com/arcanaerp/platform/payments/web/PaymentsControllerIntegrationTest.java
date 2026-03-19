@@ -1404,6 +1404,15 @@ class PaymentsControllerIntegrationTest {
             mockMvc,
             COLLECTIONS_FOLLOW_UP_OUTCOME_WEEK_TENANT_CODE,
             "Collections Follow Up Outcome Weekly Tenant",
+            "COLLECTOR_B",
+            "Collector B",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_WEEK_TENANT_CODE,
+            "Collections Follow Up Outcome Weekly Tenant",
             "MANAGER",
             "Manager",
             "manager@arcanaerp.com",
@@ -1456,6 +1465,13 @@ class PaymentsControllerIntegrationTest {
             mockMvc,
             COLLECTIONS_FOLLOW_UP_OUTCOME_WEEK_TENANT_CODE,
             "inv-pay-7044",
+            "collector-b@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_WEEK_TENANT_CODE,
+            "inv-pay-7042",
             "collector@arcanaerp.com",
             "manager@arcanaerp.com"
         ).andExpect(status().isOk());
@@ -1516,24 +1532,37 @@ class PaymentsControllerIntegrationTest {
                 COLLECTIONS_FOLLOW_UP_OUTCOME_WEEK_TENANT_CODE,
                 0,
                 10,
+                "assignedTo", "collector@arcanaerp.com",
                 "changedBy", "manager@arcanaerp.com",
                 "changedAtFrom", "2026-07-27T00:00:00Z",
                 "changedAtTo", "2026-08-04T00:00:00Z"
             ))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.totalItems").value(3))
-            .andExpect(jsonPath("$.items[0].businessWeekStart").value("2026-08-03"))
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessWeekStart").value("2026-07-27"))
             .andExpect(jsonPath("$.items[0].outcome").value("NO_RESPONSE"))
             .andExpect(jsonPath("$.items[0].completionCount").value(1))
             .andExpect(jsonPath("$.items[0].invoiceCount").value(1))
             .andExpect(jsonPath("$.items[1].businessWeekStart").value("2026-07-27"))
-            .andExpect(jsonPath("$.items[1].outcome").value("NO_RESPONSE"))
+            .andExpect(jsonPath("$.items[1].outcome").value("PROMISE_TO_PAY"))
             .andExpect(jsonPath("$.items[1].completionCount").value(1))
-            .andExpect(jsonPath("$.items[1].invoiceCount").value(1))
-            .andExpect(jsonPath("$.items[2].businessWeekStart").value("2026-07-27"))
-            .andExpect(jsonPath("$.items[2].outcome").value("PROMISE_TO_PAY"))
-            .andExpect(jsonPath("$.items[2].completionCount").value(1))
-            .andExpect(jsonPath("$.items[2].invoiceCount").value(1));
+            .andExpect(jsonPath("$.items[1].invoiceCount").value(1));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.weeklyTenantCollectionsFollowUpOutcomeSummaryRequest(
+                COLLECTIONS_FOLLOW_UP_OUTCOME_WEEK_TENANT_CODE,
+                0,
+                10,
+                "assignedTo", "collector-b@arcanaerp.com",
+                "changedBy", "manager@arcanaerp.com",
+                "changedAtFrom", "2026-07-27T00:00:00Z",
+                "changedAtTo", "2026-08-04T00:00:00Z"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].businessWeekStart").value("2026-08-03"))
+            .andExpect(jsonPath("$.items[0].outcome").value("NO_RESPONSE"))
+            .andExpect(jsonPath("$.items[0].completionCount").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1));
     }
 
     @Test
@@ -1546,6 +1575,15 @@ class PaymentsControllerIntegrationTest {
             "Collector",
             "collector@arcanaerp.com",
             "Collector"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_MONTH_TENANT_CODE,
+            "Collections Follow Up Outcome Monthly Tenant",
+            "COLLECTOR_B",
+            "Collector B",
+            "collector-b@arcanaerp.com",
+            "Collector B"
         ).andExpect(status().isCreated());
         PaymentsWebIntegrationTestSupport.createIdentityUser(
             mockMvc,
@@ -1603,6 +1641,13 @@ class PaymentsControllerIntegrationTest {
             mockMvc,
             COLLECTIONS_FOLLOW_UP_OUTCOME_MONTH_TENANT_CODE,
             "inv-pay-7047",
+            "collector-b@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_MONTH_TENANT_CODE,
+            "inv-pay-7045",
             "collector@arcanaerp.com",
             "manager@arcanaerp.com"
         ).andExpect(status().isOk());
@@ -1663,24 +1708,37 @@ class PaymentsControllerIntegrationTest {
                 COLLECTIONS_FOLLOW_UP_OUTCOME_MONTH_TENANT_CODE,
                 0,
                 10,
+                "assignedTo", "collector@arcanaerp.com",
                 "changedBy", "manager@arcanaerp.com",
                 "changedAtFrom", "2026-08-01T00:00:00Z",
                 "changedAtTo", "2026-09-03T00:00:00Z"
             ))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.totalItems").value(3))
-            .andExpect(jsonPath("$.items[0].businessMonth").value("2026-09"))
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessMonth").value("2026-08"))
             .andExpect(jsonPath("$.items[0].outcome").value("NO_RESPONSE"))
             .andExpect(jsonPath("$.items[0].completionCount").value(1))
             .andExpect(jsonPath("$.items[0].invoiceCount").value(1))
             .andExpect(jsonPath("$.items[1].businessMonth").value("2026-08"))
-            .andExpect(jsonPath("$.items[1].outcome").value("NO_RESPONSE"))
+            .andExpect(jsonPath("$.items[1].outcome").value("PROMISE_TO_PAY"))
             .andExpect(jsonPath("$.items[1].completionCount").value(1))
-            .andExpect(jsonPath("$.items[1].invoiceCount").value(1))
-            .andExpect(jsonPath("$.items[2].businessMonth").value("2026-08"))
-            .andExpect(jsonPath("$.items[2].outcome").value("PROMISE_TO_PAY"))
-            .andExpect(jsonPath("$.items[2].completionCount").value(1))
-            .andExpect(jsonPath("$.items[2].invoiceCount").value(1));
+            .andExpect(jsonPath("$.items[1].invoiceCount").value(1));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.monthlyTenantCollectionsFollowUpOutcomeSummaryRequest(
+                COLLECTIONS_FOLLOW_UP_OUTCOME_MONTH_TENANT_CODE,
+                0,
+                10,
+                "assignedTo", "collector-b@arcanaerp.com",
+                "changedBy", "manager@arcanaerp.com",
+                "changedAtFrom", "2026-08-01T00:00:00Z",
+                "changedAtTo", "2026-09-03T00:00:00Z"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].businessMonth").value("2026-09"))
+            .andExpect(jsonPath("$.items[0].outcome").value("NO_RESPONSE"))
+            .andExpect(jsonPath("$.items[0].completionCount").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1));
     }
 
     @Test
