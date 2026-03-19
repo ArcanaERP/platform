@@ -27,6 +27,7 @@ import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
+import com.arcanaerp.platform.payments.MonthlyTenantCollectionsFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteOutcomeSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteCategoryOutcomeSummaryView;
@@ -1267,6 +1268,41 @@ class PaymentManagementService implements PaymentManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<MonthlyTenantCollectionsFollowUpOutcomeSummaryView> listMonthlyTenantCollectionsFollowUpOutcomeSummaries(
+        String tenantCode,
+        CollectionsFollowUpOutcome outcome,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeCollectionsFollowUpOutcomes(
+            tenantCode,
+            outcome,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> new MonthlyCollectionsFollowUpOutcomeBucket(
+                YearMonth.from(audit.getChangedAt().atOffset(ZoneOffset.UTC)),
+                audit.getOutcome()
+            ),
+            (normalizedTenantCode, bucket, summary) -> new MonthlyTenantCollectionsFollowUpOutcomeSummaryView(
+                normalizedTenantCode,
+                bucket.businessMonth(),
+                bucket.outcome(),
+                summary.completionCount,
+                summary.invoiceNumbers.size()
+            ),
+            java.util.Comparator
+                .comparing(MonthlyTenantCollectionsFollowUpOutcomeSummaryView::businessMonth)
+                .reversed()
+                .thenComparing(summary -> summary.outcome().name())
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<DailyTenantCollectionsAssignmentSummaryView> listDailyTenantCollectionsAssignmentSummaries(
         String tenantCode,
         String assignedTo,
@@ -2152,6 +2188,12 @@ class PaymentManagementService implements PaymentManagement {
 
     private record WeeklyCollectionsFollowUpOutcomeBucket(
         LocalDate businessWeekStart,
+        CollectionsFollowUpOutcome outcome
+    ) {
+    }
+
+    private record MonthlyCollectionsFollowUpOutcomeBucket(
+        YearMonth businessMonth,
         CollectionsFollowUpOutcome outcome
     ) {
     }

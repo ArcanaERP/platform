@@ -23,6 +23,7 @@ import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteOutcomeSummaryV
 import com.arcanaerp.platform.payments.DailyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
+import com.arcanaerp.platform.payments.MonthlyTenantCollectionsFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteOutcomeSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteCategoryOutcomeSummaryView;
@@ -809,6 +810,30 @@ public class PaymentsController {
             .map(this::toWeeklyTenantCollectionsFollowUpOutcomeSummaryResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/follow-up-outcome/monthly-summary")
+    public PageResult<MonthlyTenantCollectionsFollowUpOutcomeSummaryResponse> listMonthlyTenantCollectionsFollowUpOutcomeSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam(required = false) String outcome,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateInstantRange(parsedChangedAtFrom, parsedChangedAtTo, "changedAtFrom", "changedAtTo");
+        return paymentManagement.listMonthlyTenantCollectionsFollowUpOutcomeSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                parseOptionalCollectionsFollowUpOutcome(outcome),
+                normalizeOptional(changedBy, "changedBy"),
+                parsedChangedAtFrom,
+                parsedChangedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toMonthlyTenantCollectionsFollowUpOutcomeSummaryResponse);
+    }
+
     @GetMapping("/tenants/{tenantCode}/receivables/collections/daily-summary")
     public PageResult<DailyTenantCollectionsAssignmentSummaryResponse> listDailyTenantCollectionsAssignmentSummaries(
         @PathVariable String tenantCode,
@@ -1380,6 +1405,18 @@ public class PaymentsController {
         return new WeeklyTenantCollectionsFollowUpOutcomeSummaryResponse(
             summary.tenantCode(),
             summary.businessWeekStart(),
+            summary.outcome().name(),
+            summary.completionCount(),
+            summary.invoiceCount()
+        );
+    }
+
+    private MonthlyTenantCollectionsFollowUpOutcomeSummaryResponse toMonthlyTenantCollectionsFollowUpOutcomeSummaryResponse(
+        MonthlyTenantCollectionsFollowUpOutcomeSummaryView summary
+    ) {
+        return new MonthlyTenantCollectionsFollowUpOutcomeSummaryResponse(
+            summary.tenantCode(),
+            summary.businessMonth(),
             summary.outcome().name(),
             summary.completionCount(),
             summary.invoiceCount()
