@@ -766,6 +766,7 @@ public class PaymentsController {
     public PageResult<DailyTenantCollectionsFollowUpOutcomeSummaryResponse> listDailyTenantCollectionsFollowUpOutcomeSummaries(
         @PathVariable String tenantCode,
         @RequestParam(required = false) String outcome,
+        @RequestParam(required = false) String assignedTo,
         @RequestParam(required = false) String changedBy,
         @RequestParam(required = false) String changedAtFrom,
         @RequestParam(required = false) String changedAtTo,
@@ -778,6 +779,7 @@ public class PaymentsController {
         return paymentManagement.listDailyTenantCollectionsFollowUpOutcomeSummaries(
                 requirePathValue(tenantCode, "tenantCode"),
                 parseOptionalCollectionsFollowUpOutcome(outcome),
+                normalizeOptional(assignedTo, "assignedTo"),
                 normalizeOptional(changedBy, "changedBy"),
                 parsedChangedAtFrom,
                 parsedChangedAtTo,

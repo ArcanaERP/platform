@@ -1198,6 +1198,7 @@ class PaymentManagementService implements PaymentManagement {
     public PageResult<DailyTenantCollectionsFollowUpOutcomeSummaryView> listDailyTenantCollectionsFollowUpOutcomeSummaries(
         String tenantCode,
         CollectionsFollowUpOutcome outcome,
+        String assignedTo,
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
@@ -1206,6 +1207,7 @@ class PaymentManagementService implements PaymentManagement {
         return summarizeCollectionsFollowUpOutcomeSeries(
             tenantCode,
             outcome,
+            assignedTo,
             changedBy,
             changedAtFrom,
             changedAtTo,
@@ -1241,6 +1243,7 @@ class PaymentManagementService implements PaymentManagement {
         return summarizeCollectionsFollowUpOutcomeSeries(
             tenantCode,
             outcome,
+            null,
             changedBy,
             changedAtFrom,
             changedAtTo,
@@ -1279,6 +1282,7 @@ class PaymentManagementService implements PaymentManagement {
         return summarizeCollectionsFollowUpOutcomeSeries(
             tenantCode,
             outcome,
+            null,
             changedBy,
             changedAtFrom,
             changedAtTo,
@@ -1776,6 +1780,7 @@ class PaymentManagementService implements PaymentManagement {
     private <B, V> PageResult<V> summarizeCollectionsFollowUpOutcomes(
         String tenantCode,
         CollectionsFollowUpOutcome outcome,
+        String assignedTo,
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
@@ -1785,6 +1790,7 @@ class PaymentManagementService implements PaymentManagement {
         java.util.Comparator<V> comparator
     ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
         String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy, "changedBy");
         List<CollectionsFollowUpAudit> audits = collectionsFollowUpAuditRepository.findOutcomeHistoryForSummary(
             normalizedTenantCode,
@@ -1793,6 +1799,20 @@ class PaymentManagementService implements PaymentManagement {
             changedAtFrom,
             changedAtTo
         );
+        if (normalizedAssignedTo != null && !audits.isEmpty()) {
+            Map<String, CollectionsAssignment> assignmentsByInvoiceNumber = collectionsAssignmentRepository.findByInvoiceNumberIn(
+                audits.stream().map(CollectionsFollowUpAudit::getInvoiceNumber).distinct().toList()
+            ).stream().collect(java.util.stream.Collectors.toMap(
+                CollectionsAssignment::getInvoiceNumber,
+                java.util.function.Function.identity()
+            ));
+            audits = audits.stream()
+                .filter(audit -> {
+                    CollectionsAssignment assignment = assignmentsByInvoiceNumber.get(audit.getInvoiceNumber());
+                    return assignment != null && assignment.getAssignedTo().equals(normalizedAssignedTo);
+                })
+                .toList();
+        }
 
         Map<B, CollectionsFollowUpOutcomeSummaryAccumulator> summariesByBucket = new LinkedHashMap<>();
         for (CollectionsFollowUpAudit audit : audits) {
@@ -1812,6 +1832,7 @@ class PaymentManagementService implements PaymentManagement {
     private <B, V> PageResult<V> summarizeCollectionsFollowUpOutcomeSeries(
         String tenantCode,
         CollectionsFollowUpOutcome outcome,
+        String assignedTo,
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
@@ -1823,6 +1844,7 @@ class PaymentManagementService implements PaymentManagement {
         return summarizeCollectionsFollowUpOutcomes(
             tenantCode,
             outcome,
+            assignedTo,
             changedBy,
             changedAtFrom,
             changedAtTo,

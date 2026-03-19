@@ -257,6 +257,7 @@ public interface PaymentManagement {
     PageResult<DailyTenantCollectionsFollowUpOutcomeSummaryView> listDailyTenantCollectionsFollowUpOutcomeSummaries(
         String tenantCode,
         CollectionsFollowUpOutcome outcome,
+        String assignedTo,
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,

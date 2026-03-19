@@ -1252,6 +1252,15 @@ class PaymentsControllerIntegrationTest {
             mockMvc,
             COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
             "Collections Follow Up Outcome Daily Tenant",
+            "COLLECTOR_B",
+            "Collector B",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
+            "Collections Follow Up Outcome Daily Tenant",
             "MANAGER",
             "Manager",
             "manager@arcanaerp.com",
@@ -1287,8 +1296,15 @@ class PaymentsControllerIntegrationTest {
         PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
             mockMvc,
             COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
-            "inv-pay-7041",
+            "inv-pay-7040",
             "collector@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
+            "inv-pay-7041",
+            "collector-b@arcanaerp.com",
             "manager@arcanaerp.com"
         ).andExpect(status().isOk());
 
@@ -1333,20 +1349,44 @@ class PaymentsControllerIntegrationTest {
                 COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
                 0,
                 10,
+                "assignedTo", "collector@arcanaerp.com",
                 "changedBy", "manager@arcanaerp.com",
                 "changedAtFrom", assignedAt.plusSeconds(2 * 86400).toString(),
                 "changedAtTo", assignedAt.plusSeconds(4 * 86400).toString()
             ))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].businessDate").value(firstCompletedAt.atOffset(java.time.ZoneOffset.UTC).toLocalDate().toString()))
+            .andExpect(jsonPath("$.items[0].outcome").value("NO_RESPONSE"))
+            .andExpect(jsonPath("$.items[0].completionCount").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1))
+            .andExpect(jsonPath("$.items[1]").doesNotExist());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.dailyTenantCollectionsFollowUpOutcomeSummaryRequest(
+                COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
+                0,
+                10,
+                "assignedTo", "collector-b@arcanaerp.com",
+                "changedBy", "manager@arcanaerp.com",
+                "changedAtFrom", assignedAt.plusSeconds(2 * 86400).toString(),
+                "changedAtTo", assignedAt.plusSeconds(4 * 86400).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].businessDate").value(secondCompletedAt.atOffset(java.time.ZoneOffset.UTC).toLocalDate().toString()))
             .andExpect(jsonPath("$.items[0].outcome").value("PROMISE_TO_PAY"))
             .andExpect(jsonPath("$.items[0].completionCount").value(1))
-            .andExpect(jsonPath("$.items[0].invoiceCount").value(1))
-            .andExpect(jsonPath("$.items[1].businessDate").value(firstCompletedAt.atOffset(java.time.ZoneOffset.UTC).toLocalDate().toString()))
-            .andExpect(jsonPath("$.items[1].outcome").value("NO_RESPONSE"))
-            .andExpect(jsonPath("$.items[1].completionCount").value(1))
-            .andExpect(jsonPath("$.items[1].invoiceCount").value(1));
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.dailyTenantCollectionsFollowUpOutcomeSummaryRequest(
+                COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE,
+                0,
+                10,
+                "assignedTo", " ",
+                "changedBy", "manager@arcanaerp.com"
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("assignedTo query parameter must not be blank"));
     }
 
     @Test
