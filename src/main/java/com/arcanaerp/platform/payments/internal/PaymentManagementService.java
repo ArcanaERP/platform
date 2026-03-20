@@ -39,6 +39,7 @@ import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.ReceivablesAgingBucket;
 import com.arcanaerp.platform.payments.ScheduleCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.TenantCollectionsAssignmentSummaryView;
+import com.arcanaerp.platform.payments.TenantCollectionsAssigneeAgingSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsAssigneeFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsFollowUpOutcomeSummaryView;
@@ -1165,6 +1166,46 @@ class PaymentManagementService implements PaymentManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<TenantCollectionsAssigneeAgingSummaryView> listTenantCollectionsAssigneeAgingSummaries(
+        String tenantCode,
+        String currencyCode,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
+
+        Map<TenantCollectionsAssigneeAgingBucket, AssigneeAgingSummaryAccumulator> summariesByBucket = new LinkedHashMap<>();
+        enrichAgedReceivables(collectOutstandingReceivableSnapshots(normalizedTenantCode, normalizedCurrencyCode, asOfDate)
+            .stream()
+            .sorted(java.util.Comparator
+                .comparing(ReceivableSnapshot::dueAt)
+                .thenComparing(ReceivableSnapshot::invoiceNumber))
+            .toList())
+            .forEach(receivable -> summariesByBucket
+                .computeIfAbsent(
+                    new TenantCollectionsAssigneeAgingBucket(receivable.assignedTo(), receivable.agingBucket()),
+                    ignored -> new AssigneeAgingSummaryAccumulator()
+                )
+                .add(receivable));
+
+        List<TenantCollectionsAssigneeAgingSummaryView> summaries = summariesByBucket.entrySet().stream()
+            .map(entry -> entry.getValue().toView(
+                normalizedTenantCode,
+                normalizedCurrencyCode,
+                entry.getKey().assignedTo(),
+                entry.getKey().agingBucket()
+            ))
+            .sorted(java.util.Comparator
+                .comparing((TenantCollectionsAssigneeAgingSummaryView summary) -> summary.assignedTo() == null ? 1 : 0)
+                .thenComparing(summary -> summary.assignedTo() == null ? "" : summary.assignedTo())
+                .thenComparing(summary -> summary.agingBucket().name()))
+            .toList();
+        return paginateList(summaries, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<TenantCollectionsFollowUpOutcomeSummaryView> listTenantCollectionsFollowUpOutcomeSummaries(
         String tenantCode,
         String currencyCode,
@@ -2261,6 +2302,38 @@ class PaymentManagementService implements PaymentManagement {
         }
     }
 
+    private static final class AssigneeAgingSummaryAccumulator {
+
+        private long invoiceCount;
+        private BigDecimal totalOutstandingAmount = BigDecimal.ZERO;
+        private Instant oldestDueAt;
+
+        void add(AgedTenantReceivableView receivable) {
+            invoiceCount++;
+            totalOutstandingAmount = totalOutstandingAmount.add(receivable.outstandingAmount());
+            if (oldestDueAt == null || receivable.dueAt().isBefore(oldestDueAt)) {
+                oldestDueAt = receivable.dueAt();
+            }
+        }
+
+        TenantCollectionsAssigneeAgingSummaryView toView(
+            String tenantCode,
+            String currencyCode,
+            String assignedTo,
+            ReceivablesAgingBucket agingBucket
+        ) {
+            return new TenantCollectionsAssigneeAgingSummaryView(
+                tenantCode,
+                currencyCode,
+                assignedTo,
+                agingBucket,
+                invoiceCount,
+                totalOutstandingAmount,
+                oldestDueAt
+            );
+        }
+    }
+
     private static final class CollectionsFollowUpOutcomeSummaryAccumulator {
 
         private long completionCount;
@@ -2375,6 +2448,12 @@ class PaymentManagementService implements PaymentManagement {
     private record TenantCollectionsCurrentAssigneeFollowUpOutcomeBucket(
         String assignedTo,
         CollectionsFollowUpOutcome latestFollowUpOutcome
+    ) {
+    }
+
+    private record TenantCollectionsAssigneeAgingBucket(
+        String assignedTo,
+        ReceivablesAgingBucket agingBucket
     ) {
     }
 

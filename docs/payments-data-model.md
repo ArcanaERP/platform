@@ -255,6 +255,26 @@ Rules:
 - unassigned invoices are grouped into a nullable `assignedTo` bucket
 - rows are ordered by `assignedTo` ascending with the unassigned bucket last
 
+### TenantCollectionsAssigneeAgingSummary
+
+Purpose:
+- expose current positive receivables grouped by current assignee plus aging bucket
+
+Fields:
+- `tenantCode`
+- `currencyCode`
+- `assignedTo` (nullable)
+- `agingBucket`
+- `invoiceCount`
+- `totalOutstandingAmount`
+- `oldestDueAt`
+
+Rules:
+- summary is built from current receivable snapshots enriched with assignment metadata, not from assignment or follow-up history
+- all positive-outstanding aging buckets are eligible, not just `OVERDUE_OVER_90`
+- invoices without a current collections assignment are grouped into a nullable `assignedTo` bucket
+- rows are ordered by `assignedTo` ascending with null assignees last, then by `agingBucket`
+
 ### TenantCollectionsCurrentAssigneeFollowUpOutcomeSummary
 
 Purpose:

@@ -35,6 +35,7 @@ import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.ReceivablesAgingBucket;
 import com.arcanaerp.platform.payments.ScheduleCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.TenantCollectionsAssignmentSummaryView;
+import com.arcanaerp.platform.payments.TenantCollectionsAssigneeAgingSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsAssigneeFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsFollowUpOutcomeSummaryView;
@@ -749,6 +750,21 @@ public class PaymentsController {
             .map(this::toTenantCollectionsAssignmentSummaryResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/assignee-aging-summary")
+    public PageResult<TenantCollectionsAssigneeAgingSummaryResponse> listTenantCollectionsAssigneeAgingSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam String currencyCode,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return paymentManagement.listTenantCollectionsAssigneeAgingSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(currencyCode, "currencyCode"),
+                PageQuery.of(page, size)
+            )
+            .map(this::toTenantCollectionsAssigneeAgingSummaryResponse);
+    }
+
     @GetMapping("/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary")
     public PageResult<TenantCollectionsFollowUpOutcomeSummaryResponse> listTenantCollectionsFollowUpOutcomeSummaries(
         @PathVariable String tenantCode,
@@ -1420,6 +1436,20 @@ public class PaymentsController {
             summary.currencyCode(),
             summary.assignedTo(),
             summary.assignedInvoiceCount(),
+            summary.totalOutstandingAmount(),
+            summary.oldestDueAt()
+        );
+    }
+
+    private TenantCollectionsAssigneeAgingSummaryResponse toTenantCollectionsAssigneeAgingSummaryResponse(
+        TenantCollectionsAssigneeAgingSummaryView summary
+    ) {
+        return new TenantCollectionsAssigneeAgingSummaryResponse(
+            summary.tenantCode(),
+            summary.currencyCode(),
+            summary.assignedTo(),
+            summary.agingBucket(),
+            summary.invoiceCount(),
             summary.totalOutstandingAmount(),
             summary.oldestDueAt()
         );
