@@ -251,6 +251,8 @@ public interface PaymentManagement {
     PageResult<TenantCollectionsAssigneeAgingSummaryView> listTenantCollectionsAssigneeAgingSummaries(
         String tenantCode,
         String currencyCode,
+        String assignedTo,
+        ReceivablesAgingBucket agingBucket,
         PageQuery pageQuery
     );
 

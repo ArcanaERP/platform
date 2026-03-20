@@ -273,6 +273,7 @@ Rules:
 - summary is built from current receivable snapshots enriched with assignment metadata, not from assignment or follow-up history
 - all positive-outstanding aging buckets are eligible, not just `OVERDUE_OVER_90`
 - invoices without a current collections assignment are grouped into a nullable `assignedTo` bucket
+- optional exact `assignedTo` and exact `agingBucket` filters narrow the workload view before grouping
 - rows are ordered by `assignedTo` ascending with null assignees last, then by `agingBucket`
 
 ### TenantCollectionsCurrentAssigneeFollowUpOutcomeSummary

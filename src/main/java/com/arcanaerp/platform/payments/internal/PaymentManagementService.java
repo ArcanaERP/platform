@@ -1169,10 +1169,13 @@ class PaymentManagementService implements PaymentManagement {
     public PageResult<TenantCollectionsAssigneeAgingSummaryView> listTenantCollectionsAssigneeAgingSummaries(
         String tenantCode,
         String currencyCode,
+        String assignedTo,
+        ReceivablesAgingBucket agingBucket,
         PageQuery pageQuery
     ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
         String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
         LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
 
         Map<TenantCollectionsAssigneeAgingBucket, AssigneeAgingSummaryAccumulator> summariesByBucket = new LinkedHashMap<>();
@@ -1182,6 +1185,9 @@ class PaymentManagementService implements PaymentManagement {
                 .comparing(ReceivableSnapshot::dueAt)
                 .thenComparing(ReceivableSnapshot::invoiceNumber))
             .toList())
+            .stream()
+            .filter(receivable -> normalizedAssignedTo == null || normalizedAssignedTo.equals(receivable.assignedTo()))
+            .filter(receivable -> agingBucket == null || agingBucket == receivable.agingBucket())
             .forEach(receivable -> summariesByBucket
                 .computeIfAbsent(
                     new TenantCollectionsAssigneeAgingBucket(receivable.assignedTo(), receivable.agingBucket()),

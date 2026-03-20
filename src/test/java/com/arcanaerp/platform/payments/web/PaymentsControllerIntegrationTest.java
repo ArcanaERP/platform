@@ -68,6 +68,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_NOTES_OUTCOME_MONTH_TENANT_CODE = "tenant-coll-note-outmonth";
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_CURRENT_ASSIGNEE_FILTER_TENANT_CODE = "tenant-coll-fup-curassflt";
     private static final String COLLECTIONS_ASSIGNEE_AGING_SUMMARY_TENANT_CODE = "tenant-coll-assignee-age";
+    private static final String COLLECTIONS_ASSIGNEE_AGING_FILTER_TENANT_CODE = "tenant-coll-assignee-ageflt";
 
     @Autowired
     private MockMvc mockMvc;
@@ -1921,6 +1922,83 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[2].agingBucket").value("OVERDUE_1_TO_30"))
             .andExpect(jsonPath("$.items[2].invoiceCount").value(1))
             .andExpect(jsonPath("$.items[2].totalOutstandingAmount").value(10.0));
+    }
+
+    @Test
+    void filtersTenantCollectionsAssigneeAgingSummaries() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_AGING_FILTER_TENANT_CODE,
+            "Collections Assignee Aging Filter Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector@arcanaerp.com",
+            "Collector"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_AGING_FILTER_TENANT_CODE,
+            "Collections Assignee Aging Filter Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNEE_AGING_FILTER_TENANT_CODE,
+            "arc-pay-7160",
+            "so-pay-7160",
+            "inv-pay-7160",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(140 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNEE_AGING_FILTER_TENANT_CODE,
+            "arc-pay-7161",
+            "so-pay-7161",
+            "inv-pay-7161",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(110 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNEE_AGING_FILTER_TENANT_CODE,
+            "arc-pay-7162",
+            "so-pay-7162",
+            "inv-pay-7162",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+
+        Instant assignedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(assignedAt);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_AGING_FILTER_TENANT_CODE,
+            "inv-pay-7162",
+            "collector@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsAssigneeAgingSummaryRequest(
+                COLLECTIONS_ASSIGNEE_AGING_FILTER_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "assignedTo",
+                "collector@arcanaerp.com",
+                "agingBucket",
+                "overdue_over_90"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].agingBucket").value("OVERDUE_OVER_90"))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1))
+            .andExpect(jsonPath("$.items[0].totalOutstandingAmount").value(10.0));
     }
 
     @Test

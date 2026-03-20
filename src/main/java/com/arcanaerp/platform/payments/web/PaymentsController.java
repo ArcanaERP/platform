@@ -754,12 +754,16 @@ public class PaymentsController {
     public PageResult<TenantCollectionsAssigneeAgingSummaryResponse> listTenantCollectionsAssigneeAgingSummaries(
         @PathVariable String tenantCode,
         @RequestParam String currencyCode,
+        @RequestParam(required = false) String assignedTo,
+        @RequestParam(required = false) String agingBucket,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
         return paymentManagement.listTenantCollectionsAssigneeAgingSummaries(
                 requirePathValue(tenantCode, "tenantCode"),
                 normalizeOptional(currencyCode, "currencyCode"),
+                normalizeOptional(assignedTo, "assignedTo"),
+                parseOptionalAgingBucket(agingBucket),
                 PageQuery.of(page, size)
             )
             .map(this::toTenantCollectionsAssigneeAgingSummaryResponse);
@@ -1615,6 +1619,19 @@ public class PaymentsController {
 
     private static ReceivablesAgingBucket parseAgingBucket(String value) {
         String normalizedValue = requirePathValue(value, "agingBucket").trim().toUpperCase();
+        try {
+            return ReceivablesAgingBucket.valueOf(normalizedValue);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Unsupported agingBucket: " + normalizedValue);
+        }
+    }
+
+    private static ReceivablesAgingBucket parseOptionalAgingBucket(String value) {
+        String normalizedValue = normalizeOptional(value, "agingBucket");
+        if (normalizedValue == null) {
+            return null;
+        }
+        normalizedValue = normalizedValue.toUpperCase();
         try {
             return ReceivablesAgingBucket.valueOf(normalizedValue);
         } catch (IllegalArgumentException exception) {
