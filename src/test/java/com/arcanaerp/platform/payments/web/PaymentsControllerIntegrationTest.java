@@ -69,6 +69,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_CURRENT_ASSIGNEE_FILTER_TENANT_CODE = "tenant-coll-fup-curassflt";
     private static final String COLLECTIONS_ASSIGNEE_AGING_SUMMARY_TENANT_CODE = "tenant-coll-assignee-age";
     private static final String COLLECTIONS_ASSIGNEE_AGING_FILTER_TENANT_CODE = "tenant-coll-assignee-ageflt";
+    private static final String COLLECTIONS_OVER90_ASSIGNEE_SUMMARY_TENANT_CODE = "tenant-coll-over90ass";
 
     @Autowired
     private MockMvc mockMvc;
@@ -5372,6 +5373,97 @@ class PaymentsControllerIntegrationTest {
 
         mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsAssignmentSummaryRequest(
                 COLLECTIONS_ASSIGNMENT_SUMMARY_TENANT_CODE,
+                "USD",
+                0,
+                10
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].assignedInvoiceCount").value(1))
+            .andExpect(jsonPath("$.items[0].totalOutstandingAmount").value(10.0))
+            .andExpect(jsonPath("$.items[1].assignedTo").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].assignedInvoiceCount").value(1))
+            .andExpect(jsonPath("$.items[2].assignedTo").doesNotExist())
+            .andExpect(jsonPath("$.items[2].assignedInvoiceCount").value(1))
+            .andExpect(jsonPath("$.items[2].totalOutstandingAmount").value(10.0));
+    }
+
+    @Test
+    void listsOver90TenantCollectionsAssignmentSummaryByAssignee() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_OVER90_ASSIGNEE_SUMMARY_TENANT_CODE,
+            "Collections Over 90 Summary Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_OVER90_ASSIGNEE_SUMMARY_TENANT_CODE,
+            "Collections Over 90 Summary Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_OVER90_ASSIGNEE_SUMMARY_TENANT_CODE,
+            "Collections Over 90 Summary Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_OVER90_ASSIGNEE_SUMMARY_TENANT_CODE,
+            "arc-pay-7165",
+            "so-pay-7165",
+            "inv-pay-7165",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_OVER90_ASSIGNEE_SUMMARY_TENANT_CODE,
+            "arc-pay-7166",
+            "so-pay-7166",
+            "inv-pay-7166",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(15 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_OVER90_ASSIGNEE_SUMMARY_TENANT_CODE,
+            "arc-pay-7167",
+            "so-pay-7167",
+            "inv-pay-7167",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(20 * 86400)
+        );
+
+        testClock.setInstant(PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400));
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_OVER90_ASSIGNEE_SUMMARY_TENANT_CODE,
+            "inv-pay-7165",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_OVER90_ASSIGNEE_SUMMARY_TENANT_CODE,
+            "inv-pay-7166",
+            "collector-b@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.over90TenantCollectionsAssignmentSummaryRequest(
+                COLLECTIONS_OVER90_ASSIGNEE_SUMMARY_TENANT_CODE,
                 "USD",
                 0,
                 10

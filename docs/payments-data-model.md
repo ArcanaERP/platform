@@ -255,6 +255,9 @@ Rules:
 - unassigned invoices are grouped into a nullable `assignedTo` bucket
 - rows are ordered by `assignedTo` ascending with the unassigned bucket last
 
+Notes:
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/summary` and `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/assignee-summary` currently expose the same focused over-90 owner rollup, with the latter acting as the collections-specific shortcut route
+
 ### TenantCollectionsAssigneeAgingSummary
 
 Purpose:

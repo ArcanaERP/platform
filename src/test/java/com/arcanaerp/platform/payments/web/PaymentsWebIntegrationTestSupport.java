@@ -748,6 +748,24 @@ final class PaymentsWebIntegrationTestSupport {
         return request;
     }
 
+    static MockHttpServletRequestBuilder over90TenantCollectionsAssignmentSummaryRequest(
+        String tenantCode,
+        String currencyCode,
+        Integer page,
+        Integer size
+    ) {
+        MockHttpServletRequestBuilder request = get(
+            "/api/payments/tenants/" + tenantCode + "/receivables/collections/over-90/assignee-summary"
+        ).param("currencyCode", currencyCode);
+        if (page != null) {
+            request.param("page", String.valueOf(page));
+        }
+        if (size != null) {
+            request.param("size", String.valueOf(size));
+        }
+        return request;
+    }
+
     static MockHttpServletRequestBuilder tenantCollectionsFollowUpOutcomeSummaryRequest(
         String tenantCode,
         String currencyCode,

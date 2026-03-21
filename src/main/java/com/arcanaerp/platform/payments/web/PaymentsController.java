@@ -750,6 +750,21 @@ public class PaymentsController {
             .map(this::toTenantCollectionsAssignmentSummaryResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/over-90/assignee-summary")
+    public PageResult<TenantCollectionsAssignmentSummaryResponse> listOver90TenantCollectionsAssignmentSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam String currencyCode,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return paymentManagement.listOver90TenantCollectionsAssignmentSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(currencyCode, "currencyCode"),
+                PageQuery.of(page, size)
+            )
+            .map(this::toTenantCollectionsAssignmentSummaryResponse);
+    }
+
     @GetMapping("/tenants/{tenantCode}/receivables/collections/assignee-aging-summary")
     public PageResult<TenantCollectionsAssigneeAgingSummaryResponse> listTenantCollectionsAssigneeAgingSummaries(
         @PathVariable String tenantCode,

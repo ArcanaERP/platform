@@ -1139,6 +1139,24 @@ class PaymentManagementService implements PaymentManagement {
         String currencyCode,
         PageQuery pageQuery
     ) {
+        return summarizeOver90Assignments(tenantCode, currencyCode, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<TenantCollectionsAssignmentSummaryView> listOver90TenantCollectionsAssignmentSummaries(
+        String tenantCode,
+        String currencyCode,
+        PageQuery pageQuery
+    ) {
+        return summarizeOver90Assignments(tenantCode, currencyCode, pageQuery);
+    }
+
+    private PageResult<TenantCollectionsAssignmentSummaryView> summarizeOver90Assignments(
+        String tenantCode,
+        String currencyCode,
+        PageQuery pageQuery
+    ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
         String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
         LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
