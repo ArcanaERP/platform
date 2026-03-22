@@ -55,6 +55,20 @@ class CollectionsAssignmentDomainTest {
     }
 
     @Test
+    void claimAuditCreateNormalizesFields() {
+        CollectionsAssignmentClaimAudit audit = CollectionsAssignmentClaimAudit.create(
+            " tenant-01 ",
+            " inv-1000 ",
+            " Collector@ArcanaERP.com ",
+            Instant.parse("2026-03-12T00:00:00Z")
+        );
+
+        assertThat(audit.getTenantCode()).isEqualTo("TENANT-01");
+        assertThat(audit.getInvoiceNumber()).isEqualTo("INV-1000");
+        assertThat(audit.getClaimedBy()).isEqualTo("collector@arcanaerp.com");
+    }
+
+    @Test
     void releaseAuditCreateNormalizesFields() {
         CollectionsAssignmentReleaseAudit audit = CollectionsAssignmentReleaseAudit.create(
             " tenant-01 ",

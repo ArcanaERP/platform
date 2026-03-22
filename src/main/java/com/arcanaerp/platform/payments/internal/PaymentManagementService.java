@@ -9,6 +9,7 @@ import com.arcanaerp.platform.invoicing.InvoiceView;
 import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.ClaimCollectionsInvoiceCommand;
+import com.arcanaerp.platform.payments.CollectionsAssignmentClaimChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentReleaseChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
@@ -88,6 +89,7 @@ class PaymentManagementService implements PaymentManagement {
     private final PaymentRepository paymentRepository;
     private final CollectionsAssignmentRepository collectionsAssignmentRepository;
     private final CollectionsAssignmentAuditRepository collectionsAssignmentAuditRepository;
+    private final CollectionsAssignmentClaimAuditRepository collectionsAssignmentClaimAuditRepository;
     private final CollectionsAssignmentReleaseAuditRepository collectionsAssignmentReleaseAuditRepository;
     private final CollectionsFollowUpAuditRepository collectionsFollowUpAuditRepository;
     private final CollectionsNoteRepository collectionsNoteRepository;
@@ -400,6 +402,12 @@ class PaymentManagementService implements PaymentManagement {
             claimedBy,
             claimedAt
         ));
+        collectionsAssignmentClaimAuditRepository.save(CollectionsAssignmentClaimAudit.create(
+            saved.getTenantCode(),
+            saved.getInvoiceNumber(),
+            claimedBy,
+            claimedAt
+        ));
         collectionsAssignmentAuditRepository.save(CollectionsAssignmentAudit.create(
             saved.getTenantCode(),
             saved.getInvoiceNumber(),
@@ -632,6 +640,67 @@ class PaymentManagementService implements PaymentManagement {
             Instant.now(clock)
         ));
         return toCollectionsNoteView(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<CollectionsAssignmentClaimChangeView> listCollectionsClaimHistory(
+        String tenantCode,
+        String invoiceNumber,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedInvoiceNumber = normalizeRequired(invoiceNumber, "invoiceNumber").toUpperCase();
+        InvoiceView invoice = invoiceManagement.getInvoice(normalizedInvoiceNumber);
+        if (!invoice.tenantCode().equals(normalizedTenantCode)) {
+            throw new IllegalArgumentException(
+                "Invoice does not belong to tenant " + normalizedTenantCode + ": " + normalizedInvoiceNumber
+            );
+        }
+
+        Page<CollectionsAssignmentClaimAudit> audits = collectionsAssignmentClaimAuditRepository.findHistory(
+            normalizedTenantCode,
+            normalizedInvoiceNumber,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "claimedAt").and(Sort.by(Sort.Direction.DESC, "id")))
+        );
+        return PageResult.from(audits).map(audit -> new CollectionsAssignmentClaimChangeView(
+            audit.getId(),
+            audit.getTenantCode(),
+            audit.getInvoiceNumber(),
+            audit.getClaimedBy(),
+            audit.getClaimedAt()
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<CollectionsAssignmentClaimChangeView> listTenantCollectionsClaimHistory(
+        String tenantCode,
+        String invoiceNumber,
+        String claimedBy,
+        Instant claimedAtFrom,
+        Instant claimedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedInvoiceNumber = normalizeOptional(invoiceNumber);
+        String normalizedClaimedBy = claimedBy == null ? null : normalizeActorEmail(claimedBy, "claimedBy");
+
+        Page<CollectionsAssignmentClaimAudit> audits = collectionsAssignmentClaimAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            normalizedInvoiceNumber,
+            normalizedClaimedBy,
+            claimedAtFrom,
+            claimedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "claimedAt").and(Sort.by(Sort.Direction.DESC, "id")))
+        );
+        return PageResult.from(audits).map(audit -> new CollectionsAssignmentClaimChangeView(
+            audit.getId(),
+            audit.getTenantCode(),
+            audit.getInvoiceNumber(),
+            audit.getClaimedBy(),
+            audit.getClaimedAt()
+        ));
     }
 
     @Override

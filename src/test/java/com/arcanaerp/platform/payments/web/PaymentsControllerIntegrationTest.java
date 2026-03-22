@@ -75,6 +75,8 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_OVER90_UNASSIGNED_SUMMARY_TENANT_CODE = "tenant-coll-over90unassm";
     private static final String COLLECTIONS_OVER90_CLAIM_TENANT_CODE = "tenant-coll-over90claim";
     private static final String COLLECTIONS_OVER90_CLAIM_REJECT_TENANT_CODE = "tenant-coll-over90clrej";
+    private static final String COLLECTIONS_OVER90_CLAIM_HISTORY_TENANT_CODE = "tenant-coll-over90clhist";
+    private static final String COLLECTIONS_CLAIM_HISTORY_TENANT_CODE = "tenant-coll-clhist";
     private static final String COLLECTIONS_OVER90_RELEASE_TENANT_CODE = "tenant-coll-over90rel";
     private static final String COLLECTIONS_OVER90_RELEASE_REJECT_TENANT_CODE = "tenant-coll-over90relrej";
     private static final String COLLECTIONS_OVER90_RELEASE_HISTORY_TENANT_CODE = "tenant-coll-over90relhist";
@@ -5876,6 +5878,163 @@ class PaymentsControllerIntegrationTest {
         )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("Invoice is already assigned for collections claim: INV-PAY-7202"));
+    }
+
+    @Test
+    void listsClaimHistoryForOver90CollectionsInvoice() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_OVER90_CLAIM_HISTORY_TENANT_CODE,
+            "Collections Over 90 Claim History Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_OVER90_CLAIM_HISTORY_TENANT_CODE,
+            "Collections Over 90 Claim History Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_OVER90_CLAIM_HISTORY_TENANT_CODE,
+            "Collections Over 90 Claim History Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_OVER90_CLAIM_HISTORY_TENANT_CODE,
+            "arc-pay-7208",
+            "so-pay-7208",
+            "inv-pay-7208",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+
+        Instant firstClaimedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(firstClaimedAt);
+        PaymentsWebIntegrationTestSupport.claimUnassignedOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_OVER90_CLAIM_HISTORY_TENANT_CODE,
+            "inv-pay-7208",
+            "collector-a@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant releasedAt = firstClaimedAt.plusSeconds(300);
+        testClock.setInstant(releasedAt);
+        PaymentsWebIntegrationTestSupport.releaseOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_OVER90_CLAIM_HISTORY_TENANT_CODE,
+            "inv-pay-7208",
+            "collector-a@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant secondClaimedAt = releasedAt.plusSeconds(300);
+        testClock.setInstant(secondClaimedAt);
+        PaymentsWebIntegrationTestSupport.claimUnassignedOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_OVER90_CLAIM_HISTORY_TENANT_CODE,
+            "inv-pay-7208",
+            "collector-b@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.collectionsClaimHistoryRequest(
+                COLLECTIONS_OVER90_CLAIM_HISTORY_TENANT_CODE,
+                "inv-pay-7208",
+                0,
+                10
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].claimedBy").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].claimedAt").value(secondClaimedAt.toString()))
+            .andExpect(jsonPath("$.items[1].claimedBy").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].claimedAt").value(firstClaimedAt.toString()));
+    }
+
+    @Test
+    void listsTenantCollectionsClaimHistoryWithFilters() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_CLAIM_HISTORY_TENANT_CODE,
+            "Collections Claim History Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_CLAIM_HISTORY_TENANT_CODE,
+            "Collections Claim History Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_CLAIM_HISTORY_TENANT_CODE,
+            "arc-pay-7209",
+            "so-pay-7209",
+            "inv-pay-7209",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_CLAIM_HISTORY_TENANT_CODE,
+            "arc-pay-7210",
+            "so-pay-7210",
+            "inv-pay-7210",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(15 * 86400)
+        );
+
+        Instant firstClaimedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(firstClaimedAt);
+        PaymentsWebIntegrationTestSupport.claimUnassignedOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_CLAIM_HISTORY_TENANT_CODE,
+            "inv-pay-7209",
+            "collector-a@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant secondClaimedAt = firstClaimedAt.plusSeconds(300);
+        testClock.setInstant(secondClaimedAt);
+        PaymentsWebIntegrationTestSupport.claimUnassignedOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_CLAIM_HISTORY_TENANT_CODE,
+            "inv-pay-7210",
+            "collector-b@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsClaimHistoryRequest(
+                COLLECTIONS_CLAIM_HISTORY_TENANT_CODE,
+                0,
+                10,
+                "invoiceNumber",
+                "inv-pay-7210",
+                "claimedBy",
+                "collector-b@arcanaerp.com",
+                "claimedAtFrom",
+                firstClaimedAt.plusSeconds(1).toString(),
+                "claimedAtTo",
+                secondClaimedAt.toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-7210"))
+            .andExpect(jsonPath("$.items[0].claimedBy").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].claimedAt").value(secondClaimedAt.toString()));
     }
 
     @Test

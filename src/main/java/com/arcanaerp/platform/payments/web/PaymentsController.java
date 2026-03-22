@@ -5,6 +5,7 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.ClaimCollectionsInvoiceCommand;
+import com.arcanaerp.platform.payments.CollectionsAssignmentClaimChangeView;
 import com.arcanaerp.platform.payments.CollectionsNoteCategory;
 import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
@@ -310,6 +311,21 @@ public class PaymentsController {
                 PageQuery.of(page, size)
             )
             .map(this::toCollectionsFollowUpChangeResponse);
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/claim-history")
+    public PageResult<CollectionsAssignmentClaimChangeResponse> listCollectionsClaimHistory(
+        @PathVariable String tenantCode,
+        @PathVariable String invoiceNumber,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return paymentManagement.listCollectionsClaimHistory(
+                requirePathValue(tenantCode, "tenantCode"),
+                requirePathValue(invoiceNumber, "invoiceNumber"),
+                PageQuery.of(page, size)
+            )
+            .map(this::toCollectionsAssignmentClaimChangeResponse);
     }
 
     @GetMapping("/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/release-history")
@@ -838,6 +854,30 @@ public class PaymentsController {
                 PageQuery.of(page, size)
             )
             .map(this::toCollectionsAssignmentReleaseChangeResponse);
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/claim-history")
+    public PageResult<CollectionsAssignmentClaimChangeResponse> listTenantCollectionsClaimHistory(
+        @PathVariable String tenantCode,
+        @RequestParam(required = false) String invoiceNumber,
+        @RequestParam(required = false) String claimedBy,
+        @RequestParam(required = false) String claimedAtFrom,
+        @RequestParam(required = false) String claimedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedClaimedAtFrom = parseOptionalInstant(claimedAtFrom, "claimedAtFrom");
+        Instant parsedClaimedAtTo = parseOptionalInstant(claimedAtTo, "claimedAtTo");
+        validateInstantRange(parsedClaimedAtFrom, parsedClaimedAtTo, "claimedAtFrom", "claimedAtTo");
+        return paymentManagement.listTenantCollectionsClaimHistory(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(invoiceNumber, "invoiceNumber"),
+                normalizeOptional(claimedBy, "claimedBy"),
+                parsedClaimedAtFrom,
+                parsedClaimedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toCollectionsAssignmentClaimChangeResponse);
     }
 
     @GetMapping("/tenants/{tenantCode}/receivables/collections/summary")
@@ -1374,6 +1414,18 @@ public class PaymentsController {
             change.outcome() == null ? null : change.outcome().name(),
             change.changedBy(),
             change.changedAt()
+        );
+    }
+
+    private CollectionsAssignmentClaimChangeResponse toCollectionsAssignmentClaimChangeResponse(
+        CollectionsAssignmentClaimChangeView claim
+    ) {
+        return new CollectionsAssignmentClaimChangeResponse(
+            claim.id(),
+            claim.tenantCode(),
+            claim.invoiceNumber(),
+            claim.claimedBy(),
+            claim.claimedAt()
         );
     }
 

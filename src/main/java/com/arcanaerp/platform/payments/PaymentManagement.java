@@ -77,6 +77,21 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    PageResult<CollectionsAssignmentClaimChangeView> listCollectionsClaimHistory(
+        String tenantCode,
+        String invoiceNumber,
+        PageQuery pageQuery
+    );
+
+    PageResult<CollectionsAssignmentClaimChangeView> listTenantCollectionsClaimHistory(
+        String tenantCode,
+        String invoiceNumber,
+        String claimedBy,
+        Instant claimedAtFrom,
+        Instant claimedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<CollectionsAssignmentReleaseChangeView> listCollectionsReleaseHistory(
         String tenantCode,
         String invoiceNumber,

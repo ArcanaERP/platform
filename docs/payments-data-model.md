@@ -307,7 +307,44 @@ Rules:
 - claim is only allowed while the invoice still qualifies for the current over-90 queue
 - claim is rejected once a current `CollectionsAssignment` row already exists for the invoice
 - successful claim writes the same current assignment row and append-only assignment audit trail used by the manager-driven assignment workflow
+- claim also appends one immutable claim-history row with `claimedBy` and `claimedAt`
 - claim sets both `assignedTo` and `assignedBy` to `claimedBy`
+
+### CollectionsAssignmentClaimHistory
+
+Purpose:
+- expose append-only claim history for one over-90 invoice
+
+Fields:
+- `id`
+- `tenantCode`
+- `invoiceNumber`
+- `claimedBy`
+- `claimedAt`
+
+Rules:
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/claim-history?page=&size=`
+- rows are ordered newest-first by `claimedAt`, then `id`
+- history remains available even after the claim leads to later reassignment or release
+
+### TenantCollectionsClaimHistory
+
+Purpose:
+- expose tenant-wide claim history across invoices for collections intake reporting
+
+Fields:
+- same row shape as `CollectionsAssignmentClaimHistory`
+
+Filters:
+- `invoiceNumber` exact match, optional
+- `claimedBy` exact actor match, optional
+- `claimedAtFrom` UTC instant lower bound, optional
+- `claimedAtTo` UTC instant upper bound, optional
+
+Rules:
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/claim-history?page=&size=&invoiceNumber=&claimedBy=&claimedAtFrom=&claimedAtTo=`
+- rows are ordered newest-first by `claimedAt`, then `id`
+- blank filters are rejected at the HTTP boundary, matching the existing collections-history endpoints
 
 ### ReleaseOver90CollectionsInvoice
 
@@ -682,7 +719,9 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90?currencyCode=&invoiceNumber=&assignedTo=&dueAtOnOrBefore=&followUpAtFrom=&followUpAtTo=&followUpScheduled=&latestFollowUpOutcome=&sortBy=&page=&size=`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/claim`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/release`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/claim-history?page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/release-history?page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/claim-history?page=&size=&invoiceNumber=&claimedBy=&claimedAtFrom=&claimedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/release-history?page=&size=&invoiceNumber=&releasedBy=&releasedAtFrom=&releasedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/assignee-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
