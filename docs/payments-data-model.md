@@ -259,6 +259,22 @@ Notes:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/summary` and `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/assignee-summary` currently expose the same focused over-90 owner rollup, with the latter acting as the collections-specific shortcut route
 - optional exact `assignedTo` and exact `latestFollowUpOutcome` filters narrow the over-90 owner rollup before grouping
 
+### UnassignedOver90CollectionsQueue
+
+Purpose:
+- expose only currently unassigned invoices from the over-90 collections queue
+
+Fields:
+- same row shape as `AgedTenantReceivable`
+
+Filters:
+- `dueAtOnOrBefore` UTC instant cutoff, optional
+- `latestFollowUpOutcome` exact match, optional
+
+Rules:
+- route is a shortcut over the current over-90 queue with `assignedTo is null`
+- rows remain ordered by oldest `dueAt` first, then `invoiceNumber`
+
 ### TenantCollectionsAssigneeAgingSummary
 
 Purpose:

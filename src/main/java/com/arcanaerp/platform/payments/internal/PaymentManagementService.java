@@ -308,6 +308,37 @@ class PaymentManagementService implements PaymentManagement {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PageResult<AgedTenantReceivableView> listUnassignedOver90CollectionsQueue(
+        String tenantCode,
+        String currencyCode,
+        Instant dueAtOnOrBefore,
+        CollectionsFollowUpOutcome latestFollowUpOutcome,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
+        List<ReceivableSnapshot> filtered = collectOutstandingReceivableSnapshots(
+            normalizedTenantCode,
+            normalizedCurrencyCode,
+            asOfDate
+        ).stream()
+            .filter(snapshot -> snapshot.agingBucket() == ReceivablesAgingBucket.OVERDUE_OVER_90)
+            .filter(snapshot -> dueAtOnOrBefore == null || !snapshot.dueAt().isAfter(dueAtOnOrBefore))
+            .sorted(java.util.Comparator
+                .comparing(ReceivableSnapshot::dueAt)
+                .thenComparing(ReceivableSnapshot::invoiceNumber))
+            .toList();
+        List<AgedTenantReceivableView> enriched = enrichAgedReceivables(filtered).stream()
+            .filter(receivable -> receivable.assignedTo() == null)
+            .filter(receivable -> latestFollowUpOutcome == null || latestFollowUpOutcome == receivable.latestFollowUpOutcome())
+            .sorted(over90CollectionsQueueComparator(CollectionsQueueSortBy.DUE_AT))
+            .toList();
+        return paginateReceivables(enriched, pageQuery);
+    }
+
+    @Override
     public CollectionsAssignmentView assignOver90CollectionsInvoice(AssignCollectionsInvoiceCommand command) {
         String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
         String invoiceNumber = normalizeRequired(command.invoiceNumber(), "invoiceNumber").toUpperCase();

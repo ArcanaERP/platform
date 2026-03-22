@@ -183,6 +183,25 @@ public class PaymentsController {
             .map(this::toAgedReceivableResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/over-90/unassigned")
+    public PageResult<AgedTenantReceivableResponse> unassignedOver90CollectionsQueue(
+        @PathVariable String tenantCode,
+        @RequestParam String currencyCode,
+        @RequestParam(required = false) String dueAtOnOrBefore,
+        @RequestParam(required = false) String latestFollowUpOutcome,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return paymentManagement.listUnassignedOver90CollectionsQueue(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(currencyCode, "currencyCode"),
+                parseOptionalInstant(dueAtOnOrBefore, "dueAtOnOrBefore"),
+                parseOptionalCollectionsFollowUpOutcome(latestFollowUpOutcome),
+                PageQuery.of(page, size)
+            )
+            .map(this::toAgedReceivableResponse);
+    }
+
     @PostMapping("/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment")
     public CollectionsAssignmentResponse assignOver90CollectionsInvoice(
         @PathVariable String tenantCode,

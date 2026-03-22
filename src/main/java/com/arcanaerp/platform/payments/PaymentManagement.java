@@ -47,6 +47,14 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    PageResult<AgedTenantReceivableView> listUnassignedOver90CollectionsQueue(
+        String tenantCode,
+        String currencyCode,
+        Instant dueAtOnOrBefore,
+        CollectionsFollowUpOutcome latestFollowUpOutcome,
+        PageQuery pageQuery
+    );
+
     CollectionsAssignmentView assignOver90CollectionsInvoice(AssignCollectionsInvoiceCommand command);
 
     CollectionsAssignmentView scheduleCollectionsFollowUp(ScheduleCollectionsFollowUpCommand command);
