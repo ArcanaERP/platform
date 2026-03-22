@@ -55,6 +55,25 @@ class CollectionsAssignmentDomainTest {
     }
 
     @Test
+    void releaseAuditCreateNormalizesFields() {
+        CollectionsAssignmentReleaseAudit audit = CollectionsAssignmentReleaseAudit.create(
+            " tenant-01 ",
+            " inv-1000 ",
+            " Collector@ArcanaERP.com ",
+            " Manager@ArcanaERP.com ",
+            Instant.parse("2026-03-12T00:00:00Z"),
+            " Collector@ArcanaERP.com ",
+            Instant.parse("2026-03-12T00:10:00Z")
+        );
+
+        assertThat(audit.getTenantCode()).isEqualTo("TENANT-01");
+        assertThat(audit.getInvoiceNumber()).isEqualTo("INV-1000");
+        assertThat(audit.getAssignedTo()).isEqualTo("collector@arcanaerp.com");
+        assertThat(audit.getAssignedBy()).isEqualTo("manager@arcanaerp.com");
+        assertThat(audit.getReleasedBy()).isEqualTo("collector@arcanaerp.com");
+    }
+
+    @Test
     void scheduleFollowUpNormalizesScheduler() {
         CollectionsAssignment assignment = CollectionsAssignment.create(
             "TENANT-01",

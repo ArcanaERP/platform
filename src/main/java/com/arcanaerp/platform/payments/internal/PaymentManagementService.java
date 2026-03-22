@@ -10,6 +10,7 @@ import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.ClaimCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
+import com.arcanaerp.platform.payments.CollectionsAssignmentReleaseChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
 import com.arcanaerp.platform.payments.CompleteCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.CollectionsFollowUpChangeView;
@@ -87,6 +88,7 @@ class PaymentManagementService implements PaymentManagement {
     private final PaymentRepository paymentRepository;
     private final CollectionsAssignmentRepository collectionsAssignmentRepository;
     private final CollectionsAssignmentAuditRepository collectionsAssignmentAuditRepository;
+    private final CollectionsAssignmentReleaseAuditRepository collectionsAssignmentReleaseAuditRepository;
     private final CollectionsFollowUpAuditRepository collectionsFollowUpAuditRepository;
     private final CollectionsNoteRepository collectionsNoteRepository;
     private final InvoiceManagement invoiceManagement;
@@ -444,6 +446,15 @@ class PaymentManagementService implements PaymentManagement {
             assignment.getFollowUpSetBy(),
             assignment.getFollowUpSetAt()
         );
+        collectionsAssignmentReleaseAuditRepository.save(CollectionsAssignmentReleaseAudit.create(
+            assignment.getTenantCode(),
+            assignment.getInvoiceNumber(),
+            assignment.getAssignedTo(),
+            assignment.getAssignedBy(),
+            assignment.getAssignedAt(),
+            releasedBy,
+            Instant.now(clock)
+        ));
         collectionsAssignmentRepository.delete(assignment);
         collectionsAssignmentRepository.flush();
         return released;
@@ -653,6 +664,39 @@ class PaymentManagementService implements PaymentManagement {
             audit.getOutcome(),
             audit.getChangedBy(),
             audit.getChangedAt()
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<CollectionsAssignmentReleaseChangeView> listCollectionsReleaseHistory(
+        String tenantCode,
+        String invoiceNumber,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedInvoiceNumber = normalizeRequired(invoiceNumber, "invoiceNumber").toUpperCase();
+        InvoiceView invoice = invoiceManagement.getInvoice(normalizedInvoiceNumber);
+        if (!invoice.tenantCode().equals(normalizedTenantCode)) {
+            throw new IllegalArgumentException(
+                "Invoice does not belong to tenant " + normalizedTenantCode + ": " + normalizedInvoiceNumber
+            );
+        }
+
+        Page<CollectionsAssignmentReleaseAudit> audits = collectionsAssignmentReleaseAuditRepository.findHistory(
+            normalizedTenantCode,
+            normalizedInvoiceNumber,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "releasedAt").and(Sort.by(Sort.Direction.DESC, "id")))
+        );
+        return PageResult.from(audits).map(audit -> new CollectionsAssignmentReleaseChangeView(
+            audit.getId(),
+            audit.getTenantCode(),
+            audit.getInvoiceNumber(),
+            audit.getAssignedTo(),
+            audit.getAssignedBy(),
+            audit.getAssignedAt(),
+            audit.getReleasedBy(),
+            audit.getReleasedAt()
         ));
     }
 

@@ -77,6 +77,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_OVER90_CLAIM_REJECT_TENANT_CODE = "tenant-coll-over90clrej";
     private static final String COLLECTIONS_OVER90_RELEASE_TENANT_CODE = "tenant-coll-over90rel";
     private static final String COLLECTIONS_OVER90_RELEASE_REJECT_TENANT_CODE = "tenant-coll-over90relrej";
+    private static final String COLLECTIONS_OVER90_RELEASE_HISTORY_TENANT_CODE = "tenant-coll-over90relhist";
 
     @Autowired
     private MockMvc mockMvc;
@@ -5974,6 +5975,100 @@ class PaymentsControllerIntegrationTest {
         )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("Invoice is not currently assigned for collections release: INV-PAY-7204"));
+    }
+
+    @Test
+    void listsReleaseHistoryForOver90CollectionsInvoice() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_OVER90_RELEASE_HISTORY_TENANT_CODE,
+            "Collections Over 90 Release History Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_OVER90_RELEASE_HISTORY_TENANT_CODE,
+            "Collections Over 90 Release History Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_OVER90_RELEASE_HISTORY_TENANT_CODE,
+            "Collections Over 90 Release History Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_OVER90_RELEASE_HISTORY_TENANT_CODE,
+            "arc-pay-7205",
+            "so-pay-7205",
+            "inv-pay-7205",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+
+        Instant firstAssignedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(firstAssignedAt);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_OVER90_RELEASE_HISTORY_TENANT_CODE,
+            "inv-pay-7205",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant firstReleasedAt = firstAssignedAt.plusSeconds(300);
+        testClock.setInstant(firstReleasedAt);
+        PaymentsWebIntegrationTestSupport.releaseOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_OVER90_RELEASE_HISTORY_TENANT_CODE,
+            "inv-pay-7205",
+            "collector-a@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant secondAssignedAt = firstReleasedAt.plusSeconds(300);
+        testClock.setInstant(secondAssignedAt);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_OVER90_RELEASE_HISTORY_TENANT_CODE,
+            "inv-pay-7205",
+            "collector-b@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant secondReleasedAt = secondAssignedAt.plusSeconds(300);
+        testClock.setInstant(secondReleasedAt);
+        PaymentsWebIntegrationTestSupport.releaseOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_OVER90_RELEASE_HISTORY_TENANT_CODE,
+            "inv-pay-7205",
+            "collector-b@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.collectionsReleaseHistoryRequest(
+                COLLECTIONS_OVER90_RELEASE_HISTORY_TENANT_CODE,
+                "inv-pay-7205",
+                0,
+                10
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].assignedBy").value("manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].releasedBy").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].releasedAt").value(secondReleasedAt.toString()))
+            .andExpect(jsonPath("$.items[1].assignedTo").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].releasedBy").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].releasedAt").value(firstReleasedAt.toString()));
     }
 
     @Test

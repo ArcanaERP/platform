@@ -322,7 +322,28 @@ Rules:
 - release is only allowed while the invoice still qualifies for the current over-90 queue
 - release requires an existing current `CollectionsAssignment` row for the invoice
 - release deletes the current assignment row and clears any follow-up metadata with it, so the invoice reappears on unassigned queue reads
-- this thin slice intentionally leaves the existing assignment audit stream append-only and assignment-only; release history is the next follow-on if workflow traceability needs to include owner removal events
+- release also appends one immutable release-history row that captures the removed assignment plus `releasedBy` and `releasedAt`
+
+### CollectionsAssignmentReleaseHistory
+
+Purpose:
+- expose append-only release history for one over-90 invoice
+
+Fields:
+- `id`
+- `tenantCode`
+- `invoiceNumber`
+- `assignedTo`
+- `assignedBy`
+- `assignedAt`
+- `releasedBy`
+- `releasedAt`
+
+Rules:
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/release-history?page=&size=`
+- rows are ordered newest-first by `releasedAt`, then `id`
+- history remains available after the current assignment row has been deleted
+- history is per-invoice only in this slice; tenant-wide release reporting can build on the same audit stream later
 
 ### TenantCollectionsAssigneeAgingSummary
 
@@ -641,6 +662,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90?currencyCode=&invoiceNumber=&assignedTo=&dueAtOnOrBefore=&followUpAtFrom=&followUpAtTo=&followUpScheduled=&latestFollowUpOutcome=&sortBy=&page=&size=`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/claim`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/release`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/release-history?page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/assignee-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/daily-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`

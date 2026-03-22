@@ -8,6 +8,7 @@ import com.arcanaerp.platform.payments.ClaimCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.CollectionsNoteCategory;
 import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
+import com.arcanaerp.platform.payments.CollectionsAssignmentReleaseChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
 import com.arcanaerp.platform.payments.CompleteCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.CollectionsFollowUpChangeView;
@@ -309,6 +310,21 @@ public class PaymentsController {
                 PageQuery.of(page, size)
             )
             .map(this::toCollectionsFollowUpChangeResponse);
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/release-history")
+    public PageResult<CollectionsAssignmentReleaseChangeResponse> listCollectionsReleaseHistory(
+        @PathVariable String tenantCode,
+        @PathVariable String invoiceNumber,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return paymentManagement.listCollectionsReleaseHistory(
+                requirePathValue(tenantCode, "tenantCode"),
+                requirePathValue(invoiceNumber, "invoiceNumber"),
+                PageQuery.of(page, size)
+            )
+            .map(this::toCollectionsAssignmentReleaseChangeResponse);
     }
 
     @PostMapping("/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/notes")
@@ -1334,6 +1350,21 @@ public class PaymentsController {
             change.outcome() == null ? null : change.outcome().name(),
             change.changedBy(),
             change.changedAt()
+        );
+    }
+
+    private CollectionsAssignmentReleaseChangeResponse toCollectionsAssignmentReleaseChangeResponse(
+        CollectionsAssignmentReleaseChangeView release
+    ) {
+        return new CollectionsAssignmentReleaseChangeResponse(
+            release.id(),
+            release.tenantCode(),
+            release.invoiceNumber(),
+            release.assignedTo(),
+            release.assignedBy(),
+            release.assignedAt(),
+            release.releasedBy(),
+            release.releasedAt()
         );
     }
 

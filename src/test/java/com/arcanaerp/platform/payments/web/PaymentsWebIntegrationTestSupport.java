@@ -314,6 +314,24 @@ final class PaymentsWebIntegrationTestSupport {
         return request;
     }
 
+    static MockHttpServletRequestBuilder collectionsReleaseHistoryRequest(
+        String tenantCode,
+        String invoiceNumber,
+        Integer page,
+        Integer size
+    ) {
+        MockHttpServletRequestBuilder request = get(
+            "/api/payments/tenants/" + tenantCode + "/receivables/collections/over-90/" + invoiceNumber + "/release-history"
+        );
+        if (page != null) {
+            request.param("page", String.valueOf(page));
+        }
+        if (size != null) {
+            request.param("size", String.valueOf(size));
+        }
+        return request;
+    }
+
     static ResultActions addCollectionsNote(
         MockMvc mockMvc,
         String tenantCode,
