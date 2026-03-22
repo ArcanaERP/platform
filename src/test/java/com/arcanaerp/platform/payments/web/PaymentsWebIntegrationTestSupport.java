@@ -212,6 +212,23 @@ final class PaymentsWebIntegrationTestSupport {
         ).contentType(MediaType.APPLICATION_JSON).content(payload));
     }
 
+    static ResultActions releaseOver90CollectionsInvoice(
+        MockMvc mockMvc,
+        String tenantCode,
+        String invoiceNumber,
+        String releasedBy
+    ) throws Exception {
+        String payload = """
+            {
+              "releasedBy": "%s"
+            }
+            """.formatted(releasedBy);
+
+        return mockMvc.perform(post(
+            "/api/payments/tenants/" + tenantCode + "/receivables/collections/over-90/" + invoiceNumber + "/release"
+        ).contentType(MediaType.APPLICATION_JSON).content(payload));
+    }
+
     static ResultActions scheduleCollectionsFollowUp(
         MockMvc mockMvc,
         String tenantCode,

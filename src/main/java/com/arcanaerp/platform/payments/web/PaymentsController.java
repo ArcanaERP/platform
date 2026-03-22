@@ -34,6 +34,7 @@ import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.ReceivablesAgingBucket;
+import com.arcanaerp.platform.payments.ReleaseCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.ScheduleCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.TenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsAssigneeAgingSummaryView;
@@ -228,6 +229,21 @@ public class PaymentsController {
                 requirePathValue(tenantCode, "tenantCode"),
                 requirePathValue(invoiceNumber, "invoiceNumber"),
                 request.claimedBy()
+            )
+        ));
+    }
+
+    @PostMapping("/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/release")
+    public CollectionsAssignmentResponse releaseOver90CollectionsInvoice(
+        @PathVariable String tenantCode,
+        @PathVariable String invoiceNumber,
+        @Valid @RequestBody ReleaseCollectionsInvoiceRequest request
+    ) {
+        return toCollectionsAssignmentResponse(paymentManagement.releaseOver90CollectionsInvoice(
+            new ReleaseCollectionsInvoiceCommand(
+                requirePathValue(tenantCode, "tenantCode"),
+                requirePathValue(invoiceNumber, "invoiceNumber"),
+                request.releasedBy()
             )
         ));
     }

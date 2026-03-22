@@ -38,6 +38,7 @@ import com.arcanaerp.platform.payments.MonthlyTenantCollectionsAssignmentSummary
 import com.arcanaerp.platform.payments.PaymentManagement;
 import com.arcanaerp.platform.payments.PaymentView;
 import com.arcanaerp.platform.payments.ReceivablesAgingBucket;
+import com.arcanaerp.platform.payments.ReleaseCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.ScheduleCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.TenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsAssigneeAgingSummaryView;
@@ -414,6 +415,38 @@ class PaymentManagementService implements PaymentManagement {
             saved.getFollowUpSetBy(),
             saved.getFollowUpSetAt()
         );
+    }
+
+    @Override
+    public CollectionsAssignmentView releaseOver90CollectionsInvoice(ReleaseCollectionsInvoiceCommand command) {
+        String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
+        String invoiceNumber = normalizeRequired(command.invoiceNumber(), "invoiceNumber").toUpperCase();
+        String releasedBy = normalizeActorEmail(command.releasedBy(), "releasedBy");
+        if (!identityActorLookup.actorExists(tenantCode, releasedBy)) {
+            throw new IllegalArgumentException("Collections release actor not found in tenant " + tenantCode + ": " + releasedBy);
+        }
+
+        validateOver90CollectionsInvoice(tenantCode, invoiceNumber);
+
+        CollectionsAssignment assignment = collectionsAssignmentRepository.findByInvoiceNumber(invoiceNumber)
+            .orElseThrow(() -> new IllegalArgumentException("Invoice is not currently assigned for collections release: " + invoiceNumber));
+        if (!assignment.getTenantCode().equals(tenantCode)) {
+            throw new IllegalArgumentException("Collections assignment does not belong to tenant " + tenantCode + ": " + invoiceNumber);
+        }
+
+        CollectionsAssignmentView released = new CollectionsAssignmentView(
+            assignment.getTenantCode(),
+            assignment.getInvoiceNumber(),
+            assignment.getAssignedTo(),
+            assignment.getAssignedBy(),
+            assignment.getAssignedAt(),
+            assignment.getFollowUpAt(),
+            assignment.getFollowUpSetBy(),
+            assignment.getFollowUpSetAt()
+        );
+        collectionsAssignmentRepository.delete(assignment);
+        collectionsAssignmentRepository.flush();
+        return released;
     }
 
     @Override

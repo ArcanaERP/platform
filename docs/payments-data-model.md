@@ -309,6 +309,21 @@ Rules:
 - successful claim writes the same current assignment row and append-only assignment audit trail used by the manager-driven assignment workflow
 - claim sets both `assignedTo` and `assignedBy` to `claimedBy`
 
+### ReleaseOver90CollectionsInvoice
+
+Purpose:
+- let a collector return one currently assigned over-90 invoice back to the unassigned queue
+
+Fields:
+- `releasedBy`
+
+Rules:
+- route: `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/release`
+- release is only allowed while the invoice still qualifies for the current over-90 queue
+- release requires an existing current `CollectionsAssignment` row for the invoice
+- release deletes the current assignment row and clears any follow-up metadata with it, so the invoice reappears on unassigned queue reads
+- this thin slice intentionally leaves the existing assignment audit stream append-only and assignment-only; release history is the next follow-on if workflow traceability needs to include owner removal events
+
 ### TenantCollectionsAssigneeAgingSummary
 
 Purpose:
@@ -625,6 +640,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/aging/{agingBucket}?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90?currencyCode=&invoiceNumber=&assignedTo=&dueAtOnOrBefore=&followUpAtFrom=&followUpAtTo=&followUpScheduled=&latestFollowUpOutcome=&sortBy=&page=&size=`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/claim`
+- `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/release`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/assignee-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/daily-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
