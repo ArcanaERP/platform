@@ -61,6 +61,8 @@ public interface PaymentManagement {
         CollectionsFollowUpOutcome latestFollowUpOutcome
     );
 
+    CollectionsAssignmentView claimUnassignedOver90CollectionsInvoice(ClaimCollectionsInvoiceCommand command);
+
     CollectionsAssignmentView assignOver90CollectionsInvoice(AssignCollectionsInvoiceCommand command);
 
     CollectionsAssignmentView scheduleCollectionsFollowUp(ScheduleCollectionsFollowUpCommand command);

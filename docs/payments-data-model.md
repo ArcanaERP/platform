@@ -294,6 +294,21 @@ Rules:
 - summary is built from the same current unassigned over-90 path as the row-level shortcut
 - assigned invoices are excluded even if they are still over 90 days past due
 
+### ClaimUnassignedOver90CollectionsInvoice
+
+Purpose:
+- let a collector claim one invoice directly from the unassigned over-90 queue
+
+Fields:
+- `claimedBy`
+
+Rules:
+- route: `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/claim`
+- claim is only allowed while the invoice still qualifies for the current over-90 queue
+- claim is rejected once a current `CollectionsAssignment` row already exists for the invoice
+- successful claim writes the same current assignment row and append-only assignment audit trail used by the manager-driven assignment workflow
+- claim sets both `assignedTo` and `assignedBy` to `claimedBy`
+
 ### TenantCollectionsAssigneeAgingSummary
 
 Purpose:
@@ -609,6 +624,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/aging?currencyCode=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/aging/{agingBucket}?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90?currencyCode=&invoiceNumber=&assignedTo=&dueAtOnOrBefore=&followUpAtFrom=&followUpAtTo=&followUpScheduled=&latestFollowUpOutcome=&sortBy=&page=&size=`
+- `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/claim`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/assignee-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/daily-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`

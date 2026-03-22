@@ -195,6 +195,23 @@ final class PaymentsWebIntegrationTestSupport {
         ).contentType(MediaType.APPLICATION_JSON).content(payload));
     }
 
+    static ResultActions claimUnassignedOver90CollectionsInvoice(
+        MockMvc mockMvc,
+        String tenantCode,
+        String invoiceNumber,
+        String claimedBy
+    ) throws Exception {
+        String payload = """
+            {
+              "claimedBy": "%s"
+            }
+            """.formatted(claimedBy);
+
+        return mockMvc.perform(post(
+            "/api/payments/tenants/" + tenantCode + "/receivables/collections/over-90/" + invoiceNumber + "/claim"
+        ).contentType(MediaType.APPLICATION_JSON).content(payload));
+    }
+
     static ResultActions scheduleCollectionsFollowUp(
         MockMvc mockMvc,
         String tenantCode,

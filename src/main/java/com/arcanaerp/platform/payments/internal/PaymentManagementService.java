@@ -8,6 +8,7 @@ import com.arcanaerp.platform.invoicing.InvoiceStatus;
 import com.arcanaerp.platform.invoicing.InvoiceView;
 import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
+import com.arcanaerp.platform.payments.ClaimCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
 import com.arcanaerp.platform.payments.CompleteCollectionsFollowUpCommand;
@@ -367,6 +368,52 @@ class PaymentManagementService implements PaymentManagement {
             .forEach(summary::add);
 
         return summary.toView(normalizedTenantCode, normalizedCurrencyCode);
+    }
+
+    @Override
+    public CollectionsAssignmentView claimUnassignedOver90CollectionsInvoice(ClaimCollectionsInvoiceCommand command) {
+        String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
+        String invoiceNumber = normalizeRequired(command.invoiceNumber(), "invoiceNumber").toUpperCase();
+        String claimedBy = normalizeActorEmail(command.claimedBy(), "claimedBy");
+        if (!identityActorLookup.actorExists(tenantCode, claimedBy)) {
+            throw new IllegalArgumentException("Collections claim actor not found in tenant " + tenantCode + ": " + claimedBy);
+        }
+
+        validateOver90CollectionsInvoice(tenantCode, invoiceNumber);
+
+        CollectionsAssignment existing = collectionsAssignmentRepository.findByInvoiceNumber(invoiceNumber).orElse(null);
+        if (existing != null) {
+            if (!existing.getTenantCode().equals(tenantCode)) {
+                throw new IllegalArgumentException("Collections assignment does not belong to tenant " + tenantCode + ": " + invoiceNumber);
+            }
+            throw new IllegalArgumentException("Invoice is already assigned for collections claim: " + invoiceNumber);
+        }
+
+        Instant claimedAt = Instant.now(clock);
+        CollectionsAssignment saved = collectionsAssignmentRepository.save(CollectionsAssignment.create(
+            tenantCode,
+            invoiceNumber,
+            claimedBy,
+            claimedBy,
+            claimedAt
+        ));
+        collectionsAssignmentAuditRepository.save(CollectionsAssignmentAudit.create(
+            saved.getTenantCode(),
+            saved.getInvoiceNumber(),
+            saved.getAssignedTo(),
+            saved.getAssignedBy(),
+            saved.getAssignedAt()
+        ));
+        return new CollectionsAssignmentView(
+            saved.getTenantCode(),
+            saved.getInvoiceNumber(),
+            saved.getAssignedTo(),
+            saved.getAssignedBy(),
+            saved.getAssignedAt(),
+            saved.getFollowUpAt(),
+            saved.getFollowUpSetBy(),
+            saved.getFollowUpSetAt()
+        );
     }
 
     @Override

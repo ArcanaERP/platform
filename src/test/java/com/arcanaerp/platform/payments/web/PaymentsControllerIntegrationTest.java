@@ -73,6 +73,8 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_OVER90_ASSIGNEE_FILTER_TENANT_CODE = "tenant-coll-over90asflt";
     private static final String COLLECTIONS_OVER90_UNASSIGNED_TENANT_CODE = "tenant-coll-over90unas";
     private static final String COLLECTIONS_OVER90_UNASSIGNED_SUMMARY_TENANT_CODE = "tenant-coll-over90unassm";
+    private static final String COLLECTIONS_OVER90_CLAIM_TENANT_CODE = "tenant-coll-over90claim";
+    private static final String COLLECTIONS_OVER90_CLAIM_REJECT_TENANT_CODE = "tenant-coll-over90clrej";
 
     @Autowired
     private MockMvc mockMvc;
@@ -5746,6 +5748,130 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.invoiceCount").value(2))
             .andExpect(jsonPath("$.totalOutstandingAmount").value(20.0))
             .andExpect(jsonPath("$.oldestDueAt").value(PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(15 * 86400).toString()));
+    }
+
+    @Test
+    void claimsUnassignedOver90CollectionsInvoice() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_OVER90_CLAIM_TENANT_CODE,
+            "Collections Over 90 Claim Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_OVER90_CLAIM_TENANT_CODE,
+            "Collections Over 90 Claim Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_OVER90_CLAIM_TENANT_CODE,
+            "arc-pay-7200",
+            "so-pay-7200",
+            "inv-pay-7200",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_OVER90_CLAIM_TENANT_CODE,
+            "arc-pay-7201",
+            "so-pay-7201",
+            "inv-pay-7201",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(15 * 86400)
+        );
+
+        Instant claimedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(claimedAt);
+        PaymentsWebIntegrationTestSupport.claimUnassignedOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_OVER90_CLAIM_TENANT_CODE,
+            "inv-pay-7200",
+            "collector-a@arcanaerp.com"
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tenantCode").value("TENANT-COLL-OVER90CLAIM"))
+            .andExpect(jsonPath("$.invoiceNumber").value("INV-PAY-7200"))
+            .andExpect(jsonPath("$.assignedTo").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.assignedBy").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.assignedAt").value(claimedAt.toString()));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.unassignedOver90CollectionsQueueRequest(
+                COLLECTIONS_OVER90_CLAIM_TENANT_CODE,
+                "USD",
+                0,
+                10
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-7201"));
+    }
+
+    @Test
+    void rejectsClaimForAlreadyAssignedOver90CollectionsInvoice() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_OVER90_CLAIM_REJECT_TENANT_CODE,
+            "Collections Over 90 Claim Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_OVER90_CLAIM_REJECT_TENANT_CODE,
+            "Collections Over 90 Claim Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_OVER90_CLAIM_REJECT_TENANT_CODE,
+            "Collections Over 90 Claim Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_OVER90_CLAIM_REJECT_TENANT_CODE,
+            "arc-pay-7202",
+            "so-pay-7202",
+            "inv-pay-7202",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+
+        Instant assignedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(assignedAt);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_OVER90_CLAIM_REJECT_TENANT_CODE,
+            "inv-pay-7202",
+            "collector-b@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        PaymentsWebIntegrationTestSupport.claimUnassignedOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_OVER90_CLAIM_REJECT_TENANT_CODE,
+            "inv-pay-7202",
+            "collector-a@arcanaerp.com"
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("Invoice is already assigned for collections claim: INV-PAY-7202"));
     }
 
     @Test

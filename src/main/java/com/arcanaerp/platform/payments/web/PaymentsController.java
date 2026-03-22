@@ -4,6 +4,7 @@ import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
+import com.arcanaerp.platform.payments.ClaimCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.CollectionsNoteCategory;
 import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
@@ -213,6 +214,21 @@ public class PaymentsController {
             requirePathValue(tenantCode, "tenantCode"),
             normalizeOptional(currencyCode, "currencyCode"),
             parseOptionalCollectionsFollowUpOutcome(latestFollowUpOutcome)
+        ));
+    }
+
+    @PostMapping("/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/claim")
+    public CollectionsAssignmentResponse claimUnassignedOver90CollectionsInvoice(
+        @PathVariable String tenantCode,
+        @PathVariable String invoiceNumber,
+        @Valid @RequestBody ClaimCollectionsInvoiceRequest request
+    ) {
+        return toCollectionsAssignmentResponse(paymentManagement.claimUnassignedOver90CollectionsInvoice(
+            new ClaimCollectionsInvoiceCommand(
+                requirePathValue(tenantCode, "tenantCode"),
+                requirePathValue(invoiceNumber, "invoiceNumber"),
+                request.claimedBy()
+            )
         ));
     }
 
