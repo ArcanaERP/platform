@@ -55,6 +55,12 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    UnassignedOver90CollectionsSummaryView unassignedOver90CollectionsSummary(
+        String tenantCode,
+        String currencyCode,
+        CollectionsFollowUpOutcome latestFollowUpOutcome
+    );
+
     CollectionsAssignmentView assignOver90CollectionsInvoice(AssignCollectionsInvoiceCommand command);
 
     CollectionsAssignmentView scheduleCollectionsFollowUp(ScheduleCollectionsFollowUpCommand command);

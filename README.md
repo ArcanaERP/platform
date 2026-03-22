@@ -118,6 +118,7 @@ Payments:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90?currencyCode=&invoiceNumber=&assignedTo=&dueAtOnOrBefore=&followUpAtFrom=&followUpAtTo=&followUpScheduled=&latestFollowUpOutcome=&sortBy=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/assignee-summary?currencyCode=&assignedTo=&latestFollowUpOutcome=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/unassigned?currencyCode=&latestFollowUpOutcome=&dueAtOnOrBefore=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/unassigned/summary?currencyCode=&latestFollowUpOutcome=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/current-assignee-summary?currencyCode=&assignedTo=&latestFollowUpOutcome=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/assignee-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`

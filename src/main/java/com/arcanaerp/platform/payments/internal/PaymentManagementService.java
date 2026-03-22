@@ -45,6 +45,7 @@ import com.arcanaerp.platform.payments.TenantCollectionsCurrentAssigneeFollowUpO
 import com.arcanaerp.platform.payments.TenantCollectionsFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteOutcomeSummaryView;
+import com.arcanaerp.platform.payments.UnassignedOver90CollectionsSummaryView;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantReceivableView;
@@ -336,6 +337,36 @@ class PaymentManagementService implements PaymentManagement {
             .sorted(over90CollectionsQueueComparator(CollectionsQueueSortBy.DUE_AT))
             .toList();
         return paginateReceivables(enriched, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UnassignedOver90CollectionsSummaryView unassignedOver90CollectionsSummary(
+        String tenantCode,
+        String currencyCode,
+        CollectionsFollowUpOutcome latestFollowUpOutcome
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
+
+        UnassignedOver90CollectionsSummaryAccumulator summary = new UnassignedOver90CollectionsSummaryAccumulator();
+        enrichAgedReceivables(collectOutstandingReceivableSnapshots(
+            normalizedTenantCode,
+            normalizedCurrencyCode,
+            asOfDate
+        ).stream()
+            .filter(snapshot -> snapshot.agingBucket() == ReceivablesAgingBucket.OVERDUE_OVER_90)
+            .sorted(java.util.Comparator
+                .comparing(ReceivableSnapshot::dueAt)
+                .thenComparing(ReceivableSnapshot::invoiceNumber))
+            .toList())
+            .stream()
+            .filter(receivable -> receivable.assignedTo() == null)
+            .filter(receivable -> latestFollowUpOutcome == null || latestFollowUpOutcome == receivable.latestFollowUpOutcome())
+            .forEach(summary::add);
+
+        return summary.toView(normalizedTenantCode, normalizedCurrencyCode);
     }
 
     @Override
@@ -2390,6 +2421,31 @@ class PaymentManagementService implements PaymentManagement {
                 currencyCode,
                 assignedTo,
                 agingBucket,
+                invoiceCount,
+                totalOutstandingAmount,
+                oldestDueAt
+            );
+        }
+    }
+
+    private static final class UnassignedOver90CollectionsSummaryAccumulator {
+
+        private long invoiceCount;
+        private BigDecimal totalOutstandingAmount = BigDecimal.ZERO;
+        private Instant oldestDueAt;
+
+        void add(AgedTenantReceivableView receivable) {
+            invoiceCount++;
+            totalOutstandingAmount = totalOutstandingAmount.add(receivable.outstandingAmount());
+            if (oldestDueAt == null || receivable.dueAt().isBefore(oldestDueAt)) {
+                oldestDueAt = receivable.dueAt();
+            }
+        }
+
+        UnassignedOver90CollectionsSummaryView toView(String tenantCode, String currencyCode) {
+            return new UnassignedOver90CollectionsSummaryView(
+                tenantCode,
+                currencyCode,
                 invoiceCount,
                 totalOutstandingAmount,
                 oldestDueAt

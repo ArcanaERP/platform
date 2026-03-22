@@ -41,6 +41,7 @@ import com.arcanaerp.platform.payments.TenantCollectionsCurrentAssigneeFollowUpO
 import com.arcanaerp.platform.payments.TenantCollectionsFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteOutcomeSummaryView;
+import com.arcanaerp.platform.payments.UnassignedOver90CollectionsSummaryView;
 import com.arcanaerp.platform.payments.TenantInvoicePaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.TenantReceivableView;
@@ -200,6 +201,19 @@ public class PaymentsController {
                 PageQuery.of(page, size)
             )
             .map(this::toAgedReceivableResponse);
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/over-90/unassigned/summary")
+    public UnassignedOver90CollectionsSummaryResponse unassignedOver90CollectionsSummary(
+        @PathVariable String tenantCode,
+        @RequestParam String currencyCode,
+        @RequestParam(required = false) String latestFollowUpOutcome
+    ) {
+        return toUnassignedOver90CollectionsSummaryResponse(paymentManagement.unassignedOver90CollectionsSummary(
+            requirePathValue(tenantCode, "tenantCode"),
+            normalizeOptional(currencyCode, "currencyCode"),
+            parseOptionalCollectionsFollowUpOutcome(latestFollowUpOutcome)
+        ));
     }
 
     @PostMapping("/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment")
@@ -1491,6 +1505,18 @@ public class PaymentsController {
             summary.currencyCode(),
             summary.assignedTo(),
             summary.agingBucket(),
+            summary.invoiceCount(),
+            summary.totalOutstandingAmount(),
+            summary.oldestDueAt()
+        );
+    }
+
+    private UnassignedOver90CollectionsSummaryResponse toUnassignedOver90CollectionsSummaryResponse(
+        UnassignedOver90CollectionsSummaryView summary
+    ) {
+        return new UnassignedOver90CollectionsSummaryResponse(
+            summary.tenantCode(),
+            summary.currencyCode(),
             summary.invoiceCount(),
             summary.totalOutstandingAmount(),
             summary.oldestDueAt()

@@ -275,6 +275,25 @@ Rules:
 - route is a shortcut over the current over-90 queue with `assignedTo is null`
 - rows remain ordered by oldest `dueAt` first, then `invoiceNumber`
 
+### UnassignedOver90CollectionsSummary
+
+Purpose:
+- expose aggregate totals for currently unassigned invoices in the over-90 collections queue
+
+Fields:
+- `tenantCode`
+- `currencyCode`
+- `invoiceCount`
+- `totalOutstandingAmount`
+- `oldestDueAt`
+
+Filters:
+- `latestFollowUpOutcome` exact match, optional
+
+Rules:
+- summary is built from the same current unassigned over-90 path as the row-level shortcut
+- assigned invoices are excluded even if they are still over 90 days past due
+
 ### TenantCollectionsAssigneeAgingSummary
 
 Purpose:
