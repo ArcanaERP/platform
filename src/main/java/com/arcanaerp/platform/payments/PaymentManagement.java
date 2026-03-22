@@ -251,6 +251,8 @@ public interface PaymentManagement {
     PageResult<TenantCollectionsAssignmentSummaryView> listOver90TenantCollectionsAssignmentSummaries(
         String tenantCode,
         String currencyCode,
+        String assignedTo,
+        CollectionsFollowUpOutcome latestFollowUpOutcome,
         PageQuery pageQuery
     );
 

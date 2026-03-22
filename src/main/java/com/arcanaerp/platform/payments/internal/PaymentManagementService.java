@@ -1139,7 +1139,7 @@ class PaymentManagementService implements PaymentManagement {
         String currencyCode,
         PageQuery pageQuery
     ) {
-        return summarizeOver90Assignments(tenantCode, currencyCode, pageQuery);
+        return summarizeOver90Assignments(tenantCode, currencyCode, null, null, pageQuery);
     }
 
     @Override
@@ -1147,18 +1147,23 @@ class PaymentManagementService implements PaymentManagement {
     public PageResult<TenantCollectionsAssignmentSummaryView> listOver90TenantCollectionsAssignmentSummaries(
         String tenantCode,
         String currencyCode,
+        String assignedTo,
+        CollectionsFollowUpOutcome latestFollowUpOutcome,
         PageQuery pageQuery
     ) {
-        return summarizeOver90Assignments(tenantCode, currencyCode, pageQuery);
+        return summarizeOver90Assignments(tenantCode, currencyCode, assignedTo, latestFollowUpOutcome, pageQuery);
     }
 
     private PageResult<TenantCollectionsAssignmentSummaryView> summarizeOver90Assignments(
         String tenantCode,
         String currencyCode,
+        String assignedTo,
+        CollectionsFollowUpOutcome latestFollowUpOutcome,
         PageQuery pageQuery
     ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
         String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
         LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
 
         Map<String, AssignmentSummaryAccumulator> summariesByAssignee = new LinkedHashMap<>();
@@ -1169,6 +1174,9 @@ class PaymentManagementService implements PaymentManagement {
                 .comparing(ReceivableSnapshot::dueAt)
                 .thenComparing(ReceivableSnapshot::invoiceNumber))
             .toList())
+            .stream()
+            .filter(receivable -> normalizedAssignedTo == null || normalizedAssignedTo.equals(receivable.assignedTo()))
+            .filter(receivable -> latestFollowUpOutcome == null || latestFollowUpOutcome == receivable.latestFollowUpOutcome())
             .forEach(receivable -> summariesByAssignee
                 .computeIfAbsent(receivable.assignedTo(), ignored -> new AssignmentSummaryAccumulator())
                 .add(receivable));

@@ -257,6 +257,7 @@ Rules:
 
 Notes:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/summary` and `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/assignee-summary` currently expose the same focused over-90 owner rollup, with the latter acting as the collections-specific shortcut route
+- optional exact `assignedTo` and exact `latestFollowUpOutcome` filters narrow the over-90 owner rollup before grouping
 
 ### TenantCollectionsAssigneeAgingSummary
 
