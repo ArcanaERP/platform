@@ -816,6 +816,30 @@ public class PaymentsController {
             .map(this::toCollectionsAssignmentChangeResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/release-history")
+    public PageResult<CollectionsAssignmentReleaseChangeResponse> listTenantCollectionsReleaseHistory(
+        @PathVariable String tenantCode,
+        @RequestParam(required = false) String invoiceNumber,
+        @RequestParam(required = false) String releasedBy,
+        @RequestParam(required = false) String releasedAtFrom,
+        @RequestParam(required = false) String releasedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedReleasedAtFrom = parseOptionalInstant(releasedAtFrom, "releasedAtFrom");
+        Instant parsedReleasedAtTo = parseOptionalInstant(releasedAtTo, "releasedAtTo");
+        validateInstantRange(parsedReleasedAtFrom, parsedReleasedAtTo, "releasedAtFrom", "releasedAtTo");
+        return paymentManagement.listTenantCollectionsReleaseHistory(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(invoiceNumber, "invoiceNumber"),
+                normalizeOptional(releasedBy, "releasedBy"),
+                parsedReleasedAtFrom,
+                parsedReleasedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toCollectionsAssignmentReleaseChangeResponse);
+    }
+
     @GetMapping("/tenants/{tenantCode}/receivables/collections/summary")
     public PageResult<TenantCollectionsAssignmentSummaryResponse> listTenantCollectionsAssignmentSummaries(
         @PathVariable String tenantCode,

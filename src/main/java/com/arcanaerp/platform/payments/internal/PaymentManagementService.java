@@ -702,6 +702,40 @@ class PaymentManagementService implements PaymentManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<CollectionsAssignmentReleaseChangeView> listTenantCollectionsReleaseHistory(
+        String tenantCode,
+        String invoiceNumber,
+        String releasedBy,
+        Instant releasedAtFrom,
+        Instant releasedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedInvoiceNumber = normalizeOptional(invoiceNumber);
+        String normalizedReleasedBy = releasedBy == null ? null : normalizeActorEmail(releasedBy, "releasedBy");
+
+        Page<CollectionsAssignmentReleaseAudit> audits = collectionsAssignmentReleaseAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            normalizedInvoiceNumber,
+            normalizedReleasedBy,
+            releasedAtFrom,
+            releasedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "releasedAt").and(Sort.by(Sort.Direction.DESC, "id")))
+        );
+        return PageResult.from(audits).map(audit -> new CollectionsAssignmentReleaseChangeView(
+            audit.getId(),
+            audit.getTenantCode(),
+            audit.getInvoiceNumber(),
+            audit.getAssignedTo(),
+            audit.getAssignedBy(),
+            audit.getAssignedAt(),
+            audit.getReleasedBy(),
+            audit.getReleasedAt()
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<CollectionsAssignmentChangeView> listCollectionsAssignmentHistory(
         String tenantCode,
         String invoiceNumber,

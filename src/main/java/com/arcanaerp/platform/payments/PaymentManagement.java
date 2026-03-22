@@ -83,6 +83,15 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    PageResult<CollectionsAssignmentReleaseChangeView> listTenantCollectionsReleaseHistory(
+        String tenantCode,
+        String invoiceNumber,
+        String releasedBy,
+        Instant releasedAtFrom,
+        Instant releasedAtTo,
+        PageQuery pageQuery
+    );
+
     CollectionsNoteView addCollectionsNote(CreateCollectionsNoteCommand command);
 
     PageResult<CollectionsAssignmentChangeView> listCollectionsAssignmentHistory(

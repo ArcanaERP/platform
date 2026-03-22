@@ -55,4 +55,49 @@ class CollectionsAssignmentReleaseAuditRepositoryTest {
         assertThat(page.getContent()).extracting(CollectionsAssignmentReleaseAudit::getReleasedBy)
             .containsExactly("collector-b@arcanaerp.com", "collector-a@arcanaerp.com");
     }
+
+    @Test
+    void filtersTenantReleaseHistoryByInvoiceActorAndReleasedAtRange() {
+        collectionsAssignmentReleaseAuditRepository.saveAndFlush(CollectionsAssignmentReleaseAudit.create(
+            "TENANT-02",
+            "INV-7100",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com",
+            Instant.parse("2026-03-12T00:00:00Z"),
+            "collector-a@arcanaerp.com",
+            Instant.parse("2026-03-12T00:10:00Z")
+        ));
+        collectionsAssignmentReleaseAuditRepository.saveAndFlush(CollectionsAssignmentReleaseAudit.create(
+            "TENANT-02",
+            "INV-7101",
+            "collector-b@arcanaerp.com",
+            "manager@arcanaerp.com",
+            Instant.parse("2026-03-12T00:05:00Z"),
+            "collector-b@arcanaerp.com",
+            Instant.parse("2026-03-12T00:15:00Z")
+        ));
+        collectionsAssignmentReleaseAuditRepository.saveAndFlush(CollectionsAssignmentReleaseAudit.create(
+            "TENANT-02",
+            "INV-7100",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com",
+            Instant.parse("2026-03-12T00:20:00Z"),
+            "collector-a@arcanaerp.com",
+            Instant.parse("2026-03-12T00:30:00Z")
+        ));
+
+        var page = collectionsAssignmentReleaseAuditRepository.findTenantHistoryFiltered(
+            "TENANT-02",
+            "INV-7100",
+            "collector-a@arcanaerp.com",
+            Instant.parse("2026-03-12T00:11:00Z"),
+            Instant.parse("2026-03-12T00:30:00Z"),
+            PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "releasedAt"))
+        );
+
+        assertThat(page.getContent()).hasSize(1);
+        assertThat(page.getContent().getFirst().getInvoiceNumber()).isEqualTo("INV-7100");
+        assertThat(page.getContent().getFirst().getReleasedBy()).isEqualTo("collector-a@arcanaerp.com");
+        assertThat(page.getContent().getFirst().getReleasedAt()).isEqualTo(Instant.parse("2026-03-12T00:30:00Z"));
+    }
 }

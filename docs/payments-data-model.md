@@ -345,6 +345,26 @@ Rules:
 - history remains available after the current assignment row has been deleted
 - history is per-invoice only in this slice; tenant-wide release reporting can build on the same audit stream later
 
+### TenantCollectionsReleaseHistory
+
+Purpose:
+- expose tenant-wide release history across invoices for collections management and audit review
+
+Fields:
+- same row shape as `CollectionsAssignmentReleaseHistory`
+
+Filters:
+- `invoiceNumber` exact match, optional
+- `releasedBy` exact actor match, optional
+- `releasedAtFrom` UTC instant lower bound, optional
+- `releasedAtTo` UTC instant upper bound, optional
+
+Rules:
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/release-history?page=&size=&invoiceNumber=&releasedBy=&releasedAtFrom=&releasedAtTo=`
+- rows are ordered newest-first by `releasedAt`, then `id`
+- blank filters are rejected at the HTTP boundary, matching the existing collections-history endpoints
+- invoice and actor filters are normalized the same way as other collections reads before querying the audit table
+
 ### TenantCollectionsAssigneeAgingSummary
 
 Purpose:
@@ -663,6 +683,7 @@ Rules:
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/claim`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/release`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/release-history?page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/release-history?page=&size=&invoiceNumber=&releasedBy=&releasedAtFrom=&releasedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/assignee-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/daily-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
