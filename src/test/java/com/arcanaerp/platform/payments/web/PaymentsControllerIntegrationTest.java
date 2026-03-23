@@ -77,6 +77,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_OVER90_CLAIM_REJECT_TENANT_CODE = "tenant-coll-over90clrej";
     private static final String COLLECTIONS_OVER90_CLAIM_HISTORY_TENANT_CODE = "tenant-coll-over90clhist";
     private static final String COLLECTIONS_CLAIM_HISTORY_TENANT_CODE = "tenant-coll-clhist";
+    private static final String COLLECTIONS_CLAIM_DAILY_SUMMARY_TENANT_CODE = "tenant-coll-clday";
     private static final String COLLECTIONS_OVER90_RELEASE_TENANT_CODE = "tenant-coll-over90rel";
     private static final String COLLECTIONS_OVER90_RELEASE_REJECT_TENANT_CODE = "tenant-coll-over90relrej";
     private static final String COLLECTIONS_OVER90_RELEASE_HISTORY_TENANT_CODE = "tenant-coll-over90relhist";
@@ -6035,6 +6036,83 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-PAY-7210"))
             .andExpect(jsonPath("$.items[0].claimedBy").value("collector-b@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].claimedAt").value(secondClaimedAt.toString()));
+    }
+
+    @Test
+    void listsDailyTenantCollectionsClaimSummaryWithFilters() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_CLAIM_DAILY_SUMMARY_TENANT_CODE,
+            "Collections Claim Daily Summary Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_CLAIM_DAILY_SUMMARY_TENANT_CODE,
+            "Collections Claim Daily Summary Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_CLAIM_DAILY_SUMMARY_TENANT_CODE,
+            "arc-pay-7211",
+            "so-pay-7211",
+            "inv-pay-7211",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_CLAIM_DAILY_SUMMARY_TENANT_CODE,
+            "arc-pay-7212",
+            "so-pay-7212",
+            "inv-pay-7212",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(15 * 86400)
+        );
+
+        Instant firstClaimedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(firstClaimedAt);
+        PaymentsWebIntegrationTestSupport.claimUnassignedOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_CLAIM_DAILY_SUMMARY_TENANT_CODE,
+            "inv-pay-7211",
+            "collector-a@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant secondClaimedAt = firstClaimedAt.plusSeconds(86400);
+        testClock.setInstant(secondClaimedAt);
+        PaymentsWebIntegrationTestSupport.claimUnassignedOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_CLAIM_DAILY_SUMMARY_TENANT_CODE,
+            "inv-pay-7212",
+            "collector-b@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.dailyTenantCollectionsClaimSummaryRequest(
+                COLLECTIONS_CLAIM_DAILY_SUMMARY_TENANT_CODE,
+                0,
+                10,
+                "claimedBy",
+                "collector-b@arcanaerp.com",
+                "claimedAtFrom",
+                firstClaimedAt.plusSeconds(1).toString(),
+                "claimedAtTo",
+                secondClaimedAt.toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("TENANT-COLL-CLDAY"))
+            .andExpect(jsonPath("$.items[0].businessDate").value(secondClaimedAt.atOffset(java.time.ZoneOffset.UTC).toLocalDate().toString()))
+            .andExpect(jsonPath("$.items[0].claimedBy").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].claimCount").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1));
     }
 
     @Test

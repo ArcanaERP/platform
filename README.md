@@ -124,6 +124,7 @@ Payments:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/claim-history?page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/release-history?page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/claim-history?page=&size=&invoiceNumber=&claimedBy=&claimedAtFrom=&claimedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/claims/daily-summary?page=&size=&claimedBy=&claimedAtFrom=&claimedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/release-history?page=&size=&invoiceNumber=&releasedBy=&releasedAtFrom=&releasedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/current-assignee-summary?currencyCode=&assignedTo=&latestFollowUpOutcome=&page=&size=`

@@ -92,6 +92,14 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    PageResult<DailyTenantCollectionsClaimSummaryView> listDailyTenantCollectionsClaimSummaries(
+        String tenantCode,
+        String claimedBy,
+        Instant claimedAtFrom,
+        Instant claimedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<CollectionsAssignmentReleaseChangeView> listCollectionsReleaseHistory(
         String tenantCode,
         String invoiceNumber,

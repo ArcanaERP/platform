@@ -22,6 +22,7 @@ import com.arcanaerp.platform.payments.CollectionsNoteView;
 import com.arcanaerp.platform.payments.CollectionsQueueSortBy;
 import com.arcanaerp.platform.payments.CreateCollectionsNoteCommand;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsFollowUpOutcomeSummaryView;
+import com.arcanaerp.platform.payments.DailyTenantCollectionsClaimSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteCategoryOutcomeSummaryView;
@@ -701,6 +702,53 @@ class PaymentManagementService implements PaymentManagement {
             audit.getClaimedBy(),
             audit.getClaimedAt()
         ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DailyTenantCollectionsClaimSummaryView> listDailyTenantCollectionsClaimSummaries(
+        String tenantCode,
+        String claimedBy,
+        Instant claimedAtFrom,
+        Instant claimedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedClaimedBy = claimedBy == null ? null : normalizeActorEmail(claimedBy, "claimedBy");
+
+        List<CollectionsAssignmentClaimAudit> audits = collectionsAssignmentClaimAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            null,
+            normalizedClaimedBy,
+            claimedAtFrom,
+            claimedAtTo,
+            org.springframework.data.domain.Pageable.unpaged()
+        ).getContent();
+
+        Map<DailyCollectionsClaimBucket, ClaimSummaryAccumulator> summaries = new LinkedHashMap<>();
+        for (CollectionsAssignmentClaimAudit audit : audits) {
+            DailyCollectionsClaimBucket bucket = new DailyCollectionsClaimBucket(
+                audit.getClaimedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+                audit.getClaimedBy()
+            );
+            summaries.computeIfAbsent(bucket, ignored -> new ClaimSummaryAccumulator()).add(audit);
+        }
+
+        List<DailyTenantCollectionsClaimSummaryView> items = summaries.entrySet().stream()
+            .map(entry -> new DailyTenantCollectionsClaimSummaryView(
+                normalizedTenantCode,
+                entry.getKey().businessDate(),
+                entry.getKey().claimedBy(),
+                entry.getValue().claimCount,
+                entry.getValue().invoiceNumbers.size()
+            ))
+            .sorted(java.util.Comparator
+                .comparing(DailyTenantCollectionsClaimSummaryView::businessDate)
+                .reversed()
+                .thenComparing(DailyTenantCollectionsClaimSummaryView::claimedBy))
+            .toList();
+
+        return paginateList(items, pageQuery);
     }
 
     @Override
@@ -2734,6 +2782,17 @@ class PaymentManagementService implements PaymentManagement {
         }
     }
 
+    private static final class ClaimSummaryAccumulator {
+
+        private long claimCount;
+        private final java.util.Set<String> invoiceNumbers = new java.util.LinkedHashSet<>();
+
+        void add(CollectionsAssignmentClaimAudit audit) {
+            claimCount++;
+            invoiceNumbers.add(audit.getInvoiceNumber());
+        }
+    }
+
     private static final class CollectionsNoteOutcomeSummaryAccumulator {
 
         private long noteCount;
@@ -2770,6 +2829,12 @@ class PaymentManagementService implements PaymentManagement {
     private record DailyCollectionsNoteOutcomeBucket(
         LocalDate businessDate,
         CollectionsNoteOutcome outcome
+    ) {
+    }
+
+    private record DailyCollectionsClaimBucket(
+        LocalDate businessDate,
+        String claimedBy
     ) {
     }
 

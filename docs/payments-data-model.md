@@ -346,6 +346,29 @@ Rules:
 - rows are ordered newest-first by `claimedAt`, then `id`
 - blank filters are rejected at the HTTP boundary, matching the existing collections-history endpoints
 
+### DailyTenantCollectionsClaimSummary
+
+Purpose:
+- expose day-bucketed claim intake volume by claiming actor for collections workflow analytics
+
+Fields:
+- `tenantCode`
+- `businessDate`
+- `claimedBy`
+- `claimCount`
+- `invoiceCount`
+
+Filters:
+- `claimedBy` exact actor match, optional
+- `claimedAtFrom` UTC instant lower bound, optional
+- `claimedAtTo` UTC instant upper bound, optional
+
+Rules:
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/claims/daily-summary?page=&size=&claimedBy=&claimedAtFrom=&claimedAtTo=`
+- rows are grouped by UTC `businessDate` plus `claimedBy`
+- rows are ordered by `businessDate DESC`, then `claimedBy ASC`
+- `invoiceCount` is distinct by claimed invoice within each date-and-actor bucket
+
 ### ReleaseOver90CollectionsInvoice
 
 Purpose:
@@ -722,6 +745,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/claim-history?page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/release-history?page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/claim-history?page=&size=&invoiceNumber=&claimedBy=&claimedAtFrom=&claimedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/claims/daily-summary?page=&size=&claimedBy=&claimedAtFrom=&claimedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/release-history?page=&size=&invoiceNumber=&releasedBy=&releasedAtFrom=&releasedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/assignee-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
