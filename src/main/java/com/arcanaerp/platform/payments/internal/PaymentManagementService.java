@@ -21,6 +21,7 @@ import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
 import com.arcanaerp.platform.payments.CollectionsNoteView;
 import com.arcanaerp.platform.payments.CollectionsQueueSortBy;
 import com.arcanaerp.platform.payments.CreateCollectionsNoteCommand;
+import com.arcanaerp.platform.payments.DailyTenantCollectionsReleaseSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsClaimSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteSummaryView;
@@ -849,6 +850,53 @@ class PaymentManagementService implements PaymentManagement {
             audit.getReleasedBy(),
             audit.getReleasedAt()
         ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DailyTenantCollectionsReleaseSummaryView> listDailyTenantCollectionsReleaseSummaries(
+        String tenantCode,
+        String releasedBy,
+        Instant releasedAtFrom,
+        Instant releasedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedReleasedBy = releasedBy == null ? null : normalizeActorEmail(releasedBy, "releasedBy");
+
+        List<CollectionsAssignmentReleaseAudit> audits = collectionsAssignmentReleaseAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            null,
+            normalizedReleasedBy,
+            releasedAtFrom,
+            releasedAtTo,
+            org.springframework.data.domain.Pageable.unpaged()
+        ).getContent();
+
+        Map<DailyCollectionsReleaseBucket, ReleaseSummaryAccumulator> summaries = new LinkedHashMap<>();
+        for (CollectionsAssignmentReleaseAudit audit : audits) {
+            DailyCollectionsReleaseBucket bucket = new DailyCollectionsReleaseBucket(
+                audit.getReleasedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+                audit.getReleasedBy()
+            );
+            summaries.computeIfAbsent(bucket, ignored -> new ReleaseSummaryAccumulator()).add(audit);
+        }
+
+        List<DailyTenantCollectionsReleaseSummaryView> items = summaries.entrySet().stream()
+            .map(entry -> new DailyTenantCollectionsReleaseSummaryView(
+                normalizedTenantCode,
+                entry.getKey().businessDate(),
+                entry.getKey().releasedBy(),
+                entry.getValue().releaseCount,
+                entry.getValue().invoiceNumbers.size()
+            ))
+            .sorted(java.util.Comparator
+                .comparing(DailyTenantCollectionsReleaseSummaryView::businessDate)
+                .reversed()
+                .thenComparing(DailyTenantCollectionsReleaseSummaryView::releasedBy))
+            .toList();
+
+        return paginateList(items, pageQuery);
     }
 
     @Override
@@ -2793,6 +2841,17 @@ class PaymentManagementService implements PaymentManagement {
         }
     }
 
+    private static final class ReleaseSummaryAccumulator {
+
+        private long releaseCount;
+        private final java.util.Set<String> invoiceNumbers = new java.util.LinkedHashSet<>();
+
+        void add(CollectionsAssignmentReleaseAudit audit) {
+            releaseCount++;
+            invoiceNumbers.add(audit.getInvoiceNumber());
+        }
+    }
+
     private static final class CollectionsNoteOutcomeSummaryAccumulator {
 
         private long noteCount;
@@ -2835,6 +2894,12 @@ class PaymentManagementService implements PaymentManagement {
     private record DailyCollectionsClaimBucket(
         LocalDate businessDate,
         String claimedBy
+    ) {
+    }
+
+    private record DailyCollectionsReleaseBucket(
+        LocalDate businessDate,
+        String releasedBy
     ) {
     }
 

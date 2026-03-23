@@ -115,6 +115,14 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    PageResult<DailyTenantCollectionsReleaseSummaryView> listDailyTenantCollectionsReleaseSummaries(
+        String tenantCode,
+        String releasedBy,
+        Instant releasedAtFrom,
+        Instant releasedAtTo,
+        PageQuery pageQuery
+    );
+
     CollectionsNoteView addCollectionsNote(CreateCollectionsNoteCommand command);
 
     PageResult<CollectionsAssignmentChangeView> listCollectionsAssignmentHistory(

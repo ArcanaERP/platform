@@ -425,6 +425,29 @@ Rules:
 - blank filters are rejected at the HTTP boundary, matching the existing collections-history endpoints
 - invoice and actor filters are normalized the same way as other collections reads before querying the audit table
 
+### DailyTenantCollectionsReleaseSummary
+
+Purpose:
+- expose day-bucketed release volume by releasing actor for collections workflow analytics
+
+Fields:
+- `tenantCode`
+- `businessDate`
+- `releasedBy`
+- `releaseCount`
+- `invoiceCount`
+
+Filters:
+- `releasedBy` exact actor match, optional
+- `releasedAtFrom` UTC instant lower bound, optional
+- `releasedAtTo` UTC instant upper bound, optional
+
+Rules:
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/releases/daily-summary?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
+- rows are grouped by UTC `businessDate` plus `releasedBy`
+- rows are ordered by `businessDate DESC`, then `releasedBy ASC`
+- `invoiceCount` is distinct by released invoice within each date-and-actor bucket
+
 ### TenantCollectionsAssigneeAgingSummary
 
 Purpose:
@@ -747,6 +770,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/claim-history?page=&size=&invoiceNumber=&claimedBy=&claimedAtFrom=&claimedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/claims/daily-summary?page=&size=&claimedBy=&claimedAtFrom=&claimedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/release-history?page=&size=&invoiceNumber=&releasedBy=&releasedAtFrom=&releasedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/releases/daily-summary?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/assignee-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/daily-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`

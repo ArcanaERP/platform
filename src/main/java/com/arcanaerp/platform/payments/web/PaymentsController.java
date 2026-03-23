@@ -20,6 +20,7 @@ import com.arcanaerp.platform.payments.CreateCollectionsNoteCommand;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsClaimSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsFollowUpOutcomeSummaryView;
+import com.arcanaerp.platform.payments.DailyTenantCollectionsReleaseSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteCategoryOutcomeSummaryView;
@@ -903,6 +904,28 @@ public class PaymentsController {
             .map(this::toDailyTenantCollectionsClaimSummaryResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/releases/daily-summary")
+    public PageResult<DailyTenantCollectionsReleaseSummaryResponse> listDailyTenantCollectionsReleaseSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam(required = false) String releasedBy,
+        @RequestParam(required = false) String releasedAtFrom,
+        @RequestParam(required = false) String releasedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedReleasedAtFrom = parseOptionalInstant(releasedAtFrom, "releasedAtFrom");
+        Instant parsedReleasedAtTo = parseOptionalInstant(releasedAtTo, "releasedAtTo");
+        validateInstantRange(parsedReleasedAtFrom, parsedReleasedAtTo, "releasedAtFrom", "releasedAtTo");
+        return paymentManagement.listDailyTenantCollectionsReleaseSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(releasedBy, "releasedBy"),
+                parsedReleasedAtFrom,
+                parsedReleasedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toDailyTenantCollectionsReleaseSummaryResponse);
+    }
+
     @GetMapping("/tenants/{tenantCode}/receivables/collections/summary")
     public PageResult<TenantCollectionsAssignmentSummaryResponse> listTenantCollectionsAssignmentSummaries(
         @PathVariable String tenantCode,
@@ -1768,6 +1791,18 @@ public class PaymentsController {
             summary.businessDate(),
             summary.claimedBy(),
             summary.claimCount(),
+            summary.invoiceCount()
+        );
+    }
+
+    private DailyTenantCollectionsReleaseSummaryResponse toDailyTenantCollectionsReleaseSummaryResponse(
+        DailyTenantCollectionsReleaseSummaryView summary
+    ) {
+        return new DailyTenantCollectionsReleaseSummaryResponse(
+            summary.tenantCode(),
+            summary.businessDate(),
+            summary.releasedBy(),
+            summary.releaseCount(),
             summary.invoiceCount()
         );
     }
