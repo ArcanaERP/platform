@@ -63,6 +63,7 @@ import com.arcanaerp.platform.payments.TenantReceivablesAgingView;
 import com.arcanaerp.platform.payments.TenantReceivablesSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsClaimSummaryView;
+import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNetIntakeSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNoteCategoryOutcomeSummaryView;
@@ -1119,6 +1120,67 @@ class PaymentManagementService implements PaymentManagement {
                 .comparing(DailyTenantCollectionsNetIntakeSummaryView::businessDate)
                 .reversed()
                 .thenComparing(DailyTenantCollectionsNetIntakeSummaryView::actor))
+            .toList();
+        return paginateList(summaries, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WeeklyTenantCollectionsNetIntakeSummaryView> listWeeklyTenantCollectionsNetIntakeSummaries(
+        String tenantCode,
+        String actor,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedActor = actor == null ? null : normalizeActorEmail(actor, "actor");
+
+        List<CollectionsAssignmentClaimAudit> claimAudits = collectionsAssignmentClaimAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            null,
+            normalizedActor,
+            changedAtFrom,
+            changedAtTo,
+            org.springframework.data.domain.Pageable.unpaged()
+        ).getContent();
+        List<CollectionsAssignmentReleaseAudit> releaseAudits = collectionsAssignmentReleaseAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            null,
+            normalizedActor,
+            changedAtFrom,
+            changedAtTo,
+            org.springframework.data.domain.Pageable.unpaged()
+        ).getContent();
+
+        Map<WeeklyCollectionsNetIntakeBucket, NetIntakeActorSummaryAccumulator> summariesByBucket = new LinkedHashMap<>();
+        for (CollectionsAssignmentClaimAudit audit : claimAudits) {
+            LocalDate businessDate = audit.getClaimedAt().atOffset(ZoneOffset.UTC).toLocalDate();
+            WeeklyCollectionsNetIntakeBucket bucket = new WeeklyCollectionsNetIntakeBucket(
+                businessDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+                audit.getClaimedBy()
+            );
+            summariesByBucket.computeIfAbsent(bucket, ignored -> new NetIntakeActorSummaryAccumulator()).addClaim();
+        }
+        for (CollectionsAssignmentReleaseAudit audit : releaseAudits) {
+            LocalDate businessDate = audit.getReleasedAt().atOffset(ZoneOffset.UTC).toLocalDate();
+            WeeklyCollectionsNetIntakeBucket bucket = new WeeklyCollectionsNetIntakeBucket(
+                businessDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+                audit.getReleasedBy()
+            );
+            summariesByBucket.computeIfAbsent(bucket, ignored -> new NetIntakeActorSummaryAccumulator()).addRelease();
+        }
+
+        List<WeeklyTenantCollectionsNetIntakeSummaryView> summaries = summariesByBucket.entrySet().stream()
+            .map(entry -> entry.getValue().toWeeklyView(
+                normalizedTenantCode,
+                entry.getKey().businessWeekStart(),
+                entry.getKey().actor()
+            ))
+            .sorted(java.util.Comparator
+                .comparing(WeeklyTenantCollectionsNetIntakeSummaryView::businessWeekStart)
+                .reversed()
+                .thenComparing(WeeklyTenantCollectionsNetIntakeSummaryView::actor))
             .toList();
         return paginateList(summaries, pageQuery);
     }
@@ -3181,10 +3243,27 @@ class PaymentManagementService implements PaymentManagement {
                 claimCount - releaseCount
             );
         }
+
+        WeeklyTenantCollectionsNetIntakeSummaryView toWeeklyView(String tenantCode, LocalDate businessWeekStart, String actor) {
+            return new WeeklyTenantCollectionsNetIntakeSummaryView(
+                tenantCode,
+                businessWeekStart,
+                actor,
+                claimCount,
+                releaseCount,
+                claimCount - releaseCount
+            );
+        }
     }
 
     private record DailyCollectionsNetIntakeBucket(
         LocalDate businessDate,
+        String actor
+    ) {
+    }
+
+    private record WeeklyCollectionsNetIntakeBucket(
+        LocalDate businessWeekStart,
         String actor
     ) {
     }

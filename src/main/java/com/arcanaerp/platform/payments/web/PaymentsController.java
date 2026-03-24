@@ -59,6 +59,7 @@ import com.arcanaerp.platform.payments.TenantReceivablesAgingView;
 import com.arcanaerp.platform.payments.TenantReceivablesSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsClaimSummaryView;
+import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNetIntakeSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNoteCategoryOutcomeSummaryView;
@@ -1175,6 +1176,28 @@ public class PaymentsController {
             .map(this::toDailyTenantCollectionsNetIntakeSummaryResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/net-intake/weekly-summary")
+    public PageResult<WeeklyTenantCollectionsNetIntakeSummaryResponse> listWeeklyTenantCollectionsNetIntakeSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam(required = false) String actor,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateInstantRange(parsedChangedAtFrom, parsedChangedAtTo, "changedAtFrom", "changedAtTo");
+        return paymentManagement.listWeeklyTenantCollectionsNetIntakeSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(actor, "actor"),
+                parsedChangedAtFrom,
+                parsedChangedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toWeeklyTenantCollectionsNetIntakeSummaryResponse);
+    }
+
     @GetMapping("/tenants/{tenantCode}/receivables/collections/follow-up-outcome/daily-summary")
     public PageResult<DailyTenantCollectionsFollowUpOutcomeSummaryResponse> listDailyTenantCollectionsFollowUpOutcomeSummaries(
         @PathVariable String tenantCode,
@@ -1987,6 +2010,19 @@ public class PaymentsController {
         return new DailyTenantCollectionsNetIntakeSummaryResponse(
             summary.tenantCode(),
             summary.businessDate(),
+            summary.actor(),
+            summary.claimCount(),
+            summary.releaseCount(),
+            summary.netIntakeCount()
+        );
+    }
+
+    private WeeklyTenantCollectionsNetIntakeSummaryResponse toWeeklyTenantCollectionsNetIntakeSummaryResponse(
+        WeeklyTenantCollectionsNetIntakeSummaryView summary
+    ) {
+        return new WeeklyTenantCollectionsNetIntakeSummaryResponse(
+            summary.tenantCode(),
+            summary.businessWeekStart(),
             summary.actor(),
             summary.claimCount(),
             summary.releaseCount(),

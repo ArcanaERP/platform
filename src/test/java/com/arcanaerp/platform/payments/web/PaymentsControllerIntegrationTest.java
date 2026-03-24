@@ -38,6 +38,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_ASSIGNEE_SUMMARY_TENANT_CODE = "tenant-coll-fup-outass";
     private static final String COLLECTIONS_NET_INTAKE_ACTOR_SUMMARY_TENANT_CODE = "tenant-coll-netintake";
     private static final String COLLECTIONS_NET_INTAKE_DAILY_SUMMARY_TENANT_CODE = "tenant-coll-netintkday";
+    private static final String COLLECTIONS_NET_INTAKE_WEEKLY_SUMMARY_TENANT_CODE = "tenant-coll-netintkwk";
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_CURRENT_ASSIGNEE_SUMMARY_TENANT_CODE = "tenant-coll-fup-curass";
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE = "tenant-coll-fup-outday";
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_WEEK_TENANT_CODE = "tenant-coll-fup-outweek";
@@ -1736,6 +1737,90 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].tenantCode").value("TENANT-COLL-NETINTKDAY"))
             .andExpect(jsonPath("$.items[0].businessDate").value(secondClaimedAt.atOffset(java.time.ZoneOffset.UTC).toLocalDate().toString()))
+            .andExpect(jsonPath("$.items[0].actor").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].claimCount").value(1))
+            .andExpect(jsonPath("$.items[0].releaseCount").value(0))
+            .andExpect(jsonPath("$.items[0].netIntakeCount").value(1));
+    }
+
+    @Test
+    void listsWeeklyTenantCollectionsNetIntakeSummaries() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_NET_INTAKE_WEEKLY_SUMMARY_TENANT_CODE,
+            "Collections Net Intake Week Tenant",
+            "COLLECTOR_A",
+            "Collector A",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_NET_INTAKE_WEEKLY_SUMMARY_TENANT_CODE,
+            "Collections Net Intake Week Tenant",
+            "COLLECTOR_B",
+            "Collector B",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_NET_INTAKE_WEEKLY_SUMMARY_TENANT_CODE,
+            "arc-pay-7321",
+            "so-pay-7321",
+            "inv-pay-7321",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_NET_INTAKE_WEEKLY_SUMMARY_TENANT_CODE,
+            "arc-pay-7322",
+            "so-pay-7322",
+            "inv-pay-7322",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(15 * 86400)
+        );
+
+        Instant firstClaimedAt = Instant.parse("2026-07-06T00:05:00Z");
+        testClock.setInstant(firstClaimedAt);
+        PaymentsWebIntegrationTestSupport.claimUnassignedOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_NET_INTAKE_WEEKLY_SUMMARY_TENANT_CODE,
+            "inv-pay-7321",
+            "collector-a@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant releasedAt = firstClaimedAt.plusSeconds(300);
+        testClock.setInstant(releasedAt);
+        PaymentsWebIntegrationTestSupport.releaseOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_NET_INTAKE_WEEKLY_SUMMARY_TENANT_CODE,
+            "inv-pay-7321",
+            "collector-a@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant secondClaimedAt = Instant.parse("2026-07-10T00:05:00Z");
+        testClock.setInstant(secondClaimedAt);
+        PaymentsWebIntegrationTestSupport.claimUnassignedOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_NET_INTAKE_WEEKLY_SUMMARY_TENANT_CODE,
+            "inv-pay-7322",
+            "collector-b@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.weeklyTenantCollectionsNetIntakeSummaryRequest(
+                COLLECTIONS_NET_INTAKE_WEEKLY_SUMMARY_TENANT_CODE,
+                0,
+                10,
+                "actor", "collector-b@arcanaerp.com",
+                "changedAtFrom", releasedAt.plusSeconds(1).toString(),
+                "changedAtTo", secondClaimedAt.toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("TENANT-COLL-NETINTKWK"))
+            .andExpect(jsonPath("$.items[0].businessWeekStart").value("2026-07-06"))
             .andExpect(jsonPath("$.items[0].actor").value("collector-b@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].claimCount").value(1))
             .andExpect(jsonPath("$.items[0].releaseCount").value(0))
