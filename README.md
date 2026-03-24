@@ -131,6 +131,7 @@ Payments:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/releases/daily-summary?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/releases/weekly-summary?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/releases/monthly-summary?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/actor-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/current-assignee-summary?currencyCode=&assignedTo=&latestFollowUpOutcome=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/assignee-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`

@@ -36,6 +36,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_TENANT_CODE = "tenant-coll-fup-outcome";
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_SUMMARY_TENANT_CODE = "tenant-coll-fup-outsum";
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_ASSIGNEE_SUMMARY_TENANT_CODE = "tenant-coll-fup-outass";
+    private static final String COLLECTIONS_NET_INTAKE_ACTOR_SUMMARY_TENANT_CODE = "tenant-coll-netintake";
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_CURRENT_ASSIGNEE_SUMMARY_TENANT_CODE = "tenant-coll-fup-curass";
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_DAY_TENANT_CODE = "tenant-coll-fup-outday";
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_WEEK_TENANT_CODE = "tenant-coll-fup-outweek";
@@ -1562,6 +1563,98 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[2].outcome").value("PROMISE_TO_PAY"))
             .andExpect(jsonPath("$.items[2].completionCount").value(1))
             .andExpect(jsonPath("$.items[2].invoiceCount").value(1));
+    }
+
+    @Test
+    void listsTenantCollectionsNetIntakeActorSummaries() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_NET_INTAKE_ACTOR_SUMMARY_TENANT_CODE,
+            "Collections Net Intake Tenant",
+            "COLLECTOR_A",
+            "Collector A",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_NET_INTAKE_ACTOR_SUMMARY_TENANT_CODE,
+            "Collections Net Intake Tenant",
+            "COLLECTOR_B",
+            "Collector B",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_NET_INTAKE_ACTOR_SUMMARY_TENANT_CODE,
+            "Collections Net Intake Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_NET_INTAKE_ACTOR_SUMMARY_TENANT_CODE,
+            "arc-pay-7301",
+            "so-pay-7301",
+            "inv-pay-7301",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_NET_INTAKE_ACTOR_SUMMARY_TENANT_CODE,
+            "arc-pay-7302",
+            "so-pay-7302",
+            "inv-pay-7302",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(15 * 86400)
+        );
+
+        Instant firstClaimedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(firstClaimedAt);
+        PaymentsWebIntegrationTestSupport.claimUnassignedOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_NET_INTAKE_ACTOR_SUMMARY_TENANT_CODE,
+            "inv-pay-7301",
+            "collector-a@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant releasedAt = firstClaimedAt.plusSeconds(300);
+        testClock.setInstant(releasedAt);
+        PaymentsWebIntegrationTestSupport.releaseOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_NET_INTAKE_ACTOR_SUMMARY_TENANT_CODE,
+            "inv-pay-7301",
+            "collector-a@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant secondClaimedAt = releasedAt.plusSeconds(300);
+        testClock.setInstant(secondClaimedAt);
+        PaymentsWebIntegrationTestSupport.claimUnassignedOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_NET_INTAKE_ACTOR_SUMMARY_TENANT_CODE,
+            "inv-pay-7302",
+            "collector-b@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsNetIntakeActorSummaryRequest(
+                COLLECTIONS_NET_INTAKE_ACTOR_SUMMARY_TENANT_CODE,
+                0,
+                10,
+                "actor", "collector-b@arcanaerp.com",
+                "changedAtFrom", firstClaimedAt.plusSeconds(1).toString(),
+                "changedAtTo", secondClaimedAt.toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("TENANT-COLL-NETINTAKE"))
+            .andExpect(jsonPath("$.items[0].actor").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].claimCount").value(1))
+            .andExpect(jsonPath("$.items[0].releaseCount").value(0))
+            .andExpect(jsonPath("$.items[0].netIntakeCount").value(1));
     }
 
     @Test

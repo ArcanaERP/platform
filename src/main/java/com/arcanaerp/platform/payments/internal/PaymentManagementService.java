@@ -51,6 +51,7 @@ import com.arcanaerp.platform.payments.TenantCollectionsAssigneeAgingSummaryView
 import com.arcanaerp.platform.payments.TenantCollectionsAssigneeFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsFollowUpOutcomeSummaryView;
+import com.arcanaerp.platform.payments.TenantCollectionsNetIntakeActorSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNoteOutcomeSummaryView;
 import com.arcanaerp.platform.payments.UnassignedOver90CollectionsSummaryView;
@@ -1011,6 +1012,55 @@ class PaymentManagementService implements PaymentManagement {
                 .reversed()
                 .thenComparing(MonthlyTenantCollectionsReleaseSummaryView::releasedBy)
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<TenantCollectionsNetIntakeActorSummaryView> listTenantCollectionsNetIntakeActorSummaries(
+        String tenantCode,
+        String actor,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedActor = actor == null ? null : normalizeActorEmail(actor, "actor");
+
+        List<CollectionsAssignmentClaimAudit> claimAudits = collectionsAssignmentClaimAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            null,
+            normalizedActor,
+            changedAtFrom,
+            changedAtTo,
+            org.springframework.data.domain.Pageable.unpaged()
+        ).getContent();
+        List<CollectionsAssignmentReleaseAudit> releaseAudits = collectionsAssignmentReleaseAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            null,
+            normalizedActor,
+            changedAtFrom,
+            changedAtTo,
+            org.springframework.data.domain.Pageable.unpaged()
+        ).getContent();
+
+        Map<String, NetIntakeActorSummaryAccumulator> summariesByActor = new LinkedHashMap<>();
+        for (CollectionsAssignmentClaimAudit audit : claimAudits) {
+            summariesByActor.computeIfAbsent(audit.getClaimedBy(), ignored -> new NetIntakeActorSummaryAccumulator())
+                .addClaim();
+        }
+        for (CollectionsAssignmentReleaseAudit audit : releaseAudits) {
+            summariesByActor.computeIfAbsent(audit.getReleasedBy(), ignored -> new NetIntakeActorSummaryAccumulator())
+                .addRelease();
+        }
+
+        List<TenantCollectionsNetIntakeActorSummaryView> summaries = summariesByActor.entrySet().stream()
+            .map(entry -> entry.getValue().toView(normalizedTenantCode, entry.getKey()))
+            .sorted(java.util.Comparator
+                .comparing(TenantCollectionsNetIntakeActorSummaryView::netIntakeCount)
+                .reversed()
+                .thenComparing(TenantCollectionsNetIntakeActorSummaryView::actor))
+            .toList();
+        return paginateList(summaries, pageQuery);
     }
 
     @Override
@@ -3035,6 +3085,30 @@ class PaymentManagementService implements PaymentManagement {
         void add(CollectionsAssignmentReleaseAudit audit) {
             releaseCount++;
             invoiceNumbers.add(audit.getInvoiceNumber());
+        }
+    }
+
+    private static final class NetIntakeActorSummaryAccumulator {
+
+        private long claimCount;
+        private long releaseCount;
+
+        void addClaim() {
+            claimCount++;
+        }
+
+        void addRelease() {
+            releaseCount++;
+        }
+
+        TenantCollectionsNetIntakeActorSummaryView toView(String tenantCode, String actor) {
+            return new TenantCollectionsNetIntakeActorSummaryView(
+                tenantCode,
+                actor,
+                claimCount,
+                releaseCount,
+                claimCount - releaseCount
+            );
         }
     }
 

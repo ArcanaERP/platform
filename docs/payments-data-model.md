@@ -540,6 +540,30 @@ Rules:
 - rows are ordered by `businessMonth DESC`, then `releasedBy ASC`
 - `invoiceCount` is distinct by released invoice within each month-and-actor bucket
 
+### TenantCollectionsNetIntakeActorSummary
+
+Purpose:
+- compare collections intake and release volume per actor over one tenant and one optional time window
+
+Fields:
+- `tenantCode`
+- `actor`
+- `claimCount`
+- `releaseCount`
+- `netIntakeCount`
+
+Filters:
+- `actor` exact actor match, optional
+- `changedAtFrom` UTC instant lower bound, optional
+- `changedAtTo` UTC instant upper bound, optional
+
+Rules:
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/actor-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
+- `claimCount` is derived from `collections_assignment_claim_audits`
+- `releaseCount` is derived from `collections_assignment_release_audits`
+- `netIntakeCount = claimCount - releaseCount`
+- rows are ordered by `netIntakeCount DESC`, then `actor ASC`
+
 ### TenantCollectionsAssigneeAgingSummary
 
 Purpose:
@@ -867,6 +891,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/releases/daily-summary?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/releases/weekly-summary?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/releases/monthly-summary?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/actor-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/assignee-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/daily-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
