@@ -718,42 +718,28 @@ class PaymentManagementService implements PaymentManagement {
         Instant claimedAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedClaimedBy = claimedBy == null ? null : normalizeActorEmail(claimedBy, "claimedBy");
-
-        List<CollectionsAssignmentClaimAudit> audits = collectionsAssignmentClaimAuditRepository.findTenantHistoryFiltered(
-            normalizedTenantCode,
-            null,
-            normalizedClaimedBy,
+        return summarizeCollectionsClaims(
+            tenantCode,
+            claimedBy,
             claimedAtFrom,
             claimedAtTo,
-            org.springframework.data.domain.Pageable.unpaged()
-        ).getContent();
-
-        Map<DailyCollectionsClaimBucket, ClaimSummaryAccumulator> summaries = new LinkedHashMap<>();
-        for (CollectionsAssignmentClaimAudit audit : audits) {
-            DailyCollectionsClaimBucket bucket = new DailyCollectionsClaimBucket(
+            pageQuery,
+            audit -> new DailyCollectionsClaimBucket(
                 audit.getClaimedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
                 audit.getClaimedBy()
-            );
-            summaries.computeIfAbsent(bucket, ignored -> new ClaimSummaryAccumulator()).add(audit);
-        }
-
-        List<DailyTenantCollectionsClaimSummaryView> items = summaries.entrySet().stream()
-            .map(entry -> new DailyTenantCollectionsClaimSummaryView(
+            ),
+            (normalizedTenantCode, bucket, summary) -> new DailyTenantCollectionsClaimSummaryView(
                 normalizedTenantCode,
-                entry.getKey().businessDate(),
-                entry.getKey().claimedBy(),
-                entry.getValue().claimCount,
-                entry.getValue().invoiceNumbers.size()
-            ))
-            .sorted(java.util.Comparator
+                bucket.businessDate(),
+                bucket.claimedBy(),
+                summary.claimCount,
+                summary.invoiceNumbers.size()
+            ),
+            java.util.Comparator
                 .comparing(DailyTenantCollectionsClaimSummaryView::businessDate)
                 .reversed()
-                .thenComparing(DailyTenantCollectionsClaimSummaryView::claimedBy))
-            .toList();
-
-        return paginateList(items, pageQuery);
+                .thenComparing(DailyTenantCollectionsClaimSummaryView::claimedBy)
+        );
     }
 
     @Override
@@ -765,43 +751,31 @@ class PaymentManagementService implements PaymentManagement {
         Instant claimedAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedClaimedBy = claimedBy == null ? null : normalizeActorEmail(claimedBy, "claimedBy");
-
-        List<CollectionsAssignmentClaimAudit> audits = collectionsAssignmentClaimAuditRepository.findTenantHistoryFiltered(
-            normalizedTenantCode,
-            null,
-            normalizedClaimedBy,
+        return summarizeCollectionsClaims(
+            tenantCode,
+            claimedBy,
             claimedAtFrom,
             claimedAtTo,
-            org.springframework.data.domain.Pageable.unpaged()
-        ).getContent();
-
-        Map<WeeklyCollectionsClaimBucket, ClaimSummaryAccumulator> summaries = new LinkedHashMap<>();
-        for (CollectionsAssignmentClaimAudit audit : audits) {
-            LocalDate businessDate = audit.getClaimedAt().atOffset(ZoneOffset.UTC).toLocalDate();
-            WeeklyCollectionsClaimBucket bucket = new WeeklyCollectionsClaimBucket(
-                businessDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
-                audit.getClaimedBy()
-            );
-            summaries.computeIfAbsent(bucket, ignored -> new ClaimSummaryAccumulator()).add(audit);
-        }
-
-        List<WeeklyTenantCollectionsClaimSummaryView> items = summaries.entrySet().stream()
-            .map(entry -> new WeeklyTenantCollectionsClaimSummaryView(
+            pageQuery,
+            audit -> {
+                LocalDate businessDate = audit.getClaimedAt().atOffset(ZoneOffset.UTC).toLocalDate();
+                return new WeeklyCollectionsClaimBucket(
+                    businessDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+                    audit.getClaimedBy()
+                );
+            },
+            (normalizedTenantCode, bucket, summary) -> new WeeklyTenantCollectionsClaimSummaryView(
                 normalizedTenantCode,
-                entry.getKey().businessWeekStart(),
-                entry.getKey().claimedBy(),
-                entry.getValue().claimCount,
-                entry.getValue().invoiceNumbers.size()
-            ))
-            .sorted(java.util.Comparator
+                bucket.businessWeekStart(),
+                bucket.claimedBy(),
+                summary.claimCount,
+                summary.invoiceNumbers.size()
+            ),
+            java.util.Comparator
                 .comparing(WeeklyTenantCollectionsClaimSummaryView::businessWeekStart)
                 .reversed()
-                .thenComparing(WeeklyTenantCollectionsClaimSummaryView::claimedBy))
-            .toList();
-
-        return paginateList(items, pageQuery);
+                .thenComparing(WeeklyTenantCollectionsClaimSummaryView::claimedBy)
+        );
     }
 
     @Override
@@ -813,42 +787,28 @@ class PaymentManagementService implements PaymentManagement {
         Instant claimedAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedClaimedBy = claimedBy == null ? null : normalizeActorEmail(claimedBy, "claimedBy");
-
-        List<CollectionsAssignmentClaimAudit> audits = collectionsAssignmentClaimAuditRepository.findTenantHistoryFiltered(
-            normalizedTenantCode,
-            null,
-            normalizedClaimedBy,
+        return summarizeCollectionsClaims(
+            tenantCode,
+            claimedBy,
             claimedAtFrom,
             claimedAtTo,
-            org.springframework.data.domain.Pageable.unpaged()
-        ).getContent();
-
-        Map<MonthlyCollectionsClaimBucket, ClaimSummaryAccumulator> summaries = new LinkedHashMap<>();
-        for (CollectionsAssignmentClaimAudit audit : audits) {
-            MonthlyCollectionsClaimBucket bucket = new MonthlyCollectionsClaimBucket(
+            pageQuery,
+            audit -> new MonthlyCollectionsClaimBucket(
                 YearMonth.from(audit.getClaimedAt().atOffset(ZoneOffset.UTC)),
                 audit.getClaimedBy()
-            );
-            summaries.computeIfAbsent(bucket, ignored -> new ClaimSummaryAccumulator()).add(audit);
-        }
-
-        List<MonthlyTenantCollectionsClaimSummaryView> items = summaries.entrySet().stream()
-            .map(entry -> new MonthlyTenantCollectionsClaimSummaryView(
+            ),
+            (normalizedTenantCode, bucket, summary) -> new MonthlyTenantCollectionsClaimSummaryView(
                 normalizedTenantCode,
-                entry.getKey().businessMonth(),
-                entry.getKey().claimedBy(),
-                entry.getValue().claimCount,
-                entry.getValue().invoiceNumbers.size()
-            ))
-            .sorted(java.util.Comparator
+                bucket.businessMonth(),
+                bucket.claimedBy(),
+                summary.claimCount,
+                summary.invoiceNumbers.size()
+            ),
+            java.util.Comparator
                 .comparing(MonthlyTenantCollectionsClaimSummaryView::businessMonth)
                 .reversed()
-                .thenComparing(MonthlyTenantCollectionsClaimSummaryView::claimedBy))
-            .toList();
-
-        return paginateList(items, pageQuery);
+                .thenComparing(MonthlyTenantCollectionsClaimSummaryView::claimedBy)
+        );
     }
 
     @Override
@@ -960,42 +920,28 @@ class PaymentManagementService implements PaymentManagement {
         Instant releasedAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedReleasedBy = releasedBy == null ? null : normalizeActorEmail(releasedBy, "releasedBy");
-
-        List<CollectionsAssignmentReleaseAudit> audits = collectionsAssignmentReleaseAuditRepository.findTenantHistoryFiltered(
-            normalizedTenantCode,
-            null,
-            normalizedReleasedBy,
+        return summarizeCollectionsReleases(
+            tenantCode,
+            releasedBy,
             releasedAtFrom,
             releasedAtTo,
-            org.springframework.data.domain.Pageable.unpaged()
-        ).getContent();
-
-        Map<DailyCollectionsReleaseBucket, ReleaseSummaryAccumulator> summaries = new LinkedHashMap<>();
-        for (CollectionsAssignmentReleaseAudit audit : audits) {
-            DailyCollectionsReleaseBucket bucket = new DailyCollectionsReleaseBucket(
+            pageQuery,
+            audit -> new DailyCollectionsReleaseBucket(
                 audit.getReleasedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
                 audit.getReleasedBy()
-            );
-            summaries.computeIfAbsent(bucket, ignored -> new ReleaseSummaryAccumulator()).add(audit);
-        }
-
-        List<DailyTenantCollectionsReleaseSummaryView> items = summaries.entrySet().stream()
-            .map(entry -> new DailyTenantCollectionsReleaseSummaryView(
+            ),
+            (normalizedTenantCode, bucket, summary) -> new DailyTenantCollectionsReleaseSummaryView(
                 normalizedTenantCode,
-                entry.getKey().businessDate(),
-                entry.getKey().releasedBy(),
-                entry.getValue().releaseCount,
-                entry.getValue().invoiceNumbers.size()
-            ))
-            .sorted(java.util.Comparator
+                bucket.businessDate(),
+                bucket.releasedBy(),
+                summary.releaseCount,
+                summary.invoiceNumbers.size()
+            ),
+            java.util.Comparator
                 .comparing(DailyTenantCollectionsReleaseSummaryView::businessDate)
                 .reversed()
-                .thenComparing(DailyTenantCollectionsReleaseSummaryView::releasedBy))
-            .toList();
-
-        return paginateList(items, pageQuery);
+                .thenComparing(DailyTenantCollectionsReleaseSummaryView::releasedBy)
+        );
     }
 
     @Override
@@ -1007,43 +953,31 @@ class PaymentManagementService implements PaymentManagement {
         Instant releasedAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedReleasedBy = releasedBy == null ? null : normalizeActorEmail(releasedBy, "releasedBy");
-
-        List<CollectionsAssignmentReleaseAudit> audits = collectionsAssignmentReleaseAuditRepository.findTenantHistoryFiltered(
-            normalizedTenantCode,
-            null,
-            normalizedReleasedBy,
+        return summarizeCollectionsReleases(
+            tenantCode,
+            releasedBy,
             releasedAtFrom,
             releasedAtTo,
-            org.springframework.data.domain.Pageable.unpaged()
-        ).getContent();
-
-        Map<WeeklyCollectionsReleaseBucket, ReleaseSummaryAccumulator> summaries = new LinkedHashMap<>();
-        for (CollectionsAssignmentReleaseAudit audit : audits) {
-            LocalDate businessDate = audit.getReleasedAt().atOffset(ZoneOffset.UTC).toLocalDate();
-            WeeklyCollectionsReleaseBucket bucket = new WeeklyCollectionsReleaseBucket(
-                businessDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
-                audit.getReleasedBy()
-            );
-            summaries.computeIfAbsent(bucket, ignored -> new ReleaseSummaryAccumulator()).add(audit);
-        }
-
-        List<WeeklyTenantCollectionsReleaseSummaryView> items = summaries.entrySet().stream()
-            .map(entry -> new WeeklyTenantCollectionsReleaseSummaryView(
+            pageQuery,
+            audit -> {
+                LocalDate businessDate = audit.getReleasedAt().atOffset(ZoneOffset.UTC).toLocalDate();
+                return new WeeklyCollectionsReleaseBucket(
+                    businessDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+                    audit.getReleasedBy()
+                );
+            },
+            (normalizedTenantCode, bucket, summary) -> new WeeklyTenantCollectionsReleaseSummaryView(
                 normalizedTenantCode,
-                entry.getKey().businessWeekStart(),
-                entry.getKey().releasedBy(),
-                entry.getValue().releaseCount,
-                entry.getValue().invoiceNumbers.size()
-            ))
-            .sorted(java.util.Comparator
+                bucket.businessWeekStart(),
+                bucket.releasedBy(),
+                summary.releaseCount,
+                summary.invoiceNumbers.size()
+            ),
+            java.util.Comparator
                 .comparing(WeeklyTenantCollectionsReleaseSummaryView::businessWeekStart)
                 .reversed()
-                .thenComparing(WeeklyTenantCollectionsReleaseSummaryView::releasedBy))
-            .toList();
-
-        return paginateList(items, pageQuery);
+                .thenComparing(WeeklyTenantCollectionsReleaseSummaryView::releasedBy)
+        );
     }
 
     @Override
@@ -1055,42 +989,28 @@ class PaymentManagementService implements PaymentManagement {
         Instant releasedAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedReleasedBy = releasedBy == null ? null : normalizeActorEmail(releasedBy, "releasedBy");
-
-        List<CollectionsAssignmentReleaseAudit> audits = collectionsAssignmentReleaseAuditRepository.findTenantHistoryFiltered(
-            normalizedTenantCode,
-            null,
-            normalizedReleasedBy,
+        return summarizeCollectionsReleases(
+            tenantCode,
+            releasedBy,
             releasedAtFrom,
             releasedAtTo,
-            org.springframework.data.domain.Pageable.unpaged()
-        ).getContent();
-
-        Map<MonthlyCollectionsReleaseBucket, ReleaseSummaryAccumulator> summaries = new LinkedHashMap<>();
-        for (CollectionsAssignmentReleaseAudit audit : audits) {
-            MonthlyCollectionsReleaseBucket bucket = new MonthlyCollectionsReleaseBucket(
+            pageQuery,
+            audit -> new MonthlyCollectionsReleaseBucket(
                 YearMonth.from(audit.getReleasedAt().atOffset(ZoneOffset.UTC)),
                 audit.getReleasedBy()
-            );
-            summaries.computeIfAbsent(bucket, ignored -> new ReleaseSummaryAccumulator()).add(audit);
-        }
-
-        List<MonthlyTenantCollectionsReleaseSummaryView> items = summaries.entrySet().stream()
-            .map(entry -> new MonthlyTenantCollectionsReleaseSummaryView(
+            ),
+            (normalizedTenantCode, bucket, summary) -> new MonthlyTenantCollectionsReleaseSummaryView(
                 normalizedTenantCode,
-                entry.getKey().businessMonth(),
-                entry.getKey().releasedBy(),
-                entry.getValue().releaseCount,
-                entry.getValue().invoiceNumbers.size()
-            ))
-            .sorted(java.util.Comparator
+                bucket.businessMonth(),
+                bucket.releasedBy(),
+                summary.releaseCount,
+                summary.invoiceNumbers.size()
+            ),
+            java.util.Comparator
                 .comparing(MonthlyTenantCollectionsReleaseSummaryView::businessMonth)
                 .reversed()
-                .thenComparing(MonthlyTenantCollectionsReleaseSummaryView::releasedBy))
-            .toList();
-
-        return paginateList(items, pageQuery);
+                .thenComparing(MonthlyTenantCollectionsReleaseSummaryView::releasedBy)
+        );
     }
 
     @Override
@@ -2486,6 +2406,78 @@ class PaymentManagementService implements PaymentManagement {
         );
     }
 
+    private <B, V> PageResult<V> summarizeCollectionsClaims(
+        String tenantCode,
+        String claimedBy,
+        Instant claimedAtFrom,
+        Instant claimedAtTo,
+        PageQuery pageQuery,
+        Function<CollectionsAssignmentClaimAudit, B> bucketExtractor,
+        CollectionsClaimSummaryViewFactory<B, V> viewFactory,
+        java.util.Comparator<V> comparator
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedClaimedBy = claimedBy == null ? null : normalizeActorEmail(claimedBy, "claimedBy");
+
+        List<CollectionsAssignmentClaimAudit> audits = collectionsAssignmentClaimAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            null,
+            normalizedClaimedBy,
+            claimedAtFrom,
+            claimedAtTo,
+            org.springframework.data.domain.Pageable.unpaged()
+        ).getContent();
+
+        Map<B, ClaimSummaryAccumulator> summariesByBucket = new LinkedHashMap<>();
+        for (CollectionsAssignmentClaimAudit audit : audits) {
+            B bucket = bucketExtractor.apply(audit);
+            summariesByBucket.computeIfAbsent(bucket, ignored -> new ClaimSummaryAccumulator()).add(audit);
+        }
+
+        List<V> summaries = new ArrayList<>();
+        summariesByBucket.forEach((bucket, summary) -> summaries.add(
+            viewFactory.create(normalizedTenantCode, bucket, summary)
+        ));
+        summaries.sort(comparator);
+        return paginateList(summaries, pageQuery);
+    }
+
+    private <B, V> PageResult<V> summarizeCollectionsReleases(
+        String tenantCode,
+        String releasedBy,
+        Instant releasedAtFrom,
+        Instant releasedAtTo,
+        PageQuery pageQuery,
+        Function<CollectionsAssignmentReleaseAudit, B> bucketExtractor,
+        CollectionsReleaseSummaryViewFactory<B, V> viewFactory,
+        java.util.Comparator<V> comparator
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedReleasedBy = releasedBy == null ? null : normalizeActorEmail(releasedBy, "releasedBy");
+
+        List<CollectionsAssignmentReleaseAudit> audits = collectionsAssignmentReleaseAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            null,
+            normalizedReleasedBy,
+            releasedAtFrom,
+            releasedAtTo,
+            org.springframework.data.domain.Pageable.unpaged()
+        ).getContent();
+
+        Map<B, ReleaseSummaryAccumulator> summariesByBucket = new LinkedHashMap<>();
+        for (CollectionsAssignmentReleaseAudit audit : audits) {
+            B bucket = bucketExtractor.apply(audit);
+            summariesByBucket.computeIfAbsent(bucket, ignored -> new ReleaseSummaryAccumulator()).add(audit);
+        }
+
+        List<V> summaries = new ArrayList<>();
+        summariesByBucket.forEach((bucket, summary) -> summaries.add(
+            viewFactory.create(normalizedTenantCode, bucket, summary)
+        ));
+        summaries.sort(comparator);
+        return paginateList(summaries, pageQuery);
+    }
+
     private <B, V> PageResult<V> summarizeTenantCollectionsNotes(
         String tenantCode,
         String assignedTo,
@@ -3212,6 +3204,18 @@ class PaymentManagementService implements PaymentManagement {
     private interface AssignmentHistoryBucketViewFactory<B, V> {
 
         V create(String tenantCode, B bucket, AssignmentHistoryDailySummaryAccumulator summary);
+    }
+
+    @FunctionalInterface
+    private interface CollectionsClaimSummaryViewFactory<B, V> {
+
+        V create(String tenantCode, B bucket, ClaimSummaryAccumulator summary);
+    }
+
+    @FunctionalInterface
+    private interface CollectionsReleaseSummaryViewFactory<B, V> {
+
+        V create(String tenantCode, B bucket, ReleaseSummaryAccumulator summary);
     }
 
     @FunctionalInterface
