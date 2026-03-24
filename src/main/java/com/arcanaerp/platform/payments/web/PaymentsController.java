@@ -54,11 +54,13 @@ import com.arcanaerp.platform.payments.TenantReceivableView;
 import com.arcanaerp.platform.payments.TenantReceivablesAgingView;
 import com.arcanaerp.platform.payments.TenantReceivablesSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsAssignmentSummaryView;
+import com.arcanaerp.platform.payments.WeeklyTenantCollectionsClaimSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNoteCategoryOutcomeSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNoteOutcomeSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNoteSummaryView;
+import com.arcanaerp.platform.payments.WeeklyTenantCollectionsReleaseSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantPaymentSummaryView;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -904,6 +906,28 @@ public class PaymentsController {
             .map(this::toDailyTenantCollectionsClaimSummaryResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/claims/weekly-summary")
+    public PageResult<WeeklyTenantCollectionsClaimSummaryResponse> listWeeklyTenantCollectionsClaimSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam(required = false) String claimedBy,
+        @RequestParam(required = false) String claimedAtFrom,
+        @RequestParam(required = false) String claimedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedClaimedAtFrom = parseOptionalInstant(claimedAtFrom, "claimedAtFrom");
+        Instant parsedClaimedAtTo = parseOptionalInstant(claimedAtTo, "claimedAtTo");
+        validateInstantRange(parsedClaimedAtFrom, parsedClaimedAtTo, "claimedAtFrom", "claimedAtTo");
+        return paymentManagement.listWeeklyTenantCollectionsClaimSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(claimedBy, "claimedBy"),
+                parsedClaimedAtFrom,
+                parsedClaimedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toWeeklyTenantCollectionsClaimSummaryResponse);
+    }
+
     @GetMapping("/tenants/{tenantCode}/receivables/collections/releases/daily-summary")
     public PageResult<DailyTenantCollectionsReleaseSummaryResponse> listDailyTenantCollectionsReleaseSummaries(
         @PathVariable String tenantCode,
@@ -924,6 +948,28 @@ public class PaymentsController {
                 PageQuery.of(page, size)
             )
             .map(this::toDailyTenantCollectionsReleaseSummaryResponse);
+    }
+
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/releases/weekly-summary")
+    public PageResult<WeeklyTenantCollectionsReleaseSummaryResponse> listWeeklyTenantCollectionsReleaseSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam(required = false) String releasedBy,
+        @RequestParam(required = false) String releasedAtFrom,
+        @RequestParam(required = false) String releasedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedReleasedAtFrom = parseOptionalInstant(releasedAtFrom, "releasedAtFrom");
+        Instant parsedReleasedAtTo = parseOptionalInstant(releasedAtTo, "releasedAtTo");
+        validateInstantRange(parsedReleasedAtFrom, parsedReleasedAtTo, "releasedAtFrom", "releasedAtTo");
+        return paymentManagement.listWeeklyTenantCollectionsReleaseSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(releasedBy, "releasedBy"),
+                parsedReleasedAtFrom,
+                parsedReleasedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toWeeklyTenantCollectionsReleaseSummaryResponse);
     }
 
     @GetMapping("/tenants/{tenantCode}/receivables/collections/summary")
@@ -1795,12 +1841,36 @@ public class PaymentsController {
         );
     }
 
+    private WeeklyTenantCollectionsClaimSummaryResponse toWeeklyTenantCollectionsClaimSummaryResponse(
+        WeeklyTenantCollectionsClaimSummaryView summary
+    ) {
+        return new WeeklyTenantCollectionsClaimSummaryResponse(
+            summary.tenantCode(),
+            summary.businessWeekStart(),
+            summary.claimedBy(),
+            summary.claimCount(),
+            summary.invoiceCount()
+        );
+    }
+
     private DailyTenantCollectionsReleaseSummaryResponse toDailyTenantCollectionsReleaseSummaryResponse(
         DailyTenantCollectionsReleaseSummaryView summary
     ) {
         return new DailyTenantCollectionsReleaseSummaryResponse(
             summary.tenantCode(),
             summary.businessDate(),
+            summary.releasedBy(),
+            summary.releaseCount(),
+            summary.invoiceCount()
+        );
+    }
+
+    private WeeklyTenantCollectionsReleaseSummaryResponse toWeeklyTenantCollectionsReleaseSummaryResponse(
+        WeeklyTenantCollectionsReleaseSummaryView summary
+    ) {
+        return new WeeklyTenantCollectionsReleaseSummaryResponse(
+            summary.tenantCode(),
+            summary.businessWeekStart(),
             summary.releasedBy(),
             summary.releaseCount(),
             summary.invoiceCount()

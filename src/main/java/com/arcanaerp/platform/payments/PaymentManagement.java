@@ -100,6 +100,14 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    PageResult<WeeklyTenantCollectionsClaimSummaryView> listWeeklyTenantCollectionsClaimSummaries(
+        String tenantCode,
+        String claimedBy,
+        Instant claimedAtFrom,
+        Instant claimedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<CollectionsAssignmentReleaseChangeView> listCollectionsReleaseHistory(
         String tenantCode,
         String invoiceNumber,
@@ -116,6 +124,14 @@ public interface PaymentManagement {
     );
 
     PageResult<DailyTenantCollectionsReleaseSummaryView> listDailyTenantCollectionsReleaseSummaries(
+        String tenantCode,
+        String releasedBy,
+        Instant releasedAtFrom,
+        Instant releasedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<WeeklyTenantCollectionsReleaseSummaryView> listWeeklyTenantCollectionsReleaseSummaries(
         String tenantCode,
         String releasedBy,
         Instant releasedAtFrom,

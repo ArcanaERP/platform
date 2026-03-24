@@ -369,6 +369,29 @@ Rules:
 - rows are ordered by `businessDate DESC`, then `claimedBy ASC`
 - `invoiceCount` is distinct by claimed invoice within each date-and-actor bucket
 
+### WeeklyTenantCollectionsClaimSummary
+
+Purpose:
+- expose week-bucketed claim intake volume by claiming actor for collections workflow analytics
+
+Fields:
+- `tenantCode`
+- `businessWeekStart`
+- `claimedBy`
+- `claimCount`
+- `invoiceCount`
+
+Filters:
+- `claimedBy` exact actor match, optional
+- `claimedAtFrom` UTC instant lower bound, optional
+- `claimedAtTo` UTC instant upper bound, optional
+
+Rules:
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/claims/weekly-summary?page=&size=&claimedBy=&claimedAtFrom=&claimedAtTo=`
+- rows are grouped by Monday-based UTC `businessWeekStart` plus `claimedBy`
+- rows are ordered by `businessWeekStart DESC`, then `claimedBy ASC`
+- `invoiceCount` is distinct by claimed invoice within each week-and-actor bucket
+
 ### ReleaseOver90CollectionsInvoice
 
 Purpose:
@@ -447,6 +470,29 @@ Rules:
 - rows are grouped by UTC `businessDate` plus `releasedBy`
 - rows are ordered by `businessDate DESC`, then `releasedBy ASC`
 - `invoiceCount` is distinct by released invoice within each date-and-actor bucket
+
+### WeeklyTenantCollectionsReleaseSummary
+
+Purpose:
+- expose week-bucketed release volume by releasing actor for collections workflow analytics
+
+Fields:
+- `tenantCode`
+- `businessWeekStart`
+- `releasedBy`
+- `releaseCount`
+- `invoiceCount`
+
+Filters:
+- `releasedBy` exact actor match, optional
+- `releasedAtFrom` UTC instant lower bound, optional
+- `releasedAtTo` UTC instant upper bound, optional
+
+Rules:
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/releases/weekly-summary?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
+- rows are grouped by Monday-based UTC `businessWeekStart` plus `releasedBy`
+- rows are ordered by `businessWeekStart DESC`, then `releasedBy ASC`
+- `invoiceCount` is distinct by released invoice within each week-and-actor bucket
 
 ### TenantCollectionsAssigneeAgingSummary
 
@@ -769,8 +815,10 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/release-history?page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/claim-history?page=&size=&invoiceNumber=&claimedBy=&claimedAtFrom=&claimedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/claims/daily-summary?page=&size=&claimedBy=&claimedAtFrom=&claimedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/claims/weekly-summary?page=&size=&claimedBy=&claimedAtFrom=&claimedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/release-history?page=&size=&invoiceNumber=&releasedBy=&releasedAtFrom=&releasedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/releases/daily-summary?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/releases/weekly-summary?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/assignee-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/daily-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
