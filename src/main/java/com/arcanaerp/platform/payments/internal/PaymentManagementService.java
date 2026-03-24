@@ -39,6 +39,7 @@ import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteCategorySumma
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteCategoryOutcomeSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsClaimSummaryView;
+import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNetIntakeSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsReleaseSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsAssignmentSummaryView;
@@ -1181,6 +1182,65 @@ class PaymentManagementService implements PaymentManagement {
                 .comparing(WeeklyTenantCollectionsNetIntakeSummaryView::businessWeekStart)
                 .reversed()
                 .thenComparing(WeeklyTenantCollectionsNetIntakeSummaryView::actor))
+            .toList();
+        return paginateList(summaries, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyTenantCollectionsNetIntakeSummaryView> listMonthlyTenantCollectionsNetIntakeSummaries(
+        String tenantCode,
+        String actor,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedActor = actor == null ? null : normalizeActorEmail(actor, "actor");
+
+        List<CollectionsAssignmentClaimAudit> claimAudits = collectionsAssignmentClaimAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            null,
+            normalizedActor,
+            changedAtFrom,
+            changedAtTo,
+            org.springframework.data.domain.Pageable.unpaged()
+        ).getContent();
+        List<CollectionsAssignmentReleaseAudit> releaseAudits = collectionsAssignmentReleaseAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            null,
+            normalizedActor,
+            changedAtFrom,
+            changedAtTo,
+            org.springframework.data.domain.Pageable.unpaged()
+        ).getContent();
+
+        Map<MonthlyCollectionsNetIntakeBucket, NetIntakeActorSummaryAccumulator> summariesByBucket = new LinkedHashMap<>();
+        for (CollectionsAssignmentClaimAudit audit : claimAudits) {
+            MonthlyCollectionsNetIntakeBucket bucket = new MonthlyCollectionsNetIntakeBucket(
+                YearMonth.from(audit.getClaimedAt().atOffset(ZoneOffset.UTC)),
+                audit.getClaimedBy()
+            );
+            summariesByBucket.computeIfAbsent(bucket, ignored -> new NetIntakeActorSummaryAccumulator()).addClaim();
+        }
+        for (CollectionsAssignmentReleaseAudit audit : releaseAudits) {
+            MonthlyCollectionsNetIntakeBucket bucket = new MonthlyCollectionsNetIntakeBucket(
+                YearMonth.from(audit.getReleasedAt().atOffset(ZoneOffset.UTC)),
+                audit.getReleasedBy()
+            );
+            summariesByBucket.computeIfAbsent(bucket, ignored -> new NetIntakeActorSummaryAccumulator()).addRelease();
+        }
+
+        List<MonthlyTenantCollectionsNetIntakeSummaryView> summaries = summariesByBucket.entrySet().stream()
+            .map(entry -> entry.getValue().toMonthlyView(
+                normalizedTenantCode,
+                entry.getKey().businessMonth(),
+                entry.getKey().actor()
+            ))
+            .sorted(java.util.Comparator
+                .comparing(MonthlyTenantCollectionsNetIntakeSummaryView::businessMonth)
+                .reversed()
+                .thenComparing(MonthlyTenantCollectionsNetIntakeSummaryView::actor))
             .toList();
         return paginateList(summaries, pageQuery);
     }
@@ -3254,6 +3314,17 @@ class PaymentManagementService implements PaymentManagement {
                 claimCount - releaseCount
             );
         }
+
+        MonthlyTenantCollectionsNetIntakeSummaryView toMonthlyView(String tenantCode, YearMonth businessMonth, String actor) {
+            return new MonthlyTenantCollectionsNetIntakeSummaryView(
+                tenantCode,
+                businessMonth,
+                actor,
+                claimCount,
+                releaseCount,
+                claimCount - releaseCount
+            );
+        }
     }
 
     private record DailyCollectionsNetIntakeBucket(
@@ -3264,6 +3335,12 @@ class PaymentManagementService implements PaymentManagement {
 
     private record WeeklyCollectionsNetIntakeBucket(
         LocalDate businessWeekStart,
+        String actor
+    ) {
+    }
+
+    private record MonthlyCollectionsNetIntakeBucket(
+        YearMonth businessMonth,
         String actor
     ) {
     }
