@@ -1225,6 +1225,34 @@ final class PaymentsWebIntegrationTestSupport {
         return request;
     }
 
+    static MockHttpServletRequestBuilder monthlyTenantCollectionsClaimSummaryRequest(
+        String tenantCode,
+        Integer page,
+        Integer size,
+        String... optionalNameValuePairs
+    ) {
+        MockHttpServletRequestBuilder request = get(
+            "/api/payments/tenants/" + tenantCode + "/receivables/collections/claims/monthly-summary"
+        );
+        if (page != null) {
+            request.param("page", String.valueOf(page));
+        }
+        if (size != null) {
+            request.param("size", String.valueOf(size));
+        }
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must have an even number of elements");
+        }
+        for (int index = 0; index < optionalNameValuePairs.length; index += 2) {
+            String name = optionalNameValuePairs[index];
+            String value = optionalNameValuePairs[index + 1];
+            if (value != null) {
+                request.param(name, value);
+            }
+        }
+        return request;
+    }
+
     static MockHttpServletRequestBuilder dailyTenantCollectionsReleaseSummaryRequest(
         String tenantCode,
         Integer page,
@@ -1261,6 +1289,34 @@ final class PaymentsWebIntegrationTestSupport {
     ) {
         MockHttpServletRequestBuilder request = get(
             "/api/payments/tenants/" + tenantCode + "/receivables/collections/releases/weekly-summary"
+        );
+        if (page != null) {
+            request.param("page", String.valueOf(page));
+        }
+        if (size != null) {
+            request.param("size", String.valueOf(size));
+        }
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must have an even number of elements");
+        }
+        for (int index = 0; index < optionalNameValuePairs.length; index += 2) {
+            String name = optionalNameValuePairs[index];
+            String value = optionalNameValuePairs[index + 1];
+            if (value != null) {
+                request.param(name, value);
+            }
+        }
+        return request;
+    }
+
+    static MockHttpServletRequestBuilder monthlyTenantCollectionsReleaseSummaryRequest(
+        String tenantCode,
+        Integer page,
+        Integer size,
+        String... optionalNameValuePairs
+    ) {
+        MockHttpServletRequestBuilder request = get(
+            "/api/payments/tenants/" + tenantCode + "/receivables/collections/releases/monthly-summary"
         );
         if (page != null) {
             request.param("page", String.valueOf(page));

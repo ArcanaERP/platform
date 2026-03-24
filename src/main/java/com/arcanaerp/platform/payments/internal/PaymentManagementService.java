@@ -37,6 +37,8 @@ import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteOutcomeSummar
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteCategorySummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteCategoryOutcomeSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteSummaryView;
+import com.arcanaerp.platform.payments.MonthlyTenantCollectionsClaimSummaryView;
+import com.arcanaerp.platform.payments.MonthlyTenantCollectionsReleaseSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.PaymentManagement;
@@ -804,6 +806,53 @@ class PaymentManagementService implements PaymentManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<MonthlyTenantCollectionsClaimSummaryView> listMonthlyTenantCollectionsClaimSummaries(
+        String tenantCode,
+        String claimedBy,
+        Instant claimedAtFrom,
+        Instant claimedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedClaimedBy = claimedBy == null ? null : normalizeActorEmail(claimedBy, "claimedBy");
+
+        List<CollectionsAssignmentClaimAudit> audits = collectionsAssignmentClaimAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            null,
+            normalizedClaimedBy,
+            claimedAtFrom,
+            claimedAtTo,
+            org.springframework.data.domain.Pageable.unpaged()
+        ).getContent();
+
+        Map<MonthlyCollectionsClaimBucket, ClaimSummaryAccumulator> summaries = new LinkedHashMap<>();
+        for (CollectionsAssignmentClaimAudit audit : audits) {
+            MonthlyCollectionsClaimBucket bucket = new MonthlyCollectionsClaimBucket(
+                YearMonth.from(audit.getClaimedAt().atOffset(ZoneOffset.UTC)),
+                audit.getClaimedBy()
+            );
+            summaries.computeIfAbsent(bucket, ignored -> new ClaimSummaryAccumulator()).add(audit);
+        }
+
+        List<MonthlyTenantCollectionsClaimSummaryView> items = summaries.entrySet().stream()
+            .map(entry -> new MonthlyTenantCollectionsClaimSummaryView(
+                normalizedTenantCode,
+                entry.getKey().businessMonth(),
+                entry.getKey().claimedBy(),
+                entry.getValue().claimCount,
+                entry.getValue().invoiceNumbers.size()
+            ))
+            .sorted(java.util.Comparator
+                .comparing(MonthlyTenantCollectionsClaimSummaryView::businessMonth)
+                .reversed()
+                .thenComparing(MonthlyTenantCollectionsClaimSummaryView::claimedBy))
+            .toList();
+
+        return paginateList(items, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<CollectionsFollowUpChangeView> listCollectionsFollowUpHistory(
         String tenantCode,
         String invoiceNumber,
@@ -992,6 +1041,53 @@ class PaymentManagementService implements PaymentManagement {
                 .comparing(WeeklyTenantCollectionsReleaseSummaryView::businessWeekStart)
                 .reversed()
                 .thenComparing(WeeklyTenantCollectionsReleaseSummaryView::releasedBy))
+            .toList();
+
+        return paginateList(items, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyTenantCollectionsReleaseSummaryView> listMonthlyTenantCollectionsReleaseSummaries(
+        String tenantCode,
+        String releasedBy,
+        Instant releasedAtFrom,
+        Instant releasedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedReleasedBy = releasedBy == null ? null : normalizeActorEmail(releasedBy, "releasedBy");
+
+        List<CollectionsAssignmentReleaseAudit> audits = collectionsAssignmentReleaseAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            null,
+            normalizedReleasedBy,
+            releasedAtFrom,
+            releasedAtTo,
+            org.springframework.data.domain.Pageable.unpaged()
+        ).getContent();
+
+        Map<MonthlyCollectionsReleaseBucket, ReleaseSummaryAccumulator> summaries = new LinkedHashMap<>();
+        for (CollectionsAssignmentReleaseAudit audit : audits) {
+            MonthlyCollectionsReleaseBucket bucket = new MonthlyCollectionsReleaseBucket(
+                YearMonth.from(audit.getReleasedAt().atOffset(ZoneOffset.UTC)),
+                audit.getReleasedBy()
+            );
+            summaries.computeIfAbsent(bucket, ignored -> new ReleaseSummaryAccumulator()).add(audit);
+        }
+
+        List<MonthlyTenantCollectionsReleaseSummaryView> items = summaries.entrySet().stream()
+            .map(entry -> new MonthlyTenantCollectionsReleaseSummaryView(
+                normalizedTenantCode,
+                entry.getKey().businessMonth(),
+                entry.getKey().releasedBy(),
+                entry.getValue().releaseCount,
+                entry.getValue().invoiceNumbers.size()
+            ))
+            .sorted(java.util.Comparator
+                .comparing(MonthlyTenantCollectionsReleaseSummaryView::businessMonth)
+                .reversed()
+                .thenComparing(MonthlyTenantCollectionsReleaseSummaryView::releasedBy))
             .toList();
 
         return paginateList(items, pageQuery);
@@ -3001,6 +3097,12 @@ class PaymentManagementService implements PaymentManagement {
     ) {
     }
 
+    private record MonthlyCollectionsClaimBucket(
+        YearMonth businessMonth,
+        String claimedBy
+    ) {
+    }
+
     private record DailyCollectionsReleaseBucket(
         LocalDate businessDate,
         String releasedBy
@@ -3009,6 +3111,12 @@ class PaymentManagementService implements PaymentManagement {
 
     private record WeeklyCollectionsReleaseBucket(
         LocalDate businessWeekStart,
+        String releasedBy
+    ) {
+    }
+
+    private record MonthlyCollectionsReleaseBucket(
+        YearMonth businessMonth,
         String releasedBy
     ) {
     }
