@@ -163,6 +163,14 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    PageResult<DailyTenantCollectionsNetIntakeSummaryView> listDailyTenantCollectionsNetIntakeSummaries(
+        String tenantCode,
+        String actor,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
     CollectionsNoteView addCollectionsNote(CreateCollectionsNoteCommand command);
 
     PageResult<CollectionsAssignmentChangeView> listCollectionsAssignmentHistory(

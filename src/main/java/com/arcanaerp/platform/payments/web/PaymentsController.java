@@ -20,6 +20,7 @@ import com.arcanaerp.platform.payments.CreateCollectionsNoteCommand;
 import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsClaimSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsFollowUpOutcomeSummaryView;
+import com.arcanaerp.platform.payments.DailyTenantCollectionsNetIntakeSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsReleaseSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsNoteCategorySummaryView;
@@ -1152,6 +1153,28 @@ public class PaymentsController {
             .map(this::toTenantCollectionsNetIntakeActorSummaryResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/net-intake/daily-summary")
+    public PageResult<DailyTenantCollectionsNetIntakeSummaryResponse> listDailyTenantCollectionsNetIntakeSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam(required = false) String actor,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateInstantRange(parsedChangedAtFrom, parsedChangedAtTo, "changedAtFrom", "changedAtTo");
+        return paymentManagement.listDailyTenantCollectionsNetIntakeSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(actor, "actor"),
+                parsedChangedAtFrom,
+                parsedChangedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toDailyTenantCollectionsNetIntakeSummaryResponse);
+    }
+
     @GetMapping("/tenants/{tenantCode}/receivables/collections/follow-up-outcome/daily-summary")
     public PageResult<DailyTenantCollectionsFollowUpOutcomeSummaryResponse> listDailyTenantCollectionsFollowUpOutcomeSummaries(
         @PathVariable String tenantCode,
@@ -1955,6 +1978,19 @@ public class PaymentsController {
             summary.releasedBy(),
             summary.releaseCount(),
             summary.invoiceCount()
+        );
+    }
+
+    private DailyTenantCollectionsNetIntakeSummaryResponse toDailyTenantCollectionsNetIntakeSummaryResponse(
+        DailyTenantCollectionsNetIntakeSummaryView summary
+    ) {
+        return new DailyTenantCollectionsNetIntakeSummaryResponse(
+            summary.tenantCode(),
+            summary.businessDate(),
+            summary.actor(),
+            summary.claimCount(),
+            summary.releaseCount(),
+            summary.netIntakeCount()
         );
     }
 
