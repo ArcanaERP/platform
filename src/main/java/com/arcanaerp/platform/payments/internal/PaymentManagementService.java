@@ -1075,54 +1075,30 @@ class PaymentManagementService implements PaymentManagement {
         Instant changedAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedActor = actor == null ? null : normalizeActorEmail(actor, "actor");
-
-        List<CollectionsAssignmentClaimAudit> claimAudits = collectionsAssignmentClaimAuditRepository.findTenantHistoryFiltered(
-            normalizedTenantCode,
-            null,
-            normalizedActor,
+        return summarizeCollectionsNetIntake(
+            tenantCode,
+            actor,
             changedAtFrom,
             changedAtTo,
-            org.springframework.data.domain.Pageable.unpaged()
-        ).getContent();
-        List<CollectionsAssignmentReleaseAudit> releaseAudits = collectionsAssignmentReleaseAuditRepository.findTenantHistoryFiltered(
-            normalizedTenantCode,
-            null,
-            normalizedActor,
-            changedAtFrom,
-            changedAtTo,
-            org.springframework.data.domain.Pageable.unpaged()
-        ).getContent();
-
-        Map<DailyCollectionsNetIntakeBucket, NetIntakeActorSummaryAccumulator> summariesByBucket = new LinkedHashMap<>();
-        for (CollectionsAssignmentClaimAudit audit : claimAudits) {
-            DailyCollectionsNetIntakeBucket bucket = new DailyCollectionsNetIntakeBucket(
+            pageQuery,
+            audit -> new DailyCollectionsNetIntakeBucket(
                 audit.getClaimedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
                 audit.getClaimedBy()
-            );
-            summariesByBucket.computeIfAbsent(bucket, ignored -> new NetIntakeActorSummaryAccumulator()).addClaim();
-        }
-        for (CollectionsAssignmentReleaseAudit audit : releaseAudits) {
-            DailyCollectionsNetIntakeBucket bucket = new DailyCollectionsNetIntakeBucket(
+            ),
+            audit -> new DailyCollectionsNetIntakeBucket(
                 audit.getReleasedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
                 audit.getReleasedBy()
-            );
-            summariesByBucket.computeIfAbsent(bucket, ignored -> new NetIntakeActorSummaryAccumulator()).addRelease();
-        }
-
-        List<DailyTenantCollectionsNetIntakeSummaryView> summaries = summariesByBucket.entrySet().stream()
-            .map(entry -> entry.getValue().toDailyView(
+            ),
+            (normalizedTenantCode, bucket, summary) -> summary.toDailyView(
                 normalizedTenantCode,
-                entry.getKey().businessDate(),
-                entry.getKey().actor()
-            ))
-            .sorted(java.util.Comparator
+                bucket.businessDate(),
+                bucket.actor()
+            ),
+            java.util.Comparator
                 .comparing(DailyTenantCollectionsNetIntakeSummaryView::businessDate)
                 .reversed()
-                .thenComparing(DailyTenantCollectionsNetIntakeSummaryView::actor))
-            .toList();
-        return paginateList(summaries, pageQuery);
+                .thenComparing(DailyTenantCollectionsNetIntakeSummaryView::actor)
+        );
     }
 
     @Override
@@ -1134,56 +1110,36 @@ class PaymentManagementService implements PaymentManagement {
         Instant changedAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedActor = actor == null ? null : normalizeActorEmail(actor, "actor");
-
-        List<CollectionsAssignmentClaimAudit> claimAudits = collectionsAssignmentClaimAuditRepository.findTenantHistoryFiltered(
-            normalizedTenantCode,
-            null,
-            normalizedActor,
+        return summarizeCollectionsNetIntake(
+            tenantCode,
+            actor,
             changedAtFrom,
             changedAtTo,
-            org.springframework.data.domain.Pageable.unpaged()
-        ).getContent();
-        List<CollectionsAssignmentReleaseAudit> releaseAudits = collectionsAssignmentReleaseAuditRepository.findTenantHistoryFiltered(
-            normalizedTenantCode,
-            null,
-            normalizedActor,
-            changedAtFrom,
-            changedAtTo,
-            org.springframework.data.domain.Pageable.unpaged()
-        ).getContent();
-
-        Map<WeeklyCollectionsNetIntakeBucket, NetIntakeActorSummaryAccumulator> summariesByBucket = new LinkedHashMap<>();
-        for (CollectionsAssignmentClaimAudit audit : claimAudits) {
-            LocalDate businessDate = audit.getClaimedAt().atOffset(ZoneOffset.UTC).toLocalDate();
-            WeeklyCollectionsNetIntakeBucket bucket = new WeeklyCollectionsNetIntakeBucket(
-                businessDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
-                audit.getClaimedBy()
-            );
-            summariesByBucket.computeIfAbsent(bucket, ignored -> new NetIntakeActorSummaryAccumulator()).addClaim();
-        }
-        for (CollectionsAssignmentReleaseAudit audit : releaseAudits) {
-            LocalDate businessDate = audit.getReleasedAt().atOffset(ZoneOffset.UTC).toLocalDate();
-            WeeklyCollectionsNetIntakeBucket bucket = new WeeklyCollectionsNetIntakeBucket(
-                businessDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
-                audit.getReleasedBy()
-            );
-            summariesByBucket.computeIfAbsent(bucket, ignored -> new NetIntakeActorSummaryAccumulator()).addRelease();
-        }
-
-        List<WeeklyTenantCollectionsNetIntakeSummaryView> summaries = summariesByBucket.entrySet().stream()
-            .map(entry -> entry.getValue().toWeeklyView(
+            pageQuery,
+            audit -> {
+                LocalDate businessDate = audit.getClaimedAt().atOffset(ZoneOffset.UTC).toLocalDate();
+                return new WeeklyCollectionsNetIntakeBucket(
+                    businessDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+                    audit.getClaimedBy()
+                );
+            },
+            audit -> {
+                LocalDate businessDate = audit.getReleasedAt().atOffset(ZoneOffset.UTC).toLocalDate();
+                return new WeeklyCollectionsNetIntakeBucket(
+                    businessDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+                    audit.getReleasedBy()
+                );
+            },
+            (normalizedTenantCode, bucket, summary) -> summary.toWeeklyView(
                 normalizedTenantCode,
-                entry.getKey().businessWeekStart(),
-                entry.getKey().actor()
-            ))
-            .sorted(java.util.Comparator
+                bucket.businessWeekStart(),
+                bucket.actor()
+            ),
+            java.util.Comparator
                 .comparing(WeeklyTenantCollectionsNetIntakeSummaryView::businessWeekStart)
                 .reversed()
-                .thenComparing(WeeklyTenantCollectionsNetIntakeSummaryView::actor))
-            .toList();
-        return paginateList(summaries, pageQuery);
+                .thenComparing(WeeklyTenantCollectionsNetIntakeSummaryView::actor)
+        );
     }
 
     @Override
@@ -1195,54 +1151,30 @@ class PaymentManagementService implements PaymentManagement {
         Instant changedAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedActor = actor == null ? null : normalizeActorEmail(actor, "actor");
-
-        List<CollectionsAssignmentClaimAudit> claimAudits = collectionsAssignmentClaimAuditRepository.findTenantHistoryFiltered(
-            normalizedTenantCode,
-            null,
-            normalizedActor,
+        return summarizeCollectionsNetIntake(
+            tenantCode,
+            actor,
             changedAtFrom,
             changedAtTo,
-            org.springframework.data.domain.Pageable.unpaged()
-        ).getContent();
-        List<CollectionsAssignmentReleaseAudit> releaseAudits = collectionsAssignmentReleaseAuditRepository.findTenantHistoryFiltered(
-            normalizedTenantCode,
-            null,
-            normalizedActor,
-            changedAtFrom,
-            changedAtTo,
-            org.springframework.data.domain.Pageable.unpaged()
-        ).getContent();
-
-        Map<MonthlyCollectionsNetIntakeBucket, NetIntakeActorSummaryAccumulator> summariesByBucket = new LinkedHashMap<>();
-        for (CollectionsAssignmentClaimAudit audit : claimAudits) {
-            MonthlyCollectionsNetIntakeBucket bucket = new MonthlyCollectionsNetIntakeBucket(
+            pageQuery,
+            audit -> new MonthlyCollectionsNetIntakeBucket(
                 YearMonth.from(audit.getClaimedAt().atOffset(ZoneOffset.UTC)),
                 audit.getClaimedBy()
-            );
-            summariesByBucket.computeIfAbsent(bucket, ignored -> new NetIntakeActorSummaryAccumulator()).addClaim();
-        }
-        for (CollectionsAssignmentReleaseAudit audit : releaseAudits) {
-            MonthlyCollectionsNetIntakeBucket bucket = new MonthlyCollectionsNetIntakeBucket(
+            ),
+            audit -> new MonthlyCollectionsNetIntakeBucket(
                 YearMonth.from(audit.getReleasedAt().atOffset(ZoneOffset.UTC)),
                 audit.getReleasedBy()
-            );
-            summariesByBucket.computeIfAbsent(bucket, ignored -> new NetIntakeActorSummaryAccumulator()).addRelease();
-        }
-
-        List<MonthlyTenantCollectionsNetIntakeSummaryView> summaries = summariesByBucket.entrySet().stream()
-            .map(entry -> entry.getValue().toMonthlyView(
+            ),
+            (normalizedTenantCode, bucket, summary) -> summary.toMonthlyView(
                 normalizedTenantCode,
-                entry.getKey().businessMonth(),
-                entry.getKey().actor()
-            ))
-            .sorted(java.util.Comparator
+                bucket.businessMonth(),
+                bucket.actor()
+            ),
+            java.util.Comparator
                 .comparing(MonthlyTenantCollectionsNetIntakeSummaryView::businessMonth)
                 .reversed()
-                .thenComparing(MonthlyTenantCollectionsNetIntakeSummaryView::actor))
-            .toList();
-        return paginateList(summaries, pageQuery);
+                .thenComparing(MonthlyTenantCollectionsNetIntakeSummaryView::actor)
+        );
     }
 
     @Override
@@ -2710,6 +2642,55 @@ class PaymentManagementService implements PaymentManagement {
         return paginateList(summaries, pageQuery);
     }
 
+    private <B, V> PageResult<V> summarizeCollectionsNetIntake(
+        String tenantCode,
+        String actor,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery,
+        Function<CollectionsAssignmentClaimAudit, B> claimBucketExtractor,
+        Function<CollectionsAssignmentReleaseAudit, B> releaseBucketExtractor,
+        CollectionsNetIntakeViewFactory<B, V> viewFactory,
+        java.util.Comparator<V> comparator
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedActor = actor == null ? null : normalizeActorEmail(actor, "actor");
+
+        List<CollectionsAssignmentClaimAudit> claimAudits = collectionsAssignmentClaimAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            null,
+            normalizedActor,
+            changedAtFrom,
+            changedAtTo,
+            org.springframework.data.domain.Pageable.unpaged()
+        ).getContent();
+        List<CollectionsAssignmentReleaseAudit> releaseAudits = collectionsAssignmentReleaseAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            null,
+            normalizedActor,
+            changedAtFrom,
+            changedAtTo,
+            org.springframework.data.domain.Pageable.unpaged()
+        ).getContent();
+
+        Map<B, NetIntakeActorSummaryAccumulator> summariesByBucket = new LinkedHashMap<>();
+        for (CollectionsAssignmentClaimAudit audit : claimAudits) {
+            B bucket = claimBucketExtractor.apply(audit);
+            summariesByBucket.computeIfAbsent(bucket, ignored -> new NetIntakeActorSummaryAccumulator()).addClaim();
+        }
+        for (CollectionsAssignmentReleaseAudit audit : releaseAudits) {
+            B bucket = releaseBucketExtractor.apply(audit);
+            summariesByBucket.computeIfAbsent(bucket, ignored -> new NetIntakeActorSummaryAccumulator()).addRelease();
+        }
+
+        List<V> summaries = new ArrayList<>();
+        summariesByBucket.forEach((bucket, summary) -> summaries.add(
+            viewFactory.create(normalizedTenantCode, bucket, summary)
+        ));
+        summaries.sort(comparator);
+        return paginateList(summaries, pageQuery);
+    }
+
     private <B, V> PageResult<V> summarizeTenantCollectionsNotes(
         String tenantCode,
         String assignedTo,
@@ -3523,6 +3504,12 @@ class PaymentManagementService implements PaymentManagement {
     private interface CollectionsReleaseSummaryViewFactory<B, V> {
 
         V create(String tenantCode, B bucket, ReleaseSummaryAccumulator summary);
+    }
+
+    @FunctionalInterface
+    private interface CollectionsNetIntakeViewFactory<B, V> {
+
+        V create(String tenantCode, B bucket, NetIntakeActorSummaryAccumulator summary);
     }
 
     @FunctionalInterface
