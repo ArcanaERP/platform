@@ -587,7 +587,7 @@ Filters:
 - `changedAtTo` UTC instant upper bound for claim/release counts, optional
 
 Rules:
-- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-operations-summary?currencyCode=&actor=&changedAtFrom=&changedAtTo=&page=&size=`
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-operations-summary?currencyCode=&actor=&changedAtFrom=&changedAtTo=&sortBy=&page=&size=`
 - current workload fields are computed from the current over-90 assigned receivables snapshot
 - claim/release/net intake fields are computed from immutable claim and release audits over the optional time window
 - `netIntakeCount = claimCount - releaseCount`
@@ -997,7 +997,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/releases/weekly-summary?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/releases/monthly-summary?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/actor-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
-- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-operations-summary?currencyCode=&actor=&changedAtFrom=&changedAtTo=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-operations-summary?currencyCode=&actor=&changedAtFrom=&changedAtTo=&sortBy=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/daily-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/weekly-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/monthly-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`

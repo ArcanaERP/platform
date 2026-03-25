@@ -1699,6 +1699,15 @@ class PaymentsControllerIntegrationTest {
             "inv-pay-7342",
             PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(15 * 86400)
         );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNEE_OPERATIONS_SUMMARY_TENANT_CODE,
+            "arc-pay-7343",
+            "so-pay-7343",
+            "inv-pay-7343",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(20 * 86400)
+        );
 
         Instant firstClaimedAt = Instant.parse("2026-07-06T00:05:00Z");
         testClock.setInstant(firstClaimedAt);
@@ -1716,6 +1725,15 @@ class PaymentsControllerIntegrationTest {
             COLLECTIONS_ASSIGNEE_OPERATIONS_SUMMARY_TENANT_CODE,
             "inv-pay-7342",
             "collector-b@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant thirdClaimedAt = Instant.parse("2026-07-07T00:08:00Z");
+        testClock.setInstant(thirdClaimedAt);
+        PaymentsWebIntegrationTestSupport.claimUnassignedOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_OPERATIONS_SUMMARY_TENANT_CODE,
+            "inv-pay-7343",
+            "collector-a@arcanaerp.com"
         ).andExpect(status().isOk());
 
         Instant releasedAt = secondClaimedAt.plusSeconds(300);
@@ -1741,11 +1759,55 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].tenantCode").value("TENANT-COLL-ASSOPS"))
             .andExpect(jsonPath("$.items[0].currencyCode").value("USD"))
             .andExpect(jsonPath("$.items[0].assignedTo").value("collector-a@arcanaerp.com"))
-            .andExpect(jsonPath("$.items[0].currentAssignedInvoiceCount").value(1))
-            .andExpect(jsonPath("$.items[0].currentOutstandingAmount").value(10.00))
-            .andExpect(jsonPath("$.items[0].claimCount").value(1))
+            .andExpect(jsonPath("$.items[0].currentAssignedInvoiceCount").value(2))
+            .andExpect(jsonPath("$.items[0].currentOutstandingAmount").value(20.00))
+            .andExpect(jsonPath("$.items[0].claimCount").value(2))
             .andExpect(jsonPath("$.items[0].releaseCount").value(0))
-            .andExpect(jsonPath("$.items[0].netIntakeCount").value(1));
+            .andExpect(jsonPath("$.items[0].netIntakeCount").value(2));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsAssigneeOperationsSummaryRequest(
+                COLLECTIONS_ASSIGNEE_OPERATIONS_SUMMARY_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "changedAtFrom", firstClaimedAt.toString(),
+                "changedAtTo", releasedAt.toString(),
+                "sortBy", "net_intake_count"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].netIntakeCount").value(2))
+            .andExpect(jsonPath("$.items[1].assignedTo").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].netIntakeCount").value(0));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsAssigneeOperationsSummaryRequest(
+                COLLECTIONS_ASSIGNEE_OPERATIONS_SUMMARY_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "changedAtFrom", firstClaimedAt.toString(),
+                "changedAtTo", releasedAt.toString(),
+                "sortBy", "current_outstanding_amount"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].currentOutstandingAmount").value(20.00))
+            .andExpect(jsonPath("$.items[1].assignedTo").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].currentOutstandingAmount").value(0.0));
+    }
+
+    @Test
+    void rejectsInvalidSortByForTenantCollectionsAssigneeOperationsSummaries() throws Exception {
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsAssigneeOperationsSummaryRequest(
+                COLLECTIONS_ASSIGNEE_OPERATIONS_SUMMARY_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "sortBy", "invalid"
+            ))
+            .andExpect(status().isBadRequest());
     }
 
     @Test

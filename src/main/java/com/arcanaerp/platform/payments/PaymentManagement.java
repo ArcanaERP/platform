@@ -169,6 +169,7 @@ public interface PaymentManagement {
         String actor,
         Instant changedAtFrom,
         Instant changedAtTo,
+        CollectionsAssigneeOperationsSortBy sortBy,
         PageQuery pageQuery
     );
 

@@ -9,6 +9,7 @@ import com.arcanaerp.platform.invoicing.InvoiceView;
 import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.ClaimCollectionsInvoiceCommand;
+import com.arcanaerp.platform.payments.CollectionsAssigneeOperationsSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssignmentClaimChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentReleaseChangeView;
@@ -1075,6 +1076,7 @@ class PaymentManagementService implements PaymentManagement {
         String actor,
         Instant changedAtFrom,
         Instant changedAtTo,
+        CollectionsAssigneeOperationsSortBy sortBy,
         PageQuery pageQuery
     ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
@@ -1128,7 +1130,7 @@ class PaymentManagementService implements PaymentManagement {
                 normalizedCurrencyCode,
                 entry.getKey()
             ))
-            .sorted(java.util.Comparator.comparing(TenantCollectionsAssigneeOperationsSummaryView::assignedTo))
+            .sorted(tenantCollectionsAssigneeOperationsComparator(sortBy))
             .toList();
         return paginateList(summaries, pageQuery);
     }
@@ -2960,6 +2962,25 @@ class PaymentManagementService implements PaymentManagement {
         return java.util.Comparator
             .comparing(AgedTenantReceivableView::dueAt)
             .thenComparing(AgedTenantReceivableView::invoiceNumber);
+    }
+
+    private java.util.Comparator<TenantCollectionsAssigneeOperationsSummaryView> tenantCollectionsAssigneeOperationsComparator(
+        CollectionsAssigneeOperationsSortBy sortBy
+    ) {
+        CollectionsAssigneeOperationsSortBy normalizedSortBy = sortBy == null
+            ? CollectionsAssigneeOperationsSortBy.ASSIGNED_TO
+            : sortBy;
+        if (normalizedSortBy == CollectionsAssigneeOperationsSortBy.NET_INTAKE_COUNT) {
+            return java.util.Comparator.comparing(TenantCollectionsAssigneeOperationsSummaryView::netIntakeCount)
+                .reversed()
+                .thenComparing(TenantCollectionsAssigneeOperationsSummaryView::assignedTo);
+        }
+        if (normalizedSortBy == CollectionsAssigneeOperationsSortBy.CURRENT_OUTSTANDING_AMOUNT) {
+            return java.util.Comparator.comparing(TenantCollectionsAssigneeOperationsSummaryView::currentOutstandingAmount)
+                .reversed()
+                .thenComparing(TenantCollectionsAssigneeOperationsSummaryView::assignedTo);
+        }
+        return java.util.Comparator.comparing(TenantCollectionsAssigneeOperationsSummaryView::assignedTo);
     }
 
     private List<AgedTenantReceivableView> enrichAgedReceivables(List<ReceivableSnapshot> snapshots) {

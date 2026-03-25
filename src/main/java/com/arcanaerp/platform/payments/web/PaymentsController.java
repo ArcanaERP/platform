@@ -5,6 +5,7 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.ClaimCollectionsInvoiceCommand;
+import com.arcanaerp.platform.payments.CollectionsAssigneeOperationsSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssignmentClaimChangeView;
 import com.arcanaerp.platform.payments.CollectionsNoteCategory;
 import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
@@ -1163,6 +1164,7 @@ public class PaymentsController {
         @RequestParam(required = false) String actor,
         @RequestParam(required = false) String changedAtFrom,
         @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) String sortBy,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
@@ -1175,6 +1177,7 @@ public class PaymentsController {
                 normalizeOptional(actor, "actor"),
                 parsedChangedAtFrom,
                 parsedChangedAtTo,
+                parseCollectionsAssigneeOperationsSortBy(sortBy),
                 PageQuery.of(page, size)
             )
             .map(this::toTenantCollectionsAssigneeOperationsSummaryResponse);
@@ -2243,6 +2246,18 @@ public class PaymentsController {
         }
         try {
             return CollectionsQueueSortBy.valueOf(normalizedValue.toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("sortBy query parameter is invalid");
+        }
+    }
+
+    private static CollectionsAssigneeOperationsSortBy parseCollectionsAssigneeOperationsSortBy(String value) {
+        String normalizedValue = normalizeOptional(value, "sortBy");
+        if (normalizedValue == null) {
+            return CollectionsAssigneeOperationsSortBy.ASSIGNED_TO;
+        }
+        try {
+            return CollectionsAssigneeOperationsSortBy.valueOf(normalizedValue.toUpperCase());
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException("sortBy query parameter is invalid");
         }
