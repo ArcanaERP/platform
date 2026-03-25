@@ -413,6 +413,7 @@ public interface PaymentManagement {
         String currencyCode,
         String assignedTo,
         CollectionsFollowUpOutcome latestFollowUpOutcome,
+        CollectionsCurrentAssigneeFollowUpOutcomeSortBy sortBy,
         PageQuery pageQuery
     );
 
