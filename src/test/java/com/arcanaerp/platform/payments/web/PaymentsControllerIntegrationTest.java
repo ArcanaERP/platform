@@ -37,6 +37,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_SUMMARY_TENANT_CODE = "tenant-coll-fup-outsum";
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_ASSIGNEE_SUMMARY_TENANT_CODE = "tenant-coll-fup-outass";
     private static final String COLLECTIONS_NET_INTAKE_ACTOR_SUMMARY_TENANT_CODE = "tenant-coll-netintake";
+    private static final String COLLECTIONS_ASSIGNEE_OPERATIONS_SUMMARY_TENANT_CODE = "tenant-coll-assops";
     private static final String COLLECTIONS_NET_INTAKE_DAILY_SUMMARY_TENANT_CODE = "tenant-coll-netintkday";
     private static final String COLLECTIONS_NET_INTAKE_WEEKLY_SUMMARY_TENANT_CODE = "tenant-coll-netintkwk";
     private static final String COLLECTIONS_NET_INTAKE_MONTHLY_SUMMARY_TENANT_CODE = "tenant-coll-netintkmon";
@@ -1655,6 +1656,93 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].tenantCode").value("TENANT-COLL-NETINTAKE"))
             .andExpect(jsonPath("$.items[0].actor").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].claimCount").value(1))
+            .andExpect(jsonPath("$.items[0].releaseCount").value(0))
+            .andExpect(jsonPath("$.items[0].netIntakeCount").value(1));
+    }
+
+    @Test
+    void listsTenantCollectionsAssigneeOperationsSummaries() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_OPERATIONS_SUMMARY_TENANT_CODE,
+            "Collections Assignee Operations Tenant",
+            "COLLECTOR_A",
+            "Collector A",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_OPERATIONS_SUMMARY_TENANT_CODE,
+            "Collections Assignee Operations Tenant",
+            "COLLECTOR_B",
+            "Collector B",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNEE_OPERATIONS_SUMMARY_TENANT_CODE,
+            "arc-pay-7341",
+            "so-pay-7341",
+            "inv-pay-7341",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNEE_OPERATIONS_SUMMARY_TENANT_CODE,
+            "arc-pay-7342",
+            "so-pay-7342",
+            "inv-pay-7342",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(15 * 86400)
+        );
+
+        Instant firstClaimedAt = Instant.parse("2026-07-06T00:05:00Z");
+        testClock.setInstant(firstClaimedAt);
+        PaymentsWebIntegrationTestSupport.claimUnassignedOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_OPERATIONS_SUMMARY_TENANT_CODE,
+            "inv-pay-7341",
+            "collector-a@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant secondClaimedAt = Instant.parse("2026-07-07T00:05:00Z");
+        testClock.setInstant(secondClaimedAt);
+        PaymentsWebIntegrationTestSupport.claimUnassignedOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_OPERATIONS_SUMMARY_TENANT_CODE,
+            "inv-pay-7342",
+            "collector-b@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant releasedAt = secondClaimedAt.plusSeconds(300);
+        testClock.setInstant(releasedAt);
+        PaymentsWebIntegrationTestSupport.releaseOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_OPERATIONS_SUMMARY_TENANT_CODE,
+            "inv-pay-7342",
+            "collector-b@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsAssigneeOperationsSummaryRequest(
+                COLLECTIONS_ASSIGNEE_OPERATIONS_SUMMARY_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "actor", "collector-a@arcanaerp.com",
+                "changedAtFrom", firstClaimedAt.toString(),
+                "changedAtTo", releasedAt.toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("TENANT-COLL-ASSOPS"))
+            .andExpect(jsonPath("$.items[0].currencyCode").value("USD"))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].currentAssignedInvoiceCount").value(1))
+            .andExpect(jsonPath("$.items[0].currentOutstandingAmount").value(10.00))
             .andExpect(jsonPath("$.items[0].claimCount").value(1))
             .andExpect(jsonPath("$.items[0].releaseCount").value(0))
             .andExpect(jsonPath("$.items[0].netIntakeCount").value(1));

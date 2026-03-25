@@ -50,6 +50,7 @@ import com.arcanaerp.platform.payments.ReleaseCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.ScheduleCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.TenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsAssigneeAgingSummaryView;
+import com.arcanaerp.platform.payments.TenantCollectionsAssigneeOperationsSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsAssigneeFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsFollowUpOutcomeSummaryView;
@@ -1062,6 +1063,72 @@ class PaymentManagementService implements PaymentManagement {
                 .comparing(TenantCollectionsNetIntakeActorSummaryView::netIntakeCount)
                 .reversed()
                 .thenComparing(TenantCollectionsNetIntakeActorSummaryView::actor))
+            .toList();
+        return paginateList(summaries, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<TenantCollectionsAssigneeOperationsSummaryView> listTenantCollectionsAssigneeOperationsSummaries(
+        String tenantCode,
+        String currencyCode,
+        String actor,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        String normalizedActor = actor == null ? null : normalizeActorEmail(actor, "actor");
+        LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
+
+        Map<String, AssigneeOperationsSummaryAccumulator> summariesByActor = new LinkedHashMap<>();
+        enrichAgedReceivables(collectOutstandingReceivableSnapshots(normalizedTenantCode, normalizedCurrencyCode, asOfDate)
+            .stream()
+            .filter(snapshot -> snapshot.agingBucket() == ReceivablesAgingBucket.OVERDUE_OVER_90)
+            .sorted(java.util.Comparator
+                .comparing(ReceivableSnapshot::dueAt)
+                .thenComparing(ReceivableSnapshot::invoiceNumber))
+            .toList())
+            .stream()
+            .filter(receivable -> receivable.assignedTo() != null)
+            .filter(receivable -> normalizedActor == null || normalizedActor.equals(receivable.assignedTo()))
+            .forEach(receivable -> summariesByActor
+                .computeIfAbsent(receivable.assignedTo(), ignored -> new AssigneeOperationsSummaryAccumulator())
+                .addCurrentReceivable(receivable));
+
+        List<CollectionsAssignmentClaimAudit> claimAudits = collectionsAssignmentClaimAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            null,
+            normalizedActor,
+            changedAtFrom,
+            changedAtTo,
+            org.springframework.data.domain.Pageable.unpaged()
+        ).getContent();
+        for (CollectionsAssignmentClaimAudit audit : claimAudits) {
+            summariesByActor.computeIfAbsent(audit.getClaimedBy(), ignored -> new AssigneeOperationsSummaryAccumulator()).addClaim();
+        }
+
+        List<CollectionsAssignmentReleaseAudit> releaseAudits = collectionsAssignmentReleaseAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            null,
+            normalizedActor,
+            changedAtFrom,
+            changedAtTo,
+            org.springframework.data.domain.Pageable.unpaged()
+        ).getContent();
+        for (CollectionsAssignmentReleaseAudit audit : releaseAudits) {
+            summariesByActor.computeIfAbsent(audit.getReleasedBy(), ignored -> new AssigneeOperationsSummaryAccumulator())
+                .addRelease();
+        }
+
+        List<TenantCollectionsAssigneeOperationsSummaryView> summaries = summariesByActor.entrySet().stream()
+            .map(entry -> entry.getValue().toView(
+                normalizedTenantCode,
+                normalizedCurrencyCode,
+                entry.getKey()
+            ))
+            .sorted(java.util.Comparator.comparing(TenantCollectionsAssigneeOperationsSummaryView::assignedTo))
             .toList();
         return paginateList(summaries, pageQuery);
     }
@@ -3146,6 +3213,49 @@ class PaymentManagementService implements PaymentManagement {
                 invoiceCount,
                 totalOutstandingAmount,
                 oldestDueAt
+            );
+        }
+    }
+
+    private static final class AssigneeOperationsSummaryAccumulator {
+
+        private long currentAssignedInvoiceCount;
+        private BigDecimal currentOutstandingAmount = BigDecimal.ZERO;
+        private Instant oldestDueAt;
+        private long claimCount;
+        private long releaseCount;
+
+        void addCurrentReceivable(AgedTenantReceivableView receivable) {
+            currentAssignedInvoiceCount++;
+            currentOutstandingAmount = currentOutstandingAmount.add(receivable.outstandingAmount());
+            if (oldestDueAt == null || receivable.dueAt().isBefore(oldestDueAt)) {
+                oldestDueAt = receivable.dueAt();
+            }
+        }
+
+        void addClaim() {
+            claimCount++;
+        }
+
+        void addRelease() {
+            releaseCount++;
+        }
+
+        TenantCollectionsAssigneeOperationsSummaryView toView(
+            String tenantCode,
+            String currencyCode,
+            String assignedTo
+        ) {
+            return new TenantCollectionsAssigneeOperationsSummaryView(
+                tenantCode,
+                currencyCode,
+                assignedTo,
+                currentAssignedInvoiceCount,
+                currentOutstandingAmount,
+                oldestDueAt,
+                claimCount,
+                releaseCount,
+                claimCount - releaseCount
             );
         }
     }
