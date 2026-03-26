@@ -399,6 +399,7 @@ public interface PaymentManagement {
         String currencyCode,
         String assignedTo,
         ReceivablesAgingBucket agingBucket,
+        CollectionsAssigneeAgingSortBy sortBy,
         PageQuery pageQuery
     );
 

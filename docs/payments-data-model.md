@@ -688,7 +688,8 @@ Rules:
 - all positive-outstanding aging buckets are eligible, not just `OVERDUE_OVER_90`
 - invoices without a current collections assignment are grouped into a nullable `assignedTo` bucket
 - optional exact `assignedTo` and exact `agingBucket` filters narrow the workload view before grouping
-- rows are ordered by `assignedTo` ascending with null assignees last, then by `agingBucket`
+- optional `sortBy` supports `ASSIGNED_TO`, `INVOICE_COUNT`, `TOTAL_OUTSTANDING_AMOUNT`, and `OLDEST_DUE_AT`
+- alphabetical ordering by `assignedTo` with null assignees last remains the deterministic tie-breaker
 
 ### TenantCollectionsCurrentAssigneeFollowUpOutcomeSummary
 

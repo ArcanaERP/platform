@@ -10,6 +10,7 @@ import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.ClaimCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.CollectionsAssigneeOperationsSortBy;
+import com.arcanaerp.platform.payments.CollectionsAssigneeAgingSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssignmentClaimChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentReleaseChangeView;
@@ -1930,6 +1931,7 @@ class PaymentManagementService implements PaymentManagement {
         String currencyCode,
         String assignedTo,
         ReceivablesAgingBucket agingBucket,
+        CollectionsAssigneeAgingSortBy sortBy,
         PageQuery pageQuery
     ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
@@ -1961,10 +1963,7 @@ class PaymentManagementService implements PaymentManagement {
                 entry.getKey().assignedTo(),
                 entry.getKey().agingBucket()
             ))
-            .sorted(java.util.Comparator
-                .comparing((TenantCollectionsAssigneeAgingSummaryView summary) -> summary.assignedTo() == null ? 1 : 0)
-                .thenComparing(summary -> summary.assignedTo() == null ? "" : summary.assignedTo())
-                .thenComparing(summary -> summary.agingBucket().name()))
+            .sorted(tenantCollectionsAssigneeAgingComparator(sortBy))
             .toList();
         return paginateList(summaries, pageQuery);
     }
@@ -3003,6 +3002,33 @@ class PaymentManagementService implements PaymentManagement {
         }
         if (normalizedSortBy == CollectionsCurrentAssigneeFollowUpOutcomeSortBy.OLDEST_DUE_AT) {
             return java.util.Comparator.comparing(TenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryView::oldestDueAt)
+                .thenComparing(tieBreaker);
+        }
+        return tieBreaker;
+    }
+
+    private java.util.Comparator<TenantCollectionsAssigneeAgingSummaryView> tenantCollectionsAssigneeAgingComparator(
+        CollectionsAssigneeAgingSortBy sortBy
+    ) {
+        CollectionsAssigneeAgingSortBy normalizedSortBy = sortBy == null
+            ? CollectionsAssigneeAgingSortBy.ASSIGNED_TO
+            : sortBy;
+        java.util.Comparator<TenantCollectionsAssigneeAgingSummaryView> tieBreaker = java.util.Comparator
+            .comparing((TenantCollectionsAssigneeAgingSummaryView summary) -> summary.assignedTo() == null ? 1 : 0)
+            .thenComparing(summary -> summary.assignedTo() == null ? "" : summary.assignedTo())
+            .thenComparing(summary -> summary.agingBucket().name());
+        if (normalizedSortBy == CollectionsAssigneeAgingSortBy.INVOICE_COUNT) {
+            return java.util.Comparator.comparing(TenantCollectionsAssigneeAgingSummaryView::invoiceCount)
+                .reversed()
+                .thenComparing(tieBreaker);
+        }
+        if (normalizedSortBy == CollectionsAssigneeAgingSortBy.TOTAL_OUTSTANDING_AMOUNT) {
+            return java.util.Comparator.comparing(TenantCollectionsAssigneeAgingSummaryView::totalOutstandingAmount)
+                .reversed()
+                .thenComparing(tieBreaker);
+        }
+        if (normalizedSortBy == CollectionsAssigneeAgingSortBy.OLDEST_DUE_AT) {
+            return java.util.Comparator.comparing(TenantCollectionsAssigneeAgingSummaryView::oldestDueAt)
                 .thenComparing(tieBreaker);
         }
         return tieBreaker;

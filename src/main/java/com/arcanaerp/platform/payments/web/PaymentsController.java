@@ -6,6 +6,7 @@ import com.arcanaerp.platform.payments.AgedTenantReceivableView;
 import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.ClaimCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.CollectionsAssigneeOperationsSortBy;
+import com.arcanaerp.platform.payments.CollectionsAssigneeAgingSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssignmentClaimChangeView;
 import com.arcanaerp.platform.payments.CollectionsNoteCategory;
 import com.arcanaerp.platform.payments.CollectionsNoteOutcome;
@@ -1065,6 +1066,7 @@ public class PaymentsController {
         @RequestParam String currencyCode,
         @RequestParam(required = false) String assignedTo,
         @RequestParam(required = false) String agingBucket,
+        @RequestParam(required = false) String sortBy,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
@@ -1073,6 +1075,7 @@ public class PaymentsController {
                 normalizeOptional(currencyCode, "currencyCode"),
                 normalizeOptional(assignedTo, "assignedTo"),
                 parseOptionalAgingBucket(agingBucket),
+                parseCollectionsAssigneeAgingSortBy(sortBy),
                 PageQuery.of(page, size)
             )
             .map(this::toTenantCollectionsAssigneeAgingSummaryResponse);
@@ -2275,6 +2278,18 @@ public class PaymentsController {
         }
         try {
             return CollectionsCurrentAssigneeFollowUpOutcomeSortBy.valueOf(normalizedValue.toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("sortBy query parameter is invalid");
+        }
+    }
+
+    private static CollectionsAssigneeAgingSortBy parseCollectionsAssigneeAgingSortBy(String value) {
+        String normalizedValue = normalizeOptional(value, "sortBy");
+        if (normalizedValue == null) {
+            return CollectionsAssigneeAgingSortBy.ASSIGNED_TO;
+        }
+        try {
+            return CollectionsAssigneeAgingSortBy.valueOf(normalizedValue.toUpperCase());
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException("sortBy query parameter is invalid");
         }
