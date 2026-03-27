@@ -295,6 +295,30 @@ Rules:
 - summary is built from the same current unassigned over-90 path as the row-level shortcut
 - assigned invoices are excluded even if they are still over 90 days past due
 
+### TenantCollectionsAssigneeDashboardSummary
+
+Purpose:
+- expose current over-90 collections ownership plus latest follow-up outcome mix per assignee
+
+Fields:
+- `tenantCode`
+- `currencyCode`
+- `assignedTo`
+- `assignedInvoiceCount`
+- `totalOutstandingAmount`
+- `oldestDueAt`
+- `noRecordedOutcomeInvoiceCount`
+- `contactedInvoiceCount`
+- `leftVoicemailInvoiceCount`
+- `promiseToPayInvoiceCount`
+- `noResponseInvoiceCount`
+
+Rules:
+- summary is derived from the current over-90 assigned queue, not historical claim/release or follow-up audit counts
+- only non-null `assignedTo` buckets are included
+- latest follow-up outcome mix is derived from the current `latestFollowUpOutcome` on each receivable
+- optional exact `assignedTo` narrows the dashboard before grouping
+
 ### ClaimUnassignedOver90CollectionsInvoice
 
 Purpose:

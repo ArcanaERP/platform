@@ -386,6 +386,13 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    PageResult<TenantCollectionsAssigneeDashboardSummaryView> listTenantCollectionsAssigneeDashboardSummaries(
+        String tenantCode,
+        String currencyCode,
+        String assignedTo,
+        PageQuery pageQuery
+    );
+
     PageResult<TenantCollectionsAssignmentSummaryView> listOver90TenantCollectionsAssignmentSummaries(
         String tenantCode,
         String currencyCode,
