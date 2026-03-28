@@ -11,6 +11,7 @@ import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.ClaimCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.CollectionsAssigneeOperationsSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssigneeAgingSortBy;
+import com.arcanaerp.platform.payments.CollectionsAssigneeDashboardSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssignmentClaimChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentReleaseChangeView;
@@ -1891,6 +1892,7 @@ class PaymentManagementService implements PaymentManagement {
         String tenantCode,
         String currencyCode,
         String assignedTo,
+        CollectionsAssigneeDashboardSortBy sortBy,
         PageQuery pageQuery
     ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
@@ -1915,7 +1917,7 @@ class PaymentManagementService implements PaymentManagement {
 
         List<TenantCollectionsAssigneeDashboardSummaryView> summaries = summariesByAssignee.entrySet().stream()
             .map(entry -> entry.getValue().toView(normalizedTenantCode, normalizedCurrencyCode, entry.getKey()))
-            .sorted(java.util.Comparator.comparing(TenantCollectionsAssigneeDashboardSummaryView::assignedTo))
+            .sorted(tenantCollectionsAssigneeDashboardComparator(sortBy))
             .toList();
         return paginateList(summaries, pageQuery);
     }
@@ -3099,6 +3101,36 @@ class PaymentManagementService implements PaymentManagement {
         }
         if (normalizedSortBy == CollectionsOver90AssigneeSummarySortBy.OLDEST_DUE_AT) {
             return java.util.Comparator.comparing(TenantCollectionsAssignmentSummaryView::oldestDueAt)
+                .thenComparing(tieBreaker);
+        }
+        return tieBreaker;
+    }
+
+    private java.util.Comparator<TenantCollectionsAssigneeDashboardSummaryView> tenantCollectionsAssigneeDashboardComparator(
+        CollectionsAssigneeDashboardSortBy sortBy
+    ) {
+        CollectionsAssigneeDashboardSortBy normalizedSortBy = sortBy == null
+            ? CollectionsAssigneeDashboardSortBy.ASSIGNED_TO
+            : sortBy;
+        java.util.Comparator<TenantCollectionsAssigneeDashboardSummaryView> tieBreaker = java.util.Comparator
+            .comparing(TenantCollectionsAssigneeDashboardSummaryView::assignedTo);
+        if (normalizedSortBy == CollectionsAssigneeDashboardSortBy.ASSIGNED_INVOICE_COUNT) {
+            return java.util.Comparator.comparing(TenantCollectionsAssigneeDashboardSummaryView::assignedInvoiceCount)
+                .reversed()
+                .thenComparing(tieBreaker);
+        }
+        if (normalizedSortBy == CollectionsAssigneeDashboardSortBy.TOTAL_OUTSTANDING_AMOUNT) {
+            return java.util.Comparator.comparing(TenantCollectionsAssigneeDashboardSummaryView::totalOutstandingAmount)
+                .reversed()
+                .thenComparing(tieBreaker);
+        }
+        if (normalizedSortBy == CollectionsAssigneeDashboardSortBy.OLDEST_DUE_AT) {
+            return java.util.Comparator.comparing(TenantCollectionsAssigneeDashboardSummaryView::oldestDueAt)
+                .thenComparing(tieBreaker);
+        }
+        if (normalizedSortBy == CollectionsAssigneeDashboardSortBy.NO_RESPONSE_INVOICE_COUNT) {
+            return java.util.Comparator.comparing(TenantCollectionsAssigneeDashboardSummaryView::noResponseInvoiceCount)
+                .reversed()
                 .thenComparing(tieBreaker);
         }
         return tieBreaker;

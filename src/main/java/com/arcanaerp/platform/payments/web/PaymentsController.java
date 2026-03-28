@@ -7,6 +7,7 @@ import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.ClaimCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.CollectionsAssigneeOperationsSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssigneeAgingSortBy;
+import com.arcanaerp.platform.payments.CollectionsAssigneeDashboardSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssignmentClaimChangeView;
 import com.arcanaerp.platform.payments.CollectionsOver90AssigneeSummarySortBy;
 import com.arcanaerp.platform.payments.CollectionsNoteCategory;
@@ -1069,6 +1070,7 @@ public class PaymentsController {
         @PathVariable String tenantCode,
         @RequestParam String currencyCode,
         @RequestParam(required = false) String assignedTo,
+        @RequestParam(required = false) String sortBy,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
@@ -1076,6 +1078,7 @@ public class PaymentsController {
                 requirePathValue(tenantCode, "tenantCode"),
                 normalizeOptional(currencyCode, "currencyCode"),
                 normalizeOptional(assignedTo, "assignedTo"),
+                parseCollectionsAssigneeDashboardSortBy(sortBy),
                 PageQuery.of(page, size)
             )
             .map(this::toTenantCollectionsAssigneeDashboardSummaryResponse);
@@ -2341,6 +2344,18 @@ public class PaymentsController {
         }
         try {
             return CollectionsOver90AssigneeSummarySortBy.valueOf(normalizedValue.toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("sortBy query parameter is invalid");
+        }
+    }
+
+    private static CollectionsAssigneeDashboardSortBy parseCollectionsAssigneeDashboardSortBy(String value) {
+        String normalizedValue = normalizeOptional(value, "sortBy");
+        if (normalizedValue == null) {
+            return CollectionsAssigneeDashboardSortBy.ASSIGNED_TO;
+        }
+        try {
+            return CollectionsAssigneeDashboardSortBy.valueOf(normalizedValue.toUpperCase());
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException("sortBy query parameter is invalid");
         }

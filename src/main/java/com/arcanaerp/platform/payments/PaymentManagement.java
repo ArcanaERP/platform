@@ -390,6 +390,7 @@ public interface PaymentManagement {
         String tenantCode,
         String currencyCode,
         String assignedTo,
+        CollectionsAssigneeDashboardSortBy sortBy,
         PageQuery pageQuery
     );
 
