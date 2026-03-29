@@ -1070,6 +1070,7 @@ public class PaymentsController {
         @PathVariable String tenantCode,
         @RequestParam String currencyCode,
         @RequestParam(required = false) String assignedTo,
+        @RequestParam(required = false) String latestFollowUpOutcome,
         @RequestParam(required = false) String sortBy,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
@@ -1078,6 +1079,7 @@ public class PaymentsController {
                 requirePathValue(tenantCode, "tenantCode"),
                 normalizeOptional(currencyCode, "currencyCode"),
                 normalizeOptional(assignedTo, "assignedTo"),
+                parseOptionalCollectionsFollowUpOutcome(latestFollowUpOutcome),
                 parseCollectionsAssigneeDashboardSortBy(sortBy),
                 PageQuery.of(page, size)
             )

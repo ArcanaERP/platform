@@ -1892,6 +1892,7 @@ class PaymentManagementService implements PaymentManagement {
         String tenantCode,
         String currencyCode,
         String assignedTo,
+        CollectionsFollowUpOutcome latestFollowUpOutcome,
         CollectionsAssigneeDashboardSortBy sortBy,
         PageQuery pageQuery
     ) {
@@ -1911,6 +1912,7 @@ class PaymentManagementService implements PaymentManagement {
             .stream()
             .filter(receivable -> receivable.assignedTo() != null)
             .filter(receivable -> normalizedAssignedTo == null || normalizedAssignedTo.equals(receivable.assignedTo()))
+            .filter(receivable -> latestFollowUpOutcome == null || latestFollowUpOutcome == receivable.latestFollowUpOutcome())
             .forEach(receivable -> summariesByAssignee
                 .computeIfAbsent(receivable.assignedTo(), ignored -> new AssigneeDashboardSummaryAccumulator())
                 .add(receivable));

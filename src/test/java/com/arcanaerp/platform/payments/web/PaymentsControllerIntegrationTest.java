@@ -2050,6 +2050,39 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].assignedInvoiceCount").value(3))
             .andExpect(jsonPath("$.items[0].contactedInvoiceCount").value(1))
             .andExpect(jsonPath("$.items[0].noResponseInvoiceCount").value(2));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsAssigneeDashboardSummaryRequest(
+                COLLECTIONS_ASSIGNEE_DASHBOARD_SUMMARY_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "latestFollowUpOutcome",
+                "NO_RESPONSE"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].assignedInvoiceCount").value(2))
+            .andExpect(jsonPath("$.items[0].noResponseInvoiceCount").value(2))
+            .andExpect(jsonPath("$.items[0].contactedInvoiceCount").value(0))
+            .andExpect(jsonPath("$.items[0].promiseToPayInvoiceCount").value(0));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsAssigneeDashboardSummaryRequest(
+                COLLECTIONS_ASSIGNEE_DASHBOARD_SUMMARY_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "assignedTo",
+                "collector-a@arcanaerp.com",
+                "latestFollowUpOutcome",
+                "PROMISE_TO_PAY"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].assignedInvoiceCount").value(1))
+            .andExpect(jsonPath("$.items[0].promiseToPayInvoiceCount").value(1))
+            .andExpect(jsonPath("$.items[0].noRecordedOutcomeInvoiceCount").value(0));
     }
 
     @Test
@@ -2060,6 +2093,19 @@ class PaymentsControllerIntegrationTest {
                 0,
                 10,
                 "sortBy",
+                "invalid"
+            ))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void rejectsInvalidLatestFollowUpOutcomeForTenantCollectionsAssigneeDashboardSummaries() throws Exception {
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsAssigneeDashboardSummaryRequest(
+                COLLECTIONS_ASSIGNEE_DASHBOARD_SUMMARY_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "latestFollowUpOutcome",
                 "invalid"
             ))
             .andExpect(status().isBadRequest());
