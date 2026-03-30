@@ -3130,6 +3130,16 @@ class PaymentManagementService implements PaymentManagement {
             return java.util.Comparator.comparing(TenantCollectionsAssigneeDashboardSummaryView::oldestDueAt)
                 .thenComparing(tieBreaker);
         }
+        if (normalizedSortBy == CollectionsAssigneeDashboardSortBy.CONTACTED_INVOICE_COUNT) {
+            return java.util.Comparator.comparing(TenantCollectionsAssigneeDashboardSummaryView::contactedInvoiceCount)
+                .reversed()
+                .thenComparing(tieBreaker);
+        }
+        if (normalizedSortBy == CollectionsAssigneeDashboardSortBy.PROMISE_TO_PAY_INVOICE_COUNT) {
+            return java.util.Comparator.comparing(TenantCollectionsAssigneeDashboardSummaryView::promiseToPayInvoiceCount)
+                .reversed()
+                .thenComparing(tieBreaker);
+        }
         if (normalizedSortBy == CollectionsAssigneeDashboardSortBy.NO_RESPONSE_INVOICE_COUNT) {
             return java.util.Comparator.comparing(TenantCollectionsAssigneeDashboardSummaryView::noResponseInvoiceCount)
                 .reversed()

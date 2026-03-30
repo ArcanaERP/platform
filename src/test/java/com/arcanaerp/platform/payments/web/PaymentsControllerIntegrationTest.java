@@ -2027,6 +2027,36 @@ class PaymentsControllerIntegrationTest {
                 0,
                 10,
                 "sortBy",
+                "contacted_invoice_count"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].contactedInvoiceCount").value(1))
+            .andExpect(jsonPath("$.items[1].assignedTo").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].contactedInvoiceCount").value(0));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsAssigneeDashboardSummaryRequest(
+                COLLECTIONS_ASSIGNEE_DASHBOARD_SUMMARY_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "sortBy",
+                "promise_to_pay_invoice_count"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].promiseToPayInvoiceCount").value(1))
+            .andExpect(jsonPath("$.items[1].assignedTo").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].promiseToPayInvoiceCount").value(0));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsAssigneeDashboardSummaryRequest(
+                COLLECTIONS_ASSIGNEE_DASHBOARD_SUMMARY_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "sortBy",
                 "no_response_invoice_count"
             ))
             .andExpect(status().isOk())
