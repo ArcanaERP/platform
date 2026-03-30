@@ -349,6 +349,34 @@ Rules:
 - rows are ordered by `businessDate DESC`, then `assignedTo ASC`
 - the outcome mix is derived from immutable follow-up completion audits with current-assignment resolution at read time
 
+### WeeklyTenantCollectionsAssigneeDashboardSummary
+
+Purpose:
+- expose week-bucketed collections follow-up outcome mix by current assignee for dashboard trend reporting
+
+Fields:
+- `tenantCode`
+- `businessWeekStart`
+- `assignedTo`
+- `completionCount`
+- `invoiceCount`
+- `contactedInvoiceCount`
+- `leftVoicemailInvoiceCount`
+- `promiseToPayInvoiceCount`
+- `noResponseInvoiceCount`
+
+Filters:
+- `assignedTo` exact actor match, optional
+- `changedBy` exact actor match, optional
+- `changedAtFrom` UTC instant lower bound, optional
+- `changedAtTo` UTC instant upper bound, optional
+
+Rules:
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/weekly-summary?page=&size=&assignedTo=&changedBy=&changedAtFrom=&changedAtTo=`
+- rows are grouped by Monday-based UTC `businessWeekStart` plus current `assignedTo`
+- rows are ordered by `businessWeekStart DESC`, then `assignedTo ASC`
+- the outcome mix is derived from immutable follow-up completion audits with current-assignment resolution at read time
+
 ### ClaimUnassignedOver90CollectionsInvoice
 
 Purpose:

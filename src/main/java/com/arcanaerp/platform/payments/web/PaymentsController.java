@@ -67,6 +67,7 @@ import com.arcanaerp.platform.payments.TenantReceivableView;
 import com.arcanaerp.platform.payments.TenantReceivablesAgingView;
 import com.arcanaerp.platform.payments.TenantReceivablesSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsAssignmentSummaryView;
+import com.arcanaerp.platform.payments.WeeklyTenantCollectionsAssigneeDashboardSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsClaimSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNetIntakeSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsFollowUpOutcomeSummaryView;
@@ -1111,6 +1112,30 @@ public class PaymentsController {
             .map(this::toDailyTenantCollectionsAssigneeDashboardSummaryResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/assignee-dashboard/weekly-summary")
+    public PageResult<WeeklyTenantCollectionsAssigneeDashboardSummaryResponse> listWeeklyTenantCollectionsAssigneeDashboardSummaries(
+        @PathVariable String tenantCode,
+        @RequestParam(required = false) String assignedTo,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateInstantRange(parsedChangedAtFrom, parsedChangedAtTo, "changedAtFrom", "changedAtTo");
+        return paymentManagement.listWeeklyTenantCollectionsAssigneeDashboardSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                normalizeOptional(assignedTo, "assignedTo"),
+                normalizeOptional(changedBy, "changedBy"),
+                parsedChangedAtFrom,
+                parsedChangedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toWeeklyTenantCollectionsAssigneeDashboardSummaryResponse);
+    }
+
     @GetMapping("/tenants/{tenantCode}/receivables/collections/assignee-aging-summary")
     public PageResult<TenantCollectionsAssigneeAgingSummaryResponse> listTenantCollectionsAssigneeAgingSummaries(
         @PathVariable String tenantCode,
@@ -1989,6 +2014,22 @@ public class PaymentsController {
         return new DailyTenantCollectionsAssigneeDashboardSummaryResponse(
             summary.tenantCode(),
             summary.businessDate(),
+            summary.assignedTo(),
+            summary.completionCount(),
+            summary.invoiceCount(),
+            summary.contactedInvoiceCount(),
+            summary.leftVoicemailInvoiceCount(),
+            summary.promiseToPayInvoiceCount(),
+            summary.noResponseInvoiceCount()
+        );
+    }
+
+    private WeeklyTenantCollectionsAssigneeDashboardSummaryResponse toWeeklyTenantCollectionsAssigneeDashboardSummaryResponse(
+        WeeklyTenantCollectionsAssigneeDashboardSummaryView summary
+    ) {
+        return new WeeklyTenantCollectionsAssigneeDashboardSummaryResponse(
+            summary.tenantCode(),
+            summary.businessWeekStart(),
             summary.assignedTo(),
             summary.completionCount(),
             summary.invoiceCount(),
