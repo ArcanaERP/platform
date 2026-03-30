@@ -395,6 +395,15 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    PageResult<DailyTenantCollectionsAssigneeDashboardSummaryView> listDailyTenantCollectionsAssigneeDashboardSummaries(
+        String tenantCode,
+        String assignedTo,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<TenantCollectionsAssignmentSummaryView> listOver90TenantCollectionsAssignmentSummaries(
         String tenantCode,
         String currencyCode,

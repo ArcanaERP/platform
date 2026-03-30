@@ -321,6 +321,34 @@ Rules:
 - optional exact `latestFollowUpOutcome` narrows the dashboard before grouping
 - optional `sortBy` supports `ASSIGNED_TO`, `ASSIGNED_INVOICE_COUNT`, `TOTAL_OUTSTANDING_AMOUNT`, `OLDEST_DUE_AT`, `CONTACTED_INVOICE_COUNT`, `LEFT_VOICEMAIL_INVOICE_COUNT`, `PROMISE_TO_PAY_INVOICE_COUNT`, and `NO_RESPONSE_INVOICE_COUNT`
 
+### DailyTenantCollectionsAssigneeDashboardSummary
+
+Purpose:
+- expose day-bucketed collections follow-up outcome mix by current assignee for dashboard trend reporting
+
+Fields:
+- `tenantCode`
+- `businessDate`
+- `assignedTo`
+- `completionCount`
+- `invoiceCount`
+- `contactedInvoiceCount`
+- `leftVoicemailInvoiceCount`
+- `promiseToPayInvoiceCount`
+- `noResponseInvoiceCount`
+
+Filters:
+- `assignedTo` exact actor match, optional
+- `changedBy` exact actor match, optional
+- `changedAtFrom` UTC instant lower bound, optional
+- `changedAtTo` UTC instant upper bound, optional
+
+Rules:
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/daily-summary?page=&size=&assignedTo=&changedBy=&changedAtFrom=&changedAtTo=`
+- rows are grouped by UTC `businessDate` plus current `assignedTo`
+- rows are ordered by `businessDate DESC`, then `assignedTo ASC`
+- the outcome mix is derived from immutable follow-up completion audits with current-assignment resolution at read time
+
 ### ClaimUnassignedOver90CollectionsInvoice
 
 Purpose:
