@@ -319,7 +319,7 @@ Rules:
 - latest follow-up outcome mix is derived from the current `latestFollowUpOutcome` on each receivable
 - optional exact `assignedTo` narrows the dashboard before grouping
 - optional exact `latestFollowUpOutcome` narrows the dashboard before grouping
-- optional `sortBy` supports `ASSIGNED_TO`, `ASSIGNED_INVOICE_COUNT`, `TOTAL_OUTSTANDING_AMOUNT`, `OLDEST_DUE_AT`, `CONTACTED_INVOICE_COUNT`, `PROMISE_TO_PAY_INVOICE_COUNT`, and `NO_RESPONSE_INVOICE_COUNT`
+- optional `sortBy` supports `ASSIGNED_TO`, `ASSIGNED_INVOICE_COUNT`, `TOTAL_OUTSTANDING_AMOUNT`, `OLDEST_DUE_AT`, `CONTACTED_INVOICE_COUNT`, `LEFT_VOICEMAIL_INVOICE_COUNT`, `PROMISE_TO_PAY_INVOICE_COUNT`, and `NO_RESPONSE_INVOICE_COUNT`
 
 ### ClaimUnassignedOver90CollectionsInvoice
 
