@@ -39,6 +39,7 @@ import com.arcanaerp.platform.payments.CreatePaymentCommand;
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.DailyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
+import com.arcanaerp.platform.payments.MonthlyTenantCollectionsAssigneeDashboardSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteOutcomeSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsNoteCategorySummaryView;
@@ -2045,6 +2046,63 @@ class PaymentManagementService implements PaymentManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<MonthlyTenantCollectionsAssigneeDashboardSummaryView> listMonthlyTenantCollectionsAssigneeDashboardSummaries(
+        String tenantCode,
+        String assignedTo,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
+        String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy, "changedBy");
+
+        Map<MonthlyCollectionsAssigneeDashboardBucket, DailyAssigneeDashboardSummaryAccumulator> summariesByBucket =
+            new LinkedHashMap<>();
+        collectionsFollowUpAuditRepository.findOutcomeHistoryForSummary(
+                normalizedTenantCode,
+                null,
+                normalizedChangedBy,
+                changedAtFrom,
+                changedAtTo
+            ).stream()
+            .forEach(audit -> {
+                CollectionsAssignment assignment = collectionsAssignmentRepository.findByInvoiceNumber(audit.getInvoiceNumber())
+                    .orElse(null);
+                if (assignment == null || !normalizedTenantCode.equals(assignment.getTenantCode())) {
+                    return;
+                }
+                if (normalizedAssignedTo != null && !normalizedAssignedTo.equals(assignment.getAssignedTo())) {
+                    return;
+                }
+                summariesByBucket
+                    .computeIfAbsent(
+                        new MonthlyCollectionsAssigneeDashboardBucket(
+                            YearMonth.from(audit.getChangedAt().atOffset(ZoneOffset.UTC)),
+                            assignment.getAssignedTo()
+                        ),
+                        ignored -> new DailyAssigneeDashboardSummaryAccumulator()
+                    )
+                    .add(audit);
+            });
+
+        List<MonthlyTenantCollectionsAssigneeDashboardSummaryView> summaries = summariesByBucket.entrySet().stream()
+            .map(entry -> entry.getValue().toMonthlyView(
+                normalizedTenantCode,
+                entry.getKey().businessMonth(),
+                entry.getKey().assignedTo()
+            ))
+            .sorted(java.util.Comparator
+                .comparing(MonthlyTenantCollectionsAssigneeDashboardSummaryView::businessMonth)
+                .reversed()
+                .thenComparing(MonthlyTenantCollectionsAssigneeDashboardSummaryView::assignedTo))
+            .toList();
+        return paginateList(summaries, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<TenantCollectionsAssignmentSummaryView> listOver90TenantCollectionsAssignmentSummaries(
         String tenantCode,
         String currencyCode,
@@ -3676,6 +3734,24 @@ class PaymentManagementService implements PaymentManagement {
                 noResponseInvoiceCount
             );
         }
+
+        MonthlyTenantCollectionsAssigneeDashboardSummaryView toMonthlyView(
+            String tenantCode,
+            YearMonth businessMonth,
+            String assignedTo
+        ) {
+            return new MonthlyTenantCollectionsAssigneeDashboardSummaryView(
+                tenantCode,
+                businessMonth,
+                assignedTo,
+                completionCount,
+                invoiceNumbers.size(),
+                contactedInvoiceCount,
+                leftVoicemailInvoiceCount,
+                promiseToPayInvoiceCount,
+                noResponseInvoiceCount
+            );
+        }
     }
 
     private static final class UnassignedOver90CollectionsSummaryAccumulator {
@@ -3943,6 +4019,12 @@ class PaymentManagementService implements PaymentManagement {
 
     private record WeeklyCollectionsAssigneeDashboardBucket(
         LocalDate businessWeekStart,
+        String assignedTo
+    ) {
+    }
+
+    private record MonthlyCollectionsAssigneeDashboardBucket(
+        YearMonth businessMonth,
         String assignedTo
     ) {
     }

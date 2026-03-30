@@ -120,6 +120,7 @@ Payments:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard-summary?currencyCode=&assignedTo=&latestFollowUpOutcome=&sortBy=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/daily-summary?assignedTo=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/weekly-summary?assignedTo=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/monthly-summary?assignedTo=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/unassigned?currencyCode=&latestFollowUpOutcome=&dueAtOnOrBefore=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/unassigned/summary?currencyCode=&latestFollowUpOutcome=`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/claim`
