@@ -1937,51 +1937,27 @@ class PaymentManagementService implements PaymentManagement {
         Instant changedAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
-        String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy, "changedBy");
-
-        Map<DailyCollectionsAssigneeDashboardBucket, DailyAssigneeDashboardSummaryAccumulator> summariesByBucket =
-            new LinkedHashMap<>();
-        collectionsFollowUpAuditRepository.findOutcomeHistoryForSummary(
-                normalizedTenantCode,
-                null,
-                normalizedChangedBy,
-                changedAtFrom,
-                changedAtTo
-            ).stream()
-            .forEach(audit -> {
-                CollectionsAssignment assignment = collectionsAssignmentRepository.findByInvoiceNumber(audit.getInvoiceNumber())
-                    .orElse(null);
-                if (assignment == null || !normalizedTenantCode.equals(assignment.getTenantCode())) {
-                    return;
-                }
-                if (normalizedAssignedTo != null && !normalizedAssignedTo.equals(assignment.getAssignedTo())) {
-                    return;
-                }
-                summariesByBucket
-                    .computeIfAbsent(
-                        new DailyCollectionsAssigneeDashboardBucket(
-                            audit.getChangedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
-                            assignment.getAssignedTo()
-                        ),
-                        ignored -> new DailyAssigneeDashboardSummaryAccumulator()
-                    )
-                    .add(audit);
-            });
-
-        List<DailyTenantCollectionsAssigneeDashboardSummaryView> summaries = summariesByBucket.entrySet().stream()
-            .map(entry -> entry.getValue().toView(
-                normalizedTenantCode,
-                entry.getKey().businessDate(),
-                entry.getKey().assignedTo()
-            ))
-            .sorted(java.util.Comparator
+        return listCollectionsAssigneeDashboardTimeSeries(
+            tenantCode,
+            assignedTo,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            (audit, assignment) -> new DailyCollectionsAssigneeDashboardBucket(
+                audit.getChangedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+                assignment.getAssignedTo()
+            ),
+            java.util.Comparator
                 .comparing(DailyTenantCollectionsAssigneeDashboardSummaryView::businessDate)
                 .reversed()
-                .thenComparing(DailyTenantCollectionsAssigneeDashboardSummaryView::assignedTo))
-            .toList();
-        return paginateList(summaries, pageQuery);
+                .thenComparing(DailyTenantCollectionsAssigneeDashboardSummaryView::assignedTo),
+            (bucket, accumulator, normalizedTenantCode) -> accumulator.toView(
+                normalizedTenantCode,
+                bucket.businessDate(),
+                bucket.assignedTo()
+            )
+        );
     }
 
     @Override
@@ -1994,54 +1970,30 @@ class PaymentManagementService implements PaymentManagement {
         Instant changedAtTo,
         PageQuery pageQuery
     ) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
-        String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy, "changedBy");
-
-        Map<WeeklyCollectionsAssigneeDashboardBucket, DailyAssigneeDashboardSummaryAccumulator> summariesByBucket =
-            new LinkedHashMap<>();
-        collectionsFollowUpAuditRepository.findOutcomeHistoryForSummary(
-                normalizedTenantCode,
-                null,
-                normalizedChangedBy,
-                changedAtFrom,
-                changedAtTo
-            ).stream()
-            .forEach(audit -> {
-                CollectionsAssignment assignment = collectionsAssignmentRepository.findByInvoiceNumber(audit.getInvoiceNumber())
-                    .orElse(null);
-                if (assignment == null || !normalizedTenantCode.equals(assignment.getTenantCode())) {
-                    return;
-                }
-                if (normalizedAssignedTo != null && !normalizedAssignedTo.equals(assignment.getAssignedTo())) {
-                    return;
-                }
-                summariesByBucket
-                    .computeIfAbsent(
-                        new WeeklyCollectionsAssigneeDashboardBucket(
-                            audit.getChangedAt()
-                                .atOffset(ZoneOffset.UTC)
-                                .toLocalDate()
-                                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
-                            assignment.getAssignedTo()
-                        ),
-                        ignored -> new DailyAssigneeDashboardSummaryAccumulator()
-                    )
-                    .add(audit);
-            });
-
-        List<WeeklyTenantCollectionsAssigneeDashboardSummaryView> summaries = summariesByBucket.entrySet().stream()
-            .map(entry -> entry.getValue().toWeeklyView(
-                normalizedTenantCode,
-                entry.getKey().businessWeekStart(),
-                entry.getKey().assignedTo()
-            ))
-            .sorted(java.util.Comparator
+        return listCollectionsAssigneeDashboardTimeSeries(
+            tenantCode,
+            assignedTo,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            (audit, assignment) -> new WeeklyCollectionsAssigneeDashboardBucket(
+                audit.getChangedAt()
+                    .atOffset(ZoneOffset.UTC)
+                    .toLocalDate()
+                    .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+                assignment.getAssignedTo()
+            ),
+            java.util.Comparator
                 .comparing(WeeklyTenantCollectionsAssigneeDashboardSummaryView::businessWeekStart)
                 .reversed()
-                .thenComparing(WeeklyTenantCollectionsAssigneeDashboardSummaryView::assignedTo))
-            .toList();
-        return paginateList(summaries, pageQuery);
+                .thenComparing(WeeklyTenantCollectionsAssigneeDashboardSummaryView::assignedTo),
+            (bucket, accumulator, normalizedTenantCode) -> accumulator.toWeeklyView(
+                normalizedTenantCode,
+                bucket.businessWeekStart(),
+                bucket.assignedTo()
+            )
+        );
     }
 
     @Override
@@ -2054,11 +2006,45 @@ class PaymentManagementService implements PaymentManagement {
         Instant changedAtTo,
         PageQuery pageQuery
     ) {
+        return listCollectionsAssigneeDashboardTimeSeries(
+            tenantCode,
+            assignedTo,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            (audit, assignment) -> new MonthlyCollectionsAssigneeDashboardBucket(
+                YearMonth.from(audit.getChangedAt().atOffset(ZoneOffset.UTC)),
+                assignment.getAssignedTo()
+            ),
+            java.util.Comparator
+                .comparing(MonthlyTenantCollectionsAssigneeDashboardSummaryView::businessMonth)
+                .reversed()
+                .thenComparing(MonthlyTenantCollectionsAssigneeDashboardSummaryView::assignedTo),
+            (bucket, accumulator, normalizedTenantCode) -> accumulator.toMonthlyView(
+                normalizedTenantCode,
+                bucket.businessMonth(),
+                bucket.assignedTo()
+            )
+        );
+    }
+
+    private <B, V> PageResult<V> listCollectionsAssigneeDashboardTimeSeries(
+        String tenantCode,
+        String assignedTo,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery,
+        CollectionsAssigneeDashboardBucketFactory<B> bucketFactory,
+        java.util.Comparator<V> comparator,
+        CollectionsAssigneeDashboardBucketMapper<B, V> viewMapper
+    ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
         String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
         String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy, "changedBy");
 
-        Map<MonthlyCollectionsAssigneeDashboardBucket, DailyAssigneeDashboardSummaryAccumulator> summariesByBucket =
+        Map<B, DailyAssigneeDashboardSummaryAccumulator> summariesByBucket =
             new LinkedHashMap<>();
         collectionsFollowUpAuditRepository.findOutcomeHistoryForSummary(
                 normalizedTenantCode,
@@ -2068,8 +2054,7 @@ class PaymentManagementService implements PaymentManagement {
                 changedAtTo
             ).stream()
             .forEach(audit -> {
-                CollectionsAssignment assignment = collectionsAssignmentRepository.findByInvoiceNumber(audit.getInvoiceNumber())
-                    .orElse(null);
+                CollectionsAssignment assignment = currentAssignment(audit);
                 if (assignment == null || !normalizedTenantCode.equals(assignment.getTenantCode())) {
                     return;
                 }
@@ -2078,27 +2063,21 @@ class PaymentManagementService implements PaymentManagement {
                 }
                 summariesByBucket
                     .computeIfAbsent(
-                        new MonthlyCollectionsAssigneeDashboardBucket(
-                            YearMonth.from(audit.getChangedAt().atOffset(ZoneOffset.UTC)),
-                            assignment.getAssignedTo()
-                        ),
+                        bucketFactory.create(audit, assignment),
                         ignored -> new DailyAssigneeDashboardSummaryAccumulator()
                     )
                     .add(audit);
             });
 
-        List<MonthlyTenantCollectionsAssigneeDashboardSummaryView> summaries = summariesByBucket.entrySet().stream()
-            .map(entry -> entry.getValue().toMonthlyView(
-                normalizedTenantCode,
-                entry.getKey().businessMonth(),
-                entry.getKey().assignedTo()
-            ))
-            .sorted(java.util.Comparator
-                .comparing(MonthlyTenantCollectionsAssigneeDashboardSummaryView::businessMonth)
-                .reversed()
-                .thenComparing(MonthlyTenantCollectionsAssigneeDashboardSummaryView::assignedTo))
+        List<V> summaries = summariesByBucket.entrySet().stream()
+            .map(entry -> viewMapper.toView(entry.getKey(), entry.getValue(), normalizedTenantCode))
+            .sorted(comparator)
             .toList();
         return paginateList(summaries, pageQuery);
+    }
+
+    private CollectionsAssignment currentAssignment(CollectionsFollowUpAudit audit) {
+        return collectionsAssignmentRepository.findByInvoiceNumber(audit.getInvoiceNumber()).orElse(null);
     }
 
     @Override
@@ -4027,6 +4006,16 @@ class PaymentManagementService implements PaymentManagement {
         YearMonth businessMonth,
         String assignedTo
     ) {
+    }
+
+    @FunctionalInterface
+    private interface CollectionsAssigneeDashboardBucketFactory<B> {
+        B create(CollectionsFollowUpAudit audit, CollectionsAssignment assignment);
+    }
+
+    @FunctionalInterface
+    private interface CollectionsAssigneeDashboardBucketMapper<B, V> {
+        V toView(B bucket, DailyAssigneeDashboardSummaryAccumulator accumulator, String tenantCode);
     }
 
     private record WeeklyCollectionsFollowUpOutcomeBucket(
