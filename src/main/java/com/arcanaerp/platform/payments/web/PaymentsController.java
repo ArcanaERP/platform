@@ -8,6 +8,7 @@ import com.arcanaerp.platform.payments.ClaimCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.CollectionsAssigneeOperationsSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssigneeAgingSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssigneeDashboardSortBy;
+import com.arcanaerp.platform.payments.CollectionsAssigneeDashboardTrendSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssignmentClaimChangeView;
 import com.arcanaerp.platform.payments.CollectionsOver90AssigneeSummarySortBy;
 import com.arcanaerp.platform.payments.CollectionsNoteCategory;
@@ -1096,6 +1097,7 @@ public class PaymentsController {
         @RequestParam(required = false) String changedBy,
         @RequestParam(required = false) String changedAtFrom,
         @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) String sortBy,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
@@ -1108,6 +1110,7 @@ public class PaymentsController {
                 normalizeOptional(changedBy, "changedBy"),
                 parsedChangedAtFrom,
                 parsedChangedAtTo,
+                parseCollectionsAssigneeDashboardTrendSortBy(sortBy),
                 PageQuery.of(page, size)
             )
             .map(this::toDailyTenantCollectionsAssigneeDashboardSummaryResponse);
@@ -1120,6 +1123,7 @@ public class PaymentsController {
         @RequestParam(required = false) String changedBy,
         @RequestParam(required = false) String changedAtFrom,
         @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) String sortBy,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
@@ -1132,6 +1136,7 @@ public class PaymentsController {
                 normalizeOptional(changedBy, "changedBy"),
                 parsedChangedAtFrom,
                 parsedChangedAtTo,
+                parseCollectionsAssigneeDashboardTrendSortBy(sortBy),
                 PageQuery.of(page, size)
             )
             .map(this::toWeeklyTenantCollectionsAssigneeDashboardSummaryResponse);
@@ -1144,6 +1149,7 @@ public class PaymentsController {
         @RequestParam(required = false) String changedBy,
         @RequestParam(required = false) String changedAtFrom,
         @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) String sortBy,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
@@ -1156,6 +1162,7 @@ public class PaymentsController {
                 normalizeOptional(changedBy, "changedBy"),
                 parsedChangedAtFrom,
                 parsedChangedAtTo,
+                parseCollectionsAssigneeDashboardTrendSortBy(sortBy),
                 PageQuery.of(page, size)
             )
             .map(this::toMonthlyTenantCollectionsAssigneeDashboardSummaryResponse);
@@ -2481,6 +2488,18 @@ public class PaymentsController {
         }
         try {
             return CollectionsAssigneeDashboardSortBy.valueOf(normalizedValue.toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("sortBy query parameter is invalid");
+        }
+    }
+
+    private static CollectionsAssigneeDashboardTrendSortBy parseCollectionsAssigneeDashboardTrendSortBy(String value) {
+        String normalizedValue = normalizeOptional(value, "sortBy");
+        if (normalizedValue == null) {
+            return CollectionsAssigneeDashboardTrendSortBy.BUSINESS_TIME;
+        }
+        try {
+            return CollectionsAssigneeDashboardTrendSortBy.valueOf(normalizedValue.toUpperCase());
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException("sortBy query parameter is invalid");
         }

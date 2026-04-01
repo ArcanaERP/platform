@@ -12,6 +12,7 @@ import com.arcanaerp.platform.payments.ClaimCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.CollectionsAssigneeOperationsSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssigneeAgingSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssigneeDashboardSortBy;
+import com.arcanaerp.platform.payments.CollectionsAssigneeDashboardTrendSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssignmentClaimChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentReleaseChangeView;
@@ -1935,6 +1936,7 @@ class PaymentManagementService implements PaymentManagement {
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
+        CollectionsAssigneeDashboardTrendSortBy sortBy,
         PageQuery pageQuery
     ) {
         return listCollectionsAssigneeDashboardTimeSeries(
@@ -1948,10 +1950,7 @@ class PaymentManagementService implements PaymentManagement {
                 audit.getChangedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
                 assignment.getAssignedTo()
             ),
-            java.util.Comparator
-                .comparing(DailyTenantCollectionsAssigneeDashboardSummaryView::businessDate)
-                .reversed()
-                .thenComparing(DailyTenantCollectionsAssigneeDashboardSummaryView::assignedTo),
+            dailyCollectionsAssigneeDashboardTrendComparator(sortBy),
             (bucket, accumulator, normalizedTenantCode) -> accumulator.toView(
                 normalizedTenantCode,
                 bucket.businessDate(),
@@ -1968,6 +1967,7 @@ class PaymentManagementService implements PaymentManagement {
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
+        CollectionsAssigneeDashboardTrendSortBy sortBy,
         PageQuery pageQuery
     ) {
         return listCollectionsAssigneeDashboardTimeSeries(
@@ -1984,10 +1984,7 @@ class PaymentManagementService implements PaymentManagement {
                     .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
                 assignment.getAssignedTo()
             ),
-            java.util.Comparator
-                .comparing(WeeklyTenantCollectionsAssigneeDashboardSummaryView::businessWeekStart)
-                .reversed()
-                .thenComparing(WeeklyTenantCollectionsAssigneeDashboardSummaryView::assignedTo),
+            weeklyCollectionsAssigneeDashboardTrendComparator(sortBy),
             (bucket, accumulator, normalizedTenantCode) -> accumulator.toWeeklyView(
                 normalizedTenantCode,
                 bucket.businessWeekStart(),
@@ -2004,6 +2001,7 @@ class PaymentManagementService implements PaymentManagement {
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
+        CollectionsAssigneeDashboardTrendSortBy sortBy,
         PageQuery pageQuery
     ) {
         return listCollectionsAssigneeDashboardTimeSeries(
@@ -2017,10 +2015,7 @@ class PaymentManagementService implements PaymentManagement {
                 YearMonth.from(audit.getChangedAt().atOffset(ZoneOffset.UTC)),
                 assignment.getAssignedTo()
             ),
-            java.util.Comparator
-                .comparing(MonthlyTenantCollectionsAssigneeDashboardSummaryView::businessMonth)
-                .reversed()
-                .thenComparing(MonthlyTenantCollectionsAssigneeDashboardSummaryView::assignedTo),
+            monthlyCollectionsAssigneeDashboardTrendComparator(sortBy),
             (bucket, accumulator, normalizedTenantCode) -> accumulator.toMonthlyView(
                 normalizedTenantCode,
                 bucket.businessMonth(),
@@ -3307,6 +3302,114 @@ class PaymentManagementService implements PaymentManagement {
                 .thenComparing(tieBreaker);
         }
         return tieBreaker;
+    }
+
+    private java.util.Comparator<DailyTenantCollectionsAssigneeDashboardSummaryView> dailyCollectionsAssigneeDashboardTrendComparator(
+        CollectionsAssigneeDashboardTrendSortBy sortBy
+    ) {
+        return collectionsAssigneeDashboardTrendComparator(
+            sortBy,
+            java.util.Comparator
+                .comparing(DailyTenantCollectionsAssigneeDashboardSummaryView::businessDate)
+                .reversed()
+                .thenComparing(DailyTenantCollectionsAssigneeDashboardSummaryView::assignedTo),
+            DailyTenantCollectionsAssigneeDashboardSummaryView::assignedTo,
+            DailyTenantCollectionsAssigneeDashboardSummaryView::completionCount,
+            DailyTenantCollectionsAssigneeDashboardSummaryView::invoiceCount,
+            DailyTenantCollectionsAssigneeDashboardSummaryView::contactedInvoiceCount,
+            DailyTenantCollectionsAssigneeDashboardSummaryView::leftVoicemailInvoiceCount,
+            DailyTenantCollectionsAssigneeDashboardSummaryView::promiseToPayInvoiceCount,
+            DailyTenantCollectionsAssigneeDashboardSummaryView::noResponseInvoiceCount
+        );
+    }
+
+    private java.util.Comparator<WeeklyTenantCollectionsAssigneeDashboardSummaryView> weeklyCollectionsAssigneeDashboardTrendComparator(
+        CollectionsAssigneeDashboardTrendSortBy sortBy
+    ) {
+        return collectionsAssigneeDashboardTrendComparator(
+            sortBy,
+            java.util.Comparator
+                .comparing(WeeklyTenantCollectionsAssigneeDashboardSummaryView::businessWeekStart)
+                .reversed()
+                .thenComparing(WeeklyTenantCollectionsAssigneeDashboardSummaryView::assignedTo),
+            WeeklyTenantCollectionsAssigneeDashboardSummaryView::assignedTo,
+            WeeklyTenantCollectionsAssigneeDashboardSummaryView::completionCount,
+            WeeklyTenantCollectionsAssigneeDashboardSummaryView::invoiceCount,
+            WeeklyTenantCollectionsAssigneeDashboardSummaryView::contactedInvoiceCount,
+            WeeklyTenantCollectionsAssigneeDashboardSummaryView::leftVoicemailInvoiceCount,
+            WeeklyTenantCollectionsAssigneeDashboardSummaryView::promiseToPayInvoiceCount,
+            WeeklyTenantCollectionsAssigneeDashboardSummaryView::noResponseInvoiceCount
+        );
+    }
+
+    private java.util.Comparator<MonthlyTenantCollectionsAssigneeDashboardSummaryView> monthlyCollectionsAssigneeDashboardTrendComparator(
+        CollectionsAssigneeDashboardTrendSortBy sortBy
+    ) {
+        return collectionsAssigneeDashboardTrendComparator(
+            sortBy,
+            java.util.Comparator
+                .comparing(MonthlyTenantCollectionsAssigneeDashboardSummaryView::businessMonth)
+                .reversed()
+                .thenComparing(MonthlyTenantCollectionsAssigneeDashboardSummaryView::assignedTo),
+            MonthlyTenantCollectionsAssigneeDashboardSummaryView::assignedTo,
+            MonthlyTenantCollectionsAssigneeDashboardSummaryView::completionCount,
+            MonthlyTenantCollectionsAssigneeDashboardSummaryView::invoiceCount,
+            MonthlyTenantCollectionsAssigneeDashboardSummaryView::contactedInvoiceCount,
+            MonthlyTenantCollectionsAssigneeDashboardSummaryView::leftVoicemailInvoiceCount,
+            MonthlyTenantCollectionsAssigneeDashboardSummaryView::promiseToPayInvoiceCount,
+            MonthlyTenantCollectionsAssigneeDashboardSummaryView::noResponseInvoiceCount
+        );
+    }
+
+    private <V> java.util.Comparator<V> collectionsAssigneeDashboardTrendComparator(
+        CollectionsAssigneeDashboardTrendSortBy sortBy,
+        java.util.Comparator<V> defaultComparator,
+        java.util.function.Function<V, String> assignedToExtractor,
+        java.util.function.ToLongFunction<V> completionCountExtractor,
+        java.util.function.ToLongFunction<V> invoiceCountExtractor,
+        java.util.function.ToLongFunction<V> contactedCountExtractor,
+        java.util.function.ToLongFunction<V> leftVoicemailCountExtractor,
+        java.util.function.ToLongFunction<V> promiseToPayCountExtractor,
+        java.util.function.ToLongFunction<V> noResponseCountExtractor
+    ) {
+        CollectionsAssigneeDashboardTrendSortBy normalizedSortBy = sortBy == null
+            ? CollectionsAssigneeDashboardTrendSortBy.BUSINESS_TIME
+            : sortBy;
+        java.util.Comparator<V> assignedToComparator = java.util.Comparator.comparing(assignedToExtractor);
+        if (normalizedSortBy == CollectionsAssigneeDashboardTrendSortBy.ASSIGNED_TO) {
+            return assignedToComparator.thenComparing(defaultComparator);
+        }
+        if (normalizedSortBy == CollectionsAssigneeDashboardTrendSortBy.COMPLETION_COUNT) {
+            return java.util.Comparator.comparingLong(completionCountExtractor)
+                .reversed()
+                .thenComparing(defaultComparator);
+        }
+        if (normalizedSortBy == CollectionsAssigneeDashboardTrendSortBy.INVOICE_COUNT) {
+            return java.util.Comparator.comparingLong(invoiceCountExtractor)
+                .reversed()
+                .thenComparing(defaultComparator);
+        }
+        if (normalizedSortBy == CollectionsAssigneeDashboardTrendSortBy.CONTACTED_INVOICE_COUNT) {
+            return java.util.Comparator.comparingLong(contactedCountExtractor)
+                .reversed()
+                .thenComparing(defaultComparator);
+        }
+        if (normalizedSortBy == CollectionsAssigneeDashboardTrendSortBy.LEFT_VOICEMAIL_INVOICE_COUNT) {
+            return java.util.Comparator.comparingLong(leftVoicemailCountExtractor)
+                .reversed()
+                .thenComparing(defaultComparator);
+        }
+        if (normalizedSortBy == CollectionsAssigneeDashboardTrendSortBy.PROMISE_TO_PAY_INVOICE_COUNT) {
+            return java.util.Comparator.comparingLong(promiseToPayCountExtractor)
+                .reversed()
+                .thenComparing(defaultComparator);
+        }
+        if (normalizedSortBy == CollectionsAssigneeDashboardTrendSortBy.NO_RESPONSE_INVOICE_COUNT) {
+            return java.util.Comparator.comparingLong(noResponseCountExtractor)
+                .reversed()
+                .thenComparing(defaultComparator);
+        }
+        return defaultComparator;
     }
 
     private List<AgedTenantReceivableView> enrichAgedReceivables(List<ReceivableSnapshot> snapshots) {

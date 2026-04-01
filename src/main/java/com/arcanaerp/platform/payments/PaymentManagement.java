@@ -401,6 +401,7 @@ public interface PaymentManagement {
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
+        CollectionsAssigneeDashboardTrendSortBy sortBy,
         PageQuery pageQuery
     );
 
@@ -410,6 +411,7 @@ public interface PaymentManagement {
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
+        CollectionsAssigneeDashboardTrendSortBy sortBy,
         PageQuery pageQuery
     );
 
@@ -419,6 +421,7 @@ public interface PaymentManagement {
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
+        CollectionsAssigneeDashboardTrendSortBy sortBy,
         PageQuery pageQuery
     );
 
