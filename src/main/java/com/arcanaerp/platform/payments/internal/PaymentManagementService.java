@@ -61,6 +61,7 @@ import com.arcanaerp.platform.payments.TenantCollectionsAssigneeDashboardSummary
 import com.arcanaerp.platform.payments.TenantCollectionsAssigneeAgingSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsAssigneeOperationsSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsAssigneeFollowUpOutcomeSummaryView;
+import com.arcanaerp.platform.payments.TenantCollectionsActorFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsNetIntakeActorSummaryView;
@@ -2301,6 +2302,41 @@ class PaymentManagementService implements PaymentManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<TenantCollectionsActorFollowUpOutcomeSummaryView> listTenantCollectionsActorFollowUpOutcomeSummaries(
+        String tenantCode,
+        CollectionsFollowUpOutcome outcome,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeCollectionsFollowUpOutcomes(
+            tenantCode,
+            outcome,
+            null,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> new TenantCollectionsActorFollowUpOutcomeBucket(
+                audit.getChangedBy(),
+                audit.getOutcome()
+            ),
+            (normalizedTenantCode, bucket, summary) -> new TenantCollectionsActorFollowUpOutcomeSummaryView(
+                normalizedTenantCode,
+                bucket.changedBy(),
+                bucket.outcome(),
+                summary.completionCount,
+                summary.invoiceNumbers.size()
+            ),
+            java.util.Comparator
+                .comparing(TenantCollectionsActorFollowUpOutcomeSummaryView::changedBy)
+                .thenComparing(summary -> summary.outcome().name())
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<DailyTenantCollectionsFollowUpOutcomeSummaryView> listDailyTenantCollectionsFollowUpOutcomeSummaries(
         String tenantCode,
         CollectionsFollowUpOutcome outcome,
@@ -4146,6 +4182,12 @@ class PaymentManagementService implements PaymentManagement {
     private record TenantCollectionsCurrentAssigneeFollowUpOutcomeBucket(
         String assignedTo,
         CollectionsFollowUpOutcome latestFollowUpOutcome
+    ) {
+    }
+
+    private record TenantCollectionsActorFollowUpOutcomeBucket(
+        String changedBy,
+        CollectionsFollowUpOutcome outcome
     ) {
     }
 

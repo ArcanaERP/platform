@@ -1122,9 +1122,34 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/monthly-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/assignee-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/daily-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/weekly-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/monthly-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
+
+### CollectionsActorFollowUpOutcomeSummary
+
+Purpose:
+- expose follow-up completion counts grouped by audit actor plus outcome
+
+Fields:
+- `tenantCode`
+- `changedBy`
+- `outcome`
+- `completionCount`
+- `invoiceCount`
+
+Filters:
+- `outcome` exact follow-up completion outcome match, optional
+- `changedBy` exact actor match, optional
+- `changedAtFrom` UTC instant lower bound, optional
+- `changedAtTo` UTC instant upper bound, optional
+
+Rules:
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
+- rows are grouped by `changedBy + outcome`
+- rows are sorted by `changedBy ASC`, then `outcome ASC`
+- rows are derived directly from immutable follow-up completion audits without current-assignment joins
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/follow-up`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/follow-up/complete`
