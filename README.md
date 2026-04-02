@@ -118,9 +118,9 @@ Payments:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90?currencyCode=&invoiceNumber=&assignedTo=&dueAtOnOrBefore=&followUpAtFrom=&followUpAtTo=&followUpScheduled=&latestFollowUpOutcome=&sortBy=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/assignee-summary?currencyCode=&assignedTo=&latestFollowUpOutcome=&sortBy=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard-summary?currencyCode=&assignedTo=&latestFollowUpOutcome=&sortBy=&page=&size=`
-- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/daily-summary?assignedTo=&changedBy=&changedAtFrom=&changedAtTo=&sortBy=&page=&size=`
-- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/weekly-summary?assignedTo=&changedBy=&changedAtFrom=&changedAtTo=&sortBy=&page=&size=`
-- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/monthly-summary?assignedTo=&changedBy=&changedAtFrom=&changedAtTo=&sortBy=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/daily-summary?assignedTo=&changedBy=&outcome=&changedAtFrom=&changedAtTo=&sortBy=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/weekly-summary?assignedTo=&changedBy=&outcome=&changedAtFrom=&changedAtTo=&sortBy=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/monthly-summary?assignedTo=&changedBy=&outcome=&changedAtFrom=&changedAtTo=&sortBy=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/unassigned?currencyCode=&latestFollowUpOutcome=&dueAtOnOrBefore=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/unassigned/summary?currencyCode=&latestFollowUpOutcome=`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/claim`

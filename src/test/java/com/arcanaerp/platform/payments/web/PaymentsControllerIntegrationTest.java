@@ -2393,6 +2393,19 @@ class PaymentsControllerIntegrationTest {
                 COLLECTIONS_ASSIGNEE_DASHBOARD_DAILY_SUMMARY_TENANT_CODE,
                 0,
                 10,
+                "outcome",
+                "NO_RESPONSE"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].businessDate").value(firstDay.toString().substring(0, 10)))
+            .andExpect(jsonPath("$.items[0].noResponseInvoiceCount").value(1));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.dailyTenantCollectionsAssigneeDashboardSummaryRequest(
+                COLLECTIONS_ASSIGNEE_DASHBOARD_DAILY_SUMMARY_TENANT_CODE,
+                0,
+                10,
                 "assignedTo",
                 "collector-b@arcanaerp.com"
             ))
@@ -2400,6 +2413,15 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(2))
             .andExpect(jsonPath("$.items[0].assignedTo").value("collector-b@arcanaerp.com"))
             .andExpect(jsonPath("$.items[1].assignedTo").value("collector-b@arcanaerp.com"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.dailyTenantCollectionsAssigneeDashboardSummaryRequest(
+                COLLECTIONS_ASSIGNEE_DASHBOARD_DAILY_SUMMARY_TENANT_CODE,
+                0,
+                10,
+                "outcome",
+                "invalid"
+            ))
+            .andExpect(status().isBadRequest());
 
         mockMvc.perform(PaymentsWebIntegrationTestSupport.dailyTenantCollectionsAssigneeDashboardSummaryRequest(
                 COLLECTIONS_ASSIGNEE_DASHBOARD_DAILY_SUMMARY_TENANT_CODE,
@@ -2601,6 +2623,19 @@ class PaymentsControllerIntegrationTest {
                 COLLECTIONS_ASSIGNEE_DASHBOARD_WEEKLY_SUMMARY_TENANT_CODE,
                 0,
                 10,
+                "outcome",
+                "NO_RESPONSE"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].businessWeekStart").value(firstWeekStart))
+            .andExpect(jsonPath("$.items[0].noResponseInvoiceCount").value(1));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.weeklyTenantCollectionsAssigneeDashboardSummaryRequest(
+                COLLECTIONS_ASSIGNEE_DASHBOARD_WEEKLY_SUMMARY_TENANT_CODE,
+                0,
+                10,
                 "sortBy",
                 "no_response_invoice_count"
             ))
@@ -2609,6 +2644,15 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].assignedTo").value("collector-b@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].businessWeekStart").value(firstWeekStart))
             .andExpect(jsonPath("$.items[0].noResponseInvoiceCount").value(1));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.weeklyTenantCollectionsAssigneeDashboardSummaryRequest(
+                COLLECTIONS_ASSIGNEE_DASHBOARD_WEEKLY_SUMMARY_TENANT_CODE,
+                0,
+                10,
+                "outcome",
+                "invalid"
+            ))
+            .andExpect(status().isBadRequest());
 
         mockMvc.perform(PaymentsWebIntegrationTestSupport.weeklyTenantCollectionsAssigneeDashboardSummaryRequest(
                 COLLECTIONS_ASSIGNEE_DASHBOARD_WEEKLY_SUMMARY_TENANT_CODE,
@@ -2810,6 +2854,19 @@ class PaymentsControllerIntegrationTest {
                 COLLECTIONS_ASSIGNEE_DASHBOARD_MONTHLY_SUMMARY_TENANT_CODE,
                 0,
                 10,
+                "outcome",
+                "NO_RESPONSE"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].businessMonth").value(firstMonthValue))
+            .andExpect(jsonPath("$.items[0].noResponseInvoiceCount").value(1));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.monthlyTenantCollectionsAssigneeDashboardSummaryRequest(
+                COLLECTIONS_ASSIGNEE_DASHBOARD_MONTHLY_SUMMARY_TENANT_CODE,
+                0,
+                10,
                 "sortBy",
                 "no_response_invoice_count"
             ))
@@ -2818,6 +2875,15 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].assignedTo").value("collector-b@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].businessMonth").value(firstMonthValue))
             .andExpect(jsonPath("$.items[0].noResponseInvoiceCount").value(1));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.monthlyTenantCollectionsAssigneeDashboardSummaryRequest(
+                COLLECTIONS_ASSIGNEE_DASHBOARD_MONTHLY_SUMMARY_TENANT_CODE,
+                0,
+                10,
+                "outcome",
+                "invalid"
+            ))
+            .andExpect(status().isBadRequest());
 
         mockMvc.perform(PaymentsWebIntegrationTestSupport.monthlyTenantCollectionsAssigneeDashboardSummaryRequest(
                 COLLECTIONS_ASSIGNEE_DASHBOARD_MONTHLY_SUMMARY_TENANT_CODE,

@@ -340,12 +340,13 @@ Fields:
 Filters:
 - `assignedTo` exact actor match, optional
 - `changedBy` exact actor match, optional
+- `outcome` exact follow-up completion outcome match, optional
 - `changedAtFrom` UTC instant lower bound, optional
 - `changedAtTo` UTC instant upper bound, optional
 - `sortBy` one of `BUSINESS_TIME`, `ASSIGNED_TO`, `COMPLETION_COUNT`, `INVOICE_COUNT`, `CONTACTED_INVOICE_COUNT`, `LEFT_VOICEMAIL_INVOICE_COUNT`, `PROMISE_TO_PAY_INVOICE_COUNT`, `NO_RESPONSE_INVOICE_COUNT`
 
 Rules:
-- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/daily-summary?page=&size=&assignedTo=&changedBy=&changedAtFrom=&changedAtTo=&sortBy=`
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/daily-summary?page=&size=&assignedTo=&changedBy=&outcome=&changedAtFrom=&changedAtTo=&sortBy=`
 - rows are grouped by UTC `businessDate` plus current `assignedTo`
 - default ordering is `businessDate DESC`, then `assignedTo ASC`
 - the outcome mix is derived from immutable follow-up completion audits with current-assignment resolution at read time
@@ -369,12 +370,13 @@ Fields:
 Filters:
 - `assignedTo` exact actor match, optional
 - `changedBy` exact actor match, optional
+- `outcome` exact follow-up completion outcome match, optional
 - `changedAtFrom` UTC instant lower bound, optional
 - `changedAtTo` UTC instant upper bound, optional
 - `sortBy` one of `BUSINESS_TIME`, `ASSIGNED_TO`, `COMPLETION_COUNT`, `INVOICE_COUNT`, `CONTACTED_INVOICE_COUNT`, `LEFT_VOICEMAIL_INVOICE_COUNT`, `PROMISE_TO_PAY_INVOICE_COUNT`, `NO_RESPONSE_INVOICE_COUNT`
 
 Rules:
-- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/weekly-summary?page=&size=&assignedTo=&changedBy=&changedAtFrom=&changedAtTo=&sortBy=`
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/weekly-summary?page=&size=&assignedTo=&changedBy=&outcome=&changedAtFrom=&changedAtTo=&sortBy=`
 - rows are grouped by Monday-based UTC `businessWeekStart` plus current `assignedTo`
 - default ordering is `businessWeekStart DESC`, then `assignedTo ASC`
 - the outcome mix is derived from immutable follow-up completion audits with current-assignment resolution at read time
@@ -398,12 +400,13 @@ Fields:
 Filters:
 - `assignedTo` exact actor match, optional
 - `changedBy` exact actor match, optional
+- `outcome` exact follow-up completion outcome match, optional
 - `changedAtFrom` UTC instant lower bound, optional
 - `changedAtTo` UTC instant upper bound, optional
 - `sortBy` one of `BUSINESS_TIME`, `ASSIGNED_TO`, `COMPLETION_COUNT`, `INVOICE_COUNT`, `CONTACTED_INVOICE_COUNT`, `LEFT_VOICEMAIL_INVOICE_COUNT`, `PROMISE_TO_PAY_INVOICE_COUNT`, `NO_RESPONSE_INVOICE_COUNT`
 
 Rules:
-- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/monthly-summary?page=&size=&assignedTo=&changedBy=&changedAtFrom=&changedAtTo=&sortBy=`
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/monthly-summary?page=&size=&assignedTo=&changedBy=&outcome=&changedAtFrom=&changedAtTo=&sortBy=`
 - rows are grouped by UTC `businessMonth` plus current `assignedTo`
 - default ordering is `businessMonth DESC`, then `assignedTo ASC`
 - the outcome mix is derived from immutable follow-up completion audits with current-assignment resolution at read time

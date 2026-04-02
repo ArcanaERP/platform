@@ -1934,6 +1934,7 @@ class PaymentManagementService implements PaymentManagement {
         String tenantCode,
         String assignedTo,
         String changedBy,
+        CollectionsFollowUpOutcome outcome,
         Instant changedAtFrom,
         Instant changedAtTo,
         CollectionsAssigneeDashboardTrendSortBy sortBy,
@@ -1943,6 +1944,7 @@ class PaymentManagementService implements PaymentManagement {
             tenantCode,
             assignedTo,
             changedBy,
+            outcome,
             changedAtFrom,
             changedAtTo,
             pageQuery,
@@ -1965,6 +1967,7 @@ class PaymentManagementService implements PaymentManagement {
         String tenantCode,
         String assignedTo,
         String changedBy,
+        CollectionsFollowUpOutcome outcome,
         Instant changedAtFrom,
         Instant changedAtTo,
         CollectionsAssigneeDashboardTrendSortBy sortBy,
@@ -1974,6 +1977,7 @@ class PaymentManagementService implements PaymentManagement {
             tenantCode,
             assignedTo,
             changedBy,
+            outcome,
             changedAtFrom,
             changedAtTo,
             pageQuery,
@@ -1999,6 +2003,7 @@ class PaymentManagementService implements PaymentManagement {
         String tenantCode,
         String assignedTo,
         String changedBy,
+        CollectionsFollowUpOutcome outcome,
         Instant changedAtFrom,
         Instant changedAtTo,
         CollectionsAssigneeDashboardTrendSortBy sortBy,
@@ -2008,6 +2013,7 @@ class PaymentManagementService implements PaymentManagement {
             tenantCode,
             assignedTo,
             changedBy,
+            outcome,
             changedAtFrom,
             changedAtTo,
             pageQuery,
@@ -2028,6 +2034,7 @@ class PaymentManagementService implements PaymentManagement {
         String tenantCode,
         String assignedTo,
         String changedBy,
+        CollectionsFollowUpOutcome outcome,
         Instant changedAtFrom,
         Instant changedAtTo,
         PageQuery pageQuery,
@@ -2054,6 +2061,9 @@ class PaymentManagementService implements PaymentManagement {
                     return;
                 }
                 if (normalizedAssignedTo != null && !normalizedAssignedTo.equals(assignment.getAssignedTo())) {
+                    return;
+                }
+                if (outcome != null && outcome != audit.getOutcome()) {
                     return;
                 }
                 summariesByBucket
