@@ -1125,6 +1125,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor/daily-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor/weekly-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor/monthly-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/daily-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/weekly-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/monthly-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
@@ -1202,6 +1203,32 @@ Rules:
 - rows are grouped by `businessWeekStart + changedBy + outcome`
 - `businessWeekStart` uses Monday-based UTC weeks
 - rows are sorted by `businessWeekStart DESC`, then `changedBy ASC`, then `outcome ASC`
+- rows are derived directly from immutable follow-up completion audits without current-assignment joins
+
+### MonthlyCollectionsActorFollowUpOutcomeSummary
+
+Purpose:
+- expose month-bucketed follow-up completion counts grouped by audit actor plus outcome
+
+Fields:
+- `tenantCode`
+- `businessMonth`
+- `changedBy`
+- `outcome`
+- `completionCount`
+- `invoiceCount`
+
+Filters:
+- `outcome` exact follow-up completion outcome match, optional
+- `changedBy` exact actor match, optional
+- `changedAtFrom` UTC instant lower bound, optional
+- `changedAtTo` UTC instant upper bound, optional
+
+Rules:
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor/monthly-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
+- rows are grouped by `businessMonth + changedBy + outcome`
+- `businessMonth` uses UTC `YearMonth`
+- rows are sorted by `businessMonth DESC`, then `changedBy ASC`, then `outcome ASC`
 - rows are derived directly from immutable follow-up completion audits without current-assignment joins
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/follow-up`
