@@ -39,6 +39,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_ASSIGNEE_SUMMARY_TENANT_CODE = "tenant-coll-fup-outass";
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_SUMMARY_TENANT_CODE = "tenant-coll-fup-outactor";
     private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_DAILY_SUMMARY_TENANT_CODE = "tenant-coll-fup-outactday";
+    private static final String COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE = "tenant-coll-fup-outactwk";
     private static final String COLLECTIONS_NET_INTAKE_ACTOR_SUMMARY_TENANT_CODE = "tenant-coll-netintake";
     private static final String COLLECTIONS_ASSIGNEE_OPERATIONS_SUMMARY_TENANT_CODE = "tenant-coll-assops";
     private static final String COLLECTIONS_ASSIGNEE_DASHBOARD_SUMMARY_TENANT_CODE = "tenant-coll-assdash";
@@ -1921,6 +1922,206 @@ class PaymentsControllerIntegrationTest {
 
         mockMvc.perform(PaymentsWebIntegrationTestSupport.dailyTenantCollectionsActorFollowUpOutcomeSummaryRequest(
                 COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_DAILY_SUMMARY_TENANT_CODE,
+                0,
+                10,
+                "outcome", "invalid"
+            ))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void listsWeeklyTenantCollectionsActorFollowUpOutcomeSummaries() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+            "Collections Follow Up Outcome Actor Weekly Summary Tenant",
+            "COLLECTOR",
+            "Collector",
+            "collector@arcanaerp.com",
+            "Collector"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+            "Collections Follow Up Outcome Actor Weekly Summary Tenant",
+            "COLLECTOR_B",
+            "Collector B",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+            "Collections Follow Up Outcome Actor Weekly Summary Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+            "arc-pay-9950",
+            "so-pay-9950",
+            "inv-pay-9950",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+            "arc-pay-9951",
+            "so-pay-9951",
+            "inv-pay-9951",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(11 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+            "arc-pay-9952",
+            "so-pay-9952",
+            "inv-pay-9952",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(12 * 86400)
+        );
+
+        Instant assignedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(assignedAt);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9950",
+            "collector@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9951",
+            "collector@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9952",
+            "collector-b@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant firstScheduledAt = assignedAt.plusSeconds(86400);
+        testClock.setInstant(assignedAt.plusSeconds(60));
+        PaymentsWebIntegrationTestSupport.scheduleCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9950",
+            firstScheduledAt,
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.scheduleCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9951",
+            firstScheduledAt.plusSeconds(60),
+            "collector-b@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.scheduleCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9952",
+            firstScheduledAt.plusSeconds(120),
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant firstCompletionAt = assignedAt.plusSeconds(2 * 86400).plusSeconds(10 * 3600);
+        testClock.setInstant(firstCompletionAt);
+        PaymentsWebIntegrationTestSupport.completeCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9950",
+            "manager@arcanaerp.com",
+            "NO_RESPONSE"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.completeCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9951",
+            "collector-b@arcanaerp.com",
+            "PROMISE_TO_PAY"
+        ).andExpect(status().isOk());
+
+        Instant secondScheduledAt = firstCompletionAt.plusSeconds(7 * 86400);
+        testClock.setInstant(secondScheduledAt);
+        PaymentsWebIntegrationTestSupport.scheduleCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9952",
+            secondScheduledAt.plusSeconds(3600),
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant secondCompletionAt = firstCompletionAt.plusSeconds(7 * 86400).plusSeconds(3600);
+        testClock.setInstant(secondCompletionAt);
+        PaymentsWebIntegrationTestSupport.completeCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9952",
+            "manager@arcanaerp.com",
+            "NO_RESPONSE"
+        ).andExpect(status().isOk());
+
+        String firstWeekStart = firstCompletionAt.atOffset(java.time.ZoneOffset.UTC)
+            .toLocalDate()
+            .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+            .toString();
+        String secondWeekStart = secondCompletionAt.atOffset(java.time.ZoneOffset.UTC)
+            .toLocalDate()
+            .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+            .toString();
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.weeklyTenantCollectionsActorFollowUpOutcomeSummaryRequest(
+                COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+                0,
+                10,
+                "changedAtFrom", firstCompletionAt.minusSeconds(1).toString(),
+                "changedAtTo", secondCompletionAt.plusSeconds(1).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].businessWeekStart").value(secondWeekStart))
+            .andExpect(jsonPath("$.items[0].changedBy").value("manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].outcome").value("NO_RESPONSE"))
+            .andExpect(jsonPath("$.items[0].completionCount").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1))
+            .andExpect(jsonPath("$.items[1].businessWeekStart").value(firstWeekStart))
+            .andExpect(jsonPath("$.items[1].changedBy").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].outcome").value("PROMISE_TO_PAY"))
+            .andExpect(jsonPath("$.items[1].completionCount").value(1))
+            .andExpect(jsonPath("$.items[1].invoiceCount").value(1))
+            .andExpect(jsonPath("$.items[2].businessWeekStart").value(firstWeekStart))
+            .andExpect(jsonPath("$.items[2].changedBy").value("manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[2].outcome").value("NO_RESPONSE"))
+            .andExpect(jsonPath("$.items[2].completionCount").value(1))
+            .andExpect(jsonPath("$.items[2].invoiceCount").value(1));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.weeklyTenantCollectionsActorFollowUpOutcomeSummaryRequest(
+                COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+                0,
+                10,
+                "changedBy", "manager@arcanaerp.com",
+                "outcome", "NO_RESPONSE"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].changedBy").value("manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].outcome").value("NO_RESPONSE"))
+            .andExpect(jsonPath("$.items[1].changedBy").value("manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].outcome").value("NO_RESPONSE"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.weeklyTenantCollectionsActorFollowUpOutcomeSummaryRequest(
+                COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
                 0,
                 10,
                 "outcome", "invalid"
