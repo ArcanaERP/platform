@@ -2348,10 +2348,9 @@ class PaymentManagementService implements PaymentManagement {
         Instant changedAtTo,
         PageQuery pageQuery
     ) {
-        return summarizeCollectionsFollowUpOutcomeSeries(
+        return summarizeCollectionsActorFollowUpOutcomeSeries(
             tenantCode,
             outcome,
-            null,
             changedBy,
             changedAtFrom,
             changedAtTo,
@@ -2387,10 +2386,9 @@ class PaymentManagementService implements PaymentManagement {
         Instant changedAtTo,
         PageQuery pageQuery
     ) {
-        return summarizeCollectionsFollowUpOutcomeSeries(
+        return summarizeCollectionsActorFollowUpOutcomeSeries(
             tenantCode,
             outcome,
-            null,
             changedBy,
             changedAtFrom,
             changedAtTo,
@@ -2429,10 +2427,9 @@ class PaymentManagementService implements PaymentManagement {
         Instant changedAtTo,
         PageQuery pageQuery
     ) {
-        return summarizeCollectionsFollowUpOutcomeSeries(
+        return summarizeCollectionsActorFollowUpOutcomeSeries(
             tenantCode,
             outcome,
-            null,
             changedBy,
             changedAtFrom,
             changedAtTo,
@@ -3233,6 +3230,31 @@ class PaymentManagementService implements PaymentManagement {
             tenantCode,
             outcome,
             assignedTo,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            bucketExtractor,
+            viewFactory,
+            comparator
+        );
+    }
+
+    private <B, V> PageResult<V> summarizeCollectionsActorFollowUpOutcomeSeries(
+        String tenantCode,
+        CollectionsFollowUpOutcome outcome,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery,
+        Function<CollectionsFollowUpAudit, B> bucketExtractor,
+        CollectionsFollowUpOutcomeBucketViewFactory<B, V> viewFactory,
+        java.util.Comparator<V> comparator
+    ) {
+        return summarizeCollectionsFollowUpOutcomeSeries(
+            tenantCode,
+            outcome,
+            null,
             changedBy,
             changedAtFrom,
             changedAtTo,
