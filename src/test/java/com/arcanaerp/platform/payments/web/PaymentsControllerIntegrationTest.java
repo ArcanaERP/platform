@@ -1911,6 +1911,19 @@ class PaymentsControllerIntegrationTest {
                 COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_DAILY_SUMMARY_TENANT_CODE,
                 0,
                 10,
+                "sortBy", "changed_by",
+                "changedAtFrom", firstCompletionAt.toString(),
+                "changedAtTo", secondCompletionAt.plusSeconds(1).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].changedBy").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].changedBy").value("manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[2].changedBy").value("manager@arcanaerp.com"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.dailyTenantCollectionsActorFollowUpOutcomeSummaryRequest(
+                COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_DAILY_SUMMARY_TENANT_CODE,
+                0,
+                10,
                 "changedBy", "manager@arcanaerp.com",
                 "outcome", "NO_RESPONSE"
             ))
@@ -1920,6 +1933,14 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].outcome").value("NO_RESPONSE"))
             .andExpect(jsonPath("$.items[1].changedBy").value("manager@arcanaerp.com"))
             .andExpect(jsonPath("$.items[1].outcome").value("NO_RESPONSE"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.dailyTenantCollectionsActorFollowUpOutcomeSummaryRequest(
+                COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_DAILY_SUMMARY_TENANT_CODE,
+                0,
+                10,
+                "sortBy", "invalid"
+            ))
+            .andExpect(status().isBadRequest());
 
         mockMvc.perform(PaymentsWebIntegrationTestSupport.dailyTenantCollectionsActorFollowUpOutcomeSummaryRequest(
                 COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_DAILY_SUMMARY_TENANT_CODE,
@@ -2111,6 +2132,19 @@ class PaymentsControllerIntegrationTest {
                 COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
                 0,
                 10,
+                "sortBy", "changed_by",
+                "changedAtFrom", firstCompletionAt.minusSeconds(1).toString(),
+                "changedAtTo", secondCompletionAt.plusSeconds(1).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].changedBy").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].changedBy").value("manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[2].changedBy").value("manager@arcanaerp.com"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.weeklyTenantCollectionsActorFollowUpOutcomeSummaryRequest(
+                COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+                0,
+                10,
                 "changedBy", "manager@arcanaerp.com",
                 "outcome", "NO_RESPONSE"
             ))
@@ -2120,6 +2154,14 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].outcome").value("NO_RESPONSE"))
             .andExpect(jsonPath("$.items[1].changedBy").value("manager@arcanaerp.com"))
             .andExpect(jsonPath("$.items[1].outcome").value("NO_RESPONSE"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.weeklyTenantCollectionsActorFollowUpOutcomeSummaryRequest(
+                COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
+                0,
+                10,
+                "sortBy", "invalid"
+            ))
+            .andExpect(status().isBadRequest());
 
         mockMvc.perform(PaymentsWebIntegrationTestSupport.weeklyTenantCollectionsActorFollowUpOutcomeSummaryRequest(
                 COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_WEEKLY_SUMMARY_TENANT_CODE,
@@ -2305,6 +2347,19 @@ class PaymentsControllerIntegrationTest {
                 COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_MONTHLY_SUMMARY_TENANT_CODE,
                 0,
                 10,
+                "sortBy", "changed_by",
+                "changedAtFrom", firstCompletionAt.minusSeconds(1).toString(),
+                "changedAtTo", secondCompletionAt.plusSeconds(1).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].changedBy").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].changedBy").value("manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[2].changedBy").value("manager@arcanaerp.com"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.monthlyTenantCollectionsActorFollowUpOutcomeSummaryRequest(
+                COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_MONTHLY_SUMMARY_TENANT_CODE,
+                0,
+                10,
                 "changedBy", "manager@arcanaerp.com",
                 "outcome", "NO_RESPONSE"
             ))
@@ -2314,6 +2369,14 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].outcome").value("NO_RESPONSE"))
             .andExpect(jsonPath("$.items[1].changedBy").value("manager@arcanaerp.com"))
             .andExpect(jsonPath("$.items[1].outcome").value("NO_RESPONSE"));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.monthlyTenantCollectionsActorFollowUpOutcomeSummaryRequest(
+                COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_MONTHLY_SUMMARY_TENANT_CODE,
+                0,
+                10,
+                "sortBy", "invalid"
+            ))
+            .andExpect(status().isBadRequest());
 
         mockMvc.perform(PaymentsWebIntegrationTestSupport.monthlyTenantCollectionsActorFollowUpOutcomeSummaryRequest(
                 COLLECTIONS_FOLLOW_UP_OUTCOME_ACTOR_MONTHLY_SUMMARY_TENANT_CODE,

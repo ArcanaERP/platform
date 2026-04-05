@@ -17,6 +17,7 @@ import com.arcanaerp.platform.payments.CollectionsAssignmentClaimChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentReleaseChangeView;
 import com.arcanaerp.platform.payments.CollectionsAssignmentView;
+import com.arcanaerp.platform.payments.CollectionsActorFollowUpOutcomeTrendSortBy;
 import com.arcanaerp.platform.payments.CompleteCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.CollectionsCurrentAssigneeFollowUpOutcomeSortBy;
 import com.arcanaerp.platform.payments.CollectionsFollowUpChangeView;
@@ -2346,8 +2347,14 @@ class PaymentManagementService implements PaymentManagement {
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
+        CollectionsActorFollowUpOutcomeTrendSortBy sortBy,
         PageQuery pageQuery
     ) {
+        java.util.Comparator<DailyTenantCollectionsActorFollowUpOutcomeSummaryView> defaultComparator = java.util.Comparator
+            .comparing(DailyTenantCollectionsActorFollowUpOutcomeSummaryView::businessDate)
+            .reversed()
+            .thenComparing(DailyTenantCollectionsActorFollowUpOutcomeSummaryView::changedBy)
+            .thenComparing(summary -> summary.outcome().name());
         return summarizeCollectionsActorFollowUpOutcomeSeries(
             tenantCode,
             outcome,
@@ -2368,11 +2375,13 @@ class PaymentManagementService implements PaymentManagement {
                 summary.completionCount,
                 summary.invoiceNumbers.size()
             ),
-            java.util.Comparator
-                .comparing(DailyTenantCollectionsActorFollowUpOutcomeSummaryView::businessDate)
-                .reversed()
-                .thenComparing(DailyTenantCollectionsActorFollowUpOutcomeSummaryView::changedBy)
-                .thenComparing(summary -> summary.outcome().name())
+            actorFollowUpOutcomeTrendComparator(
+                sortBy,
+                defaultComparator,
+                DailyTenantCollectionsActorFollowUpOutcomeSummaryView::changedBy,
+                DailyTenantCollectionsActorFollowUpOutcomeSummaryView::completionCount,
+                DailyTenantCollectionsActorFollowUpOutcomeSummaryView::invoiceCount
+            )
         );
     }
 
@@ -2384,8 +2393,14 @@ class PaymentManagementService implements PaymentManagement {
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
+        CollectionsActorFollowUpOutcomeTrendSortBy sortBy,
         PageQuery pageQuery
     ) {
+        java.util.Comparator<WeeklyTenantCollectionsActorFollowUpOutcomeSummaryView> defaultComparator = java.util.Comparator
+            .comparing(WeeklyTenantCollectionsActorFollowUpOutcomeSummaryView::businessWeekStart)
+            .reversed()
+            .thenComparing(WeeklyTenantCollectionsActorFollowUpOutcomeSummaryView::changedBy)
+            .thenComparing(summary -> summary.outcome().name());
         return summarizeCollectionsActorFollowUpOutcomeSeries(
             tenantCode,
             outcome,
@@ -2409,11 +2424,13 @@ class PaymentManagementService implements PaymentManagement {
                 summary.completionCount,
                 summary.invoiceNumbers.size()
             ),
-            java.util.Comparator
-                .comparing(WeeklyTenantCollectionsActorFollowUpOutcomeSummaryView::businessWeekStart)
-                .reversed()
-                .thenComparing(WeeklyTenantCollectionsActorFollowUpOutcomeSummaryView::changedBy)
-                .thenComparing(summary -> summary.outcome().name())
+            actorFollowUpOutcomeTrendComparator(
+                sortBy,
+                defaultComparator,
+                WeeklyTenantCollectionsActorFollowUpOutcomeSummaryView::changedBy,
+                WeeklyTenantCollectionsActorFollowUpOutcomeSummaryView::completionCount,
+                WeeklyTenantCollectionsActorFollowUpOutcomeSummaryView::invoiceCount
+            )
         );
     }
 
@@ -2425,8 +2442,14 @@ class PaymentManagementService implements PaymentManagement {
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
+        CollectionsActorFollowUpOutcomeTrendSortBy sortBy,
         PageQuery pageQuery
     ) {
+        java.util.Comparator<MonthlyTenantCollectionsActorFollowUpOutcomeSummaryView> defaultComparator = java.util.Comparator
+            .comparing(MonthlyTenantCollectionsActorFollowUpOutcomeSummaryView::businessMonth)
+            .reversed()
+            .thenComparing(MonthlyTenantCollectionsActorFollowUpOutcomeSummaryView::changedBy)
+            .thenComparing(summary -> summary.outcome().name());
         return summarizeCollectionsActorFollowUpOutcomeSeries(
             tenantCode,
             outcome,
@@ -2447,11 +2470,13 @@ class PaymentManagementService implements PaymentManagement {
                 summary.completionCount,
                 summary.invoiceNumbers.size()
             ),
-            java.util.Comparator
-                .comparing(MonthlyTenantCollectionsActorFollowUpOutcomeSummaryView::businessMonth)
-                .reversed()
-                .thenComparing(MonthlyTenantCollectionsActorFollowUpOutcomeSummaryView::changedBy)
-                .thenComparing(summary -> summary.outcome().name())
+            actorFollowUpOutcomeTrendComparator(
+                sortBy,
+                defaultComparator,
+                MonthlyTenantCollectionsActorFollowUpOutcomeSummaryView::changedBy,
+                MonthlyTenantCollectionsActorFollowUpOutcomeSummaryView::completionCount,
+                MonthlyTenantCollectionsActorFollowUpOutcomeSummaryView::invoiceCount
+            )
         );
     }
 
@@ -3263,6 +3288,32 @@ class PaymentManagementService implements PaymentManagement {
             viewFactory,
             comparator
         );
+    }
+
+    private <V> java.util.Comparator<V> actorFollowUpOutcomeTrendComparator(
+        CollectionsActorFollowUpOutcomeTrendSortBy sortBy,
+        java.util.Comparator<V> defaultComparator,
+        java.util.function.Function<V, String> changedByExtractor,
+        java.util.function.ToLongFunction<V> completionCountExtractor,
+        java.util.function.ToLongFunction<V> invoiceCountExtractor
+    ) {
+        CollectionsActorFollowUpOutcomeTrendSortBy normalizedSortBy = sortBy == null
+            ? CollectionsActorFollowUpOutcomeTrendSortBy.BUSINESS_TIME
+            : sortBy;
+        if (normalizedSortBy == CollectionsActorFollowUpOutcomeTrendSortBy.CHANGED_BY) {
+            return java.util.Comparator.comparing(changedByExtractor).thenComparing(defaultComparator);
+        }
+        if (normalizedSortBy == CollectionsActorFollowUpOutcomeTrendSortBy.COMPLETION_COUNT) {
+            return java.util.Comparator.comparingLong(completionCountExtractor)
+                .reversed()
+                .thenComparing(defaultComparator);
+        }
+        if (normalizedSortBy == CollectionsActorFollowUpOutcomeTrendSortBy.INVOICE_COUNT) {
+            return java.util.Comparator.comparingLong(invoiceCountExtractor)
+                .reversed()
+                .thenComparing(defaultComparator);
+        }
+        return defaultComparator;
     }
 
     private <B, V> PageResult<V> summarizeTenantCollectionsNoteOutcomes(

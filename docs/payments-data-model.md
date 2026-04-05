@@ -1123,9 +1123,9 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/assignee-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
-- `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor/daily-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
-- `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor/weekly-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
-- `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor/monthly-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor/daily-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=&sortBy=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor/weekly-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=&sortBy=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor/monthly-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=&sortBy=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/daily-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/weekly-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/monthly-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
@@ -1172,11 +1172,12 @@ Filters:
 - `changedBy` exact actor match, optional
 - `changedAtFrom` UTC instant lower bound, optional
 - `changedAtTo` UTC instant upper bound, optional
+- `sortBy` optional ranking mode: `BUSINESS_TIME`, `CHANGED_BY`, `COMPLETION_COUNT`, `INVOICE_COUNT`
 
 Rules:
-- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor/daily-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor/daily-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=&sortBy=`
 - rows are grouped by `businessDate + changedBy + outcome`
-- rows are sorted by `businessDate DESC`, then `changedBy ASC`, then `outcome ASC`
+- default ordering is `businessDate DESC`, then `changedBy ASC`, then `outcome ASC`
 - rows are derived directly from immutable follow-up completion audits without current-assignment joins
 
 ### WeeklyCollectionsActorFollowUpOutcomeSummary
@@ -1197,12 +1198,13 @@ Filters:
 - `changedBy` exact actor match, optional
 - `changedAtFrom` UTC instant lower bound, optional
 - `changedAtTo` UTC instant upper bound, optional
+- `sortBy` optional ranking mode: `BUSINESS_TIME`, `CHANGED_BY`, `COMPLETION_COUNT`, `INVOICE_COUNT`
 
 Rules:
-- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor/weekly-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor/weekly-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=&sortBy=`
 - rows are grouped by `businessWeekStart + changedBy + outcome`
 - `businessWeekStart` uses Monday-based UTC weeks
-- rows are sorted by `businessWeekStart DESC`, then `changedBy ASC`, then `outcome ASC`
+- default ordering is `businessWeekStart DESC`, then `changedBy ASC`, then `outcome ASC`
 - rows are derived directly from immutable follow-up completion audits without current-assignment joins
 
 ### MonthlyCollectionsActorFollowUpOutcomeSummary
@@ -1223,12 +1225,13 @@ Filters:
 - `changedBy` exact actor match, optional
 - `changedAtFrom` UTC instant lower bound, optional
 - `changedAtTo` UTC instant upper bound, optional
+- `sortBy` optional ranking mode: `BUSINESS_TIME`, `CHANGED_BY`, `COMPLETION_COUNT`, `INVOICE_COUNT`
 
 Rules:
-- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor/monthly-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor/monthly-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=&sortBy=`
 - rows are grouped by `businessMonth + changedBy + outcome`
 - `businessMonth` uses UTC `YearMonth`
-- rows are sorted by `businessMonth DESC`, then `changedBy ASC`, then `outcome ASC`
+- default ordering is `businessMonth DESC`, then `changedBy ASC`, then `outcome ASC`
 - rows are derived directly from immutable follow-up completion audits without current-assignment joins
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/follow-up`

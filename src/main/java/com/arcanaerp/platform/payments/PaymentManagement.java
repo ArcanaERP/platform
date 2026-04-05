@@ -485,6 +485,7 @@ public interface PaymentManagement {
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
+        CollectionsActorFollowUpOutcomeTrendSortBy sortBy,
         PageQuery pageQuery
     );
 
@@ -494,6 +495,7 @@ public interface PaymentManagement {
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
+        CollectionsActorFollowUpOutcomeTrendSortBy sortBy,
         PageQuery pageQuery
     );
 
@@ -503,6 +505,7 @@ public interface PaymentManagement {
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
+        CollectionsActorFollowUpOutcomeTrendSortBy sortBy,
         PageQuery pageQuery
     );
 
