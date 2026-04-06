@@ -710,6 +710,37 @@ Rules:
 - `netIntakeCount = claimCount - releaseCount`
 - rows are ordered by `assignedTo ASC`
 
+### TenantCollectionsAssigneeActorEffectivenessSummary
+
+Purpose:
+- compare current over-90 workload by assignee against follow-up completion activity by actor on those currently owned invoices
+
+Fields:
+- `tenantCode`
+- `currencyCode`
+- `assignedTo`
+- `changedBy`
+- `currentAssignedInvoiceCount`
+- `currentOutstandingAmount`
+- `oldestDueAt`
+- `completionCount`
+- `completedInvoiceCount`
+
+Filters:
+- `currencyCode` required
+- `assignedTo` exact current assignee match, optional
+- `changedBy` exact follow-up completion actor match, optional
+- `changedAtFrom` UTC instant lower bound for follow-up completion counts, optional
+- `changedAtTo` UTC instant upper bound for follow-up completion counts, optional
+
+Rules:
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-actor-effectiveness-summary?currencyCode=&assignedTo=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
+- current workload fields are computed from the current over-90 assigned receivables snapshot
+- completion fields are computed from immutable follow-up completion audits, then grouped by current `assignedTo + changedBy`
+- invoices no longer assigned are excluded from the effectiveness rollup
+- when no `changedBy` filter is present, assignees with current workload but no matching completion activity still emit one row with `changedBy = null` and zero completion counts
+- rows are ordered by `assignedTo ASC`, then `changedBy ASC` with null actors last
+
 ### DailyTenantCollectionsNetIntakeSummary
 
 Purpose:
@@ -1117,6 +1148,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/releases/monthly-summary?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/actor-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-operations-summary?currencyCode=&actor=&changedAtFrom=&changedAtTo=&sortBy=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-actor-effectiveness-summary?currencyCode=&assignedTo=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/daily-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/weekly-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/monthly-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`

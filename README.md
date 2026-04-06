@@ -137,6 +137,7 @@ Payments:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/releases/monthly-summary?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/actor-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-operations-summary?currencyCode=&actor=&changedAtFrom=&changedAtTo=&sortBy=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-actor-effectiveness-summary?currencyCode=&assignedTo=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/daily-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/weekly-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/monthly-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`

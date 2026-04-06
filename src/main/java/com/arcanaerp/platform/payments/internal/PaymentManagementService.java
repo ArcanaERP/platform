@@ -62,6 +62,7 @@ import com.arcanaerp.platform.payments.ScheduleCollectionsFollowUpCommand;
 import com.arcanaerp.platform.payments.TenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsAssigneeDashboardSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsAssigneeAgingSummaryView;
+import com.arcanaerp.platform.payments.TenantCollectionsAssigneeActorEffectivenessSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsAssigneeOperationsSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsAssigneeFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.TenantCollectionsActorFollowUpOutcomeSummaryView;
@@ -1145,6 +1146,108 @@ class PaymentManagementService implements PaymentManagement {
                 entry.getKey()
             ))
             .sorted(tenantCollectionsAssigneeOperationsComparator(sortBy))
+            .toList();
+        return paginateList(summaries, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<TenantCollectionsAssigneeActorEffectivenessSummaryView> listTenantCollectionsAssigneeActorEffectivenessSummaries(
+        String tenantCode,
+        String currencyCode,
+        String assignedTo,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
+        String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy, "changedBy");
+        LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
+
+        List<AgedTenantReceivableView> currentReceivables = enrichAgedReceivables(collectOutstandingReceivableSnapshots(
+                normalizedTenantCode,
+                normalizedCurrencyCode,
+                asOfDate
+            )
+            .stream()
+            .filter(snapshot -> snapshot.agingBucket() == ReceivablesAgingBucket.OVERDUE_OVER_90)
+            .sorted(java.util.Comparator
+                .comparing(ReceivableSnapshot::dueAt)
+                .thenComparing(ReceivableSnapshot::invoiceNumber))
+            .toList())
+            .stream()
+            .filter(receivable -> receivable.assignedTo() != null)
+            .filter(receivable -> normalizedAssignedTo == null || normalizedAssignedTo.equals(receivable.assignedTo()))
+            .toList();
+
+        Map<String, AssigneeActorEffectivenessWorkloadAccumulator> workloadByAssignee = new LinkedHashMap<>();
+        for (AgedTenantReceivableView receivable : currentReceivables) {
+            workloadByAssignee.computeIfAbsent(
+                receivable.assignedTo(),
+                ignored -> new AssigneeActorEffectivenessWorkloadAccumulator()
+            ).addCurrentReceivable(receivable);
+        }
+
+        List<CollectionsFollowUpAudit> outcomeAudits = collectionsFollowUpAuditRepository.findOutcomeHistoryForSummary(
+            normalizedTenantCode,
+            null,
+            normalizedChangedBy,
+            changedAtFrom,
+            changedAtTo
+        );
+        Map<String, CollectionsAssignment> assignmentsByInvoiceNumber = collectionsAssignmentRepository.findByInvoiceNumberIn(
+                outcomeAudits.stream().map(CollectionsFollowUpAudit::getInvoiceNumber).distinct().toList()
+            )
+            .stream()
+            .collect(java.util.stream.Collectors.toMap(CollectionsAssignment::getInvoiceNumber, Function.identity()));
+
+        Map<AssigneeActorEffectivenessBucket, AssigneeActorEffectivenessSummaryAccumulator> summariesByBucket =
+            new LinkedHashMap<>();
+        for (CollectionsFollowUpAudit audit : outcomeAudits) {
+            CollectionsAssignment assignment = assignmentsByInvoiceNumber.get(audit.getInvoiceNumber());
+            if (assignment == null) {
+                continue;
+            }
+            if (normalizedAssignedTo != null && !normalizedAssignedTo.equals(assignment.getAssignedTo())) {
+                continue;
+            }
+            AssigneeActorEffectivenessWorkloadAccumulator workload = workloadByAssignee.get(assignment.getAssignedTo());
+            if (workload == null) {
+                continue;
+            }
+            summariesByBucket.computeIfAbsent(
+                new AssigneeActorEffectivenessBucket(assignment.getAssignedTo(), audit.getChangedBy()),
+                ignored -> new AssigneeActorEffectivenessSummaryAccumulator(workload)
+            ).addCompletion(audit);
+        }
+
+        if (normalizedChangedBy == null) {
+            workloadByAssignee.forEach((assignee, workload) -> {
+                boolean hasActorActivity = summariesByBucket.keySet().stream()
+                    .anyMatch(bucket -> assignee.equals(bucket.assignedTo()));
+                if (!hasActorActivity) {
+                    summariesByBucket.put(
+                        new AssigneeActorEffectivenessBucket(assignee, null),
+                        new AssigneeActorEffectivenessSummaryAccumulator(workload)
+                    );
+                }
+            });
+        }
+
+        List<TenantCollectionsAssigneeActorEffectivenessSummaryView> summaries = summariesByBucket.entrySet().stream()
+            .map(entry -> entry.getValue().toView(
+                normalizedTenantCode,
+                normalizedCurrencyCode,
+                entry.getKey().assignedTo(),
+                entry.getKey().changedBy()
+            ))
+            .sorted(java.util.Comparator
+                .comparing(TenantCollectionsAssigneeActorEffectivenessSummaryView::assignedTo)
+                .thenComparing(summary -> summary.changedBy() == null ? 1 : 0)
+                .thenComparing(summary -> summary.changedBy() == null ? "" : summary.changedBy()))
             .toList();
         return paginateList(summaries, pageQuery);
     }
@@ -3952,6 +4055,56 @@ class PaymentManagementService implements PaymentManagement {
         }
     }
 
+    private static final class AssigneeActorEffectivenessWorkloadAccumulator {
+
+        private long currentAssignedInvoiceCount;
+        private BigDecimal currentOutstandingAmount = BigDecimal.ZERO;
+        private Instant oldestDueAt;
+
+        void addCurrentReceivable(AgedTenantReceivableView receivable) {
+            currentAssignedInvoiceCount++;
+            currentOutstandingAmount = currentOutstandingAmount.add(receivable.outstandingAmount());
+            if (oldestDueAt == null || receivable.dueAt().isBefore(oldestDueAt)) {
+                oldestDueAt = receivable.dueAt();
+            }
+        }
+    }
+
+    private static final class AssigneeActorEffectivenessSummaryAccumulator {
+
+        private final AssigneeActorEffectivenessWorkloadAccumulator workload;
+        private long completionCount;
+        private final java.util.Set<String> completedInvoiceNumbers = new java.util.LinkedHashSet<>();
+
+        private AssigneeActorEffectivenessSummaryAccumulator(AssigneeActorEffectivenessWorkloadAccumulator workload) {
+            this.workload = workload;
+        }
+
+        void addCompletion(CollectionsFollowUpAudit audit) {
+            completionCount++;
+            completedInvoiceNumbers.add(audit.getInvoiceNumber());
+        }
+
+        TenantCollectionsAssigneeActorEffectivenessSummaryView toView(
+            String tenantCode,
+            String currencyCode,
+            String assignedTo,
+            String changedBy
+        ) {
+            return new TenantCollectionsAssigneeActorEffectivenessSummaryView(
+                tenantCode,
+                currencyCode,
+                assignedTo,
+                changedBy,
+                workload.currentAssignedInvoiceCount,
+                workload.currentOutstandingAmount,
+                workload.oldestDueAt,
+                completionCount,
+                completedInvoiceNumbers.size()
+            );
+        }
+    }
+
     private static final class AssigneeDashboardSummaryAccumulator {
 
         private long assignedInvoiceCount;
@@ -4384,6 +4537,12 @@ class PaymentManagementService implements PaymentManagement {
     private record TenantCollectionsActorFollowUpOutcomeBucket(
         String changedBy,
         CollectionsFollowUpOutcome outcome
+    ) {
+    }
+
+    private record AssigneeActorEffectivenessBucket(
+        String assignedTo,
+        String changedBy
     ) {
     }
 
