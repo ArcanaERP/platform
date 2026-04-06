@@ -180,6 +180,7 @@ public interface PaymentManagement {
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
+        CollectionsAssigneeActorEffectivenessSortBy sortBy,
         PageQuery pageQuery
     );
 

@@ -11,6 +11,7 @@ import com.arcanaerp.platform.payments.AssignCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.ClaimCollectionsInvoiceCommand;
 import com.arcanaerp.platform.payments.CollectionsAssigneeOperationsSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssigneeAgingSortBy;
+import com.arcanaerp.platform.payments.CollectionsAssigneeActorEffectivenessSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssigneeDashboardSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssigneeDashboardTrendSortBy;
 import com.arcanaerp.platform.payments.CollectionsAssignmentClaimChangeView;
@@ -1159,6 +1160,7 @@ class PaymentManagementService implements PaymentManagement {
         String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
+        CollectionsAssigneeActorEffectivenessSortBy sortBy,
         PageQuery pageQuery
     ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
@@ -1244,10 +1246,7 @@ class PaymentManagementService implements PaymentManagement {
                 entry.getKey().assignedTo(),
                 entry.getKey().changedBy()
             ))
-            .sorted(java.util.Comparator
-                .comparing(TenantCollectionsAssigneeActorEffectivenessSummaryView::assignedTo)
-                .thenComparing(summary -> summary.changedBy() == null ? 1 : 0)
-                .thenComparing(summary -> summary.changedBy() == null ? "" : summary.changedBy()))
+            .sorted(tenantCollectionsAssigneeActorEffectivenessComparator(sortBy))
             .toList();
         return paginateList(summaries, pageQuery);
     }
@@ -3523,6 +3522,35 @@ class PaymentManagementService implements PaymentManagement {
                 .thenComparing(TenantCollectionsAssigneeOperationsSummaryView::assignedTo);
         }
         return java.util.Comparator.comparing(TenantCollectionsAssigneeOperationsSummaryView::assignedTo);
+    }
+
+    private java.util.Comparator<TenantCollectionsAssigneeActorEffectivenessSummaryView>
+        tenantCollectionsAssigneeActorEffectivenessComparator(
+            CollectionsAssigneeActorEffectivenessSortBy sortBy
+        ) {
+        java.util.Comparator<TenantCollectionsAssigneeActorEffectivenessSummaryView> tieBreaker = java.util.Comparator
+            .comparing(TenantCollectionsAssigneeActorEffectivenessSummaryView::assignedTo)
+            .thenComparing(summary -> summary.changedBy() == null ? 1 : 0)
+            .thenComparing(summary -> summary.changedBy() == null ? "" : summary.changedBy());
+        CollectionsAssigneeActorEffectivenessSortBy normalizedSortBy = sortBy == null
+            ? CollectionsAssigneeActorEffectivenessSortBy.ASSIGNED_TO
+            : sortBy;
+        if (normalizedSortBy == CollectionsAssigneeActorEffectivenessSortBy.CURRENT_ASSIGNED_INVOICE_COUNT) {
+            return java.util.Comparator.comparing(TenantCollectionsAssigneeActorEffectivenessSummaryView::currentAssignedInvoiceCount)
+                .reversed()
+                .thenComparing(tieBreaker);
+        }
+        if (normalizedSortBy == CollectionsAssigneeActorEffectivenessSortBy.CURRENT_OUTSTANDING_AMOUNT) {
+            return java.util.Comparator.comparing(TenantCollectionsAssigneeActorEffectivenessSummaryView::currentOutstandingAmount)
+                .reversed()
+                .thenComparing(tieBreaker);
+        }
+        if (normalizedSortBy == CollectionsAssigneeActorEffectivenessSortBy.COMPLETION_COUNT) {
+            return java.util.Comparator.comparing(TenantCollectionsAssigneeActorEffectivenessSummaryView::completionCount)
+                .reversed()
+                .thenComparing(tieBreaker);
+        }
+        return tieBreaker;
     }
 
     private java.util.Comparator<TenantCollectionsCurrentAssigneeFollowUpOutcomeSummaryView>
