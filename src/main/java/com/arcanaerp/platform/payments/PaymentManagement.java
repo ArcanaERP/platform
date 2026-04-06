@@ -184,6 +184,17 @@ public interface PaymentManagement {
         PageQuery pageQuery
     );
 
+    PageResult<DailyTenantCollectionsAssigneeActorEffectivenessSummaryView>
+        listDailyTenantCollectionsAssigneeActorEffectivenessSummaries(
+            String tenantCode,
+            String currencyCode,
+            String assignedTo,
+            String changedBy,
+            Instant changedAtFrom,
+            Instant changedAtTo,
+            PageQuery pageQuery
+        );
+
     PageResult<DailyTenantCollectionsNetIntakeSummaryView> listDailyTenantCollectionsNetIntakeSummaries(
         String tenantCode,
         String actor,
