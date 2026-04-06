@@ -2801,6 +2801,27 @@ class PaymentsControllerIntegrationTest {
                 "USD",
                 0,
                 10,
+                "sortBy", "completed_invoice_count",
+                "changedAtFrom", completedAt.minusSeconds(1).toString(),
+                "changedAtTo", completedAt.plusSeconds(1).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].completedInvoiceCount").value(1))
+            .andExpect(jsonPath("$.items[1].assignedTo").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].changedBy").value("manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].completedInvoiceCount").value(1))
+            .andExpect(jsonPath("$.items[2].assignedTo").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[2].changedBy").value(org.hamcrest.Matchers.nullValue()))
+            .andExpect(jsonPath("$.items[2].completedInvoiceCount").value(0));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.tenantCollectionsAssigneeActorEffectivenessSummaryRequest(
+                COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_SUMMARY_TENANT_CODE,
+                "USD",
+                0,
+                10,
                 "assignedTo", "collector-a@arcanaerp.com",
                 "changedBy", "manager@arcanaerp.com"
             ))

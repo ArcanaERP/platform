@@ -3550,6 +3550,11 @@ class PaymentManagementService implements PaymentManagement {
                 .reversed()
                 .thenComparing(tieBreaker);
         }
+        if (normalizedSortBy == CollectionsAssigneeActorEffectivenessSortBy.COMPLETED_INVOICE_COUNT) {
+            return java.util.Comparator.comparing(TenantCollectionsAssigneeActorEffectivenessSummaryView::completedInvoiceCount)
+                .reversed()
+                .thenComparing(tieBreaker);
+        }
         return tieBreaker;
     }
 

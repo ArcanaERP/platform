@@ -739,7 +739,7 @@ Rules:
 - completion fields are computed from immutable follow-up completion audits, then grouped by current `assignedTo + changedBy`
 - invoices no longer assigned are excluded from the effectiveness rollup
 - when no `changedBy` filter is present, assignees with current workload but no matching completion activity still emit one row with `changedBy = null` and zero completion counts
-- optional `sortBy` supports `ASSIGNED_TO`, `CURRENT_ASSIGNED_INVOICE_COUNT`, `CURRENT_OUTSTANDING_AMOUNT`, and `COMPLETION_COUNT`
+- optional `sortBy` supports `ASSIGNED_TO`, `CURRENT_ASSIGNED_INVOICE_COUNT`, `CURRENT_OUTSTANDING_AMOUNT`, `COMPLETION_COUNT`, and `COMPLETED_INVOICE_COUNT`
 - alphabetical ordering by `assignedTo`, then `changedBy` with null actors last remains the deterministic tie-breaker
 
 ### DailyTenantCollectionsNetIntakeSummary
