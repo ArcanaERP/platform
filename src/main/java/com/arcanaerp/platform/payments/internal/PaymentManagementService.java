@@ -81,6 +81,7 @@ import com.arcanaerp.platform.payments.TenantReceivablesAgingView;
 import com.arcanaerp.platform.payments.TenantReceivablesSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsAssignmentSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsActorFollowUpOutcomeSummaryView;
+import com.arcanaerp.platform.payments.WeeklyTenantCollectionsAssigneeActorEffectivenessSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsAssigneeDashboardSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsClaimSummaryView;
 import com.arcanaerp.platform.payments.WeeklyTenantCollectionsNetIntakeSummaryView;
@@ -1343,6 +1344,106 @@ class PaymentManagementService implements PaymentManagement {
                 .comparing(DailyTenantCollectionsAssigneeActorEffectivenessSummaryView::businessDate)
                 .reversed()
                 .thenComparing(DailyTenantCollectionsAssigneeActorEffectivenessSummaryView::assignedTo)
+                .thenComparing(summary -> summary.changedBy() == null ? 1 : 0)
+                .thenComparing(summary -> summary.changedBy() == null ? "" : summary.changedBy()))
+            .toList();
+        return paginateList(summaries, pageQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WeeklyTenantCollectionsAssigneeActorEffectivenessSummaryView>
+        listWeeklyTenantCollectionsAssigneeActorEffectivenessSummaries(
+            String tenantCode,
+            String currencyCode,
+            String assignedTo,
+            String changedBy,
+            Instant changedAtFrom,
+            Instant changedAtTo,
+            PageQuery pageQuery
+        ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCurrencyCode = normalizeRequired(currencyCode, "currencyCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeActorEmail(assignedTo, "assignedTo");
+        String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy, "changedBy");
+        LocalDate asOfDate = Instant.now(clock).atOffset(ZoneOffset.UTC).toLocalDate();
+
+        List<AgedTenantReceivableView> currentReceivables = enrichAgedReceivables(collectOutstandingReceivableSnapshots(
+                normalizedTenantCode,
+                normalizedCurrencyCode,
+                asOfDate
+            )
+            .stream()
+            .filter(snapshot -> snapshot.agingBucket() == ReceivablesAgingBucket.OVERDUE_OVER_90)
+            .sorted(java.util.Comparator
+                .comparing(ReceivableSnapshot::dueAt)
+                .thenComparing(ReceivableSnapshot::invoiceNumber))
+            .toList())
+            .stream()
+            .filter(receivable -> receivable.assignedTo() != null)
+            .filter(receivable -> normalizedAssignedTo == null || normalizedAssignedTo.equals(receivable.assignedTo()))
+            .toList();
+
+        Map<String, AssigneeActorEffectivenessWorkloadAccumulator> workloadByAssignee = new LinkedHashMap<>();
+        for (AgedTenantReceivableView receivable : currentReceivables) {
+            workloadByAssignee.computeIfAbsent(
+                receivable.assignedTo(),
+                ignored -> new AssigneeActorEffectivenessWorkloadAccumulator()
+            ).addCurrentReceivable(receivable);
+        }
+
+        List<CollectionsFollowUpAudit> outcomeAudits = collectionsFollowUpAuditRepository.findOutcomeHistoryForSummary(
+            normalizedTenantCode,
+            null,
+            normalizedChangedBy,
+            changedAtFrom,
+            changedAtTo
+        );
+        Map<String, CollectionsAssignment> assignmentsByInvoiceNumber = collectionsAssignmentRepository.findByInvoiceNumberIn(
+                outcomeAudits.stream().map(CollectionsFollowUpAudit::getInvoiceNumber).distinct().toList()
+            )
+            .stream()
+            .collect(java.util.stream.Collectors.toMap(CollectionsAssignment::getInvoiceNumber, Function.identity()));
+
+        Map<WeeklyAssigneeActorEffectivenessBucket, AssigneeActorEffectivenessSummaryAccumulator> summariesByBucket =
+            new LinkedHashMap<>();
+        for (CollectionsFollowUpAudit audit : outcomeAudits) {
+            CollectionsAssignment assignment = assignmentsByInvoiceNumber.get(audit.getInvoiceNumber());
+            if (assignment == null) {
+                continue;
+            }
+            if (normalizedAssignedTo != null && !normalizedAssignedTo.equals(assignment.getAssignedTo())) {
+                continue;
+            }
+            AssigneeActorEffectivenessWorkloadAccumulator workload = workloadByAssignee.get(assignment.getAssignedTo());
+            if (workload == null) {
+                continue;
+            }
+            summariesByBucket.computeIfAbsent(
+                new WeeklyAssigneeActorEffectivenessBucket(
+                    audit.getChangedAt()
+                        .atOffset(ZoneOffset.UTC)
+                        .toLocalDate()
+                        .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+                    assignment.getAssignedTo(),
+                    audit.getChangedBy()
+                ),
+                ignored -> new AssigneeActorEffectivenessSummaryAccumulator(workload)
+            ).addCompletion(audit);
+        }
+
+        List<WeeklyTenantCollectionsAssigneeActorEffectivenessSummaryView> summaries = summariesByBucket.entrySet().stream()
+            .map(entry -> entry.getValue().toWeeklyView(
+                normalizedTenantCode,
+                normalizedCurrencyCode,
+                entry.getKey().businessWeekStart(),
+                entry.getKey().assignedTo(),
+                entry.getKey().changedBy()
+            ))
+            .sorted(java.util.Comparator
+                .comparing(WeeklyTenantCollectionsAssigneeActorEffectivenessSummaryView::businessWeekStart)
+                .reversed()
+                .thenComparing(WeeklyTenantCollectionsAssigneeActorEffectivenessSummaryView::assignedTo)
                 .thenComparing(summary -> summary.changedBy() == null ? 1 : 0)
                 .thenComparing(summary -> summary.changedBy() == null ? "" : summary.changedBy()))
             .toList();
@@ -4255,6 +4356,27 @@ class PaymentManagementService implements PaymentManagement {
                 completedInvoiceNumbers.size()
             );
         }
+
+        WeeklyTenantCollectionsAssigneeActorEffectivenessSummaryView toWeeklyView(
+            String tenantCode,
+            String currencyCode,
+            LocalDate businessWeekStart,
+            String assignedTo,
+            String changedBy
+        ) {
+            return new WeeklyTenantCollectionsAssigneeActorEffectivenessSummaryView(
+                tenantCode,
+                currencyCode,
+                businessWeekStart,
+                assignedTo,
+                changedBy,
+                workload.currentAssignedInvoiceCount,
+                workload.currentOutstandingAmount,
+                workload.oldestDueAt,
+                completionCount,
+                completedInvoiceNumbers.size()
+            );
+        }
     }
 
     private static final class AssigneeDashboardSummaryAccumulator {
@@ -4700,6 +4822,13 @@ class PaymentManagementService implements PaymentManagement {
 
     private record DailyAssigneeActorEffectivenessBucket(
         LocalDate businessDate,
+        String assignedTo,
+        String changedBy
+    ) {
+    }
+
+    private record WeeklyAssigneeActorEffectivenessBucket(
+        LocalDate businessWeekStart,
         String assignedTo,
         String changedBy
     ) {

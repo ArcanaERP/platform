@@ -773,6 +773,37 @@ Rules:
 - completion fields are derived from immutable follow-up completion audits that still resolve to a current assignment
 - rows are ordered by `businessDate DESC`, then `assignedTo ASC`, then `changedBy ASC` with null actors last
 
+### WeeklyTenantCollectionsAssigneeActorEffectivenessSummary
+
+Purpose:
+- expose week-bucketed assignee-vs-actor effectiveness so leadership can see how current ownership and follow-up activity line up over time
+
+Fields:
+- `tenantCode`
+- `currencyCode`
+- `businessWeekStart`
+- `assignedTo`
+- `changedBy`
+- `currentAssignedInvoiceCount`
+- `currentOutstandingAmount`
+- `oldestDueAt`
+- `completionCount`
+- `completedInvoiceCount`
+
+Filters:
+- `currencyCode` required
+- `assignedTo` exact current assignee match, optional
+- `changedBy` exact follow-up completion actor match, optional
+- `changedAtFrom` UTC instant lower bound for follow-up completion counts, optional
+- `changedAtTo` UTC instant upper bound for follow-up completion counts, optional
+
+Rules:
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-actor-effectiveness/weekly-summary?currencyCode=&assignedTo=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
+- rows are grouped by Monday-based UTC `businessWeekStart + assignedTo + changedBy`
+- current workload fields are still computed from the current over-90 assigned receivables snapshot
+- completion fields are derived from immutable follow-up completion audits that still resolve to a current assignment
+- rows are ordered by `businessWeekStart DESC`, then `assignedTo ASC`, then `changedBy ASC` with null actors last
+
 ### DailyTenantCollectionsNetIntakeSummary
 
 Purpose:
@@ -1182,6 +1213,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-operations-summary?currencyCode=&actor=&changedAtFrom=&changedAtTo=&sortBy=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-actor-effectiveness-summary?currencyCode=&assignedTo=&changedBy=&changedAtFrom=&changedAtTo=&sortBy=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-actor-effectiveness/daily-summary?currencyCode=&assignedTo=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-actor-effectiveness/weekly-summary?currencyCode=&assignedTo=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/daily-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/weekly-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/monthly-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
