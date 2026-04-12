@@ -85,6 +85,11 @@ Identity:
 - `POST /api/identity/users`
 - `GET /api/identity/users?page=&size=`
 
+Core:
+
+- `POST /api/core/units-of-measurement`
+- `GET /api/core/units-of-measurement?page=&size=&queryFilter=&domain=`
+
 Products:
 
 - `POST /api/products`

@@ -1,6 +1,6 @@
 # Arcana ERP Modulith Module Map
 
-Updated: 2026-03-14
+Updated: 2026-04-11
 
 ## Scope
 
@@ -37,7 +37,7 @@ Notes:
 
 | Module | Package | Responsibilities | Public API (examples) | HTTP Surface |
 | --- | --- | --- | --- | --- |
-| Core | `com.arcanaerp.platform.core` | Shared primitives and cross-cutting infrastructure (API errors, UTC clock, pagination) | `PageQuery`, `PageResult` (via `core::pagination`) | Shared support only (no module-owned controller) |
+| Core | `com.arcanaerp.platform.core` | Shared primitives and cross-cutting infrastructure plus foundational units-of-measurement catalog support (API errors, UTC clock, pagination, UOM directory) | `PageQuery`, `PageResult` (via `core::pagination`), `UnitOfMeasurementDirectory` | `POST /api/core/units-of-measurement`, `GET /api/core/units-of-measurement` |
 | Identity | `com.arcanaerp.platform.identity` | Tenant/role/user primitives, org-unit directory, cross-module actor lookup | `UserDirectory`, `OrgUnitDirectory`, `IdentityActorLookup` | `POST /api/identity/users`, `GET /api/identity/users` |
 | Products | `com.arcanaerp.platform.products` | Product catalog, activation lifecycle, activation audit history, orderability lookup | `ProductCatalog`, `ProductLookup` | `POST /api/products`, `GET /api/products`, `PATCH /api/products/{sku}/active`, `GET /api/products/{sku}/activation-history` |
 | Orders | `com.arcanaerp.platform.orders` | Sales order creation, listing, and status transitions | `OrderManagement` | `POST /api/orders`, `GET /api/orders`, `PATCH /api/orders/{orderNumber}/status` |
