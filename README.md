@@ -84,6 +84,7 @@ Identity:
 
 - `POST /api/identity/users`
 - `GET /api/identity/users?page=&size=`
+- `GET /api/identity/roles?tenantCode=&page=&size=`
 
 Core:
 

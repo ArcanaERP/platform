@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 final class IdentityWebIntegrationTestSupport {
 
     private static final String USERS_PATH = "/api/identity/users";
+    private static final String ROLES_PATH = "/api/identity/roles";
     private static final String ORG_UNITS_PATH = "/api/identity/org-units";
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 10;
@@ -82,6 +83,18 @@ final class IdentityWebIntegrationTestSupport {
 
     static MockHttpServletRequestBuilder listUsersRequestDefault(String... optionalNameValuePairs) {
         return listUsersRequest(DEFAULT_PAGE, DEFAULT_SIZE, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder listRolesRequest(String tenantCode, int page, int size) {
+        return get(ROLES_PATH)
+            .param("tenantCode", tenantCode)
+            .param("page", String.valueOf(page))
+            .param("size", String.valueOf(size));
+    }
+
+    static MockHttpServletRequestBuilder listRolesRequest(String tenantCode) {
+        return get(ROLES_PATH)
+            .param("tenantCode", tenantCode);
     }
 
     static MockHttpServletRequestBuilder getUserRequest(String userId) {
