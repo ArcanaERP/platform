@@ -6,6 +6,7 @@ import com.arcanaerp.platform.identity.TenantDirectory;
 import com.arcanaerp.platform.identity.TenantView;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,6 +24,11 @@ public class TenantsController {
         @RequestParam(required = false) Integer size
     ) {
         return tenantDirectory.listTenants(PageQuery.of(page, size)).map(this::toResponse);
+    }
+
+    @GetMapping("/{code}")
+    public TenantResponse tenantByCode(@PathVariable String code) {
+        return toResponse(tenantDirectory.tenantByCode(code));
     }
 
     private TenantResponse toResponse(TenantView tenant) {

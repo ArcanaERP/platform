@@ -4,6 +4,7 @@ import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.TenantDirectory;
 import com.arcanaerp.platform.identity.TenantView;
+import java.util.NoSuchElementException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,14 @@ class TenantDirectoryService implements TenantDirectory {
         ).map(this::toView);
     }
 
+    @Override
+    public TenantView tenantByCode(String code) {
+        String normalizedCode = normalizeRequired(code, "code").toUpperCase();
+        Tenant tenant = tenantRepository.findByCode(normalizedCode)
+            .orElseThrow(() -> new NoSuchElementException("Tenant not found: " + normalizedCode));
+        return toView(tenant);
+    }
+
     private TenantView toView(Tenant tenant) {
         return new TenantView(
             tenant.getId(),
@@ -30,5 +39,12 @@ class TenantDirectoryService implements TenantDirectory {
             tenant.getName(),
             tenant.getCreatedAt()
         );
+    }
+
+    private static String normalizeRequired(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " is required");
+        }
+        return value.trim();
     }
 }

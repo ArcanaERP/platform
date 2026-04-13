@@ -108,6 +108,10 @@ final class IdentityWebIntegrationTestSupport {
         return get(TENANTS_PATH);
     }
 
+    static MockHttpServletRequestBuilder getTenantRequest(String code) {
+        return get(TENANTS_PATH + "/" + code);
+    }
+
     static ResultActions createRole(
         MockMvc mockMvc,
         String tenantCode,

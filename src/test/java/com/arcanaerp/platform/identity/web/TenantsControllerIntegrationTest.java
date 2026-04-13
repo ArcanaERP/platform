@@ -67,6 +67,33 @@ class TenantsControllerIntegrationTest {
     }
 
     @Test
+    void readsTenantByCode() throws Exception {
+        IdentityWebIntegrationTestSupport.createRole(
+            mockMvc,
+            "tenantweb04",
+            "Tenant Web 04",
+            "admin",
+            "Administrator"
+        )
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.getTenantRequest("tenantweb04"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("TENANTWEB04"))
+            .andExpect(jsonPath("$.name").value("Tenant Web 04"));
+    }
+
+    @Test
+    void returnsNotFoundForMissingTenantByCode() throws Exception {
+        mockMvc.perform(IdentityWebIntegrationTestSupport.getTenantRequest("missing-tenant-web"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Tenant not found: MISSING-TENANT-WEB"))
+            .andExpect(jsonPath("$.path").value("/api/identity/tenants/missing-tenant-web"));
+    }
+
+    @Test
     void rejectsInvalidPaginationParameters() throws Exception {
         mockMvc.perform(IdentityWebIntegrationTestSupport.listTenantsRequest(-1, 10))
             .andExpect(status().isBadRequest())
