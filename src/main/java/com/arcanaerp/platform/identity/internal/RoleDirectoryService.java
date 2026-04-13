@@ -2,8 +2,11 @@ package com.arcanaerp.platform.identity.internal;
 
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.identity.RegisterRoleCommand;
 import com.arcanaerp.platform.identity.RoleDirectory;
 import com.arcanaerp.platform.identity.RoleView;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.NoSuchElementException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -12,12 +15,32 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional(readOnly = true)
+@Transactional
 @RequiredArgsConstructor
 class RoleDirectoryService implements RoleDirectory {
 
     private final TenantRepository tenantRepository;
     private final RoleRepository roleRepository;
+    private final Clock clock;
+
+    @Override
+    public RoleView registerRole(RegisterRoleCommand command) {
+        String normalizedTenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
+        String normalizedTenantName = normalizeRequired(command.tenantName(), "tenantName");
+        String normalizedCode = normalizeRequired(command.code(), "code").toUpperCase();
+        String normalizedName = normalizeRequired(command.name(), "name");
+        Instant now = Instant.now(clock);
+
+        Tenant tenant = tenantRepository.findByCode(normalizedTenantCode)
+            .orElseGet(() -> tenantRepository.save(Tenant.create(normalizedTenantCode, normalizedTenantName, now)));
+
+        if (roleRepository.findByTenantIdAndCode(tenant.getId(), normalizedCode).isPresent()) {
+            throw new IllegalArgumentException("Role code already exists in tenant: " + normalizedCode);
+        }
+
+        Role role = roleRepository.save(Role.create(tenant.getId(), normalizedCode, normalizedName, now));
+        return toView(role, tenant);
+    }
 
     @Override
     public PageResult<RoleView> listRoles(String tenantCode, PageQuery pageQuery) {

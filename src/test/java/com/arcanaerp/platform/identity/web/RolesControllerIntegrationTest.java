@@ -19,6 +19,36 @@ class RolesControllerIntegrationTest {
     private MockMvc mockMvc;
 
     @Test
+    void createsAndListsRolesByTenant() throws Exception {
+        IdentityWebIntegrationTestSupport.createRole(
+            mockMvc,
+            "roleweb00",
+            "Role Web 00",
+            "admin",
+            "Administrator"
+        )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.tenantCode").value("ROLEWEB00"))
+            .andExpect(jsonPath("$.code").value("ADMIN"))
+            .andExpect(jsonPath("$.name").value("Administrator"));
+
+        IdentityWebIntegrationTestSupport.createRole(
+            mockMvc,
+            "roleweb00",
+            "Role Web 00",
+            "analyst",
+            "Analyst"
+        )
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listRolesRequest("roleweb00", 0, 10))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[?(@.tenantCode=='ROLEWEB00')].code", hasItem("ADMIN")))
+            .andExpect(jsonPath("$.items[?(@.tenantCode=='ROLEWEB00')].code", hasItem("ANALYST")));
+    }
+
+    @Test
     void listsRolesByTenant() throws Exception {
         IdentityWebIntegrationTestSupport.createUser(
             mockMvc,
@@ -49,6 +79,31 @@ class RolesControllerIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(2))
             .andExpect(jsonPath("$.items[?(@.tenantCode=='ROLEWEB01')].code", hasItem("ADMIN")))
             .andExpect(jsonPath("$.items[?(@.tenantCode=='ROLEWEB01')].code", hasItem("ANALYST")));
+    }
+
+    @Test
+    void rejectsDuplicateRoleCodeInTenant() throws Exception {
+        IdentityWebIntegrationTestSupport.createRole(
+            mockMvc,
+            "rolewebdup",
+            "Role Web Dup",
+            "admin",
+            "Administrator"
+        )
+            .andExpect(status().isCreated());
+
+        IdentityWebIntegrationTestSupport.createRole(
+            mockMvc,
+            "rolewebdup",
+            "Role Web Dup",
+            "ADMIN",
+            "Administrator Copy"
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("Role code already exists in tenant: ADMIN"))
+            .andExpect(jsonPath("$.path").value("/api/identity/roles"));
     }
 
     @Test

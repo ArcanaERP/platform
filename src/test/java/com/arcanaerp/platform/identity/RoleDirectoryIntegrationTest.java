@@ -19,12 +19,12 @@ class RoleDirectoryIntegrationTest {
     private RoleDirectory roleDirectory;
 
     @Test
-    void listsRolesByTenant() {
-        userDirectory.registerUser(
-            new RegisterUserCommand("rolten01", "Role Tenant 01", "admin", "Administrator", "role01@acme.com", "Role 01")
+    void registersAndListsRolesByTenant() {
+        roleDirectory.registerRole(
+            new RegisterRoleCommand("rolten01", "Role Tenant 01", "admin", "Administrator")
         );
-        userDirectory.registerUser(
-            new RegisterUserCommand("rolten01", "Role Tenant 01", "analyst", "Analyst", "role02@acme.com", "Role 02")
+        roleDirectory.registerRole(
+            new RegisterRoleCommand("rolten01", "Role Tenant 01", "analyst", "Analyst")
         );
 
         var roles = roleDirectory.listRoles("rolten01", new PageQuery(0, 10));
@@ -32,6 +32,37 @@ class RoleDirectoryIntegrationTest {
         assertThat(roles.totalItems()).isEqualTo(2);
         assertThat(roles.items()).extracting(RoleView::code).containsExactly("ADMIN", "ANALYST");
         assertThat(roles.items()).extracting(RoleView::tenantCode).containsOnly("ROLTEN01");
+    }
+
+    @Test
+    void listsRolesByTenant() {
+        userDirectory.registerUser(
+            new RegisterUserCommand("rolten02", "Role Tenant 02", "admin", "Administrator", "role01@acme.com", "Role 01")
+        );
+        userDirectory.registerUser(
+            new RegisterUserCommand("rolten02", "Role Tenant 02", "analyst", "Analyst", "role02@acme.com", "Role 02")
+        );
+
+        var roles = roleDirectory.listRoles("rolten02", new PageQuery(0, 10));
+
+        assertThat(roles.totalItems()).isEqualTo(2);
+        assertThat(roles.items()).extracting(RoleView::code).containsExactly("ADMIN", "ANALYST");
+        assertThat(roles.items()).extracting(RoleView::tenantCode).containsOnly("ROLTEN02");
+    }
+
+    @Test
+    void rejectsDuplicateRoleCodeInTenant() {
+        roleDirectory.registerRole(
+            new RegisterRoleCommand("rolten03", "Role Tenant 03", "admin", "Administrator")
+        );
+
+        assertThatThrownBy(() ->
+            roleDirectory.registerRole(
+                new RegisterRoleCommand("rolten03", "Role Tenant 03", "ADMIN", "Administrator Copy")
+            )
+        )
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("Role code already exists in tenant: ADMIN");
     }
 
     @Test
