@@ -5,6 +5,7 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.TenantDirectory;
 import com.arcanaerp.platform.identity.TenantView;
 import com.arcanaerp.platform.identity.RegisterTenantCommand;
+import com.arcanaerp.platform.identity.UpdateTenantCommand;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.NoSuchElementException;
@@ -34,6 +35,19 @@ class TenantDirectoryService implements TenantDirectory {
 
         Tenant tenant = tenantRepository.save(Tenant.create(normalizedCode, normalizedName, now));
         return toView(tenant);
+    }
+
+    @Override
+    @Transactional
+    public TenantView updateTenant(UpdateTenantCommand command) {
+        String normalizedCode = normalizeRequired(command.code(), "code").toUpperCase();
+        String normalizedName = normalizeRequired(command.name(), "name");
+
+        Tenant tenant = tenantRepository.findByCode(normalizedCode)
+            .orElseThrow(() -> new NoSuchElementException("Tenant not found: " + normalizedCode));
+        tenant.update(normalizedName);
+        Tenant saved = tenantRepository.save(tenant);
+        return toView(saved);
     }
 
     @Override

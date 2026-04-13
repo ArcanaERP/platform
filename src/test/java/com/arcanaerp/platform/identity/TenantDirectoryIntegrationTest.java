@@ -80,4 +80,23 @@ class TenantDirectoryIntegrationTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("Tenant code already exists: TENANTDIRDUP");
     }
+
+    @Test
+    void updatesTenantName() {
+        tenantDirectory.registerTenant(new RegisterTenantCommand("tenantdir04", "Tenant Dir 04"));
+
+        TenantView updated = tenantDirectory.updateTenant(new UpdateTenantCommand("tenantdir04", "Tenant Dir 04 Renamed"));
+
+        assertThat(updated.code()).isEqualTo("TENANTDIR04");
+        assertThat(updated.name()).isEqualTo("Tenant Dir 04 Renamed");
+    }
+
+    @Test
+    void rejectsMissingTenantUpdate() {
+        assertThatThrownBy(() -> tenantDirectory.updateTenant(
+            new UpdateTenantCommand("missing-tenant-update", "Missing Tenant Update")
+        ))
+            .isInstanceOf(NoSuchElementException.class)
+            .hasMessage("Tenant not found: MISSING-TENANT-UPDATE");
+    }
 }

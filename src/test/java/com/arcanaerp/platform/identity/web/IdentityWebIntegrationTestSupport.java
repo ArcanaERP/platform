@@ -133,6 +133,26 @@ final class IdentityWebIntegrationTestSupport {
             .content(payload);
     }
 
+    static ResultActions updateTenant(
+        MockMvc mockMvc,
+        String code,
+        String name
+    ) throws Exception {
+        return mockMvc.perform(
+            patch(TENANTS_PATH + "/" + code)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(updateTenantPayload(name))
+        );
+    }
+
+    static String updateTenantPayload(String name) {
+        return """
+            {
+              "name": "%s"
+            }
+            """.formatted(name);
+    }
+
     static MockHttpServletRequestBuilder getTenantRequest(String code) {
         return get(TENANTS_PATH + "/" + code);
     }

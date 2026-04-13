@@ -5,11 +5,13 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.RegisterTenantCommand;
 import com.arcanaerp.platform.identity.TenantDirectory;
 import com.arcanaerp.platform.identity.TenantView;
+import com.arcanaerp.platform.identity.UpdateTenantCommand;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -44,6 +46,14 @@ public class TenantsController {
     @GetMapping("/{code}")
     public TenantResponse tenantByCode(@PathVariable String code) {
         return toResponse(tenantDirectory.tenantByCode(code));
+    }
+
+    @PatchMapping("/{code}")
+    public TenantResponse updateTenant(
+        @PathVariable String code,
+        @Valid @RequestBody UpdateTenantRequest request
+    ) {
+        return toResponse(tenantDirectory.updateTenant(new UpdateTenantCommand(code, request.name())));
     }
 
     private TenantResponse toResponse(TenantView tenant) {

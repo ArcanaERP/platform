@@ -46,6 +46,10 @@ public class Tenant {
         return new Tenant(null, normalizeCode(code), normalizeRequired(name, "name"), createdAt);
     }
 
+    void update(String name) {
+        this.name = normalizeRequired(name, "name");
+    }
+
     private static String normalizeCode(String code) {
         return normalizeRequired(code, "code").toUpperCase();
     }

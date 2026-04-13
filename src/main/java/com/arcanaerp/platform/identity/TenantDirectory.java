@@ -7,6 +7,8 @@ public interface TenantDirectory {
 
     TenantView registerTenant(RegisterTenantCommand command);
 
+    TenantView updateTenant(UpdateTenantCommand command);
+
     PageResult<TenantView> listTenants(PageQuery pageQuery);
 
     TenantView tenantByCode(String code);
