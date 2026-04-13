@@ -22,6 +22,14 @@ class TenantDirectoryIntegrationTest {
     private TenantDirectory tenantDirectory;
 
     @Test
+    void registersTenantDirectly() {
+        TenantView tenant = tenantDirectory.registerTenant(new RegisterTenantCommand("tenantdir00", "Tenant Dir 00"));
+
+        assertThat(tenant.code()).isEqualTo("TENANTDIR00");
+        assertThat(tenant.name()).isEqualTo("Tenant Dir 00");
+    }
+
+    @Test
     void listsTenantsCreatedThroughIdentityFlows() {
         roleDirectory.registerRole(
             new RegisterRoleCommand("tenantdir01", "Tenant Dir 01", "admin", "Administrator")
@@ -60,5 +68,16 @@ class TenantDirectoryIntegrationTest {
         assertThatThrownBy(() -> tenantDirectory.tenantByCode("missing-tenant-dir"))
             .isInstanceOf(NoSuchElementException.class)
             .hasMessage("Tenant not found: MISSING-TENANT-DIR");
+    }
+
+    @Test
+    void rejectsDuplicateTenantCode() {
+        tenantDirectory.registerTenant(new RegisterTenantCommand("tenantdirdup", "Tenant Dir Dup"));
+
+        assertThatThrownBy(() -> tenantDirectory.registerTenant(
+            new RegisterTenantCommand("TENANTDIRDUP", "Tenant Dir Dup Copy")
+        ))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("Tenant code already exists: TENANTDIRDUP");
     }
 }

@@ -4,6 +4,9 @@ import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.TenantDirectory;
 import com.arcanaerp.platform.identity.TenantView;
+import com.arcanaerp.platform.identity.RegisterTenantCommand;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.NoSuchElementException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -16,6 +19,22 @@ import org.springframework.transaction.annotation.Transactional;
 class TenantDirectoryService implements TenantDirectory {
 
     private final TenantRepository tenantRepository;
+    private final Clock clock;
+
+    @Override
+    @Transactional
+    public TenantView registerTenant(RegisterTenantCommand command) {
+        String normalizedCode = normalizeRequired(command.code(), "code").toUpperCase();
+        String normalizedName = normalizeRequired(command.name(), "name");
+        Instant now = Instant.now(clock);
+
+        if (tenantRepository.findByCode(normalizedCode).isPresent()) {
+            throw new IllegalArgumentException("Tenant code already exists: " + normalizedCode);
+        }
+
+        Tenant tenant = tenantRepository.save(Tenant.create(normalizedCode, normalizedName, now));
+        return toView(tenant);
+    }
 
     @Override
     public PageResult<TenantView> listTenants(PageQuery pageQuery) {

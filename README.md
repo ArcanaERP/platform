@@ -82,6 +82,7 @@ Default app URL:
 
 Identity:
 
+- `POST /api/identity/tenants`
 - `GET /api/identity/tenants?page=&size=`
 - `GET /api/identity/tenants/{code}`
 - `POST /api/identity/users`

@@ -19,6 +19,18 @@ class TenantsControllerIntegrationTest {
     private MockMvc mockMvc;
 
     @Test
+    void createsTenantDirectly() throws Exception {
+        IdentityWebIntegrationTestSupport.createTenant(
+            mockMvc,
+            "tenantweb00",
+            "Tenant Web 00"
+        )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.code").value("TENANTWEB00"))
+            .andExpect(jsonPath("$.name").value("Tenant Web 00"));
+    }
+
+    @Test
     void listsTenantsCreatedThroughIdentityFlows() throws Exception {
         IdentityWebIntegrationTestSupport.createRole(
             mockMvc,
@@ -91,6 +103,27 @@ class TenantsControllerIntegrationTest {
             .andExpect(jsonPath("$.error").value("Not Found"))
             .andExpect(jsonPath("$.message").value("Tenant not found: MISSING-TENANT-WEB"))
             .andExpect(jsonPath("$.path").value("/api/identity/tenants/missing-tenant-web"));
+    }
+
+    @Test
+    void rejectsDuplicateTenantCode() throws Exception {
+        IdentityWebIntegrationTestSupport.createTenant(
+            mockMvc,
+            "tenantwebdup",
+            "Tenant Web Dup"
+        )
+            .andExpect(status().isCreated());
+
+        IdentityWebIntegrationTestSupport.createTenant(
+            mockMvc,
+            "TENANTWEBDUP",
+            "Tenant Web Dup Copy"
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("Tenant code already exists: TENANTWEBDUP"))
+            .andExpect(jsonPath("$.path").value("/api/identity/tenants"));
     }
 
     @Test

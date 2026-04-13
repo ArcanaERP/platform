@@ -20,6 +20,25 @@ final class IdentityWebIntegrationTestSupport {
 
     private IdentityWebIntegrationTestSupport() {}
 
+    static ResultActions createTenant(
+        MockMvc mockMvc,
+        String code,
+        String name
+    ) throws Exception {
+        return mockMvc.perform(post(TENANTS_PATH).contentType(MediaType.APPLICATION_JSON).content(
+            createTenantPayload(code, name)
+        ));
+    }
+
+    static String createTenantPayload(String code, String name) {
+        return """
+            {
+              "code": "%s",
+              "name": "%s"
+            }
+            """.formatted(code, name);
+    }
+
     static ResultActions createUser(
         MockMvc mockMvc,
         String tenantCode,
@@ -106,6 +125,12 @@ final class IdentityWebIntegrationTestSupport {
 
     static MockHttpServletRequestBuilder listTenantsRequest() {
         return get(TENANTS_PATH);
+    }
+
+    static MockHttpServletRequestBuilder createTenantRequest(String payload) {
+        return post(TENANTS_PATH)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload);
     }
 
     static MockHttpServletRequestBuilder getTenantRequest(String code) {
