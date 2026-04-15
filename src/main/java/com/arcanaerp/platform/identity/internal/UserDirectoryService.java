@@ -10,6 +10,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,25 @@ class UserDirectoryService implements UserDirectory, IdentityActorLookup {
         UserAccount user = userAccountRepository.save(
             UserAccount.create(tenant.getId(), role.getId(), normalizedEmail, displayName, now)
         );
+        return toView(user, tenant, role);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserView userById(String userId) {
+        UUID normalizedUserId;
+        try {
+            normalizedUserId = UUID.fromString(normalizeRequired(userId, "userId"));
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("userId is invalid");
+        }
+
+        UserAccount user = userAccountRepository.findById(normalizedUserId)
+            .orElseThrow(() -> new NoSuchElementException("User not found: " + normalizedUserId));
+        Tenant tenant = tenantRepository.findById(user.getTenantId())
+            .orElseThrow(() -> new NoSuchElementException("Tenant not found for user: " + normalizedUserId));
+        Role role = roleRepository.findById(user.getRoleId())
+            .orElseThrow(() -> new NoSuchElementException("Role not found for user: " + normalizedUserId));
         return toView(user, tenant, role);
     }
 

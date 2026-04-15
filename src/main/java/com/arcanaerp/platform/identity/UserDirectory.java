@@ -7,5 +7,7 @@ public interface UserDirectory {
 
     UserView registerUser(RegisterUserCommand command);
 
+    UserView userById(String userId);
+
     PageResult<UserView> listUsers(PageQuery pageQuery);
 }

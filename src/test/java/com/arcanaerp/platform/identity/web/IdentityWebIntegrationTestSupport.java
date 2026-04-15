@@ -20,6 +20,20 @@ final class IdentityWebIntegrationTestSupport {
 
     private IdentityWebIntegrationTestSupport() {}
 
+    static String extractJsonString(String json, String fieldName) {
+        String pattern = "\"" + fieldName + "\":\"";
+        int start = json.indexOf(pattern);
+        if (start < 0) {
+            throw new IllegalArgumentException("field not found: " + fieldName);
+        }
+        int valueStart = start + pattern.length();
+        int valueEnd = json.indexOf('"', valueStart);
+        if (valueEnd < 0) {
+            throw new IllegalArgumentException("unterminated field: " + fieldName);
+        }
+        return json.substring(valueStart, valueEnd);
+    }
+
     static ResultActions createTenant(
         MockMvc mockMvc,
         String code,
