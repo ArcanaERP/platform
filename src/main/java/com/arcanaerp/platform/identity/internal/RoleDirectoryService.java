@@ -43,6 +43,22 @@ class RoleDirectoryService implements RoleDirectory {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public RoleView roleByCode(String tenantCode, String code) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedCode = normalizeRequired(code, "code").toUpperCase();
+
+        Tenant tenant = tenantRepository.findByCode(normalizedTenantCode)
+            .orElseThrow(() -> new NoSuchElementException("Tenant not found: " + normalizedTenantCode));
+
+        Role role = roleRepository.findByTenantIdAndCode(tenant.getId(), normalizedCode)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Role not found for tenant/code: " + normalizedTenantCode + "/" + normalizedCode
+            ));
+        return toView(role, tenant);
+    }
+
+    @Override
     public PageResult<RoleView> listRoles(String tenantCode, PageQuery pageQuery) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
         Tenant tenant = tenantRepository.findByCode(normalizedTenantCode)

@@ -51,6 +51,19 @@ class RoleDirectoryIntegrationTest {
     }
 
     @Test
+    void readsRoleByTenantAndCode() {
+        roleDirectory.registerRole(
+            new RegisterRoleCommand("rolten04", "Role Tenant 04", "admin", "Administrator")
+        );
+
+        RoleView role = roleDirectory.roleByCode("rolten04", "admin");
+
+        assertThat(role.tenantCode()).isEqualTo("ROLTEN04");
+        assertThat(role.code()).isEqualTo("ADMIN");
+        assertThat(role.name()).isEqualTo("Administrator");
+    }
+
+    @Test
     void rejectsDuplicateRoleCodeInTenant() {
         roleDirectory.registerRole(
             new RegisterRoleCommand("rolten03", "Role Tenant 03", "admin", "Administrator")
@@ -70,5 +83,16 @@ class RoleDirectoryIntegrationTest {
         assertThatThrownBy(() -> roleDirectory.listRoles("missing-role-tenant", new PageQuery(0, 10)))
             .isInstanceOf(NoSuchElementException.class)
             .hasMessage("Tenant not found: MISSING-ROLE-TENANT");
+    }
+
+    @Test
+    void rejectsMissingRoleByTenantAndCode() {
+        roleDirectory.registerRole(
+            new RegisterRoleCommand("rolten05", "Role Tenant 05", "admin", "Administrator")
+        );
+
+        assertThatThrownBy(() -> roleDirectory.roleByCode("rolten05", "missing-role"))
+            .isInstanceOf(NoSuchElementException.class)
+            .hasMessage("Role not found for tenant/code: ROLTEN05/MISSING-ROLE");
     }
 }

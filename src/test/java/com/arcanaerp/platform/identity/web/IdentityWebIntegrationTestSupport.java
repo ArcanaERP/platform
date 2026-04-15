@@ -180,6 +180,11 @@ final class IdentityWebIntegrationTestSupport {
             """.formatted(tenantCode, tenantName, code, name);
     }
 
+    static MockHttpServletRequestBuilder getRoleRequest(String tenantCode, String code) {
+        return get(ROLES_PATH + "/" + code)
+            .param("tenantCode", tenantCode);
+    }
+
     static MockHttpServletRequestBuilder getUserRequest(String userId) {
         return get(USERS_PATH + "/" + userId);
     }

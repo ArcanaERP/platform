@@ -82,6 +82,24 @@ class RolesControllerIntegrationTest {
     }
 
     @Test
+    void readsRoleByTenantAndCode() throws Exception {
+        IdentityWebIntegrationTestSupport.createRole(
+            mockMvc,
+            "roleweb04",
+            "Role Web 04",
+            "admin",
+            "Administrator"
+        )
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.getRoleRequest("roleweb04", "admin"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tenantCode").value("ROLEWEB04"))
+            .andExpect(jsonPath("$.code").value("ADMIN"))
+            .andExpect(jsonPath("$.name").value("Administrator"));
+    }
+
+    @Test
     void rejectsDuplicateRoleCodeInTenant() throws Exception {
         IdentityWebIntegrationTestSupport.createRole(
             mockMvc,
@@ -135,6 +153,25 @@ class RolesControllerIntegrationTest {
             .andExpect(jsonPath("$.error").value("Not Found"))
             .andExpect(jsonPath("$.message").value("Tenant not found: MISSING-ROLEWEB"))
             .andExpect(jsonPath("$.path").value("/api/identity/roles"));
+    }
+
+    @Test
+    void returnsNotFoundForMissingRoleByTenantAndCode() throws Exception {
+        IdentityWebIntegrationTestSupport.createRole(
+            mockMvc,
+            "roleweb05",
+            "Role Web 05",
+            "admin",
+            "Administrator"
+        )
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.getRoleRequest("roleweb05", "missing-role"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Role not found for tenant/code: ROLEWEB05/MISSING-ROLE"))
+            .andExpect(jsonPath("$.path").value("/api/identity/roles/missing-role"));
     }
 
     @Test
