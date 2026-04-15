@@ -90,6 +90,7 @@ Identity:
 - `POST /api/identity/roles`
 - `GET /api/identity/users?page=&size=`
 - `GET /api/identity/roles/{code}?tenantCode=`
+- `PATCH /api/identity/roles/{code}?tenantCode=`
 - `GET /api/identity/roles?tenantCode=&page=&size=`
 
 Core:

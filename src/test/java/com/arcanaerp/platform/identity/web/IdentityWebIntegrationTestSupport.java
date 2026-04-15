@@ -185,6 +185,28 @@ final class IdentityWebIntegrationTestSupport {
             .param("tenantCode", tenantCode);
     }
 
+    static ResultActions updateRole(
+        MockMvc mockMvc,
+        String tenantCode,
+        String code,
+        String name
+    ) throws Exception {
+        return mockMvc.perform(
+            patch(ROLES_PATH + "/" + code)
+                .param("tenantCode", tenantCode)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(updateRolePayload(name))
+        );
+    }
+
+    static String updateRolePayload(String name) {
+        return """
+            {
+              "name": "%s"
+            }
+            """.formatted(name);
+    }
+
     static MockHttpServletRequestBuilder getUserRequest(String userId) {
         return get(USERS_PATH + "/" + userId);
     }

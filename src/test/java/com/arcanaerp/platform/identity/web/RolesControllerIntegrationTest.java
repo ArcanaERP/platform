@@ -100,6 +100,29 @@ class RolesControllerIntegrationTest {
     }
 
     @Test
+    void updatesRoleName() throws Exception {
+        IdentityWebIntegrationTestSupport.createRole(
+            mockMvc,
+            "roleweb06",
+            "Role Web 06",
+            "admin",
+            "Administrator"
+        )
+            .andExpect(status().isCreated());
+
+        IdentityWebIntegrationTestSupport.updateRole(
+            mockMvc,
+            "roleweb06",
+            "admin",
+            "Administrator Renamed"
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tenantCode").value("ROLEWEB06"))
+            .andExpect(jsonPath("$.code").value("ADMIN"))
+            .andExpect(jsonPath("$.name").value("Administrator Renamed"));
+    }
+
+    @Test
     void rejectsDuplicateRoleCodeInTenant() throws Exception {
         IdentityWebIntegrationTestSupport.createRole(
             mockMvc,
@@ -171,6 +194,30 @@ class RolesControllerIntegrationTest {
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
             .andExpect(jsonPath("$.message").value("Role not found for tenant/code: ROLEWEB05/MISSING-ROLE"))
+            .andExpect(jsonPath("$.path").value("/api/identity/roles/missing-role"));
+    }
+
+    @Test
+    void returnsNotFoundForMissingRoleUpdateByTenantAndCode() throws Exception {
+        IdentityWebIntegrationTestSupport.createRole(
+            mockMvc,
+            "roleweb07",
+            "Role Web 07",
+            "admin",
+            "Administrator"
+        )
+            .andExpect(status().isCreated());
+
+        IdentityWebIntegrationTestSupport.updateRole(
+            mockMvc,
+            "roleweb07",
+            "missing-role",
+            "Missing Role"
+        )
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Role not found for tenant/code: ROLEWEB07/MISSING-ROLE"))
             .andExpect(jsonPath("$.path").value("/api/identity/roles/missing-role"));
     }
 

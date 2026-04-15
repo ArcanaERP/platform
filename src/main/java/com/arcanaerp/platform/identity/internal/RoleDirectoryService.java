@@ -5,6 +5,7 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.RegisterRoleCommand;
 import com.arcanaerp.platform.identity.RoleDirectory;
 import com.arcanaerp.platform.identity.RoleView;
+import com.arcanaerp.platform.identity.UpdateRoleCommand;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.NoSuchElementException;
@@ -40,6 +41,25 @@ class RoleDirectoryService implements RoleDirectory {
 
         Role role = roleRepository.save(Role.create(tenant.getId(), normalizedCode, normalizedName, now));
         return toView(role, tenant);
+    }
+
+    @Override
+    @Transactional
+    public RoleView updateRole(UpdateRoleCommand command) {
+        String normalizedTenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
+        String normalizedCode = normalizeRequired(command.code(), "code").toUpperCase();
+        String normalizedName = normalizeRequired(command.name(), "name");
+
+        Tenant tenant = tenantRepository.findByCode(normalizedTenantCode)
+            .orElseThrow(() -> new NoSuchElementException("Tenant not found: " + normalizedTenantCode));
+
+        Role role = roleRepository.findByTenantIdAndCode(tenant.getId(), normalizedCode)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Role not found for tenant/code: " + normalizedTenantCode + "/" + normalizedCode
+            ));
+        role.update(normalizedName);
+        Role saved = roleRepository.save(role);
+        return toView(saved, tenant);
     }
 
     @Override

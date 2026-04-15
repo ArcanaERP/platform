@@ -64,6 +64,10 @@ public class Role {
         );
     }
 
+    void update(String name) {
+        this.name = normalizeRequired(name, "name");
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");

@@ -5,11 +5,13 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.RegisterRoleCommand;
 import com.arcanaerp.platform.identity.RoleDirectory;
 import com.arcanaerp.platform.identity.RoleView;
+import com.arcanaerp.platform.identity.UpdateRoleCommand;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -44,6 +46,15 @@ public class RolesController {
         @RequestParam String tenantCode
     ) {
         return toResponse(roleDirectory.roleByCode(tenantCode, code));
+    }
+
+    @PatchMapping("/{code}")
+    public RoleResponse updateRole(
+        @PathVariable String code,
+        @RequestParam String tenantCode,
+        @Valid @RequestBody UpdateRoleRequest request
+    ) {
+        return toResponse(roleDirectory.updateRole(new UpdateRoleCommand(tenantCode, code, request.name())));
     }
 
     @GetMapping
