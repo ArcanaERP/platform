@@ -45,10 +45,57 @@ class UsersControllerIntegrationTest {
     }
 
     @Test
+    void updatesUserDisplayNameAndActiveState() throws Exception {
+        String createdUserJson = IdentityWebIntegrationTestSupport.createUser(
+            mockMvc,
+            "acme07",
+            "Acme 07",
+            "admin",
+            "Administrator",
+            "ops07@acme.com",
+            "Ops 07"
+        )
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+        String userId = IdentityWebIntegrationTestSupport.extractJsonString(createdUserJson, "id");
+
+        IdentityWebIntegrationTestSupport.updateUser(
+            mockMvc,
+            userId,
+            "Ops 07 Renamed",
+            false
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(userId))
+            .andExpect(jsonPath("$.displayName").value("Ops 07 Renamed"))
+            .andExpect(jsonPath("$.active").value(false));
+    }
+
+    @Test
     void returnsNotFoundForMissingUserById() throws Exception {
         String missingUserId = "11111111-1111-1111-1111-111111111111";
 
         mockMvc.perform(IdentityWebIntegrationTestSupport.getUserRequest(missingUserId))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("User not found: " + missingUserId))
+            .andExpect(jsonPath("$.path").value("/api/identity/users/" + missingUserId));
+    }
+
+    @Test
+    void returnsNotFoundForMissingUserUpdate() throws Exception {
+        String missingUserId = "11111111-1111-1111-1111-111111111111";
+
+        IdentityWebIntegrationTestSupport.updateUser(
+            mockMvc,
+            missingUserId,
+            "Missing User",
+            false
+        )
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
@@ -156,6 +203,21 @@ class UsersControllerIntegrationTest {
     @Test
     void rejectsInvalidUserIdLookup() throws Exception {
         mockMvc.perform(IdentityWebIntegrationTestSupport.getUserRequest("not-a-uuid"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("userId is invalid"))
+            .andExpect(jsonPath("$.path").value("/api/identity/users/not-a-uuid"));
+    }
+
+    @Test
+    void rejectsInvalidUserIdUpdate() throws Exception {
+        IdentityWebIntegrationTestSupport.updateUser(
+            mockMvc,
+            "not-a-uuid",
+            "Invalid User",
+            false
+        )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))

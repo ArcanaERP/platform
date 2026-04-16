@@ -4,6 +4,7 @@ import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.IdentityActorLookup;
 import com.arcanaerp.platform.identity.RegisterUserCommand;
+import com.arcanaerp.platform.identity.UpdateUserCommand;
 import com.arcanaerp.platform.identity.UserDirectory;
 import com.arcanaerp.platform.identity.UserView;
 import java.time.Clock;
@@ -56,14 +57,26 @@ class UserDirectoryService implements UserDirectory, IdentityActorLookup {
     }
 
     @Override
+    @Transactional
+    public UserView updateUser(UpdateUserCommand command) {
+        UUID normalizedUserId = parseRequiredUserId(command.userId());
+        String normalizedDisplayName = normalizeRequired(command.displayName(), "displayName");
+
+        UserAccount user = userAccountRepository.findById(normalizedUserId)
+            .orElseThrow(() -> new NoSuchElementException("User not found: " + normalizedUserId));
+        user.update(normalizedDisplayName, command.active());
+        UserAccount saved = userAccountRepository.save(user);
+        Tenant tenant = tenantRepository.findById(saved.getTenantId())
+            .orElseThrow(() -> new NoSuchElementException("Tenant not found for user: " + normalizedUserId));
+        Role role = roleRepository.findById(saved.getRoleId())
+            .orElseThrow(() -> new NoSuchElementException("Role not found for user: " + normalizedUserId));
+        return toView(saved, tenant, role);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public UserView userById(String userId) {
-        UUID normalizedUserId;
-        try {
-            normalizedUserId = UUID.fromString(normalizeRequired(userId, "userId"));
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("userId is invalid");
-        }
+        UUID normalizedUserId = parseRequiredUserId(userId);
 
         UserAccount user = userAccountRepository.findById(normalizedUserId)
             .orElseThrow(() -> new NoSuchElementException("User not found: " + normalizedUserId));
@@ -138,5 +151,13 @@ class UserDirectoryService implements UserDirectory, IdentityActorLookup {
             throw new IllegalArgumentException("email is invalid");
         }
         return normalized;
+    }
+
+    private static UUID parseRequiredUserId(String userId) {
+        try {
+            return UUID.fromString(normalizeRequired(userId, "userId"));
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("userId is invalid");
+        }
     }
 }

@@ -89,6 +89,7 @@ Identity:
 - `POST /api/identity/users`
 - `POST /api/identity/roles`
 - `GET /api/identity/users/{userId}`
+- `PATCH /api/identity/users/{userId}`
 - `GET /api/identity/users?page=&size=`
 - `GET /api/identity/roles/{code}?tenantCode=`
 - `PATCH /api/identity/roles/{code}?tenantCode=`

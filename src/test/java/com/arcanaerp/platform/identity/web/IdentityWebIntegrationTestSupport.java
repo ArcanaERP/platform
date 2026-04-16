@@ -225,6 +225,29 @@ final class IdentityWebIntegrationTestSupport {
         return get(USERS_PATH + "/" + userId);
     }
 
+    static ResultActions updateUser(
+        MockMvc mockMvc,
+        String userId,
+        String displayName,
+        Boolean active
+    ) throws Exception {
+        return mockMvc.perform(
+            patch(USERS_PATH + "/" + userId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(updateUserPayload(displayName, active))
+        );
+    }
+
+    static String updateUserPayload(String displayName, Boolean active) {
+        String activeValue = active == null ? "null" : active.toString();
+        return """
+            {
+              "displayName": "%s",
+              "active": %s
+            }
+            """.formatted(displayName, activeValue);
+    }
+
     static ResultActions createOrgUnit(
         MockMvc mockMvc,
         String tenantCode,

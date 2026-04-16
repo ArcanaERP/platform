@@ -91,6 +91,11 @@ public class UserAccount {
         );
     }
 
+    void update(String displayName, boolean active) {
+        this.displayName = normalizeRequired(displayName, "displayName");
+        this.active = active;
+    }
+
     private static String normalizeEmail(String email) {
         String normalized = normalizeRequired(email, "email").toLowerCase();
         if (!SIMPLE_EMAIL_PATTERN.matcher(normalized).matches()) {
