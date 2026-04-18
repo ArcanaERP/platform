@@ -11,5 +11,5 @@ public interface UserDirectory {
 
     UserView userById(String userId);
 
-    PageResult<UserView> listUsers(PageQuery pageQuery);
+    PageResult<UserView> listUsers(PageQuery pageQuery, String tenantCode, String roleCode, Boolean active);
 }

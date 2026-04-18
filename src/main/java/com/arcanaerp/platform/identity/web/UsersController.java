@@ -59,10 +59,20 @@ public class UsersController {
 
     @GetMapping
     public PageResult<UserResponse> listUsers(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String roleCode,
+        @RequestParam(required = false) String active,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
-        return userDirectory.listUsers(PageQuery.of(page, size)).map(this::toResponse);
+        return userDirectory
+            .listUsers(
+                PageQuery.of(page, size),
+                tenantCode,
+                roleCode,
+                normalizeOptionalActive(active)
+            )
+            .map(this::toResponse);
     }
 
     private UserResponse toResponse(UserView user) {
@@ -79,5 +89,22 @@ public class UsersController {
             user.active(),
             user.createdAt()
         );
+    }
+
+    private static Boolean normalizeOptionalActive(String active) {
+        if (active == null) {
+            return null;
+        }
+        if (active.isBlank()) {
+            throw new IllegalArgumentException("active query parameter must not be blank");
+        }
+        String normalized = active.trim().toLowerCase();
+        if ("true".equals(normalized)) {
+            return Boolean.TRUE;
+        }
+        if ("false".equals(normalized)) {
+            return Boolean.FALSE;
+        }
+        throw new IllegalArgumentException("active query parameter must be either true or false");
     }
 }

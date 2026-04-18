@@ -90,10 +90,14 @@ Identity:
 - `POST /api/identity/roles`
 - `GET /api/identity/users/{userId}`
 - `PATCH /api/identity/users/{userId}`
-- `GET /api/identity/users?page=&size=`
+- `GET /api/identity/users?page=&size=&tenantCode=&roleCode=&active=`
 - `GET /api/identity/roles/{code}?tenantCode=`
 - `PATCH /api/identity/roles/{code}?tenantCode=`
 - `GET /api/identity/roles?tenantCode=&page=&size=`
+- `POST /api/identity/org-units`
+- `GET /api/identity/org-units?tenantCode=&page=&size=&active=`
+- `GET /api/identity/org-units/{code}?tenantCode=`
+- `PATCH /api/identity/org-units/{code}?tenantCode=`
 
 Core:
 

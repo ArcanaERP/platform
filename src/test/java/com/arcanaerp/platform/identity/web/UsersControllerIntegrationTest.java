@@ -149,6 +149,69 @@ class UsersControllerIntegrationTest {
     }
 
     @Test
+    void filtersUsersByTenantRoleAndActive() throws Exception {
+        String adminUserJson = IdentityWebIntegrationTestSupport.createUser(
+            mockMvc,
+            "acme08",
+            "Acme 08",
+            "admin",
+            "Administrator",
+            "ops08-admin@acme.com",
+            "Ops 08 Admin"
+        )
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        String clerkUserJson = IdentityWebIntegrationTestSupport.createUser(
+            mockMvc,
+            "acme08",
+            "Acme 08",
+            "clerk",
+            "Clerk",
+            "ops08-clerk@acme.com",
+            "Ops 08 Clerk"
+        )
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+        IdentityWebIntegrationTestSupport.createUser(
+            mockMvc,
+            "acme09",
+            "Acme 09",
+            "admin",
+            "Administrator",
+            "ops09-admin@acme.com",
+            "Ops 09 Admin"
+        )
+            .andExpect(status().isCreated());
+
+        String adminUserId = IdentityWebIntegrationTestSupport.extractJsonString(adminUserJson, "id");
+        String clerkUserId = IdentityWebIntegrationTestSupport.extractJsonString(clerkUserJson, "id");
+
+        IdentityWebIntegrationTestSupport.updateUser(mockMvc, clerkUserId, "Ops 08 Clerk", false)
+            .andExpect(status().isOk());
+
+        mockMvc.perform(
+            IdentityWebIntegrationTestSupport.listUsersRequest(
+                0,
+                10,
+                "tenantCode", "acme08",
+                "roleCode", "admin",
+                "active", "true"
+            )
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(adminUserId))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("ACME08"))
+            .andExpect(jsonPath("$.items[0].roleCode").value("ADMIN"))
+            .andExpect(jsonPath("$.items[0].active").value(true));
+    }
+
+    @Test
     void returnsErrorEnvelopeForDuplicateTenantEmail() throws Exception {
         IdentityWebIntegrationTestSupport.createUser(
             mockMvc,
@@ -197,6 +260,30 @@ class UsersControllerIntegrationTest {
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.message").value("size must be between 1 and 100"))
+            .andExpect(jsonPath("$.path").value("/api/identity/users"));
+    }
+
+    @Test
+    void rejectsInvalidUserListFilters() throws Exception {
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listUsersRequest(0, 10, "active", ""))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("active query parameter must not be blank"))
+            .andExpect(jsonPath("$.path").value("/api/identity/users"));
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listUsersRequest(0, 10, "active", "yes"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("active query parameter must be either true or false"))
+            .andExpect(jsonPath("$.path").value("/api/identity/users"));
+
+        mockMvc.perform(IdentityWebIntegrationTestSupport.listUsersRequest(0, 10, "roleCode", "admin"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("tenantCode is required when roleCode is provided"))
             .andExpect(jsonPath("$.path").value("/api/identity/users"));
     }
 

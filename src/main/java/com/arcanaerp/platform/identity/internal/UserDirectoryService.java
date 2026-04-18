@@ -89,10 +89,15 @@ class UserDirectoryService implements UserDirectory, IdentityActorLookup {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<UserView> listUsers(PageQuery pageQuery) {
-        Page<UserAccount> users = userAccountRepository.findAll(
-            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
-        );
+    public PageResult<UserView> listUsers(PageQuery pageQuery, String tenantCode, String roleCode, Boolean active) {
+        String normalizedTenantCode = normalizeOptionalTenantCode(tenantCode);
+        String normalizedRoleCode = normalizeOptionalRoleCode(roleCode);
+        if (normalizedRoleCode != null && normalizedTenantCode == null) {
+            throw new IllegalArgumentException("tenantCode is required when roleCode is provided");
+        }
+
+        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
+        Page<UserAccount> users = findUsers(pageQuery, normalizedTenantCode, normalizedRoleCode, active, sort);
 
         Set<UUID> tenantIds = users.stream().map(UserAccount::getTenantId).collect(java.util.stream.Collectors.toSet());
         Set<UUID> roleIds = users.stream().map(UserAccount::getRoleId).collect(java.util.stream.Collectors.toSet());
@@ -138,11 +143,64 @@ class UserDirectoryService implements UserDirectory, IdentityActorLookup {
         );
     }
 
+    private Page<UserAccount> findUsers(
+        PageQuery pageQuery,
+        String tenantCode,
+        String roleCode,
+        Boolean active,
+        Sort sort
+    ) {
+        if (tenantCode == null) {
+            return active == null
+                ? userAccountRepository.findAll(pageQuery.toPageable(sort))
+                : userAccountRepository.findByActive(active, pageQuery.toPageable(sort));
+        }
+
+        Tenant tenant = tenantRepository.findByCode(tenantCode)
+            .orElseThrow(() -> new NoSuchElementException("Tenant not found: " + tenantCode));
+        if (roleCode == null) {
+            return active == null
+                ? userAccountRepository.findByTenantId(tenant.getId(), pageQuery.toPageable(sort))
+                : userAccountRepository.findByTenantIdAndActive(tenant.getId(), active, pageQuery.toPageable(sort));
+        }
+
+        Role role = roleRepository.findByTenantIdAndCode(tenant.getId(), roleCode)
+            .orElseThrow(() -> new NoSuchElementException("Role not found for tenant/code: " + tenantCode + "/" + roleCode));
+        return active == null
+            ? userAccountRepository.findByTenantIdAndRoleId(tenant.getId(), role.getId(), pageQuery.toPageable(sort))
+            : userAccountRepository.findByTenantIdAndRoleIdAndActive(
+                tenant.getId(),
+                role.getId(),
+                active,
+                pageQuery.toPageable(sort)
+            );
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private static String normalizeOptionalTenantCode(String tenantCode) {
+        if (tenantCode == null) {
+            return null;
+        }
+        if (tenantCode.isBlank()) {
+            throw new IllegalArgumentException("tenantCode must not be blank");
+        }
+        return tenantCode.trim().toUpperCase();
+    }
+
+    private static String normalizeOptionalRoleCode(String roleCode) {
+        if (roleCode == null) {
+            return null;
+        }
+        if (roleCode.isBlank()) {
+            throw new IllegalArgumentException("roleCode must not be blank");
+        }
+        return roleCode.trim().toUpperCase();
     }
 
     private static String normalizeEmail(String email) {

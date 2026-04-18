@@ -3,6 +3,7 @@ package com.arcanaerp.platform.identity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.arcanaerp.platform.core.pagination.PageQuery;
 import java.util.NoSuchElementException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -82,5 +83,57 @@ class UserDirectoryIntegrationTest {
         ))
             .isInstanceOf(NoSuchElementException.class)
             .hasMessage("User not found: " + missingUserId);
+    }
+
+    @Test
+    void filtersUsersByTenantRoleAndActive() {
+        UserView activeAdmin = userDirectory.registerUser(
+            new RegisterUserCommand(
+                "userdir03",
+                "User Dir 03",
+                "admin",
+                "Administrator",
+                "admin03@acme.com",
+                "Admin 03"
+            )
+        );
+        UserView activeClerk = userDirectory.registerUser(
+            new RegisterUserCommand(
+                "userdir03",
+                "User Dir 03",
+                "clerk",
+                "Clerk",
+                "clerk03@acme.com",
+                "Clerk 03"
+            )
+        );
+        UserView otherTenantUser = userDirectory.registerUser(
+            new RegisterUserCommand(
+                "userdir04",
+                "User Dir 04",
+                "admin",
+                "Administrator",
+                "admin04@acme.com",
+                "Admin 04"
+            )
+        );
+        userDirectory.updateUser(new UpdateUserCommand(activeClerk.id().toString(), "Clerk 03", false));
+
+        var filtered = userDirectory.listUsers(new PageQuery(0, 10), "userdir03", "admin", true);
+
+        assertThat(filtered.totalItems()).isEqualTo(1);
+        assertThat(filtered.items()).extracting(UserView::id).containsExactly(activeAdmin.id());
+        assertThat(filtered.items()).extracting(UserView::tenantCode).containsOnly("USERDIR03");
+        assertThat(filtered.items()).extracting(UserView::roleCode).containsOnly("ADMIN");
+        assertThat(filtered.items()).extracting(UserView::active).containsOnly(true);
+        assertThat(filtered.items()).extracting(UserView::id)
+            .doesNotContain(activeClerk.id(), otherTenantUser.id());
+    }
+
+    @Test
+    void rejectsRoleFilterWithoutTenantCode() {
+        assertThatThrownBy(() -> userDirectory.listUsers(new PageQuery(0, 10), null, "admin", null))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("tenantCode is required when roleCode is provided");
     }
 }
