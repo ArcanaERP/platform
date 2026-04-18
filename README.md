@@ -117,6 +117,12 @@ Orders:
 - `GET /api/orders?page=&size=`
 - `PATCH /api/orders/{orderNumber}/status`
 
+Communication Events:
+
+- `POST /api/communication-events`
+- `GET /api/communication-events/{eventNumber}?tenantCode=`
+- `GET /api/communication-events?tenantCode=&channel=&direction=&recordedBy=&page=&size=`
+
 Invoicing:
 
 - `POST /api/invoices`
