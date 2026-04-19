@@ -131,6 +131,12 @@ Communication Events:
 - `GET /api/communication-events/purpose-types/{code}?tenantCode=`
 - `GET /api/communication-events/purpose-types?tenantCode=&page=&size=`
 
+Rules:
+
+- `POST /api/rules`
+- `GET /api/rules/{code}?tenantCode=`
+- `GET /api/rules?tenantCode=&active=&appliesTo=&page=&size=`
+
 Invoicing:
 
 - `POST /api/invoices`
