@@ -122,6 +122,8 @@ Communication Events:
 - `POST /api/communication-events`
 - `GET /api/communication-events/{eventNumber}?tenantCode=`
 - `GET /api/communication-events?tenantCode=&statusCode=&purposeCode=&channel=&direction=&recordedBy=&page=&size=`
+- `PATCH /api/communication-events/{eventNumber}/status` (request includes `tenantCode`, `statusCode`, `reason`, `changedBy`)
+- `GET /api/communication-events/{eventNumber}/status-history?page=&size=&tenantCode=&changedBy=&changedAtFrom=&changedAtTo=`
 - `POST /api/communication-events/status-types`
 - `GET /api/communication-events/status-types/{code}?tenantCode=`
 - `GET /api/communication-events/status-types?tenantCode=&page=&size=`

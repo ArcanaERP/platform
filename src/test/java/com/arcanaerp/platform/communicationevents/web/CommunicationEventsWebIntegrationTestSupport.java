@@ -1,6 +1,7 @@
 package com.arcanaerp.platform.communicationevents.web;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import org.springframework.http.MediaType;
@@ -86,6 +87,53 @@ final class CommunicationEventsWebIntegrationTestSupport {
     static MockHttpServletRequestBuilder getEventRequest(String tenantCode, String eventNumber) {
         return get(COMMUNICATION_EVENTS_PATH + "/" + eventNumber)
             .param("tenantCode", tenantCode);
+    }
+
+    static ResultActions changeStatus(
+        MockMvc mockMvc,
+        String tenantCode,
+        String eventNumber,
+        String statusCode,
+        String reason,
+        String changedBy
+    ) throws Exception {
+        return mockMvc.perform(patch(COMMUNICATION_EVENTS_PATH + "/" + eventNumber + "/status")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "%s",
+                  "statusCode": "%s",
+                  "reason": "%s",
+                  "changedBy": "%s"
+                }
+                """.formatted(tenantCode, statusCode, reason, changedBy)));
+    }
+
+    static MockHttpServletRequestBuilder statusHistoryRequest(String tenantCode, String eventNumber, int page, int size) {
+        return statusHistoryRequest(tenantCode, eventNumber, page, size, new String[0]);
+    }
+
+    static MockHttpServletRequestBuilder statusHistoryRequest(
+        String tenantCode,
+        String eventNumber,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        MockHttpServletRequestBuilder builder = get(COMMUNICATION_EVENTS_PATH + "/" + eventNumber + "/status-history")
+            .param("tenantCode", tenantCode)
+            .param("page", String.valueOf(page))
+            .param("size", String.valueOf(size));
+        if (optionalNameValuePairs == null || optionalNameValuePairs.length == 0) {
+            return builder;
+        }
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must contain name/value pairs");
+        }
+        for (int i = 0; i < optionalNameValuePairs.length; i += 2) {
+            builder.param(optionalNameValuePairs[i], optionalNameValuePairs[i + 1]);
+        }
+        return builder;
     }
 
     static MockHttpServletRequestBuilder listEventsRequest(String tenantCode, int page, int size, String... optionalNameValuePairs) {

@@ -162,6 +162,11 @@ class CommunicationEvent {
         );
     }
 
+    void changeStatus(String statusCode, String statusName) {
+        this.statusCode = normalizeRequired(statusCode, "statusCode").toUpperCase();
+        this.statusName = normalizeRequired(statusName, "statusName");
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");

@@ -197,4 +197,109 @@ class CommunicationEventsControllerIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[?(@.code=='SUPPORT')].name", hasItem("Support")));
     }
+
+    @Test
+    void changesStatusAndListsStatusHistory() throws Exception {
+        CommunicationEventsWebIntegrationTestSupport.createStatusType(mockMvc, "commweb07", "open", "Open")
+            .andExpect(status().isCreated());
+        CommunicationEventsWebIntegrationTestSupport.createStatusType(mockMvc, "commweb07", "closed", "Closed")
+            .andExpect(status().isCreated());
+        CommunicationEventsWebIntegrationTestSupport.createPurposeType(mockMvc, "commweb07", "support", "Support")
+            .andExpect(status().isCreated());
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "commweb07",
+            "agent07@commweb.com",
+            "Comm Web",
+            "Agent 07"
+        );
+
+        String createdJson = CommunicationEventsWebIntegrationTestSupport.createEvent(
+            mockMvc,
+            "commweb07",
+            "open",
+            "support",
+            "email",
+            "inbound",
+            "Support Request",
+            "Customer asked for help",
+            "2026-04-18T10:15:30Z",
+            "agent07@commweb.com",
+            null
+        )
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        String eventNumber = CommunicationEventsWebIntegrationTestSupport.extractJsonString(createdJson, "eventNumber");
+
+        CommunicationEventsWebIntegrationTestSupport.changeStatus(
+            mockMvc,
+            "commweb07",
+            eventNumber,
+            "closed",
+            "Resolved by support",
+            "AGENT07@COMMWEB.COM"
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.statusCode").value("CLOSED"))
+            .andExpect(jsonPath("$.statusName").value("Closed"));
+
+        mockMvc.perform(
+            CommunicationEventsWebIntegrationTestSupport.statusHistoryRequest(
+                "commweb07",
+                eventNumber,
+                0,
+                10,
+                "changedBy", "agent07@commweb.com"
+            )
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].eventNumber").value(eventNumber))
+            .andExpect(jsonPath("$.items[0].previousStatusCode").value("OPEN"))
+            .andExpect(jsonPath("$.items[0].currentStatusCode").value("CLOSED"))
+            .andExpect(jsonPath("$.items[0].reason").value("Resolved by support"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("agent07@commweb.com"));
+    }
+
+    @Test
+    void rejectsInvalidStatusHistoryFilters() throws Exception {
+        mockMvc.perform(
+            CommunicationEventsWebIntegrationTestSupport.statusHistoryRequest(
+                "commweb08",
+                "COMM-TEST",
+                0,
+                10,
+                "changedBy", ""
+            )
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("changedBy query parameter must not be blank"));
+
+        mockMvc.perform(
+            CommunicationEventsWebIntegrationTestSupport.statusHistoryRequest(
+                "commweb08",
+                "COMM-TEST",
+                0,
+                10,
+                "changedAtFrom", "not-a-timestamp"
+            )
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("changedAtFrom query parameter must be a valid ISO-8601 instant"));
+
+        mockMvc.perform(
+            CommunicationEventsWebIntegrationTestSupport.statusHistoryRequest(
+                "commweb08",
+                "COMM-TEST",
+                0,
+                10,
+                "changedAtFrom", "2026-04-19T00:00:00Z",
+                "changedAtTo", "2026-04-18T00:00:00Z"
+            )
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("changedAtFrom must be before or equal to changedAtTo"));
+    }
 }

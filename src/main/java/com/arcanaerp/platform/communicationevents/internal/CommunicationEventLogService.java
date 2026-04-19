@@ -1,8 +1,10 @@
 package com.arcanaerp.platform.communicationevents.internal;
 
+import com.arcanaerp.platform.communicationevents.ChangeCommunicationEventStatusCommand;
 import com.arcanaerp.platform.communicationevents.CommunicationChannel;
 import com.arcanaerp.platform.communicationevents.CommunicationDirection;
 import com.arcanaerp.platform.communicationevents.CommunicationEventLog;
+import com.arcanaerp.platform.communicationevents.CommunicationEventStatusChangeView;
 import com.arcanaerp.platform.communicationevents.CommunicationEventView;
 import com.arcanaerp.platform.communicationevents.CreateCommunicationEventCommand;
 import com.arcanaerp.platform.core.pagination.PageQuery;
@@ -28,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 class CommunicationEventLogService implements CommunicationEventLog {
 
     private final CommunicationEventRepository communicationEventRepository;
+    private final CommunicationEventStatusChangeAuditRepository communicationEventStatusChangeAuditRepository;
     private final CommunicationEventStatusTypeRepository statusTypeRepository;
     private final CommunicationEventPurposeTypeRepository purposeTypeRepository;
     private final IdentityActorLookup identityActorLookup;
@@ -69,6 +72,45 @@ class CommunicationEventLogService implements CommunicationEventLog {
                 now
             )
         );
+        return toView(saved);
+    }
+
+    @Override
+    public CommunicationEventView changeStatus(ChangeCommunicationEventStatusCommand command) {
+        String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase(Locale.ROOT);
+        String eventNumber = normalizeRequired(command.eventNumber(), "eventNumber").toUpperCase(Locale.ROOT);
+        String reason = normalizeRequired(command.reason(), "reason");
+        String changedBy = normalizeActor(command.changedBy());
+
+        CommunicationEvent event = communicationEventRepository.findByTenantCodeAndEventNumber(tenantCode, eventNumber)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Communication event not found for tenant/eventNumber: " + tenantCode + "/" + eventNumber
+            ));
+        CommunicationEventStatusType statusType = requireStatusType(tenantCode, command.statusCode());
+
+        if (!identityActorLookup.actorExists(tenantCode, changedBy)) {
+            throw new IllegalArgumentException("communication event status actor not found in tenant: " + tenantCode + "/" + changedBy);
+        }
+
+        String previousStatusCode = event.getStatusCode();
+        String previousStatusName = event.getStatusName();
+        event.changeStatus(statusType.getCode(), statusType.getName());
+        CommunicationEvent saved = communicationEventRepository.save(event);
+        if (!previousStatusCode.equals(saved.getStatusCode())) {
+            communicationEventStatusChangeAuditRepository.save(
+                CommunicationEventStatusChangeAudit.create(
+                    saved.getId(),
+                    previousStatusCode,
+                    previousStatusName,
+                    saved.getStatusCode(),
+                    saved.getStatusName(),
+                    tenantCode,
+                    reason,
+                    changedBy,
+                    Instant.now(clock)
+                )
+            );
+        }
         return toView(saved);
     }
 
@@ -131,6 +173,46 @@ class CommunicationEventLogService implements CommunicationEventLog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "occurredAt").and(Sort.by(Sort.Direction.DESC, "createdAt")))
         );
         return PageResult.from(page).map(this::toView);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<CommunicationEventStatusChangeView> listStatusHistory(
+        String tenantCode,
+        String eventNumber,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase(Locale.ROOT);
+        String normalizedEventNumber = normalizeRequired(eventNumber, "eventNumber").toUpperCase(Locale.ROOT);
+        String normalizedChangedBy = normalizeOptionalActor(changedBy);
+
+        CommunicationEvent event = communicationEventRepository.findByTenantCodeAndEventNumber(normalizedTenantCode, normalizedEventNumber)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Communication event not found for tenant/eventNumber: " + normalizedTenantCode + "/" + normalizedEventNumber
+            ));
+        Page<CommunicationEventStatusChangeAudit> page = communicationEventStatusChangeAuditRepository.findHistoryFiltered(
+            event.getId(),
+            normalizedTenantCode,
+            normalizedChangedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
+        );
+        return PageResult.from(page).map(audit -> new CommunicationEventStatusChangeView(
+            audit.getId(),
+            event.getEventNumber(),
+            audit.getPreviousStatusCode(),
+            audit.getPreviousStatusName(),
+            audit.getCurrentStatusCode(),
+            audit.getCurrentStatusName(),
+            audit.getTenantCode(),
+            audit.getReason(),
+            audit.getChangedBy(),
+            audit.getChangedAt()
+        ));
     }
 
     private CommunicationEventView toView(CommunicationEvent event) {

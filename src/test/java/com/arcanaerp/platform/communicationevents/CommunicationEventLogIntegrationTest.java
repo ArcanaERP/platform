@@ -139,4 +139,112 @@ class CommunicationEventLogIntegrationTest {
             .isInstanceOf(NoSuchElementException.class)
             .hasMessage("Communication event not found for tenant/eventNumber: COMMTENANT03/COMM-MISSING");
     }
+
+    @Test
+    void changesStatusAndListsStatusHistory() {
+        statusTypeDirectory.registerStatusType(
+            new RegisterCommunicationEventStatusTypeCommand("commtenant05", "open", "Open")
+        );
+        statusTypeDirectory.registerStatusType(
+            new RegisterCommunicationEventStatusTypeCommand("commtenant05", "closed", "Closed")
+        );
+        purposeTypeDirectory.registerPurposeType(
+            new RegisterCommunicationEventPurposeTypeCommand("commtenant05", "support", "Support")
+        );
+        userDirectory.registerUser(
+            new RegisterUserCommand("commtenant05", "Comm Tenant 05", "ops", "Operations", "agent05@commtenant.com", "Agent 05")
+        );
+
+        CommunicationEventView created = communicationEventLog.createEvent(
+            new CreateCommunicationEventCommand(
+                "commtenant05",
+                "open",
+                "support",
+                "email",
+                "inbound",
+                "Ticket",
+                "Customer needs help",
+                Instant.parse("2026-04-18T10:15:30Z"),
+                "agent05@commtenant.com",
+                null
+            )
+        );
+
+        CommunicationEventView changed = communicationEventLog.changeStatus(
+            new ChangeCommunicationEventStatusCommand(
+                "commtenant05",
+                created.eventNumber(),
+                "closed",
+                "Resolved by support",
+                "agent05@commtenant.com"
+            )
+        );
+        var history = communicationEventLog.listStatusHistory(
+            "commtenant05",
+            created.eventNumber(),
+            "agent05@commtenant.com",
+            null,
+            null,
+            new PageQuery(0, 10)
+        );
+
+        assertThat(changed.statusCode()).isEqualTo("CLOSED");
+        assertThat(changed.statusName()).isEqualTo("Closed");
+        assertThat(history.totalItems()).isEqualTo(1);
+        assertThat(history.items().get(0).eventNumber()).isEqualTo(created.eventNumber());
+        assertThat(history.items().get(0).previousStatusCode()).isEqualTo("OPEN");
+        assertThat(history.items().get(0).currentStatusCode()).isEqualTo("CLOSED");
+        assertThat(history.items().get(0).reason()).isEqualTo("Resolved by support");
+        assertThat(history.items().get(0).changedBy()).isEqualTo("agent05@commtenant.com");
+    }
+
+    @Test
+    void ignoresNoOpStatusChangesInHistory() {
+        statusTypeDirectory.registerStatusType(
+            new RegisterCommunicationEventStatusTypeCommand("commtenant06", "open", "Open")
+        );
+        purposeTypeDirectory.registerPurposeType(
+            new RegisterCommunicationEventPurposeTypeCommand("commtenant06", "support", "Support")
+        );
+        userDirectory.registerUser(
+            new RegisterUserCommand("commtenant06", "Comm Tenant 06", "ops", "Operations", "agent06@commtenant.com", "Agent 06")
+        );
+
+        CommunicationEventView created = communicationEventLog.createEvent(
+            new CreateCommunicationEventCommand(
+                "commtenant06",
+                "open",
+                "support",
+                "email",
+                "inbound",
+                "Ticket",
+                "No-op change test",
+                Instant.parse("2026-04-18T10:15:30Z"),
+                "agent06@commtenant.com",
+                null
+            )
+        );
+
+        CommunicationEventView changed = communicationEventLog.changeStatus(
+            new ChangeCommunicationEventStatusCommand(
+                "commtenant06",
+                created.eventNumber(),
+                "open",
+                "Reaffirm current state",
+                "agent06@commtenant.com"
+            )
+        );
+
+        var history = communicationEventLog.listStatusHistory(
+            "commtenant06",
+            created.eventNumber(),
+            null,
+            null,
+            null,
+            new PageQuery(0, 10)
+        );
+
+        assertThat(changed.statusCode()).isEqualTo("OPEN");
+        assertThat(history.totalItems()).isZero();
+    }
 }
