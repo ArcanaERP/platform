@@ -11,12 +11,16 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 final class CommunicationEventsWebIntegrationTestSupport {
 
     private static final String COMMUNICATION_EVENTS_PATH = "/api/communication-events";
+    private static final String STATUS_TYPES_PATH = "/api/communication-events/status-types";
+    private static final String PURPOSE_TYPES_PATH = "/api/communication-events/purpose-types";
 
     private CommunicationEventsWebIntegrationTestSupport() {}
 
     static ResultActions createEvent(
         MockMvc mockMvc,
         String tenantCode,
+        String statusCode,
+        String purposeCode,
         String channel,
         String direction,
         String subject,
@@ -27,7 +31,56 @@ final class CommunicationEventsWebIntegrationTestSupport {
     ) throws Exception {
         return mockMvc.perform(post(COMMUNICATION_EVENTS_PATH)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(createPayload(tenantCode, channel, direction, subject, summary, occurredAt, recordedBy, externalReference)));
+            .content(createPayload(
+                tenantCode,
+                statusCode,
+                purposeCode,
+                channel,
+                direction,
+                subject,
+                summary,
+                occurredAt,
+                recordedBy,
+                externalReference
+            )));
+    }
+
+    static ResultActions createStatusType(MockMvc mockMvc, String tenantCode, String code, String name) throws Exception {
+        return mockMvc.perform(post(STATUS_TYPES_PATH)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "%s",
+                  "code": "%s",
+                  "name": "%s"
+                }
+                """.formatted(tenantCode, code, name)));
+    }
+
+    static ResultActions createPurposeType(MockMvc mockMvc, String tenantCode, String code, String name) throws Exception {
+        return mockMvc.perform(post(PURPOSE_TYPES_PATH)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "%s",
+                  "code": "%s",
+                  "name": "%s"
+                }
+                """.formatted(tenantCode, code, name)));
+    }
+
+    static MockHttpServletRequestBuilder listStatusTypesRequest(String tenantCode, int page, int size) {
+        return get(STATUS_TYPES_PATH)
+            .param("tenantCode", tenantCode)
+            .param("page", String.valueOf(page))
+            .param("size", String.valueOf(size));
+    }
+
+    static MockHttpServletRequestBuilder listPurposeTypesRequest(String tenantCode, int page, int size) {
+        return get(PURPOSE_TYPES_PATH)
+            .param("tenantCode", tenantCode)
+            .param("page", String.valueOf(page))
+            .param("size", String.valueOf(size));
     }
 
     static MockHttpServletRequestBuilder getEventRequest(String tenantCode, String eventNumber) {
@@ -72,6 +125,8 @@ final class CommunicationEventsWebIntegrationTestSupport {
 
     private static String createPayload(
         String tenantCode,
+        String statusCode,
+        String purposeCode,
         String channel,
         String direction,
         String subject,
@@ -86,6 +141,8 @@ final class CommunicationEventsWebIntegrationTestSupport {
         return """
             {
               "tenantCode": "%s",
+              "statusCode": "%s",
+              "purposeCode": "%s",
               "channel": "%s",
               "direction": "%s",
               "subject": "%s",
@@ -94,6 +151,17 @@ final class CommunicationEventsWebIntegrationTestSupport {
               "recordedBy": "%s",
               "externalReference": %s
             }
-            """.formatted(tenantCode, channel, direction, subject, summary, occurredAt, recordedBy, formattedExternalReference);
+            """.formatted(
+            tenantCode,
+            statusCode,
+            purposeCode,
+            channel,
+            direction,
+            subject,
+            summary,
+            occurredAt,
+            recordedBy,
+            formattedExternalReference
+        );
     }
 }

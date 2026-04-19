@@ -121,7 +121,13 @@ Communication Events:
 
 - `POST /api/communication-events`
 - `GET /api/communication-events/{eventNumber}?tenantCode=`
-- `GET /api/communication-events?tenantCode=&channel=&direction=&recordedBy=&page=&size=`
+- `GET /api/communication-events?tenantCode=&statusCode=&purposeCode=&channel=&direction=&recordedBy=&page=&size=`
+- `POST /api/communication-events/status-types`
+- `GET /api/communication-events/status-types/{code}?tenantCode=`
+- `GET /api/communication-events/status-types?tenantCode=&page=&size=`
+- `POST /api/communication-events/purpose-types`
+- `GET /api/communication-events/purpose-types/{code}?tenantCode=`
+- `GET /api/communication-events/purpose-types?tenantCode=&page=&size=`
 
 Invoicing:
 

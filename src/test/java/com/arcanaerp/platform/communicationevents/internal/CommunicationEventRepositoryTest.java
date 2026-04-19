@@ -20,6 +20,10 @@ class CommunicationEventRepositoryTest {
         communicationEventRepository.save(CommunicationEvent.create(
             "COMM-1001",
             "TENANT-A",
+            "OPEN",
+            "Open",
+            "SUPPORT",
+            "Support",
             CommunicationChannel.EMAIL,
             CommunicationDirection.INBOUND,
             "Support Request",

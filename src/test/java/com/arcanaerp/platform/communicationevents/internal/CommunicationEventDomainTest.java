@@ -15,6 +15,10 @@ class CommunicationEventDomainTest {
         CommunicationEvent event = CommunicationEvent.create(
             " comm-0001 ",
             " tenant-a ",
+            " open ",
+            " Open ",
+            " support ",
+            " Support ",
             CommunicationChannel.EMAIL,
             CommunicationDirection.INBOUND,
             "  Support Request  ",
@@ -27,6 +31,8 @@ class CommunicationEventDomainTest {
 
         assertThat(event.getEventNumber()).isEqualTo("COMM-0001");
         assertThat(event.getTenantCode()).isEqualTo("TENANT-A");
+        assertThat(event.getStatusCode()).isEqualTo("OPEN");
+        assertThat(event.getPurposeCode()).isEqualTo("SUPPORT");
         assertThat(event.getRecordedBy()).isEqualTo("agent@acme.com");
         assertThat(event.getExternalReference()).isEqualTo("ext-123");
     }
@@ -36,6 +42,10 @@ class CommunicationEventDomainTest {
         assertThatThrownBy(() -> CommunicationEvent.create(
             "COMM-0002",
             "TENANT-A",
+            "OPEN",
+            "Open",
+            "SUPPORT",
+            "Support",
             CommunicationChannel.EMAIL,
             CommunicationDirection.OUTBOUND,
             "Support Reply",
@@ -54,6 +64,10 @@ class CommunicationEventDomainTest {
         assertThatThrownBy(() -> CommunicationEvent.create(
             "COMM-0003",
             "TENANT-A",
+            "OPEN",
+            "Open",
+            "SUPPORT",
+            "Support",
             CommunicationChannel.PHONE,
             CommunicationDirection.INTERNAL,
             "Call Logged",

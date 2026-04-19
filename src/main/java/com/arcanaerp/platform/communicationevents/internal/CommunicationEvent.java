@@ -43,6 +43,18 @@ class CommunicationEvent {
     @Column(nullable = false, length = 64)
     private String tenantCode;
 
+    @Column(nullable = false, length = 64)
+    private String statusCode;
+
+    @Column(nullable = false, length = 255)
+    private String statusName;
+
+    @Column(nullable = false, length = 64)
+    private String purposeCode;
+
+    @Column(nullable = false, length = 255)
+    private String purposeName;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private CommunicationChannel channel;
@@ -73,6 +85,10 @@ class CommunicationEvent {
         UUID id,
         String eventNumber,
         String tenantCode,
+        String statusCode,
+        String statusName,
+        String purposeCode,
+        String purposeName,
         CommunicationChannel channel,
         CommunicationDirection direction,
         String subject,
@@ -85,6 +101,10 @@ class CommunicationEvent {
         this.id = id;
         this.eventNumber = eventNumber;
         this.tenantCode = tenantCode;
+        this.statusCode = statusCode;
+        this.statusName = statusName;
+        this.purposeCode = purposeCode;
+        this.purposeName = purposeName;
         this.channel = channel;
         this.direction = direction;
         this.subject = subject;
@@ -98,6 +118,10 @@ class CommunicationEvent {
     static CommunicationEvent create(
         String eventNumber,
         String tenantCode,
+        String statusCode,
+        String statusName,
+        String purposeCode,
+        String purposeName,
         CommunicationChannel channel,
         CommunicationDirection direction,
         String subject,
@@ -123,6 +147,10 @@ class CommunicationEvent {
             null,
             normalizeRequired(eventNumber, "eventNumber").toUpperCase(),
             normalizeRequired(tenantCode, "tenantCode").toUpperCase(),
+            normalizeRequired(statusCode, "statusCode").toUpperCase(),
+            normalizeRequired(statusName, "statusName"),
+            normalizeRequired(purposeCode, "purposeCode").toUpperCase(),
+            normalizeRequired(purposeName, "purposeName"),
             channel,
             direction,
             normalizeRequired(subject, "subject"),

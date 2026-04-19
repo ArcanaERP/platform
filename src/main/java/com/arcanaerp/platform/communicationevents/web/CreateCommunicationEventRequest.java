@@ -6,6 +6,8 @@ import java.time.Instant;
 
 public record CreateCommunicationEventRequest(
     @NotBlank String tenantCode,
+    @NotBlank String statusCode,
+    @NotBlank String purposeCode,
     @NotBlank String channel,
     @NotBlank String direction,
     @NotBlank String subject,

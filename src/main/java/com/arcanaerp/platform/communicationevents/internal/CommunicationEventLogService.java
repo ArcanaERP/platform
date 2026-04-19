@@ -28,12 +28,16 @@ import org.springframework.transaction.annotation.Transactional;
 class CommunicationEventLogService implements CommunicationEventLog {
 
     private final CommunicationEventRepository communicationEventRepository;
+    private final CommunicationEventStatusTypeRepository statusTypeRepository;
+    private final CommunicationEventPurposeTypeRepository purposeTypeRepository;
     private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
 
     @Override
     public CommunicationEventView createEvent(CreateCommunicationEventCommand command) {
         String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase(Locale.ROOT);
+        CommunicationEventStatusType statusType = requireStatusType(tenantCode, command.statusCode());
+        CommunicationEventPurposeType purposeType = requirePurposeType(tenantCode, command.purposeCode());
         CommunicationChannel channel = parseChannel(command.channel());
         CommunicationDirection direction = parseDirection(command.direction());
         String subject = normalizeRequired(command.subject(), "subject");
@@ -51,6 +55,10 @@ class CommunicationEventLogService implements CommunicationEventLog {
             CommunicationEvent.create(
                 generateEventNumber(),
                 tenantCode,
+                statusType.getCode(),
+                statusType.getName(),
+                purposeType.getCode(),
+                purposeType.getName(),
                 channel,
                 direction,
                 subject,
@@ -84,11 +92,15 @@ class CommunicationEventLogService implements CommunicationEventLog {
     public PageResult<CommunicationEventView> listEvents(
         String tenantCode,
         PageQuery pageQuery,
+        String statusCode,
+        String purposeCode,
         String channel,
         String direction,
         String recordedBy
     ) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase(Locale.ROOT);
+        String normalizedStatusCode = normalizeOptionalCode(statusCode, "statusCode");
+        String normalizedPurposeCode = normalizeOptionalCode(purposeCode, "purposeCode");
         CommunicationChannel normalizedChannel = parseOptionalChannel(channel);
         CommunicationDirection normalizedDirection = parseOptionalDirection(direction);
         String normalizedRecordedBy = normalizeOptionalActor(recordedBy);
@@ -96,6 +108,12 @@ class CommunicationEventLogService implements CommunicationEventLog {
         Specification<CommunicationEvent> specification = (root, query, criteriaBuilder) -> {
             var predicates = new ArrayList<Predicate>();
             predicates.add(criteriaBuilder.equal(root.get("tenantCode"), normalizedTenantCode));
+            if (normalizedStatusCode != null) {
+                predicates.add(criteriaBuilder.equal(root.get("statusCode"), normalizedStatusCode));
+            }
+            if (normalizedPurposeCode != null) {
+                predicates.add(criteriaBuilder.equal(root.get("purposeCode"), normalizedPurposeCode));
+            }
             if (normalizedChannel != null) {
                 predicates.add(criteriaBuilder.equal(root.get("channel"), normalizedChannel));
             }
@@ -120,6 +138,10 @@ class CommunicationEventLogService implements CommunicationEventLog {
             event.getId(),
             event.getEventNumber(),
             event.getTenantCode(),
+            event.getStatusCode(),
+            event.getStatusName(),
+            event.getPurposeCode(),
+            event.getPurposeName(),
             event.getChannel(),
             event.getDirection(),
             event.getSubject(),
@@ -129,6 +151,22 @@ class CommunicationEventLogService implements CommunicationEventLog {
             event.getExternalReference(),
             event.getCreatedAt()
         );
+    }
+
+    private CommunicationEventStatusType requireStatusType(String tenantCode, String statusCode) {
+        String normalizedStatusCode = normalizeRequired(statusCode, "statusCode").toUpperCase(Locale.ROOT);
+        return statusTypeRepository.findByTenantCodeAndCode(tenantCode, normalizedStatusCode)
+            .orElseThrow(() -> new IllegalArgumentException(
+                "communication event status type not found for tenant/code: " + tenantCode + "/" + normalizedStatusCode
+            ));
+    }
+
+    private CommunicationEventPurposeType requirePurposeType(String tenantCode, String purposeCode) {
+        String normalizedPurposeCode = normalizeRequired(purposeCode, "purposeCode").toUpperCase(Locale.ROOT);
+        return purposeTypeRepository.findByTenantCodeAndCode(tenantCode, normalizedPurposeCode)
+            .orElseThrow(() -> new IllegalArgumentException(
+                "communication event purpose type not found for tenant/code: " + tenantCode + "/" + normalizedPurposeCode
+            ));
     }
 
     private String generateEventNumber() {
@@ -218,5 +256,15 @@ class CommunicationEventLogService implements CommunicationEventLog {
             return null;
         }
         return value.trim();
+    }
+
+    private static String normalizeOptionalCode(String value, String parameterName) {
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
+            throw new IllegalArgumentException(parameterName + " query parameter must not be blank");
+        }
+        return value.trim().toUpperCase(Locale.ROOT);
     }
 }

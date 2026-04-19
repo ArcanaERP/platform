@@ -12,6 +12,8 @@ public interface CommunicationEventLog {
     PageResult<CommunicationEventView> listEvents(
         String tenantCode,
         PageQuery pageQuery,
+        String statusCode,
+        String purposeCode,
         String channel,
         String direction,
         String recordedBy

@@ -30,6 +30,8 @@ public class CommunicationEventsController {
         CommunicationEventView created = communicationEventLog.createEvent(
             new CreateCommunicationEventCommand(
                 request.tenantCode(),
+                request.statusCode(),
+                request.purposeCode(),
                 request.channel(),
                 request.direction(),
                 request.subject(),
@@ -53,6 +55,8 @@ public class CommunicationEventsController {
     @GetMapping
     public PageResult<CommunicationEventResponse> listEvents(
         @RequestParam String tenantCode,
+        @RequestParam(required = false) String statusCode,
+        @RequestParam(required = false) String purposeCode,
         @RequestParam(required = false) String channel,
         @RequestParam(required = false) String direction,
         @RequestParam(required = false) String recordedBy,
@@ -62,6 +66,8 @@ public class CommunicationEventsController {
         return communicationEventLog.listEvents(
             tenantCode,
             PageQuery.of(page, size),
+            statusCode,
+            purposeCode,
             channel,
             direction,
             recordedBy
@@ -73,6 +79,10 @@ public class CommunicationEventsController {
             event.id(),
             event.eventNumber(),
             event.tenantCode(),
+            event.statusCode(),
+            event.statusName(),
+            event.purposeCode(),
+            event.purposeName(),
             event.channel(),
             event.direction(),
             event.subject(),

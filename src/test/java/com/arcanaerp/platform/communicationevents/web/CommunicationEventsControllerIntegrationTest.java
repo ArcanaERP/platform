@@ -22,6 +22,10 @@ class CommunicationEventsControllerIntegrationTest {
 
     @Test
     void createsReadsAndListsCommunicationEvents() throws Exception {
+        CommunicationEventsWebIntegrationTestSupport.createStatusType(mockMvc, "commweb01", "open", "Open")
+            .andExpect(status().isCreated());
+        CommunicationEventsWebIntegrationTestSupport.createPurposeType(mockMvc, "commweb01", "support", "Support")
+            .andExpect(status().isCreated());
         ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
             mockMvc,
             "commweb01",
@@ -33,6 +37,8 @@ class CommunicationEventsControllerIntegrationTest {
         String createdJson = CommunicationEventsWebIntegrationTestSupport.createEvent(
             mockMvc,
             "commweb01",
+            "open",
+            "support",
             "email",
             "inbound",
             "Support Request",
@@ -44,6 +50,8 @@ class CommunicationEventsControllerIntegrationTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.eventNumber", startsWith("COMM-")))
             .andExpect(jsonPath("$.tenantCode").value("COMMWEB01"))
+            .andExpect(jsonPath("$.statusCode").value("OPEN"))
+            .andExpect(jsonPath("$.purposeCode").value("SUPPORT"))
             .andExpect(jsonPath("$.channel").value("EMAIL"))
             .andExpect(jsonPath("$.direction").value("INBOUND"))
             .andExpect(jsonPath("$.recordedBy").value("agent01@commweb.com"))
@@ -63,6 +71,8 @@ class CommunicationEventsControllerIntegrationTest {
                 "commweb01",
                 0,
                 10,
+                "statusCode", "open",
+                "purposeCode", "support",
                 "channel", "email",
                 "direction", "inbound",
                 "recordedBy", "agent01@commweb.com"
@@ -87,9 +97,15 @@ class CommunicationEventsControllerIntegrationTest {
 
     @Test
     void rejectsUnknownRecordedByActor() throws Exception {
+        CommunicationEventsWebIntegrationTestSupport.createStatusType(mockMvc, "commweb03", "open", "Open")
+            .andExpect(status().isCreated());
+        CommunicationEventsWebIntegrationTestSupport.createPurposeType(mockMvc, "commweb03", "support", "Support")
+            .andExpect(status().isCreated());
         CommunicationEventsWebIntegrationTestSupport.createEvent(
             mockMvc,
             "commweb03",
+            "open",
+            "support",
             "phone",
             "outbound",
             "Follow-up Call",
@@ -118,10 +134,20 @@ class CommunicationEventsControllerIntegrationTest {
         )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("direction query parameter is invalid"));
+
+        mockMvc.perform(
+            CommunicationEventsWebIntegrationTestSupport.listEventsRequest("commweb04", 0, 10, "statusCode", "")
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("statusCode query parameter must not be blank"));
     }
 
     @Test
     void usesDefaultPaginationWhenPageAndSizeOmitted() throws Exception {
+        CommunicationEventsWebIntegrationTestSupport.createStatusType(mockMvc, "commweb05", "open", "Open")
+            .andExpect(status().isCreated());
+        CommunicationEventsWebIntegrationTestSupport.createPurposeType(mockMvc, "commweb05", "internal_note", "Internal Note")
+            .andExpect(status().isCreated());
         ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
             mockMvc,
             "commweb05",
@@ -133,6 +159,8 @@ class CommunicationEventsControllerIntegrationTest {
         CommunicationEventsWebIntegrationTestSupport.createEvent(
             mockMvc,
             "commweb05",
+            "open",
+            "internal_note",
             "note",
             "internal",
             "Case Note",
@@ -148,5 +176,25 @@ class CommunicationEventsControllerIntegrationTest {
             .andExpect(jsonPath("$.page").value(0))
             .andExpect(jsonPath("$.size").value(20))
             .andExpect(jsonPath("$.totalItems", greaterThanOrEqualTo(1)));
+    }
+
+    @Test
+    void createsAndListsStatusAndPurposeTypes() throws Exception {
+        CommunicationEventsWebIntegrationTestSupport.createStatusType(mockMvc, "commweb06", "open", "Open")
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.code").value("OPEN"));
+        CommunicationEventsWebIntegrationTestSupport.createPurposeType(mockMvc, "commweb06", "support", "Support")
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.code").value("SUPPORT"));
+
+        mockMvc.perform(CommunicationEventsWebIntegrationTestSupport.listStatusTypesRequest("commweb06", 0, 10))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[?(@.code=='OPEN')].name", hasItem("Open")));
+
+        mockMvc.perform(CommunicationEventsWebIntegrationTestSupport.listPurposeTypesRequest("commweb06", 0, 10))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[?(@.code=='SUPPORT')].name", hasItem("Support")));
     }
 }
