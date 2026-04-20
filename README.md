@@ -137,6 +137,12 @@ Rules:
 - `GET /api/rules/{code}?tenantCode=`
 - `GET /api/rules?tenantCode=&active=&appliesTo=&page=&size=`
 
+Search:
+
+- `POST /api/search/entries`
+- `GET /api/search/entries/{entryNumber}?tenantCode=`
+- `GET /api/search/entries?tenantCode=&query=&category=&page=&size=`
+
 Invoicing:
 
 - `POST /api/invoices`
