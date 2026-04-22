@@ -149,6 +149,12 @@ Work Effort:
 - `GET /api/work-efforts/{effortNumber}?tenantCode=`
 - `GET /api/work-efforts?tenantCode=&status=&assignedTo=&page=&size=`
 
+Commerce:
+
+- `POST /api/commerce/storefronts`
+- `GET /api/commerce/storefronts/{storefrontCode}?tenantCode=`
+- `GET /api/commerce/storefronts?tenantCode=&active=&page=&size=`
+
 Invoicing:
 
 - `POST /api/invoices`

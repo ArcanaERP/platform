@@ -51,6 +51,7 @@ Notes:
 | Rules | `com.arcanaerp.platform.rules` | Tenant-scoped rule-definition catalog with explicit registration, direct lookup by tenant/code, and filtered paged listing by activation state and target domain (`appliesTo`) | `RuleCatalog` | `POST /api/rules`, `GET /api/rules/{code}`, `GET /api/rules` |
 | Search | `com.arcanaerp.platform.search` | Tenant-scoped searchable entry catalog with explicit registration, direct lookup by entry number, and paged substring search across titles, snippets, and target identifiers with optional category filtering | `SearchCatalog` | `POST /api/search/entries`, `GET /api/search/entries/{entryNumber}`, `GET /api/search/entries` |
 | Work Effort | `com.arcanaerp.platform.workeffort` | Tenant-scoped work-effort register with explicit creation, direct lookup by effort number, assignee validation through identity, and paged listing filtered by status and assignee | `WorkEffortCatalog` | `POST /api/work-efforts`, `GET /api/work-efforts/{effortNumber}`, `GET /api/work-efforts` |
+| Commerce | `com.arcanaerp.platform.commerce` | Tenant-scoped storefront catalog with explicit registration, direct lookup by storefront code, and paged listing optionally filtered by activation state | `CommerceCatalog` | `POST /api/commerce/storefronts`, `GET /api/commerce/storefronts/{storefrontCode}`, `GET /api/commerce/storefronts` |
 
 ## Boundary Rules In Use
 
