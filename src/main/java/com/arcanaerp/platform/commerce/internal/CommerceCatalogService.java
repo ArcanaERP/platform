@@ -1,11 +1,15 @@
 package com.arcanaerp.platform.commerce.internal;
 
 import com.arcanaerp.platform.commerce.CommerceCatalog;
+import com.arcanaerp.platform.commerce.AssignStorefrontProductCommand;
 import com.arcanaerp.platform.commerce.CreateStorefrontCommand;
+import com.arcanaerp.platform.commerce.StorefrontProductView;
 import com.arcanaerp.platform.commerce.StorefrontView;
 import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.products.ProductLookup;
+import com.arcanaerp.platform.products.ProductOrderability;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.NoSuchElementException;
@@ -21,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 class CommerceCatalogService implements CommerceCatalog {
 
     private final StorefrontRepository storefrontRepository;
+    private final StorefrontProductRepository storefrontProductRepository;
+    private final ProductLookup productLookup;
     private final Clock clock;
 
     @Override
@@ -45,6 +51,41 @@ class CommerceCatalogService implements CommerceCatalog {
             )
         );
         return toView(storefront);
+    }
+
+    @Override
+    public StorefrontProductView assignStorefrontProduct(AssignStorefrontProductCommand command) {
+        String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
+        String storefrontCode = normalizeRequired(command.storefrontCode(), "storefrontCode").toUpperCase();
+        String sku = normalizeRequired(command.sku(), "sku").toUpperCase();
+        Instant now = Instant.now(clock);
+
+        Storefront storefront = storefrontRepository.findByTenantCodeAndStorefrontCode(tenantCode, storefrontCode)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Storefront not found for tenant/code: " + tenantCode + "/" + storefrontCode
+            ));
+        if (storefrontProductRepository.findByTenantCodeAndStorefrontCodeAndSku(tenantCode, storefrontCode, sku).isPresent()) {
+            throw new ConflictException("Storefront product already exists for tenant/storefront/sku: " + tenantCode + "/" + storefrontCode + "/" + sku);
+        }
+
+        ProductOrderability orderability = productLookup.orderabilityOf(sku);
+        if (orderability == ProductOrderability.UNKNOWN) {
+            throw new IllegalArgumentException("storefront product SKU not found: " + sku);
+        }
+
+        StorefrontProduct storefrontProduct = storefrontProductRepository.save(
+            StorefrontProduct.create(
+                storefront.getId(),
+                tenantCode,
+                storefrontCode,
+                sku,
+                command.merchandisingName(),
+                command.position(),
+                command.active(),
+                now
+            )
+        );
+        return toProductView(storefrontProduct, orderability);
     }
 
     @Override
@@ -73,6 +114,38 @@ class CommerceCatalogService implements CommerceCatalog {
         return PageResult.from(page).map(this::toView);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<StorefrontProductView> listStorefrontProducts(
+        String tenantCode,
+        String storefrontCode,
+        PageQuery pageQuery,
+        Boolean active
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedStorefrontCode = normalizeRequired(storefrontCode, "storefrontCode").toUpperCase();
+
+        if (storefrontRepository.findByTenantCodeAndStorefrontCode(normalizedTenantCode, normalizedStorefrontCode).isEmpty()) {
+            throw new NoSuchElementException(
+                "Storefront not found for tenant/code: " + normalizedTenantCode + "/" + normalizedStorefrontCode
+            );
+        }
+
+        Page<StorefrontProduct> page = active == null
+            ? storefrontProductRepository.findByTenantCodeAndStorefrontCode(
+                normalizedTenantCode,
+                normalizedStorefrontCode,
+                pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "position").and(Sort.by(Sort.Direction.DESC, "createdAt")))
+            )
+            : storefrontProductRepository.findByTenantCodeAndStorefrontCodeAndActive(
+                normalizedTenantCode,
+                normalizedStorefrontCode,
+                active,
+                pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "position").and(Sort.by(Sort.Direction.DESC, "createdAt")))
+            );
+        return PageResult.from(page).map(product -> toProductView(product, productLookup.orderabilityOf(product.getSku())));
+    }
+
     private StorefrontView toView(Storefront storefront) {
         return new StorefrontView(
             storefront.getId(),
@@ -83,6 +156,20 @@ class CommerceCatalogService implements CommerceCatalog {
             storefront.getDefaultLanguageTag(),
             storefront.isActive(),
             storefront.getCreatedAt()
+        );
+    }
+
+    private StorefrontProductView toProductView(StorefrontProduct storefrontProduct, ProductOrderability orderability) {
+        return new StorefrontProductView(
+            storefrontProduct.getId(),
+            storefrontProduct.getTenantCode(),
+            storefrontProduct.getStorefrontCode(),
+            storefrontProduct.getSku(),
+            storefrontProduct.getMerchandisingName(),
+            storefrontProduct.getPosition(),
+            storefrontProduct.isActive(),
+            orderability,
+            storefrontProduct.getCreatedAt()
         );
     }
 

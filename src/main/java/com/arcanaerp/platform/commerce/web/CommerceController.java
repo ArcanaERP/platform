@@ -1,7 +1,9 @@
 package com.arcanaerp.platform.commerce.web;
 
 import com.arcanaerp.platform.commerce.CommerceCatalog;
+import com.arcanaerp.platform.commerce.AssignStorefrontProductCommand;
 import com.arcanaerp.platform.commerce.CreateStorefrontCommand;
+import com.arcanaerp.platform.commerce.StorefrontProductView;
 import com.arcanaerp.platform.commerce.StorefrontView;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
@@ -40,6 +42,24 @@ public class CommerceController {
         return toResponse(created);
     }
 
+    @PostMapping("/{storefrontCode}/products")
+    @ResponseStatus(HttpStatus.CREATED)
+    public StorefrontProductResponse assignStorefrontProduct(
+        @PathVariable String storefrontCode,
+        @Valid @RequestBody AssignStorefrontProductRequest request
+    ) {
+        return toProductResponse(commerceCatalog.assignStorefrontProduct(
+            new AssignStorefrontProductCommand(
+                request.tenantCode(),
+                storefrontCode,
+                request.sku(),
+                request.merchandisingName(),
+                request.position(),
+                request.active()
+            )
+        ));
+    }
+
     @GetMapping("/{storefrontCode}")
     public StorefrontResponse getStorefront(
         @PathVariable String storefrontCode,
@@ -58,6 +78,18 @@ public class CommerceController {
         return commerceCatalog.listStorefronts(tenantCode, PageQuery.of(page, size), active).map(this::toResponse);
     }
 
+    @GetMapping("/{storefrontCode}/products")
+    public PageResult<StorefrontProductResponse> listStorefrontProducts(
+        @PathVariable String storefrontCode,
+        @RequestParam String tenantCode,
+        @RequestParam(required = false) Boolean active,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return commerceCatalog.listStorefrontProducts(tenantCode, storefrontCode, PageQuery.of(page, size), active)
+            .map(this::toProductResponse);
+    }
+
     private StorefrontResponse toResponse(StorefrontView storefront) {
         return new StorefrontResponse(
             storefront.id(),
@@ -68,6 +100,20 @@ public class CommerceController {
             storefront.defaultLanguageTag(),
             storefront.active(),
             storefront.createdAt()
+        );
+    }
+
+    private StorefrontProductResponse toProductResponse(StorefrontProductView storefrontProduct) {
+        return new StorefrontProductResponse(
+            storefrontProduct.id(),
+            storefrontProduct.tenantCode(),
+            storefrontProduct.storefrontCode(),
+            storefrontProduct.sku(),
+            storefrontProduct.merchandisingName(),
+            storefrontProduct.position(),
+            storefrontProduct.active(),
+            storefrontProduct.currentOrderability(),
+            storefrontProduct.createdAt()
         );
     }
 }

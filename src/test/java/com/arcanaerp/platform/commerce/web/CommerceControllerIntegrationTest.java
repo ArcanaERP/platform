@@ -143,4 +143,87 @@ class CommerceControllerIntegrationTest {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("page must be greater than or equal to zero"));
     }
+
+    @Test
+    void assignsAndListsStorefrontProducts() throws Exception {
+        CommerceWebIntegrationTestSupport.createStorefront(
+            mockMvc,
+            "commerceweb06",
+            "b2c-main",
+            "B2C Main",
+            "USD",
+            "en-US",
+            true
+        )
+            .andExpect(status().isCreated());
+        CommerceWebIntegrationTestSupport.registerProduct(mockMvc, "arc-600", "Arc Product", "Arc Category")
+            .andExpect(status().isCreated());
+        CommerceWebIntegrationTestSupport.registerProduct(mockMvc, "arc-601", "Arc Product", "Arc Category")
+            .andExpect(status().isCreated());
+
+        CommerceWebIntegrationTestSupport.assignStorefrontProduct(
+            mockMvc,
+            "commerceweb06",
+            "b2c-main",
+            "arc-600",
+            "Featured Product",
+            1,
+            true
+        )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.storefrontCode").value("B2C-MAIN"))
+            .andExpect(jsonPath("$.sku").value("ARC-600"))
+            .andExpect(jsonPath("$.currentOrderability").value("ORDERABLE"));
+
+        CommerceWebIntegrationTestSupport.assignStorefrontProduct(
+            mockMvc,
+            "commerceweb06",
+            "b2c-main",
+            "arc-601",
+            null,
+            2,
+            false
+        )
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(
+            CommerceWebIntegrationTestSupport.listStorefrontProductsRequest(
+                "commerceweb06",
+                "b2c-main",
+                0,
+                10,
+                "active", "true"
+            )
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[?(@.sku=='ARC-600')].merchandisingName", hasItem("Featured Product")));
+    }
+
+    @Test
+    void rejectsUnknownStorefrontProductSku() throws Exception {
+        CommerceWebIntegrationTestSupport.createStorefront(
+            mockMvc,
+            "commerceweb07",
+            "b2c-main",
+            "B2C Main",
+            "USD",
+            "en-US",
+            true
+        )
+            .andExpect(status().isCreated());
+
+        CommerceWebIntegrationTestSupport.assignStorefrontProduct(
+            mockMvc,
+            "commerceweb07",
+            "b2c-main",
+            "missing-sku",
+            null,
+            0,
+            true
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("storefront product SKU not found: MISSING-SKU"))
+            .andExpect(jsonPath("$.path").value("/api/commerce/storefronts/b2c-main/products"));
+    }
 }

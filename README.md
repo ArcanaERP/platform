@@ -154,6 +154,8 @@ Commerce:
 - `POST /api/commerce/storefronts`
 - `GET /api/commerce/storefronts/{storefrontCode}?tenantCode=`
 - `GET /api/commerce/storefronts?tenantCode=&active=&page=&size=`
+- `POST /api/commerce/storefronts/{storefrontCode}/products`
+- `GET /api/commerce/storefronts/{storefrontCode}/products?tenantCode=&active=&page=&size=`
 
 Invoicing:
 
