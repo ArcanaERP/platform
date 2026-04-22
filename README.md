@@ -159,6 +159,12 @@ Commerce:
 - `PATCH /api/commerce/storefronts/{storefrontCode}/products/{sku}/active` (request includes `tenantCode`, `active`, `reason`, `changedBy`)
 - `GET /api/commerce/storefronts/{storefrontCode}/products/{sku}/activation-history?tenantCode=&changedBy=&currentActive=&changedAtFrom=&changedAtTo=&page=&size=`
 
+Dev Support:
+
+- `POST /api/dev-support/system-notices`
+- `GET /api/dev-support/system-notices/{noticeCode}?tenantCode=`
+- `GET /api/dev-support/system-notices?tenantCode=&severity=&active=&page=&size=`
+
 Invoicing:
 
 - `POST /api/invoices`
