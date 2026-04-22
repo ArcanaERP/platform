@@ -143,6 +143,12 @@ Search:
 - `GET /api/search/entries/{entryNumber}?tenantCode=`
 - `GET /api/search/entries?tenantCode=&query=&category=&page=&size=`
 
+Work Effort:
+
+- `POST /api/work-efforts`
+- `GET /api/work-efforts/{effortNumber}?tenantCode=`
+- `GET /api/work-efforts?tenantCode=&status=&assignedTo=&page=&size=`
+
 Invoicing:
 
 - `POST /api/invoices`
