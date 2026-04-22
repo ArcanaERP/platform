@@ -9,6 +9,8 @@ public interface CommerceCatalog {
 
     StorefrontProductView assignStorefrontProduct(AssignStorefrontProductCommand command);
 
+    StorefrontProductView changeStorefrontProductActivation(ChangeStorefrontProductActivationCommand command);
+
     StorefrontView getStorefront(String tenantCode, String storefrontCode);
 
     PageResult<StorefrontView> listStorefronts(String tenantCode, PageQuery pageQuery, Boolean active);
@@ -18,5 +20,16 @@ public interface CommerceCatalog {
         String storefrontCode,
         PageQuery pageQuery,
         Boolean active
+    );
+
+    PageResult<StorefrontProductActivationChangeView> listStorefrontProductActivationHistory(
+        String tenantCode,
+        String storefrontCode,
+        String sku,
+        String changedBy,
+        Boolean currentActive,
+        java.time.Instant changedAtFrom,
+        java.time.Instant changedAtTo,
+        PageQuery pageQuery
     );
 }

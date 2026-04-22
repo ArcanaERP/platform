@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
+import com.arcanaerp.platform.identity.RegisterUserCommand;
+import com.arcanaerp.platform.identity.UserDirectory;
 import com.arcanaerp.platform.products.ProductCatalog;
 import com.arcanaerp.platform.products.ProductOrderability;
 import com.arcanaerp.platform.products.RegisterProductCommand;
@@ -22,6 +24,9 @@ class CommerceCatalogIntegrationTest {
 
     @Autowired
     private ProductCatalog productCatalog;
+
+    @Autowired
+    private UserDirectory userDirectory;
 
     @Test
     void createsReadsAndListsStorefronts() {
@@ -120,5 +125,88 @@ class CommerceCatalogIntegrationTest {
         ))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("storefront product SKU not found: MISSING-SKU");
+    }
+
+    @Test
+    void changesStorefrontProductActivationAndListsHistory() {
+        commerceCatalog.createStorefront(
+            new CreateStorefrontCommand("commerce07", "b2c-main", "B2C Main", "USD", "en-US", true)
+        );
+        productCatalog.registerProduct(
+            new RegisterProductCommand("arc-700", "Arc Product 700", "ARC7", "Arc Category 7", new BigDecimal("10.00"), "USD")
+        );
+        userDirectory.registerUser(
+            new RegisterUserCommand("commerce07", "Commerce Tenant", "ops", "Operations", "merchant@commerce.com", "Merchant")
+        );
+        commerceCatalog.assignStorefrontProduct(
+            new AssignStorefrontProductCommand("commerce07", "b2c-main", "arc-700", "Featured Product", 1, true)
+        );
+
+        StorefrontProductView changed = commerceCatalog.changeStorefrontProductActivation(
+            new ChangeStorefrontProductActivationCommand(
+                "commerce07",
+                "b2c-main",
+                "arc-700",
+                false,
+                "Seasonal removal",
+                "MERCHANT@COMMERCE.COM"
+            )
+        );
+        var history = commerceCatalog.listStorefrontProductActivationHistory(
+            "commerce07",
+            "b2c-main",
+            "arc-700",
+            "merchant@commerce.com",
+            false,
+            null,
+            null,
+            new PageQuery(0, 10)
+        );
+
+        assertThat(changed.active()).isFalse();
+        assertThat(history.totalItems()).isEqualTo(1);
+        assertThat(history.items().get(0).currentActive()).isFalse();
+        assertThat(history.items().get(0).reason()).isEqualTo("Seasonal removal");
+        assertThat(history.items().get(0).changedBy()).isEqualTo("merchant@commerce.com");
+    }
+
+    @Test
+    void ignoresNoOpStorefrontProductActivationChangesInHistory() {
+        commerceCatalog.createStorefront(
+            new CreateStorefrontCommand("commerce08", "b2c-main", "B2C Main", "USD", "en-US", true)
+        );
+        productCatalog.registerProduct(
+            new RegisterProductCommand("arc-800", "Arc Product 800", "ARC8", "Arc Category 8", new BigDecimal("10.00"), "USD")
+        );
+        userDirectory.registerUser(
+            new RegisterUserCommand("commerce08", "Commerce Tenant", "ops", "Operations", "merchant@commerce.com", "Merchant")
+        );
+        commerceCatalog.assignStorefrontProduct(
+            new AssignStorefrontProductCommand("commerce08", "b2c-main", "arc-800", null, 0, true)
+        );
+
+        StorefrontProductView changed = commerceCatalog.changeStorefrontProductActivation(
+            new ChangeStorefrontProductActivationCommand(
+                "commerce08",
+                "b2c-main",
+                "arc-800",
+                true,
+                "Reaffirm current state",
+                "merchant@commerce.com"
+            )
+        );
+        var history = commerceCatalog.listStorefrontProductActivationHistory(
+            "commerce08",
+            "b2c-main",
+            "arc-800",
+            null,
+            null,
+            null,
+            null,
+            new PageQuery(0, 10)
+        );
+
+        assertThat(changed.active()).isTrue();
+        assertThat(history.totalItems()).isZero();
     }
 }

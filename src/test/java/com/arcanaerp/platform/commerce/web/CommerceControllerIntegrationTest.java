@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -225,5 +226,109 @@ class CommerceControllerIntegrationTest {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("storefront product SKU not found: MISSING-SKU"))
             .andExpect(jsonPath("$.path").value("/api/commerce/storefronts/b2c-main/products"));
+    }
+
+    @Test
+    void changesStorefrontProductActivationAndListsHistory() throws Exception {
+        CommerceWebIntegrationTestSupport.createStorefront(
+            mockMvc,
+            "commerceweb08",
+            "b2c-main",
+            "B2C Main",
+            "USD",
+            "en-US",
+            true
+        )
+            .andExpect(status().isCreated());
+        CommerceWebIntegrationTestSupport.registerProduct(mockMvc, "arc-800", "Arc Product", "Arc Category")
+            .andExpect(status().isCreated());
+        CommerceWebIntegrationTestSupport.assignStorefrontProduct(
+            mockMvc,
+            "commerceweb08",
+            "b2c-main",
+            "arc-800",
+            "Featured Product",
+            1,
+            true
+        )
+            .andExpect(status().isCreated());
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "commerceweb08",
+            "merchant@commerce.com",
+            "Commerce Web",
+            "Merchant"
+        );
+
+        CommerceWebIntegrationTestSupport.changeStorefrontProductActivation(
+            mockMvc,
+            "commerceweb08",
+            "b2c-main",
+            "arc-800",
+            false,
+            "Seasonal removal",
+            "MERCHANT@COMMERCE.COM"
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.active").value(false));
+
+        mockMvc.perform(
+            CommerceWebIntegrationTestSupport.storefrontProductActivationHistoryRequest(
+                "commerceweb08",
+                "b2c-main",
+                "arc-800",
+                0,
+                10,
+                "currentActive", "false"
+            )
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].currentActive").value(false))
+            .andExpect(jsonPath("$.items[0].reason").value("Seasonal removal"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("merchant@commerce.com"));
+    }
+
+    @Test
+    void rejectsInvalidActivationHistoryFilters() throws Exception {
+        mockMvc.perform(
+            CommerceWebIntegrationTestSupport.storefrontProductActivationHistoryRequest(
+                "commerceweb09",
+                "b2c-main",
+                "arc-900",
+                0,
+                10,
+                "changedBy", "   "
+            )
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("changedBy query parameter must not be blank"));
+
+        mockMvc.perform(
+            CommerceWebIntegrationTestSupport.storefrontProductActivationHistoryRequest(
+                "commerceweb09",
+                "b2c-main",
+                "arc-900",
+                0,
+                10,
+                "currentActive", "yes"
+            )
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("currentActive query parameter must be either true or false"));
+
+        mockMvc.perform(
+            CommerceWebIntegrationTestSupport.storefrontProductActivationHistoryRequest(
+                "commerceweb09",
+                "b2c-main",
+                "arc-900",
+                0,
+                10,
+                "changedAtFrom", "2026-04-23T00:00:00Z",
+                "changedAtTo", "2026-04-22T00:00:00Z"
+            )
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("changedAtFrom must be before or equal to changedAtTo"));
     }
 }

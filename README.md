@@ -156,6 +156,8 @@ Commerce:
 - `GET /api/commerce/storefronts?tenantCode=&active=&page=&size=`
 - `POST /api/commerce/storefronts/{storefrontCode}/products`
 - `GET /api/commerce/storefronts/{storefrontCode}/products?tenantCode=&active=&page=&size=`
+- `PATCH /api/commerce/storefronts/{storefrontCode}/products/{sku}/active` (request includes `tenantCode`, `active`, `reason`, `changedBy`)
+- `GET /api/commerce/storefronts/{storefrontCode}/products/{sku}/activation-history?tenantCode=&changedBy=&currentActive=&changedAtFrom=&changedAtTo=&page=&size=`
 
 Invoicing:
 

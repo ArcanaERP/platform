@@ -2,12 +2,15 @@ package com.arcanaerp.platform.commerce.internal;
 
 import com.arcanaerp.platform.commerce.CommerceCatalog;
 import com.arcanaerp.platform.commerce.AssignStorefrontProductCommand;
+import com.arcanaerp.platform.commerce.ChangeStorefrontProductActivationCommand;
 import com.arcanaerp.platform.commerce.CreateStorefrontCommand;
+import com.arcanaerp.platform.commerce.StorefrontProductActivationChangeView;
 import com.arcanaerp.platform.commerce.StorefrontProductView;
 import com.arcanaerp.platform.commerce.StorefrontView;
 import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.identity.IdentityActorLookup;
 import com.arcanaerp.platform.products.ProductLookup;
 import com.arcanaerp.platform.products.ProductOrderability;
 import java.time.Clock;
@@ -26,7 +29,9 @@ class CommerceCatalogService implements CommerceCatalog {
 
     private final StorefrontRepository storefrontRepository;
     private final StorefrontProductRepository storefrontProductRepository;
+    private final StorefrontProductActivationAuditRepository storefrontProductActivationAuditRepository;
     private final ProductLookup productLookup;
+    private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
 
     @Override
@@ -89,6 +94,44 @@ class CommerceCatalogService implements CommerceCatalog {
     }
 
     @Override
+    public StorefrontProductView changeStorefrontProductActivation(ChangeStorefrontProductActivationCommand command) {
+        String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
+        String storefrontCode = normalizeRequired(command.storefrontCode(), "storefrontCode").toUpperCase();
+        String sku = normalizeRequired(command.sku(), "sku").toUpperCase();
+        String reason = normalizeRequired(command.reason(), "reason");
+        String changedBy = normalizeActor(command.changedBy());
+
+        StorefrontProduct storefrontProduct = storefrontProductRepository.findByTenantCodeAndStorefrontCodeAndSku(
+            tenantCode,
+            storefrontCode,
+            sku
+        ).orElseThrow(() -> new NoSuchElementException(
+            "Storefront product not found for tenant/storefront/sku: " + tenantCode + "/" + storefrontCode + "/" + sku
+        ));
+        if (!identityActorLookup.actorExists(tenantCode, changedBy)) {
+            throw new IllegalArgumentException("storefront product activation actor not found in tenant: " + tenantCode + "/" + changedBy);
+        }
+
+        boolean previousActive = storefrontProduct.isActive();
+        storefrontProduct.changeActivation(command.active());
+        StorefrontProduct saved = storefrontProductRepository.save(storefrontProduct);
+        if (previousActive != saved.isActive()) {
+            storefrontProductActivationAuditRepository.save(
+                StorefrontProductActivationAudit.create(
+                    saved.getId(),
+                    previousActive,
+                    saved.isActive(),
+                    reason,
+                    tenantCode,
+                    changedBy,
+                    Instant.now(clock)
+                )
+            );
+        }
+        return toProductView(saved, productLookup.orderabilityOf(saved.getSku()));
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public StorefrontView getStorefront(String tenantCode, String storefrontCode) {
         String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
@@ -146,6 +189,53 @@ class CommerceCatalogService implements CommerceCatalog {
         return PageResult.from(page).map(product -> toProductView(product, productLookup.orderabilityOf(product.getSku())));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<StorefrontProductActivationChangeView> listStorefrontProductActivationHistory(
+        String tenantCode,
+        String storefrontCode,
+        String sku,
+        String changedBy,
+        Boolean currentActive,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedStorefrontCode = normalizeRequired(storefrontCode, "storefrontCode").toUpperCase();
+        String normalizedSku = normalizeRequired(sku, "sku").toUpperCase();
+        String normalizedChangedBy = changedBy == null ? null : normalizeActor(changedBy);
+
+        StorefrontProduct storefrontProduct = storefrontProductRepository.findByTenantCodeAndStorefrontCodeAndSku(
+            normalizedTenantCode,
+            normalizedStorefrontCode,
+            normalizedSku
+        ).orElseThrow(() -> new NoSuchElementException(
+            "Storefront product not found for tenant/storefront/sku: " + normalizedTenantCode + "/" + normalizedStorefrontCode + "/" + normalizedSku
+        ));
+
+        Page<StorefrontProductActivationAudit> page = storefrontProductActivationAuditRepository.findHistoryFiltered(
+            storefrontProduct.getId(),
+            normalizedTenantCode,
+            normalizedChangedBy,
+            currentActive,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
+        );
+        return PageResult.from(page).map(audit -> new StorefrontProductActivationChangeView(
+            audit.getId(),
+            normalizedTenantCode,
+            normalizedStorefrontCode,
+            normalizedSku,
+            audit.isPreviousActive(),
+            audit.isCurrentActive(),
+            audit.getReason(),
+            audit.getChangedBy(),
+            audit.getChangedAt()
+        ));
+    }
+
     private StorefrontView toView(Storefront storefront) {
         return new StorefrontView(
             storefront.getId(),
@@ -178,5 +268,9 @@ class CommerceCatalogService implements CommerceCatalog {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private static String normalizeActor(String changedBy) {
+        return normalizeRequired(changedBy, "changedBy").toLowerCase();
     }
 }

@@ -1,6 +1,7 @@
 package com.arcanaerp.platform.commerce.web;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import com.arcanaerp.platform.testsupport.web.ProductCatalogWebTestSupport;
@@ -130,5 +131,50 @@ final class CommerceWebIntegrationTestSupport {
             "10.00",
             "USD"
         );
+    }
+
+    static ResultActions changeStorefrontProductActivation(
+        MockMvc mockMvc,
+        String tenantCode,
+        String storefrontCode,
+        String sku,
+        boolean active,
+        String reason,
+        String changedBy
+    ) throws Exception {
+        return mockMvc.perform(patch(STOREFRONTS_PATH + "/" + storefrontCode + "/products/" + sku + "/active")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "%s",
+                  "active": %s,
+                  "reason": "%s",
+                  "changedBy": "%s"
+                }
+                """.formatted(tenantCode, active, reason, changedBy)));
+    }
+
+    static MockHttpServletRequestBuilder storefrontProductActivationHistoryRequest(
+        String tenantCode,
+        String storefrontCode,
+        String sku,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        MockHttpServletRequestBuilder builder = get(STOREFRONTS_PATH + "/" + storefrontCode + "/products/" + sku + "/activation-history")
+            .param("tenantCode", tenantCode)
+            .param("page", String.valueOf(page))
+            .param("size", String.valueOf(size));
+        if (optionalNameValuePairs == null || optionalNameValuePairs.length == 0) {
+            return builder;
+        }
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must contain name/value pairs");
+        }
+        for (int i = 0; i < optionalNameValuePairs.length; i += 2) {
+            builder.param(optionalNameValuePairs[i], optionalNameValuePairs[i + 1]);
+        }
+        return builder;
     }
 }
