@@ -1,6 +1,6 @@
 # Arcana ERP Modulith Module Map
 
-Updated: 2026-04-18
+Updated: 2026-04-23
 
 ## Scope
 
@@ -15,6 +15,11 @@ This map covers the currently implemented Spring Modulith modules under `com.arc
 - `agreements`
 - `inventory`
 - `communicationevents`
+- `rules`
+- `search`
+- `workeffort`
+- `commerce`
+- `devsupport`
 
 ## Dependency Graph
 
@@ -24,10 +29,15 @@ Consumer -> allowed dependency
 - `products` -> `core::pagination`, `identity`
 - `orders` -> `core::pagination`, `products`
 - `invoicing` -> `core::pagination`, `orders`
-- `payments` -> `identity`, `invoicing`
+- `payments` -> `core::pagination`, `identity`, `invoicing`
 - `agreements` -> `core::pagination`, `identity`
 - `inventory` -> `core::pagination`, `core::errors`
 - `communicationevents` -> `core::pagination`, `core::errors`, `identity`
+- `rules` -> `core::pagination`, `core::errors`
+- `search` -> `core::pagination`, `core::errors`
+- `workeffort` -> `core::pagination`, `core::errors`, `identity`
+- `commerce` -> `core::pagination`, `core::errors`, `products`, `identity`
+- `devsupport` -> `core::pagination`, `core::errors`
 
 Notes:
 
@@ -65,6 +75,9 @@ Notes:
   - `invoicing` -> `orders` via `OrderManagement`
   - `payments` -> `invoicing` via `InvoiceManagement`
   - `payments` -> `identity` via `IdentityActorLookup`
+  - `workeffort` -> `identity` via `IdentityActorLookup`
+  - `commerce` -> `products` via `ProductCatalog` and `ProductLookup`
+  - `commerce` -> `identity` via `IdentityActorLookup`
   - `communicationevents` -> `identity` via `IdentityActorLookup`
   - `communicationevents` -> `core::errors` via `ConflictException`
 - Shared paging contract is centralized in `core::pagination`.
