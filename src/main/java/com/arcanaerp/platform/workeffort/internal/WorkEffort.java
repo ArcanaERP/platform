@@ -111,6 +111,28 @@ class WorkEffort {
         );
     }
 
+    void transitionTo(WorkEffortStatus targetStatus) {
+        if (targetStatus == null) {
+            throw new IllegalArgumentException("status is required");
+        }
+        if (status == targetStatus) {
+            return;
+        }
+        if (status == WorkEffortStatus.COMPLETED) {
+            throw new IllegalStateException("Completed work efforts cannot change status");
+        }
+        if (status == WorkEffortStatus.PLANNED && targetStatus == WorkEffortStatus.IN_PROGRESS) {
+            status = targetStatus;
+            return;
+        }
+        if ((status == WorkEffortStatus.PLANNED || status == WorkEffortStatus.IN_PROGRESS)
+            && targetStatus == WorkEffortStatus.COMPLETED) {
+            status = targetStatus;
+            return;
+        }
+        throw new IllegalStateException("Invalid work effort status transition: " + status + " -> " + targetStatus);
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");

@@ -119,4 +119,86 @@ class WorkEffortCatalogIntegrationTest {
             .isInstanceOf(NoSuchElementException.class)
             .hasMessage("Work effort not found for tenant/effortNumber: WORK04/MISSING");
     }
+
+    @Test
+    void changesStatusAndReadsStatusHistory() {
+        userDirectory.registerUser(
+            new RegisterUserCommand("work05", "Work Tenant", "ops", "Operations", "agent01@work.com", "Agent 01")
+        );
+
+        workEffortCatalog.createWorkEffort(
+            new CreateWorkEffortCommand(
+                "work05",
+                "we-001",
+                "Prepare shipment",
+                "Prepare shipment for dispatch",
+                WorkEffortStatus.PLANNED,
+                "agent01@work.com",
+                null
+            )
+        );
+
+        WorkEffortView updated = workEffortCatalog.changeWorkEffortStatus(
+            new ChangeWorkEffortStatusCommand(
+                "work05",
+                "we-001",
+                WorkEffortStatus.IN_PROGRESS,
+                "Started picking",
+                "AGENT01@WORK.COM"
+            )
+        );
+        workEffortCatalog.changeWorkEffortStatus(
+            new ChangeWorkEffortStatusCommand(
+                "work05",
+                "we-001",
+                WorkEffortStatus.IN_PROGRESS,
+                "No-op status change",
+                "agent01@work.com"
+            )
+        );
+
+        var history = workEffortCatalog.listStatusHistory(
+            "work05",
+            "we-001",
+            "agent01@work.com",
+            null,
+            null,
+            new PageQuery(0, 10)
+        );
+
+        assertThat(updated.status()).isEqualTo(WorkEffortStatus.IN_PROGRESS);
+        assertThat(history.totalItems()).isEqualTo(1);
+        assertThat(history.items()).extracting(WorkEffortStatusChangeView::currentStatus)
+            .containsExactly(WorkEffortStatus.IN_PROGRESS);
+    }
+
+    @Test
+    void rejectsUnknownStatusActor() {
+        userDirectory.registerUser(
+            new RegisterUserCommand("work06", "Work Tenant", "ops", "Operations", "agent01@work.com", "Agent 01")
+        );
+        workEffortCatalog.createWorkEffort(
+            new CreateWorkEffortCommand(
+                "work06",
+                "we-001",
+                "Prepare shipment",
+                "Prepare shipment for dispatch",
+                WorkEffortStatus.PLANNED,
+                "agent01@work.com",
+                null
+            )
+        );
+
+        assertThatThrownBy(() -> workEffortCatalog.changeWorkEffortStatus(
+            new ChangeWorkEffortStatusCommand(
+                "work06",
+                "we-001",
+                WorkEffortStatus.IN_PROGRESS,
+                "Started picking",
+                "missing@work.com"
+            )
+        ))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("work effort status actor not found in tenant: WORK06/missing@work.com");
+    }
 }

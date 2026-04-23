@@ -182,6 +182,99 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void changesStatusAndReadsStatusHistory() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb07",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workweb07",
+            "we-001",
+            "Prepare shipment",
+            "Prepare shipment for dispatch",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        WorkEffortsWebIntegrationTestSupport.changeWorkEffortStatus(
+            mockMvc,
+            "workweb07",
+            "we-001",
+            "IN_PROGRESS",
+            "Started picking",
+            "AGENT01@WORK.COM"
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+
+        WorkEffortsWebIntegrationTestSupport.changeWorkEffortStatus(
+            mockMvc,
+            "workweb07",
+            "we-001",
+            "IN_PROGRESS",
+            "No-op status change",
+            "agent01@work.com"
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+
+        mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.workEffortStatusHistoryRequest(
+                "workweb07",
+                "we-001",
+                0,
+                10,
+                "changedBy", "agent01@work.com"
+            )
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].previousStatus").value("PLANNED"))
+            .andExpect(jsonPath("$.items[0].currentStatus").value("IN_PROGRESS"));
+    }
+
+    @Test
+    void rejectsUnknownStatusActor() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb08",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workweb08",
+            "we-001",
+            "Prepare shipment",
+            "Prepare shipment for dispatch",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        WorkEffortsWebIntegrationTestSupport.changeWorkEffortStatus(
+            mockMvc,
+            "workweb08",
+            "we-001",
+            "IN_PROGRESS",
+            "Started picking",
+            "missing@work.com"
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("work effort status actor not found in tenant: WORKWEB08/missing@work.com"));
+    }
+
+    @Test
     void rejectsInvalidFiltersAndPagination() throws Exception {
         mockMvc.perform(
             WorkEffortsWebIntegrationTestSupport.listWorkEffortsRequest("workweb06", 0, 10, "assignedTo", "   ")
@@ -192,5 +285,42 @@ class WorkEffortsControllerIntegrationTest {
         mockMvc.perform(WorkEffortsWebIntegrationTestSupport.listWorkEffortsRequest("workweb06", -1, 10))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("page must be greater than or equal to zero"));
+
+        mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.workEffortStatusHistoryRequest(
+                "workweb06",
+                "we-001",
+                0,
+                10,
+                "changedBy", "   "
+            )
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("assignedTo query parameter must not be blank"));
+
+        mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.workEffortStatusHistoryRequest(
+                "workweb06",
+                "we-001",
+                0,
+                10,
+                "changedAtFrom", "not-a-timestamp"
+            )
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("changedAtFrom query parameter must be a valid ISO-8601 instant"));
+
+        mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.workEffortStatusHistoryRequest(
+                "workweb06",
+                "we-001",
+                0,
+                10,
+                "changedAtFrom", "2026-04-23T00:00:00Z",
+                "changedAtTo", "2026-04-22T00:00:00Z"
+            )
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("changedAtFrom must be before or equal to changedAtTo"));
     }
 }

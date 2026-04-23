@@ -42,4 +42,41 @@ class WorkEffortDomainTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("status is required");
     }
+
+    @Test
+    void transitionsWorkEffortStatus() {
+        WorkEffort workEffort = WorkEffort.create(
+            "tenant01",
+            "we-001",
+            "Prepare shipment",
+            "Prepare shipment for dispatch",
+            WorkEffortStatus.PLANNED,
+            "agent01@tenant.com",
+            null,
+            Instant.parse("2026-04-21T10:00:00Z")
+        );
+
+        workEffort.transitionTo(WorkEffortStatus.IN_PROGRESS);
+        workEffort.transitionTo(WorkEffortStatus.COMPLETED);
+
+        assertThat(workEffort.getStatus()).isEqualTo(WorkEffortStatus.COMPLETED);
+    }
+
+    @Test
+    void rejectsInvalidStatusTransition() {
+        WorkEffort workEffort = WorkEffort.create(
+            "tenant01",
+            "we-001",
+            "Prepare shipment",
+            "Prepare shipment for dispatch",
+            WorkEffortStatus.COMPLETED,
+            "agent01@tenant.com",
+            null,
+            Instant.parse("2026-04-21T10:00:00Z")
+        );
+
+        assertThatThrownBy(() -> workEffort.transitionTo(WorkEffortStatus.IN_PROGRESS))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("Completed work efforts cannot change status");
+    }
 }

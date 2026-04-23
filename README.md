@@ -148,6 +148,8 @@ Work Effort:
 - `POST /api/work-efforts`
 - `GET /api/work-efforts/{effortNumber}?tenantCode=`
 - `GET /api/work-efforts?tenantCode=&status=&assignedTo=&page=&size=`
+- `PATCH /api/work-efforts/{effortNumber}/status` (request includes `tenantCode`, `status`, `reason`, `changedBy`)
+- `GET /api/work-efforts/{effortNumber}/status-history?tenantCode=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
 
 Commerce:
 

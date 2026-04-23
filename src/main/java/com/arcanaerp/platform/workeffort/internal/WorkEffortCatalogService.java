@@ -4,9 +4,11 @@ import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.IdentityActorLookup;
+import com.arcanaerp.platform.workeffort.ChangeWorkEffortStatusCommand;
 import com.arcanaerp.platform.workeffort.CreateWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
+import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
 import java.time.Clock;
 import java.time.Instant;
@@ -23,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 class WorkEffortCatalogService implements WorkEffortCatalog {
 
     private final WorkEffortRepository workEffortRepository;
+    private final WorkEffortStatusChangeAuditRepository workEffortStatusChangeAuditRepository;
     private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
 
@@ -79,6 +82,82 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
         String normalizedAssignedTo = assignedTo == null ? null : normalizeAssignedTo(assignedTo);
         Page<WorkEffort> page = findWorkEfforts(normalizedTenantCode, status, normalizedAssignedTo, pageQuery);
         return PageResult.from(page).map(this::toView);
+    }
+
+    @Override
+    public WorkEffortView changeWorkEffortStatus(ChangeWorkEffortStatusCommand command) {
+        String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
+        String effortNumber = normalizeRequired(command.effortNumber(), "effortNumber").toUpperCase();
+        WorkEffortStatus targetStatus = command.status();
+        if (targetStatus == null) {
+            throw new IllegalArgumentException("status is required");
+        }
+        String reason = normalizeRequired(command.reason(), "reason");
+        String changedBy = normalizeAssignedTo(command.changedBy());
+
+        WorkEffort workEffort = workEffortRepository.findByTenantCodeAndEffortNumber(tenantCode, effortNumber)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Work effort not found for tenant/effortNumber: " + tenantCode + "/" + effortNumber
+            ));
+        if (!identityActorLookup.actorExists(tenantCode, changedBy)) {
+            throw new IllegalArgumentException("work effort status actor not found in tenant: " + tenantCode + "/" + changedBy);
+        }
+
+        WorkEffortStatus previousStatus = workEffort.getStatus();
+        workEffort.transitionTo(targetStatus);
+        WorkEffort saved = workEffortRepository.save(workEffort);
+        if (previousStatus != saved.getStatus()) {
+            workEffortStatusChangeAuditRepository.save(
+                WorkEffortStatusChangeAudit.create(
+                    saved.getId(),
+                    previousStatus,
+                    saved.getStatus(),
+                    tenantCode,
+                    reason,
+                    changedBy,
+                    Instant.now(clock)
+                )
+            );
+        }
+        return toView(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkEffortStatusChangeView> listStatusHistory(
+        String tenantCode,
+        String effortNumber,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedEffortNumber = normalizeRequired(effortNumber, "effortNumber").toUpperCase();
+        String normalizedChangedBy = changedBy == null ? null : normalizeAssignedTo(changedBy);
+
+        WorkEffort workEffort = workEffortRepository.findByTenantCodeAndEffortNumber(normalizedTenantCode, normalizedEffortNumber)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Work effort not found for tenant/effortNumber: " + normalizedTenantCode + "/" + normalizedEffortNumber
+            ));
+        Page<WorkEffortStatusChangeAudit> page = workEffortStatusChangeAuditRepository.findHistoryFiltered(
+            workEffort.getId(),
+            normalizedTenantCode,
+            normalizedChangedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
+        );
+        return PageResult.from(page).map(audit -> new WorkEffortStatusChangeView(
+            audit.getId(),
+            workEffort.getEffortNumber(),
+            audit.getPreviousStatus(),
+            audit.getCurrentStatus(),
+            audit.getTenantCode(),
+            audit.getReason(),
+            audit.getChangedBy(),
+            audit.getChangedAt()
+        ));
     }
 
     private Page<WorkEffort> findWorkEfforts(
