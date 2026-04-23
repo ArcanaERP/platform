@@ -28,4 +28,16 @@ public interface DevSupportCatalog {
         Instant startsAtFrom,
         Instant startsAtTo
     );
+
+    DiagnosticRunLogView registerDiagnosticRunLog(RegisterDiagnosticRunLogCommand command);
+
+    DiagnosticRunLogView getDiagnosticRunLog(String tenantCode, String runNumber);
+
+    PageResult<DiagnosticRunLogView> listDiagnosticRunLogs(
+        String tenantCode,
+        PageQuery pageQuery,
+        DiagnosticRunStatus status,
+        Instant startedAtFrom,
+        Instant startedAtTo
+    );
 }

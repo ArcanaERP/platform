@@ -3,8 +3,11 @@ package com.arcanaerp.platform.devsupport.internal;
 import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.devsupport.DiagnosticRunLogView;
+import com.arcanaerp.platform.devsupport.DiagnosticRunStatus;
 import com.arcanaerp.platform.devsupport.DevSupportCatalog;
 import com.arcanaerp.platform.devsupport.MaintenanceWindowView;
+import com.arcanaerp.platform.devsupport.RegisterDiagnosticRunLogCommand;
 import com.arcanaerp.platform.devsupport.NoticeSeverity;
 import com.arcanaerp.platform.devsupport.RegisterMaintenanceWindowCommand;
 import com.arcanaerp.platform.devsupport.RegisterSystemNoticeCommand;
@@ -25,6 +28,7 @@ class DevSupportCatalogService implements DevSupportCatalog {
 
     private final SystemNoticeRepository systemNoticeRepository;
     private final MaintenanceWindowRepository maintenanceWindowRepository;
+    private final DiagnosticRunLogRepository diagnosticRunLogRepository;
     private final Clock clock;
 
     @Override
@@ -133,6 +137,64 @@ class DevSupportCatalogService implements DevSupportCatalog {
         return PageResult.from(page).map(this::toView);
     }
 
+    @Override
+    public DiagnosticRunLogView registerDiagnosticRunLog(RegisterDiagnosticRunLogCommand command) {
+        String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
+        String runNumber = normalizeRequired(command.runNumber(), "runNumber").toUpperCase();
+        Instant now = Instant.now(clock);
+
+        if (diagnosticRunLogRepository.findByTenantCodeAndRunNumber(tenantCode, runNumber).isPresent()) {
+            throw new ConflictException("Diagnostic run log already exists for tenant/runNumber: " + tenantCode + "/" + runNumber);
+        }
+
+        DiagnosticRunLog runLog = diagnosticRunLogRepository.save(
+            DiagnosticRunLog.create(
+                tenantCode,
+                runNumber,
+                command.diagnosticCode(),
+                command.title(),
+                command.summary(),
+                command.status(),
+                command.startedAt(),
+                command.finishedAt(),
+                now
+            )
+        );
+        return toView(runLog);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DiagnosticRunLogView getDiagnosticRunLog(String tenantCode, String runNumber) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedRunNumber = normalizeRequired(runNumber, "runNumber").toUpperCase();
+        DiagnosticRunLog runLog = diagnosticRunLogRepository.findByTenantCodeAndRunNumber(normalizedTenantCode, normalizedRunNumber)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Diagnostic run log not found for tenant/runNumber: " + normalizedTenantCode + "/" + normalizedRunNumber
+            ));
+        return toView(runLog);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DiagnosticRunLogView> listDiagnosticRunLogs(
+        String tenantCode,
+        PageQuery pageQuery,
+        DiagnosticRunStatus status,
+        Instant startedAtFrom,
+        Instant startedAtTo
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        Page<DiagnosticRunLog> page = diagnosticRunLogRepository.findFiltered(
+            normalizedTenantCode,
+            status,
+            startedAtFrom,
+            startedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "startedAt"))
+        );
+        return PageResult.from(page).map(this::toView);
+    }
+
     private Page<SystemNotice> findNotices(String tenantCode, NoticeSeverity severity, Boolean active, PageQuery pageQuery) {
         var pageable = pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"));
         if (severity != null && active != null) {
@@ -171,6 +233,21 @@ class DevSupportCatalogService implements DevSupportCatalog {
             window.getEndsAt(),
             window.isActive(),
             window.getCreatedAt()
+        );
+    }
+
+    private DiagnosticRunLogView toView(DiagnosticRunLog runLog) {
+        return new DiagnosticRunLogView(
+            runLog.getId(),
+            runLog.getTenantCode(),
+            runLog.getRunNumber(),
+            runLog.getDiagnosticCode(),
+            runLog.getTitle(),
+            runLog.getSummary(),
+            runLog.getStatus(),
+            runLog.getStartedAt(),
+            runLog.getFinishedAt(),
+            runLog.getCreatedAt()
         );
     }
 

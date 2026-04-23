@@ -167,6 +167,9 @@ Dev Support:
 - `POST /api/dev-support/maintenance-windows`
 - `GET /api/dev-support/maintenance-windows/{windowCode}?tenantCode=`
 - `GET /api/dev-support/maintenance-windows?tenantCode=&active=&startsAtFrom=&startsAtTo=&page=&size=`
+- `POST /api/dev-support/diagnostic-run-logs`
+- `GET /api/dev-support/diagnostic-run-logs/{runNumber}?tenantCode=`
+- `GET /api/dev-support/diagnostic-run-logs?tenantCode=&status=&startedAtFrom=&startedAtTo=&page=&size=`
 
 Invoicing:
 
