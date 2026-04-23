@@ -4,7 +4,9 @@ import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.devsupport.DevSupportCatalog;
+import com.arcanaerp.platform.devsupport.MaintenanceWindowView;
 import com.arcanaerp.platform.devsupport.NoticeSeverity;
+import com.arcanaerp.platform.devsupport.RegisterMaintenanceWindowCommand;
 import com.arcanaerp.platform.devsupport.RegisterSystemNoticeCommand;
 import com.arcanaerp.platform.devsupport.SystemNoticeView;
 import java.time.Clock;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 class DevSupportCatalogService implements DevSupportCatalog {
 
     private final SystemNoticeRepository systemNoticeRepository;
+    private final MaintenanceWindowRepository maintenanceWindowRepository;
     private final Clock clock;
 
     @Override
@@ -73,6 +76,63 @@ class DevSupportCatalogService implements DevSupportCatalog {
         return PageResult.from(page).map(this::toView);
     }
 
+    @Override
+    public MaintenanceWindowView registerMaintenanceWindow(RegisterMaintenanceWindowCommand command) {
+        String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
+        String windowCode = normalizeRequired(command.windowCode(), "windowCode").toUpperCase();
+        Instant now = Instant.now(clock);
+
+        if (maintenanceWindowRepository.findByTenantCodeAndWindowCode(tenantCode, windowCode).isPresent()) {
+            throw new ConflictException("Maintenance window already exists for tenant/code: " + tenantCode + "/" + windowCode);
+        }
+
+        MaintenanceWindow window = maintenanceWindowRepository.save(
+            MaintenanceWindow.create(
+                tenantCode,
+                windowCode,
+                command.title(),
+                command.description(),
+                command.startsAt(),
+                command.endsAt(),
+                command.active(),
+                now
+            )
+        );
+        return toView(window);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MaintenanceWindowView getMaintenanceWindow(String tenantCode, String windowCode) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedWindowCode = normalizeRequired(windowCode, "windowCode").toUpperCase();
+        MaintenanceWindow window = maintenanceWindowRepository.findByTenantCodeAndWindowCode(normalizedTenantCode, normalizedWindowCode)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Maintenance window not found for tenant/code: " + normalizedTenantCode + "/" + normalizedWindowCode
+            ));
+        return toView(window);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MaintenanceWindowView> listMaintenanceWindows(
+        String tenantCode,
+        PageQuery pageQuery,
+        Boolean active,
+        Instant startsAtFrom,
+        Instant startsAtTo
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        Page<MaintenanceWindow> page = maintenanceWindowRepository.findFiltered(
+            normalizedTenantCode,
+            active,
+            startsAtFrom,
+            startsAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "startsAt"))
+        );
+        return PageResult.from(page).map(this::toView);
+    }
+
     private Page<SystemNotice> findNotices(String tenantCode, NoticeSeverity severity, Boolean active, PageQuery pageQuery) {
         var pageable = pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"));
         if (severity != null && active != null) {
@@ -97,6 +157,20 @@ class DevSupportCatalogService implements DevSupportCatalog {
             notice.getSeverity(),
             notice.isActive(),
             notice.getCreatedAt()
+        );
+    }
+
+    private MaintenanceWindowView toView(MaintenanceWindow window) {
+        return new MaintenanceWindowView(
+            window.getId(),
+            window.getTenantCode(),
+            window.getWindowCode(),
+            window.getTitle(),
+            window.getDescription(),
+            window.getStartsAt(),
+            window.getEndsAt(),
+            window.isActive(),
+            window.getCreatedAt()
         );
     }
 

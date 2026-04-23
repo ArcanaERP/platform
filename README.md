@@ -164,6 +164,9 @@ Dev Support:
 - `POST /api/dev-support/system-notices`
 - `GET /api/dev-support/system-notices/{noticeCode}?tenantCode=`
 - `GET /api/dev-support/system-notices?tenantCode=&severity=&active=&page=&size=`
+- `POST /api/dev-support/maintenance-windows`
+- `GET /api/dev-support/maintenance-windows/{windowCode}?tenantCode=`
+- `GET /api/dev-support/maintenance-windows?tenantCode=&active=&startsAtFrom=&startsAtTo=&page=&size=`
 
 Invoicing:
 
