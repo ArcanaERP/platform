@@ -1,6 +1,6 @@
 # Inventory Module Data Model (High-Level)
 
-Updated: 2026-03-01
+Updated: 2026-04-25
 
 ## Entity Diagram
 
@@ -78,3 +78,14 @@ erDiagram
   - `inventory_adjustments(transferId)`
   - `inventory_adjustments(sku, referenceType, referenceId, adjustedAt)`
   - `inventory_transfer_reversal_idempotency(reversalTransferId)`
+
+## Minimal HTTP Surface
+
+- `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
+- `GET /api/inventory/{sku}/adjustments?page=&size=&locationCode=&adjustedBy=&adjustedAtFrom=&adjustedAtTo=` (`locationCode` defaults to `MAIN`)
+- `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)
+- `POST /api/inventory/{sku}/transfers`
+- `GET /api/inventory/transfers/{transferId}`
+- `POST /api/inventory/transfers/{transferId}/reversals` (optional `Idempotency-Key` header for retry-safe replay; reusing a key with a different payload returns `409 Conflict`; concurrent first-write requests with the same key return `409 Conflict`; stale pending claims are automatically reclaimed after 5 minutes on retry)
+- `GET /api/inventory/transfers/{transferId}/reversals?page=&size=`
+- `GET /api/inventory/{sku}/transfers?page=&size=&sourceLocationCode=&destinationLocationCode=&adjustedBy=&referenceType=&referenceId=&adjustedAtFrom=&adjustedAtTo=`

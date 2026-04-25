@@ -23,7 +23,11 @@ class ModulithDocumentationParityTest {
     private static final Path MODULE_ROOT = Path.of("src/main/java/com/arcanaerp/platform");
     private static final Path MODULE_MAP = Path.of("docs/modulith-module-map.md");
     private static final Path README = Path.of("README.md");
+    private static final Path INVENTORY_DATA_MODEL = Path.of("docs/inventory-data-model.md");
     private static final Path PAYMENTS_DATA_MODEL = Path.of("docs/payments-data-model.md");
+    private static final Path INVENTORY_CONTROLLER = Path.of(
+        "src/main/java/com/arcanaerp/platform/inventory/web/InventoryController.java"
+    );
     private static final Path PAYMENTS_CONTROLLER = Path.of(
         "src/main/java/com/arcanaerp/platform/payments/web/PaymentsController.java"
     );
@@ -60,29 +64,21 @@ class ModulithDocumentationParityTest {
 
     @Test
     void paymentsHttpSurfaceMatchesControllerMappings() throws IOException {
-        Set<String> controllerMappings = extractHttpMappings(Files.readString(PAYMENTS_CONTROLLER));
-        Set<String> readmeMappings = extractBulletMappingsByLabel(Files.readString(README), "Payments:");
-        Set<String> paymentsDataModelMappings = extractBulletMappingsInSection(
-            Files.readString(PAYMENTS_DATA_MODEL),
-            "## Minimal HTTP Surface",
-            "##"
+        assertHttpSurfaceMatchesControllerMappings(
+            "Payments",
+            "/api/payments",
+            PAYMENTS_CONTROLLER,
+            PAYMENTS_DATA_MODEL
         );
-        Set<String> moduleMapMappings = extractModuleMapHttpSurface(Files.readString(MODULE_MAP), "Payments");
+    }
 
-        assertEquals(
-            controllerMappings,
-            readmeMappings,
-            "README payments HTTP surface is out of sync with PaymentsController mappings"
-        );
-        assertEquals(
-            controllerMappings,
-            paymentsDataModelMappings,
-            "docs/payments-data-model.md minimal HTTP surface is out of sync with PaymentsController mappings"
-        );
-        assertEquals(
-            controllerMappings,
-            moduleMapMappings,
-            "docs/modulith-module-map.md payments HTTP surface is out of sync with PaymentsController mappings"
+    @Test
+    void inventoryHttpSurfaceMatchesControllerMappings() throws IOException {
+        assertHttpSurfaceMatchesControllerMappings(
+            "Inventory",
+            "/api/inventory",
+            INVENTORY_CONTROLLER,
+            INVENTORY_DATA_MODEL
         );
     }
 
@@ -162,7 +158,7 @@ class ModulithDocumentationParityTest {
 
     private static Set<String> extractHttpMappings(String javaSource) {
         Matcher requestMapping = REQUEST_MAPPING_PATTERN.matcher(javaSource);
-        assertTrue(requestMapping.find(), "Missing @RequestMapping base path in PaymentsController");
+        assertTrue(requestMapping.find(), "Missing @RequestMapping base path in controller source");
         String basePath = requestMapping.group(1);
 
         LinkedHashSet<String> mappings = new LinkedHashSet<>();
@@ -173,25 +169,6 @@ class ModulithDocumentationParityTest {
             mappings.add(method + " " + basePath + relativePath);
         }
         return mappings;
-    }
-
-    private static Set<String> extractBulletMappingsByLabel(String markdown, String label) {
-        int start = markdown.indexOf(label);
-        assertTrue(start >= 0, () -> "Missing markdown label: " + label);
-        String afterLabel = markdown.substring(start + label.length());
-        Matcher nextLabelMatcher = Pattern.compile("\\n[A-Z][A-Za-z /-]+:\\n").matcher(afterLabel);
-        int end = nextLabelMatcher.find() ? start + label.length() + nextLabelMatcher.start() : markdown.length();
-        return extractCodeMappings(markdown.substring(start, end));
-    }
-
-    private static Set<String> extractBulletMappingsInSection(String markdown, String startMarker, String endMarkerPrefix) {
-        int start = markdown.indexOf(startMarker);
-        assertTrue(start >= 0, () -> "Missing markdown section: " + startMarker);
-        int end = markdown.indexOf("\n" + endMarkerPrefix, start + startMarker.length());
-        if (end < 0) {
-            end = markdown.length();
-        }
-        return extractCodeMappings(markdown.substring(start, end));
     }
 
     private static Set<String> extractModuleMapHttpSurface(String markdown, String moduleName) {
@@ -209,13 +186,13 @@ class ModulithDocumentationParityTest {
             .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    private static Set<String> extractCodeMappings(String markdownFragment) {
+    private static Set<String> extractCodeMappings(String markdownFragment, String apiPrefix) {
         return CODE_VALUE_PATTERN.matcher(markdownFragment)
             .results()
             .map(match -> normalizeDocumentedMapping(match.group(1)))
-            .filter(mapping -> mapping.startsWith("GET /api/payments")
-                || mapping.startsWith("POST /api/payments")
-                || mapping.startsWith("PATCH /api/payments"))
+            .filter(mapping -> mapping.startsWith("GET " + apiPrefix)
+                || mapping.startsWith("POST " + apiPrefix)
+                || mapping.startsWith("PATCH " + apiPrefix))
             .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
@@ -229,6 +206,65 @@ class ModulithDocumentationParityTest {
             mapping = mapping.substring(0, annotationSeparator);
         }
         return mapping.trim();
+    }
+
+    private static void assertHttpSurfaceMatchesControllerMappings(
+        String moduleName,
+        String apiPrefix,
+        Path controllerPath,
+        Path dataModelPath
+    ) throws IOException {
+        Set<String> controllerMappings = extractHttpMappings(Files.readString(controllerPath));
+        Set<String> readmeMappings = extractBulletMappingsByLabel(Files.readString(README), moduleName + ":", apiPrefix);
+        Set<String> dataModelMappings = extractBulletMappingsInSection(
+            Files.readString(dataModelPath),
+            "## Minimal HTTP Surface",
+            "##",
+            apiPrefix
+        );
+        Set<String> moduleMapMappings = extractModuleMapHttpSurface(Files.readString(MODULE_MAP), moduleName);
+
+        assertEquals(
+            controllerMappings,
+            readmeMappings,
+            "README " + moduleName.toLowerCase() + " HTTP surface is out of sync with "
+                + controllerPath.getFileName() + " mappings"
+        );
+        assertEquals(
+            controllerMappings,
+            dataModelMappings,
+            dataModelPath + " minimal HTTP surface is out of sync with " + controllerPath.getFileName() + " mappings"
+        );
+        assertEquals(
+            controllerMappings,
+            moduleMapMappings,
+            "docs/modulith-module-map.md " + moduleName.toLowerCase()
+                + " HTTP surface is out of sync with " + controllerPath.getFileName() + " mappings"
+        );
+    }
+
+    private static Set<String> extractBulletMappingsByLabel(String markdown, String label, String apiPrefix) {
+        int start = markdown.indexOf(label);
+        assertTrue(start >= 0, () -> "Missing markdown label: " + label);
+        String afterLabel = markdown.substring(start + label.length());
+        Matcher nextLabelMatcher = Pattern.compile("\\n[A-Z][A-Za-z /-]+:\\n").matcher(afterLabel);
+        int end = nextLabelMatcher.find() ? start + label.length() + nextLabelMatcher.start() : markdown.length();
+        return extractCodeMappings(markdown.substring(start, end), apiPrefix);
+    }
+
+    private static Set<String> extractBulletMappingsInSection(
+        String markdown,
+        String startMarker,
+        String endMarkerPrefix,
+        String apiPrefix
+    ) {
+        int start = markdown.indexOf(startMarker);
+        assertTrue(start >= 0, () -> "Missing markdown section: " + startMarker);
+        int end = markdown.indexOf("\n" + endMarkerPrefix, start + startMarker.length());
+        if (end < 0) {
+            end = markdown.length();
+        }
+        return extractCodeMappings(markdown.substring(start, end), apiPrefix);
     }
 
     private static String extractSection(String markdown, String startMarker, String endMarker) {
