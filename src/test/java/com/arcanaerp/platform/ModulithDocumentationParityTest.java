@@ -24,9 +24,13 @@ class ModulithDocumentationParityTest {
     private static final Path MODULE_MAP = Path.of("docs/modulith-module-map.md");
     private static final Path README = Path.of("README.md");
     private static final Path INVENTORY_DATA_MODEL = Path.of("docs/inventory-data-model.md");
+    private static final Path INVOICING_DATA_MODEL = Path.of("docs/invoicing-data-model.md");
     private static final Path PAYMENTS_DATA_MODEL = Path.of("docs/payments-data-model.md");
     private static final Path INVENTORY_CONTROLLER = Path.of(
         "src/main/java/com/arcanaerp/platform/inventory/web/InventoryController.java"
+    );
+    private static final Path INVOICES_CONTROLLER = Path.of(
+        "src/main/java/com/arcanaerp/platform/invoicing/web/InvoicesController.java"
     );
     private static final Path PAYMENTS_CONTROLLER = Path.of(
         "src/main/java/com/arcanaerp/platform/payments/web/PaymentsController.java"
@@ -79,6 +83,16 @@ class ModulithDocumentationParityTest {
             "/api/inventory",
             INVENTORY_CONTROLLER,
             INVENTORY_DATA_MODEL
+        );
+    }
+
+    @Test
+    void invoicingHttpSurfaceMatchesControllerMappings() throws IOException {
+        assertHttpSurfaceMatchesControllerMappings(
+            "Invoicing",
+            "/api/invoices",
+            INVOICES_CONTROLLER,
+            INVOICING_DATA_MODEL
         );
     }
 
