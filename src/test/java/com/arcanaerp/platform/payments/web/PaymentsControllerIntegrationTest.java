@@ -46,6 +46,7 @@ class PaymentsControllerIntegrationTest {
     private static final String COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_SUMMARY_TENANT_CODE = "tenant-coll-asseff";
     private static final String COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_DAILY_SUMMARY_TENANT_CODE = "tenant-coll-asseffday";
     private static final String COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_WEEKLY_SUMMARY_TENANT_CODE = "tenant-coll-asseffweek";
+    private static final String COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE = "tenant-coll-asseffmonth";
     private static final String COLLECTIONS_ASSIGNEE_DASHBOARD_SUMMARY_TENANT_CODE = "tenant-coll-assdash";
     private static final String COLLECTIONS_ASSIGNEE_DASHBOARD_DAILY_SUMMARY_TENANT_CODE = "tenant-coll-assdashday";
     private static final String COLLECTIONS_ASSIGNEE_DASHBOARD_WEEKLY_SUMMARY_TENANT_CODE = "tenant-coll-assdashwk";
@@ -3198,6 +3199,183 @@ class PaymentsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].assignedTo").value("collector-a@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].changedBy").value("manager@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].businessWeekStart").value(firstWeekStart));
+    }
+
+    @Test
+    void listsMonthlyTenantCollectionsAssigneeActorEffectivenessSummaries() throws Exception {
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE,
+            "Collections Assignee Actor Effectiveness Monthly Tenant",
+            "COLLECTOR_A",
+            "Collector A",
+            "collector-a@arcanaerp.com",
+            "Collector A"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE,
+            "Collections Assignee Actor Effectiveness Monthly Tenant",
+            "COLLECTOR_B",
+            "Collector B",
+            "collector-b@arcanaerp.com",
+            "Collector B"
+        ).andExpect(status().isCreated());
+        PaymentsWebIntegrationTestSupport.createIdentityUser(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE,
+            "Collections Assignee Actor Effectiveness Monthly Tenant",
+            "MANAGER",
+            "Manager",
+            "manager@arcanaerp.com",
+            "Manager"
+        ).andExpect(status().isCreated());
+
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE,
+            "arc-pay-9986",
+            "so-pay-9986",
+            "inv-pay-9986",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(10 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE,
+            "arc-pay-9987",
+            "so-pay-9987",
+            "inv-pay-9987",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(11 * 86400)
+        );
+        PaymentsWebIntegrationTestSupport.seedIssuedInvoice(
+            mockMvc,
+            testClock,
+            COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE,
+            "arc-pay-9988",
+            "so-pay-9988",
+            "inv-pay-9988",
+            PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(12 * 86400)
+        );
+
+        Instant assignedAt = PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(130 * 86400);
+        testClock.setInstant(assignedAt);
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9986",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9987",
+            "collector-a@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.assignOver90CollectionsInvoice(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9988",
+            "collector-b@arcanaerp.com",
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant scheduledAt = assignedAt.plusSeconds(86400);
+        testClock.setInstant(assignedAt.plusSeconds(60));
+        PaymentsWebIntegrationTestSupport.scheduleCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9986",
+            scheduledAt,
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.scheduleCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9987",
+            scheduledAt.plusSeconds(60),
+            "collector-b@arcanaerp.com"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.scheduleCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9988",
+            scheduledAt.plusSeconds(120),
+            "manager@arcanaerp.com"
+        ).andExpect(status().isOk());
+
+        Instant firstMonth = Instant.parse("2026-08-15T09:00:00Z");
+        testClock.setInstant(firstMonth);
+        PaymentsWebIntegrationTestSupport.completeCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9986",
+            "manager@arcanaerp.com",
+            "NO_RESPONSE"
+        ).andExpect(status().isOk());
+        PaymentsWebIntegrationTestSupport.completeCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9987",
+            "collector-b@arcanaerp.com",
+            "PROMISE_TO_PAY"
+        ).andExpect(status().isOk());
+
+        Instant secondMonth = Instant.parse("2026-09-15T09:00:00Z");
+        testClock.setInstant(secondMonth);
+        PaymentsWebIntegrationTestSupport.completeCollectionsFollowUp(
+            mockMvc,
+            COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE,
+            "inv-pay-9988",
+            "manager@arcanaerp.com",
+            "CONTACTED"
+        ).andExpect(status().isOk());
+
+        YearMonth firstBusinessMonth = YearMonth.from(firstMonth.atOffset(java.time.ZoneOffset.UTC));
+        YearMonth secondBusinessMonth = YearMonth.from(secondMonth.atOffset(java.time.ZoneOffset.UTC));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.monthlyTenantCollectionsAssigneeActorEffectivenessSummaryRequest(
+                COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "changedAtFrom", firstMonth.minusSeconds(1).toString(),
+                "changedAtTo", secondMonth.plusSeconds(1).toString()
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].businessMonth").value(secondBusinessMonth.toString()))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].currentAssignedInvoiceCount").value(1))
+            .andExpect(jsonPath("$.items[0].completionCount").value(1))
+            .andExpect(jsonPath("$.items[0].completedInvoiceCount").value(1))
+            .andExpect(jsonPath("$.items[1].businessMonth").value(firstBusinessMonth.toString()))
+            .andExpect(jsonPath("$.items[1].assignedTo").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].changedBy").value("collector-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].currentAssignedInvoiceCount").value(2))
+            .andExpect(jsonPath("$.items[1].completionCount").value(1))
+            .andExpect(jsonPath("$.items[2].businessMonth").value(firstBusinessMonth.toString()))
+            .andExpect(jsonPath("$.items[2].assignedTo").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[2].changedBy").value("manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[2].completionCount").value(1));
+
+        mockMvc.perform(PaymentsWebIntegrationTestSupport.monthlyTenantCollectionsAssigneeActorEffectivenessSummaryRequest(
+                COLLECTIONS_ASSIGNEE_ACTOR_EFFECTIVENESS_MONTHLY_SUMMARY_TENANT_CODE,
+                "USD",
+                0,
+                10,
+                "assignedTo", "collector-a@arcanaerp.com",
+                "changedBy", "manager@arcanaerp.com"
+            ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("collector-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].businessMonth").value(firstBusinessMonth.toString()));
     }
 
     @Test

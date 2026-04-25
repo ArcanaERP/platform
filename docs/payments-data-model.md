@@ -1,6 +1,6 @@
 # Payments Data Model
 
-Updated: 2026-03-13
+Updated: 2026-04-24
 
 ## Scope
 
@@ -803,6 +803,37 @@ Rules:
 - current workload fields are still computed from the current over-90 assigned receivables snapshot
 - completion fields are derived from immutable follow-up completion audits that still resolve to a current assignment
 - rows are ordered by `businessWeekStart DESC`, then `assignedTo ASC`, then `changedBy ASC` with null actors last
+
+### MonthlyTenantCollectionsAssigneeActorEffectivenessSummary
+
+Purpose:
+- expose month-bucketed assignee-vs-actor effectiveness so leadership can see how current ownership and follow-up activity line up over time
+
+Fields:
+- `tenantCode`
+- `currencyCode`
+- `businessMonth`
+- `assignedTo`
+- `changedBy`
+- `currentAssignedInvoiceCount`
+- `currentOutstandingAmount`
+- `oldestDueAt`
+- `completionCount`
+- `completedInvoiceCount`
+
+Filters:
+- `currencyCode` required
+- `assignedTo` exact current assignee match, optional
+- `changedBy` exact follow-up completion actor match, optional
+- `changedAtFrom` UTC instant lower bound for follow-up completion counts, optional
+- `changedAtTo` UTC instant upper bound for follow-up completion counts, optional
+
+Rules:
+- route: `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-actor-effectiveness/monthly-summary?currencyCode=&assignedTo=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
+- rows are grouped by UTC `businessMonth + assignedTo + changedBy`
+- current workload fields are still computed from the current over-90 assigned receivables snapshot
+- completion fields are derived from immutable follow-up completion audits that still resolve to a current assignment
+- rows are ordered by `businessMonth DESC`, then `assignedTo ASC`, then `changedBy ASC` with null actors last
 
 ### DailyTenantCollectionsNetIntakeSummary
 

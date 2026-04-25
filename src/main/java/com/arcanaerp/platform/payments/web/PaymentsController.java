@@ -41,6 +41,7 @@ import com.arcanaerp.platform.payments.DailyTenantCollectionsAssignmentSummaryVi
 import com.arcanaerp.platform.payments.DailyTenantPaymentSummaryView;
 import com.arcanaerp.platform.payments.InvoiceBalanceView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsAssigneeDashboardSummaryView;
+import com.arcanaerp.platform.payments.MonthlyTenantCollectionsAssigneeActorEffectivenessSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsActorFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsFollowUpOutcomeSummaryView;
 import com.arcanaerp.platform.payments.MonthlyTenantCollectionsClaimSummaryView;
@@ -1497,6 +1498,33 @@ public class PaymentsController {
             .map(this::toWeeklyTenantCollectionsAssigneeActorEffectivenessSummaryResponse);
     }
 
+    @GetMapping("/tenants/{tenantCode}/receivables/collections/assignee-actor-effectiveness/monthly-summary")
+    public PageResult<MonthlyTenantCollectionsAssigneeActorEffectivenessSummaryResponse>
+        listMonthlyTenantCollectionsAssigneeActorEffectivenessSummaries(
+            @PathVariable String tenantCode,
+            @RequestParam String currencyCode,
+            @RequestParam(required = false) String assignedTo,
+            @RequestParam(required = false) String changedBy,
+            @RequestParam(required = false) String changedAtFrom,
+            @RequestParam(required = false) String changedAtTo,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+        ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateInstantRange(parsedChangedAtFrom, parsedChangedAtTo, "changedAtFrom", "changedAtTo");
+        return paymentManagement.listMonthlyTenantCollectionsAssigneeActorEffectivenessSummaries(
+                requirePathValue(tenantCode, "tenantCode"),
+                requirePathValue(currencyCode, "currencyCode"),
+                normalizeOptional(assignedTo, "assignedTo"),
+                normalizeOptional(changedBy, "changedBy"),
+                parsedChangedAtFrom,
+                parsedChangedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toMonthlyTenantCollectionsAssigneeActorEffectivenessSummaryResponse);
+    }
+
     @GetMapping("/tenants/{tenantCode}/receivables/collections/net-intake/daily-summary")
     public PageResult<DailyTenantCollectionsNetIntakeSummaryResponse> listDailyTenantCollectionsNetIntakeSummaries(
         @PathVariable String tenantCode,
@@ -2460,6 +2488,24 @@ public class PaymentsController {
             summary.tenantCode(),
             summary.currencyCode(),
             summary.businessWeekStart(),
+            summary.assignedTo(),
+            summary.changedBy(),
+            summary.currentAssignedInvoiceCount(),
+            summary.currentOutstandingAmount(),
+            summary.oldestDueAt(),
+            summary.completionCount(),
+            summary.completedInvoiceCount()
+        );
+    }
+
+    private MonthlyTenantCollectionsAssigneeActorEffectivenessSummaryResponse
+        toMonthlyTenantCollectionsAssigneeActorEffectivenessSummaryResponse(
+            MonthlyTenantCollectionsAssigneeActorEffectivenessSummaryView summary
+        ) {
+        return new MonthlyTenantCollectionsAssigneeActorEffectivenessSummaryResponse(
+            summary.tenantCode(),
+            summary.currencyCode(),
+            summary.businessMonth(),
             summary.assignedTo(),
             summary.changedBy(),
             summary.currentAssignedInvoiceCount(),
