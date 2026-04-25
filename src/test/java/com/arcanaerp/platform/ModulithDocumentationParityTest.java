@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -21,10 +22,17 @@ class ModulithDocumentationParityTest {
 
     private static final Path MODULE_ROOT = Path.of("src/main/java/com/arcanaerp/platform");
     private static final Path MODULE_MAP = Path.of("docs/modulith-module-map.md");
+    private static final Path README = Path.of("README.md");
+    private static final Path PAYMENTS_DATA_MODEL = Path.of("docs/payments-data-model.md");
+    private static final Path PAYMENTS_CONTROLLER = Path.of(
+        "src/main/java/com/arcanaerp/platform/payments/web/PaymentsController.java"
+    );
 
     private static final Pattern ALLOWED_DEPENDENCIES_PATTERN = Pattern.compile("allowedDependencies = \\{([^}]*)\\}");
     private static final Pattern QUOTED_VALUE_PATTERN = Pattern.compile("\"([^\"]+)\"");
     private static final Pattern CODE_VALUE_PATTERN = Pattern.compile("`([^`]+)`");
+    private static final Pattern REQUEST_MAPPING_PATTERN = Pattern.compile("@RequestMapping\\(\"([^\"]*)\"\\)");
+    private static final Pattern HTTP_MAPPING_PATTERN = Pattern.compile("@(Get|Post|Patch)Mapping(?:\\(\"([^\"]*)\"\\))?");
 
     @Test
     void scopeListMatchesDeclaredModules() throws IOException {
@@ -47,6 +55,34 @@ class ModulithDocumentationParityTest {
             declaredDependencies,
             documentedDependencies,
             "docs/modulith-module-map.md dependency graph is out of sync with package-info.java declarations"
+        );
+    }
+
+    @Test
+    void paymentsHttpSurfaceMatchesControllerMappings() throws IOException {
+        Set<String> controllerMappings = extractHttpMappings(Files.readString(PAYMENTS_CONTROLLER));
+        Set<String> readmeMappings = extractBulletMappingsByLabel(Files.readString(README), "Payments:");
+        Set<String> paymentsDataModelMappings = extractBulletMappingsInSection(
+            Files.readString(PAYMENTS_DATA_MODEL),
+            "## Minimal HTTP Surface",
+            "##"
+        );
+        Set<String> moduleMapMappings = extractModuleMapHttpSurface(Files.readString(MODULE_MAP), "Payments");
+
+        assertEquals(
+            controllerMappings,
+            readmeMappings,
+            "README payments HTTP surface is out of sync with PaymentsController mappings"
+        );
+        assertEquals(
+            controllerMappings,
+            paymentsDataModelMappings,
+            "docs/payments-data-model.md minimal HTTP surface is out of sync with PaymentsController mappings"
+        );
+        assertEquals(
+            controllerMappings,
+            moduleMapMappings,
+            "docs/modulith-module-map.md payments HTTP surface is out of sync with PaymentsController mappings"
         );
     }
 
@@ -122,6 +158,77 @@ class ModulithDocumentationParityTest {
             .results()
             .map(match -> match.group(1))
             .toList();
+    }
+
+    private static Set<String> extractHttpMappings(String javaSource) {
+        Matcher requestMapping = REQUEST_MAPPING_PATTERN.matcher(javaSource);
+        assertTrue(requestMapping.find(), "Missing @RequestMapping base path in PaymentsController");
+        String basePath = requestMapping.group(1);
+
+        LinkedHashSet<String> mappings = new LinkedHashSet<>();
+        Matcher mappingMatcher = HTTP_MAPPING_PATTERN.matcher(javaSource);
+        while (mappingMatcher.find()) {
+            String method = mappingMatcher.group(1).toUpperCase();
+            String relativePath = mappingMatcher.group(2) == null ? "" : mappingMatcher.group(2);
+            mappings.add(method + " " + basePath + relativePath);
+        }
+        return mappings;
+    }
+
+    private static Set<String> extractBulletMappingsByLabel(String markdown, String label) {
+        int start = markdown.indexOf(label);
+        assertTrue(start >= 0, () -> "Missing markdown label: " + label);
+        String afterLabel = markdown.substring(start + label.length());
+        Matcher nextLabelMatcher = Pattern.compile("\\n[A-Z][A-Za-z /-]+:\\n").matcher(afterLabel);
+        int end = nextLabelMatcher.find() ? start + label.length() + nextLabelMatcher.start() : markdown.length();
+        return extractCodeMappings(markdown.substring(start, end));
+    }
+
+    private static Set<String> extractBulletMappingsInSection(String markdown, String startMarker, String endMarkerPrefix) {
+        int start = markdown.indexOf(startMarker);
+        assertTrue(start >= 0, () -> "Missing markdown section: " + startMarker);
+        int end = markdown.indexOf("\n" + endMarkerPrefix, start + startMarker.length());
+        if (end < 0) {
+            end = markdown.length();
+        }
+        return extractCodeMappings(markdown.substring(start, end));
+    }
+
+    private static Set<String> extractModuleMapHttpSurface(String markdown, String moduleName) {
+        String rowPrefix = "| " + moduleName + " |";
+        String row = markdown.lines()
+            .filter(line -> line.startsWith(rowPrefix))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Missing module map row: " + moduleName));
+
+        String[] columns = row.split("\\|", -1);
+        assertTrue(columns.length >= 6, () -> "Malformed module map row for module: " + moduleName);
+        return CODE_VALUE_PATTERN.matcher(columns[5])
+            .results()
+            .map(match -> normalizeDocumentedMapping(match.group(1)))
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private static Set<String> extractCodeMappings(String markdownFragment) {
+        return CODE_VALUE_PATTERN.matcher(markdownFragment)
+            .results()
+            .map(match -> normalizeDocumentedMapping(match.group(1)))
+            .filter(mapping -> mapping.startsWith("GET /api/payments")
+                || mapping.startsWith("POST /api/payments")
+                || mapping.startsWith("PATCH /api/payments"))
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private static String normalizeDocumentedMapping(String mapping) {
+        int querySeparator = mapping.indexOf('?');
+        if (querySeparator >= 0) {
+            mapping = mapping.substring(0, querySeparator);
+        }
+        int annotationSeparator = mapping.indexOf(" (");
+        if (annotationSeparator >= 0) {
+            mapping = mapping.substring(0, annotationSeparator);
+        }
+        return mapping.trim();
     }
 
     private static String extractSection(String markdown, String startMarker, String endMarker) {

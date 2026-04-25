@@ -1228,6 +1228,13 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/aging?currencyCode=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/aging/{agingBucket}?currencyCode=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90?currencyCode=&invoiceNumber=&assignedTo=&dueAtOnOrBefore=&followUpAtFrom=&followUpAtTo=&followUpScheduled=&latestFollowUpOutcome=&sortBy=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/assignee-summary?currencyCode=&assignedTo=&latestFollowUpOutcome=&sortBy=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard-summary?currencyCode=&assignedTo=&latestFollowUpOutcome=&sortBy=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/daily-summary?assignedTo=&changedBy=&outcome=&changedAtFrom=&changedAtTo=&sortBy=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/weekly-summary?assignedTo=&changedBy=&outcome=&changedAtFrom=&changedAtTo=&sortBy=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-dashboard/monthly-summary?assignedTo=&changedBy=&outcome=&changedAtFrom=&changedAtTo=&sortBy=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/unassigned?currencyCode=&latestFollowUpOutcome=&dueAtOnOrBefore=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/unassigned/summary?currencyCode=&latestFollowUpOutcome=`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/claim`
 - `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/release`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/claim-history?page=&size=`
@@ -1250,6 +1257,7 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/weekly-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/net-intake/monthly-summary?page=&size=&actor=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome-summary?currencyCode=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/current-assignee-summary?currencyCode=&assignedTo=&latestFollowUpOutcome=&sortBy=&page=&size=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/assignee-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/actor/daily-summary?page=&size=&outcome=&changedBy=&changedAtFrom=&changedAtTo=&sortBy=`
@@ -1258,6 +1266,40 @@ Rules:
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/daily-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/weekly-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/payments/tenants/{tenantCode}/receivables/collections/follow-up-outcome/monthly-summary?page=&size=&assignedTo=&outcome=&changedBy=&changedAtFrom=&changedAtTo=`
+- `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment`
+- `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/follow-up`
+- `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/follow-up/complete`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/follow-up-history?page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/assignment-history?page=&size=&assignedTo=&assignedAtFrom=&assignedAtTo=`
+- `POST /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/notes`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/over-90/{invoiceNumber}/notes?page=&size=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes?page=&size=&invoiceNumber=&assignedTo=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/outcome-summary?page=&size=&assignedTo=&notedBy=&category=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/category-summary?page=&size=&assignedTo=&notedBy=&outcome=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/category/daily-summary?page=&size=&assignedTo=&notedBy=&outcome=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/category/weekly-summary?page=&size=&assignedTo=&notedBy=&outcome=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/category/monthly-summary?page=&size=&assignedTo=&notedBy=&outcome=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/category-outcome/daily-summary?page=&size=&assignedTo=&notedBy=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/category-outcome/weekly-summary?page=&size=&assignedTo=&notedBy=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/category-outcome/monthly-summary?page=&size=&assignedTo=&notedBy=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/daily-summary?page=&size=&assignedTo=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/weekly-summary?page=&size=&assignedTo=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/monthly-summary?page=&size=&assignedTo=&notedBy=&category=&outcome=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/outcome/daily-summary?page=&size=&assignedTo=&notedBy=&category=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/outcome/weekly-summary?page=&size=&assignedTo=&notedBy=&category=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/notes/outcome/monthly-summary?page=&size=&assignedTo=&notedBy=&category=&notedAtFrom=&notedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignment-history?page=&size=&invoiceNumber=&assignedTo=&assignedAtFrom=&assignedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/summary?currencyCode=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/assignee-aging-summary?currencyCode=&assignedTo=&agingBucket=&sortBy=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/daily-summary?page=&size=&assignedTo=&assignedAtFrom=&assignedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/weekly-summary?page=&size=&assignedTo=&assignedAtFrom=&assignedAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/receivables/collections/monthly-summary?page=&size=&assignedTo=&assignedAtFrom=&assignedAtTo=`
+- `GET /api/payments?page=&size=&invoiceNumber=&tenantCode=&paidAtFrom=&paidAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/summary?currencyCode=&paidAtFrom=&paidAtTo=`
+- `GET /api/payments/tenants/{tenantCode}/invoices?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/daily-summary?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/monthly-summary?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`
+- `GET /api/payments/tenants/{tenantCode}/weekly-summary?currencyCode=&paidAtFrom=&paidAtTo=&page=&size=`
 
 ### CollectionsActorFollowUpOutcomeSummary
 
