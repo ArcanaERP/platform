@@ -23,9 +23,14 @@ class ModulithDocumentationParityTest {
     private static final Path MODULE_ROOT = Path.of("src/main/java/com/arcanaerp/platform");
     private static final Path MODULE_MAP = Path.of("docs/modulith-module-map.md");
     private static final Path README = Path.of("README.md");
+    private static final Path AGREEMENTS_DATA_MODEL = Path.of("docs/agreements-data-model.md");
     private static final Path INVENTORY_DATA_MODEL = Path.of("docs/inventory-data-model.md");
     private static final Path INVOICING_DATA_MODEL = Path.of("docs/invoicing-data-model.md");
     private static final Path PAYMENTS_DATA_MODEL = Path.of("docs/payments-data-model.md");
+    private static final Path WORKEFFORT_DATA_MODEL = Path.of("docs/workeffort-data-model.md");
+    private static final Path AGREEMENTS_CONTROLLER = Path.of(
+        "src/main/java/com/arcanaerp/platform/agreements/web/AgreementsController.java"
+    );
     private static final Path INVENTORY_CONTROLLER = Path.of(
         "src/main/java/com/arcanaerp/platform/inventory/web/InventoryController.java"
     );
@@ -34,6 +39,9 @@ class ModulithDocumentationParityTest {
     );
     private static final Path PAYMENTS_CONTROLLER = Path.of(
         "src/main/java/com/arcanaerp/platform/payments/web/PaymentsController.java"
+    );
+    private static final Path WORKEFFORT_CONTROLLER = Path.of(
+        "src/main/java/com/arcanaerp/platform/workeffort/web/WorkEffortsController.java"
     );
 
     private static final Pattern ALLOWED_DEPENDENCIES_PATTERN = Pattern.compile("allowedDependencies = \\{([^}]*)\\}");
@@ -93,6 +101,26 @@ class ModulithDocumentationParityTest {
             "/api/invoices",
             INVOICES_CONTROLLER,
             INVOICING_DATA_MODEL
+        );
+    }
+
+    @Test
+    void agreementsHttpSurfaceMatchesControllerMappings() throws IOException {
+        assertHttpSurfaceMatchesControllerMappings(
+            "Agreements",
+            "/api/agreements",
+            AGREEMENTS_CONTROLLER,
+            AGREEMENTS_DATA_MODEL
+        );
+    }
+
+    @Test
+    void workEffortHttpSurfaceMatchesControllerMappings() throws IOException {
+        assertHttpSurfaceMatchesControllerMappings(
+            "Work Effort",
+            "/api/work-efforts",
+            WORKEFFORT_CONTROLLER,
+            WORKEFFORT_DATA_MODEL
         );
     }
 

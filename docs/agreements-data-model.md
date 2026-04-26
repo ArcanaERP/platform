@@ -1,6 +1,6 @@
 # Agreements Module Data Model (High-Level)
 
-Updated: 2026-03-01
+Updated: 2026-04-25
 
 ## Entity Diagram
 
@@ -68,3 +68,11 @@ erDiagram
 - Indexes:
   - `agreement_status_change_audits(agreementId, changedAt)`
   - `agreement_status_change_audits(agreementId, tenantCode, changedAt)`
+
+## Minimal HTTP Surface
+
+- `POST /api/agreements`
+- `GET /api/agreements/{agreementNumber}`
+- `GET /api/agreements?page=&size=&status=`
+- `PATCH /api/agreements/{agreementNumber}/status` (request includes `status`, `tenantCode`, `reason`, `changedBy`)
+- `GET /api/agreements/{agreementNumber}/status-history?page=&size=&tenantCode=&changedBy=&changedAtFrom=&changedAtTo=`
