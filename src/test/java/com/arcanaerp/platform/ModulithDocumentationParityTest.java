@@ -24,12 +24,19 @@ class ModulithDocumentationParityTest {
     private static final Path MODULE_MAP = Path.of("docs/modulith-module-map.md");
     private static final Path README = Path.of("README.md");
     private static final Path AGREEMENTS_DATA_MODEL = Path.of("docs/agreements-data-model.md");
+    private static final Path COMMUNICATION_EVENTS_DATA_MODEL = Path.of("docs/communication-events-data-model.md");
     private static final Path INVENTORY_DATA_MODEL = Path.of("docs/inventory-data-model.md");
     private static final Path INVOICING_DATA_MODEL = Path.of("docs/invoicing-data-model.md");
     private static final Path PAYMENTS_DATA_MODEL = Path.of("docs/payments-data-model.md");
     private static final Path WORKEFFORT_DATA_MODEL = Path.of("docs/workeffort-data-model.md");
     private static final Path AGREEMENTS_CONTROLLER = Path.of(
         "src/main/java/com/arcanaerp/platform/agreements/web/AgreementsController.java"
+    );
+    private static final Path COMMUNICATION_EVENTS_CONTROLLER = Path.of(
+        "src/main/java/com/arcanaerp/platform/communicationevents/web/CommunicationEventsController.java"
+    );
+    private static final Path COMMUNICATION_EVENT_REFERENCE_DATA_CONTROLLER = Path.of(
+        "src/main/java/com/arcanaerp/platform/communicationevents/web/CommunicationEventReferenceDataController.java"
     );
     private static final Path INVENTORY_CONTROLLER = Path.of(
         "src/main/java/com/arcanaerp/platform/inventory/web/InventoryController.java"
@@ -121,6 +128,17 @@ class ModulithDocumentationParityTest {
             "/api/work-efforts",
             WORKEFFORT_CONTROLLER,
             WORKEFFORT_DATA_MODEL
+        );
+    }
+
+    @Test
+    void communicationEventsHttpSurfaceMatchesControllerMappings() throws IOException {
+        assertHttpSurfaceMatchesControllerMappings(
+            "Communication Events",
+            "/api/communication-events",
+            COMMUNICATION_EVENTS_DATA_MODEL,
+            COMMUNICATION_EVENTS_CONTROLLER,
+            COMMUNICATION_EVENT_REFERENCE_DATA_CONTROLLER
         );
     }
 
@@ -256,7 +274,19 @@ class ModulithDocumentationParityTest {
         Path controllerPath,
         Path dataModelPath
     ) throws IOException {
-        Set<String> controllerMappings = extractHttpMappings(Files.readString(controllerPath));
+        assertHttpSurfaceMatchesControllerMappings(moduleName, apiPrefix, dataModelPath, new Path[] {controllerPath});
+    }
+
+    private static void assertHttpSurfaceMatchesControllerMappings(
+        String moduleName,
+        String apiPrefix,
+        Path dataModelPath,
+        Path... controllerPaths
+    ) throws IOException {
+        Set<String> controllerMappings = new LinkedHashSet<>();
+        for (Path controllerPath : controllerPaths) {
+            controllerMappings.addAll(extractHttpMappings(Files.readString(controllerPath)));
+        }
         Set<String> readmeMappings = extractBulletMappingsByLabel(Files.readString(README), moduleName + ":", apiPrefix);
         Set<String> dataModelMappings = extractBulletMappingsInSection(
             Files.readString(dataModelPath),
@@ -265,23 +295,24 @@ class ModulithDocumentationParityTest {
             apiPrefix
         );
         Set<String> moduleMapMappings = extractModuleMapHttpSurface(Files.readString(MODULE_MAP), moduleName);
+        String controllerNames = Stream.of(controllerPaths).map(path -> path.getFileName().toString()).collect(Collectors.joining(", "));
 
         assertEquals(
             controllerMappings,
             readmeMappings,
             "README " + moduleName.toLowerCase() + " HTTP surface is out of sync with "
-                + controllerPath.getFileName() + " mappings"
+                + controllerNames + " mappings"
         );
         assertEquals(
             controllerMappings,
             dataModelMappings,
-            dataModelPath + " minimal HTTP surface is out of sync with " + controllerPath.getFileName() + " mappings"
+            dataModelPath + " minimal HTTP surface is out of sync with " + controllerNames + " mappings"
         );
         assertEquals(
             controllerMappings,
             moduleMapMappings,
             "docs/modulith-module-map.md " + moduleName.toLowerCase()
-                + " HTTP surface is out of sync with " + controllerPath.getFileName() + " mappings"
+                + " HTTP surface is out of sync with " + controllerNames + " mappings"
         );
     }
 

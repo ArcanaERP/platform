@@ -1,6 +1,6 @@
 # Communication Events Module Data Model (High-Level)
 
-Updated: 2026-04-18
+Updated: 2026-04-26
 
 ## Entity Diagram
 
@@ -80,3 +80,17 @@ erDiagram
   - `communication_event_status_change_audits(communicationEventId, tenantCode, changedAt)`
   - `communication_event_status_types(tenantCode)`
   - `communication_event_purpose_types(tenantCode)`
+
+## Minimal HTTP Surface
+
+- `POST /api/communication-events`
+- `GET /api/communication-events/{eventNumber}?tenantCode=`
+- `GET /api/communication-events?tenantCode=&statusCode=&purposeCode=&channel=&direction=&recordedBy=&page=&size=`
+- `PATCH /api/communication-events/{eventNumber}/status` (request includes `tenantCode`, `statusCode`, `reason`, `changedBy`)
+- `GET /api/communication-events/{eventNumber}/status-history?page=&size=&tenantCode=&changedBy=&changedAtFrom=&changedAtTo=`
+- `POST /api/communication-events/status-types`
+- `GET /api/communication-events/status-types/{code}?tenantCode=`
+- `GET /api/communication-events/status-types?tenantCode=&page=&size=`
+- `POST /api/communication-events/purpose-types`
+- `GET /api/communication-events/purpose-types/{code}?tenantCode=`
+- `GET /api/communication-events/purpose-types?tenantCode=&page=&size=`
