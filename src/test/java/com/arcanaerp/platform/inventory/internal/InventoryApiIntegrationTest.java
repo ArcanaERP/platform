@@ -833,28 +833,13 @@ class InventoryApiIntegrationTest {
         String seededStaleIdempotencyKey = " reverse-9224b-stale ";
         String replayIdempotencyKey = "reverse-9224b-stale";
 
-        seedStalePendingClaim(originalTransferId, seededStaleIdempotencyKey);
-
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
-            originalTransferId,
+        expectTrimEquivalentStaleReplayCreatesReversal(
+            scenario,
+            seededStaleIdempotencyKey,
             replayIdempotencyKey,
-            reversalPayload
-        )
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
-            .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()));
-
-        UUID createdReversalTransferId = latestReversalTransferId(scenario);
-        InventoryTransferReversalIdempotency idempotency = reversalIdempotencyRepository
-            .findByTransferIdAndIdempotencyKey(originalTransferId, replayIdempotencyKey)
-            .orElseThrow();
-        assertThat(idempotency.getReversalTransferId()).isEqualTo(createdReversalTransferId);
-        assertThat(idempotency.getReversalTransferId()).isNotEqualTo(PENDING_REVERSAL_TRANSFER_ID);
-
-        expectSingleReversalHistory(
-            originalTransferId,
-            result -> result.andExpect(jsonPath("$.items[0].transferId").value(createdReversalTransferId.toString()))
+            reversalPayload,
+            result -> {},
+            (result, createdReversalTransferId) -> {}
         );
     }
 
@@ -975,31 +960,13 @@ class InventoryApiIntegrationTest {
         String replayIdempotencyKey = "reverse-9224i-stale";
         String replayPayload = reversalPayloadWithUppercaseActor();
 
-        seedStalePendingClaim(originalTransferId, seededStaleIdempotencyKey);
-
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
-            originalTransferId,
+        expectTrimEquivalentStaleReplayCreatesReversal(
+            scenario,
+            seededStaleIdempotencyKey,
             replayIdempotencyKey,
-            replayPayload
-        )
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
-            .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()))
-            .andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR));
-
-        UUID createdReversalTransferId = latestReversalTransferId(scenario);
-        InventoryTransferReversalIdempotency idempotency = reversalIdempotencyRepository
-            .findByTransferIdAndIdempotencyKey(originalTransferId, replayIdempotencyKey)
-            .orElseThrow();
-        assertThat(idempotency.getReversalTransferId()).isEqualTo(createdReversalTransferId);
-        assertThat(idempotency.getReversalTransferId()).isNotEqualTo(PENDING_REVERSAL_TRANSFER_ID);
-
-        expectSingleReversalHistory(
-            originalTransferId,
-            result -> result
-                .andExpect(jsonPath("$.items[0].transferId").value(createdReversalTransferId.toString()))
-                .andExpect(jsonPath("$.items[0].adjustedBy").value(DEFAULT_ACTOR))
+            replayPayload,
+            result -> result.andExpect(jsonPath("$.adjustedBy").value(DEFAULT_ACTOR)),
+            (result, createdReversalTransferId) -> result.andExpect(jsonPath("$.items[0].adjustedBy").value(DEFAULT_ACTOR))
         );
     }
 
@@ -1012,31 +979,13 @@ class InventoryApiIntegrationTest {
         String replayIdempotencyKey = "reverse-9224j-stale";
         String replayPayload = reversalPayloadWithTrailingWhitespaceReason();
 
-        seedStalePendingClaim(originalTransferId, seededStaleIdempotencyKey);
-
-        InventoryManagementWebTestSupport.reverseTransfer(
-            mockMvc,
-            originalTransferId,
+        expectTrimEquivalentStaleReplayCreatesReversal(
+            scenario,
+            seededStaleIdempotencyKey,
             replayIdempotencyKey,
-            replayPayload
-        )
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
-            .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()))
-            .andExpect(jsonPath("$.reason").value(DEFAULT_REVERSAL_REASON));
-
-        UUID createdReversalTransferId = latestReversalTransferId(scenario);
-        InventoryTransferReversalIdempotency idempotency = reversalIdempotencyRepository
-            .findByTransferIdAndIdempotencyKey(originalTransferId, replayIdempotencyKey)
-            .orElseThrow();
-        assertThat(idempotency.getReversalTransferId()).isEqualTo(createdReversalTransferId);
-        assertThat(idempotency.getReversalTransferId()).isNotEqualTo(PENDING_REVERSAL_TRANSFER_ID);
-
-        expectSingleReversalHistory(
-            originalTransferId,
-            result -> result
-                .andExpect(jsonPath("$.items[0].transferId").value(createdReversalTransferId.toString()))
-                .andExpect(jsonPath("$.items[0].reason").value(DEFAULT_REVERSAL_REASON))
+            replayPayload,
+            result -> result.andExpect(jsonPath("$.reason").value(DEFAULT_REVERSAL_REASON)),
+            (result, createdReversalTransferId) -> result.andExpect(jsonPath("$.items[0].reason").value(DEFAULT_REVERSAL_REASON))
         );
     }
 
@@ -1640,6 +1589,44 @@ class InventoryApiIntegrationTest {
         expectStaleConflictWithoutReversalSideEffects(originalTransferId, replayIdempotencyKey, replayPayload);
     }
 
+    private void expectTrimEquivalentStaleReplayCreatesReversal(
+        IdempotencyScenario scenario,
+        String seededStaleIdempotencyKey,
+        String replayIdempotencyKey,
+        String replayPayload,
+        ReversalResponseExpectation responseExpectation,
+        StaleReplayHistoryExpectation historyExpectation
+    ) throws Exception {
+        UUID originalTransferId = scenario.originalTransferId();
+        seedStalePendingClaim(originalTransferId, seededStaleIdempotencyKey);
+
+        ResultActions replayResult = InventoryManagementWebTestSupport.reverseTransfer(
+            mockMvc,
+            originalTransferId,
+            replayIdempotencyKey,
+            replayPayload
+        )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.referenceType").value("TRANSFER_REVERSAL"))
+            .andExpect(jsonPath("$.referenceId").value(originalTransferId.toString()));
+        responseExpectation.verify(replayResult);
+
+        UUID createdReversalTransferId = latestReversalTransferId(scenario);
+        InventoryTransferReversalIdempotency idempotency = reversalIdempotencyRepository
+            .findByTransferIdAndIdempotencyKey(originalTransferId, replayIdempotencyKey)
+            .orElseThrow();
+        assertThat(idempotency.getReversalTransferId()).isEqualTo(createdReversalTransferId);
+        assertThat(idempotency.getReversalTransferId()).isNotEqualTo(PENDING_REVERSAL_TRANSFER_ID);
+
+        expectSingleReversalHistory(
+            originalTransferId,
+            result -> {
+                result.andExpect(jsonPath("$.items[0].transferId").value(createdReversalTransferId.toString()));
+                historyExpectation.verify(result, createdReversalTransferId);
+            }
+        );
+    }
+
     private void seedStalePendingClaim(UUID originalTransferId, String idempotencyKey) {
         reversalIdempotencyRepository.saveAndFlush(
             InventoryTransferReversalIdempotency.create(
@@ -1669,6 +1656,11 @@ class InventoryApiIntegrationTest {
     @FunctionalInterface
     private interface ReversalHistoryExpectation {
         void verify(ResultActions result) throws Exception;
+    }
+
+    @FunctionalInterface
+    private interface StaleReplayHistoryExpectation {
+        void verify(ResultActions result, UUID createdReversalTransferId) throws Exception;
     }
 
     private static String reversalPayload(String reason) {

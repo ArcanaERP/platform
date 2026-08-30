@@ -45,7 +45,7 @@ class TenantDirectoryIntegrationTest {
             )
         );
 
-        var tenants = tenantDirectory.listTenants(new PageQuery(0, 20));
+        var tenants = tenantDirectory.listTenants(new PageQuery(0, 100));
 
         assertThat(tenants.items()).extracting(TenantView::code).contains("TENANTDIR01", "TENANTDIR02");
         assertThat(tenants.items()).extracting(TenantView::name).contains("Tenant Dir 01", "Tenant Dir 02");

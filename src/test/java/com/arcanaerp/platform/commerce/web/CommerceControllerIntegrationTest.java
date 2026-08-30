@@ -240,13 +240,13 @@ class CommerceControllerIntegrationTest {
             true
         )
             .andExpect(status().isCreated());
-        CommerceWebIntegrationTestSupport.registerProduct(mockMvc, "arc-800", "Arc Product", "Arc Category")
+        CommerceWebIntegrationTestSupport.registerProduct(mockMvc, "arc-808", "Arc Product", "Arc Category")
             .andExpect(status().isCreated());
         CommerceWebIntegrationTestSupport.assignStorefrontProduct(
             mockMvc,
             "commerceweb08",
             "b2c-main",
-            "arc-800",
+            "arc-808",
             "Featured Product",
             1,
             true
@@ -264,7 +264,7 @@ class CommerceControllerIntegrationTest {
             mockMvc,
             "commerceweb08",
             "b2c-main",
-            "arc-800",
+            "arc-808",
             false,
             "Seasonal removal",
             "MERCHANT@COMMERCE.COM"
@@ -276,7 +276,7 @@ class CommerceControllerIntegrationTest {
             CommerceWebIntegrationTestSupport.storefrontProductActivationHistoryRequest(
                 "commerceweb08",
                 "b2c-main",
-                "arc-800",
+                "arc-808",
                 0,
                 10,
                 "currentActive", "false"
