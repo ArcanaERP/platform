@@ -11,6 +11,7 @@ erDiagram
 
     SALES_ORDERS {
       UUID id PK
+      STRING tenantCode
       STRING orderNumber UK
       STRING customerEmail
       STRING currencyCode
@@ -48,13 +49,14 @@ erDiagram
 - `sales_order_lines.salesOrderId` is a logical reference to `sales_orders.id`.
 - `order_status_change_audits.salesOrderId` is a logical reference to `sales_orders.id`.
 - The relationship is modeled as an explicit ID link (no bidirectional JPA mapping).
+- `SalesOrder.tenantCode` is normalized to uppercase and currently scopes list queries.
 - `SalesOrder.status` is persisted as a string enum (`DRAFT`, `CONFIRMED`, `CANCELLED`).
 - Order status-change audits capture normalized `changedBy` actor email and a free-form reason.
 
 ## Constraint and Index Notes
 
 - Unique constraints:
-  - `sales_orders(orderNumber)`
+  - `sales_orders(orderNumber)` remains globally unique during this early iteration so invoicing can keep using order-number lookup compatibility.
   - `sales_order_lines(salesOrderId, lineNo)`
 - Indexes:
   - `sales_order_lines(salesOrderId)`
@@ -65,7 +67,7 @@ erDiagram
 
 - `POST /api/orders`
 - `GET /api/orders/{orderNumber}`
-- `GET /api/orders?page=&size=`
+- `GET /api/orders?page=&size=&tenantCode=`
 - `PATCH /api/orders/{orderNumber}/status` (request includes `status`, `reason`, `changedBy`)
 - `GET /api/orders/{orderNumber}/status-history?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/orders/status-activity/daily-summary?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
@@ -75,6 +77,7 @@ erDiagram
 ## Query Notes
 
 - status-history results are sorted by `changedAt DESC`
+- order listing supports an optional `tenantCode` filter
 - status-history supports optional `previousStatus`, `currentStatus`, `changedBy`, `changedAtFrom`, and `changedAtTo` filters
 - status-history ranges require `changedAtFrom <= changedAtTo`
 - status-activity summaries use UTC daily, Monday-start weekly, and calendar-month buckets

@@ -49,6 +49,7 @@ class OrderManagementService implements OrderManagement {
 
     @Override
     public OrderView createOrder(CreateOrderCommand command) {
+        String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
         String orderNumber = normalizeRequired(command.orderNumber(), "orderNumber").toUpperCase();
         List<CreateOrderLineCommand> lineCommands = normalizeLineCommands(command.lines());
 
@@ -63,6 +64,7 @@ class OrderManagementService implements OrderManagement {
 
         SalesOrder order = salesOrderRepository.save(
             SalesOrder.create(
+                tenantCode,
                 orderNumber,
                 command.customerEmail(),
                 command.currencyCode(),
@@ -99,9 +101,22 @@ class OrderManagementService implements OrderManagement {
     @Override
     @Transactional(readOnly = true)
     public PageResult<OrderView> listOrders(PageQuery pageQuery) {
-        Page<SalesOrder> orders = salesOrderRepository.findAll(
+        return toViewPage(salesOrderRepository.findAll(
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
-        );
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<OrderView> listOrders(String tenantCode, PageQuery pageQuery) {
+        String normalizedTenantCode = tenantCode == null ? null : normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        Page<SalesOrder> orders = normalizedTenantCode == null
+            ? salesOrderRepository.findAll(pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt")))
+            : salesOrderRepository.findByTenantCode(normalizedTenantCode, pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt")));
+        return toViewPage(orders);
+    }
+
+    private PageResult<OrderView> toViewPage(Page<SalesOrder> orders) {
         Set<UUID> orderIds = orders.stream().map(SalesOrder::getId).collect(java.util.stream.Collectors.toSet());
         Map<UUID, List<SalesOrderLine>> linesByOrderId = new HashMap<>();
         if (!orderIds.isEmpty()) {
@@ -308,6 +323,7 @@ class OrderManagementService implements OrderManagement {
 
         return new OrderView(
             order.getId(),
+            order.getTenantCode(),
             order.getOrderNumber(),
             order.getCustomerEmail(),
             order.getStatus(),

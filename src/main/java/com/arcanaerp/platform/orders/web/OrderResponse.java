@@ -8,6 +8,7 @@ import java.util.UUID;
 
 public record OrderResponse(
     UUID id,
+    String tenantCode,
     String orderNumber,
     String customerEmail,
     OrderStatus status,

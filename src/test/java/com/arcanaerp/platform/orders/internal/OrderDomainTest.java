@@ -14,6 +14,7 @@ class OrderDomainTest {
     @Test
     void salesOrderCreateNormalizesOrderFields() {
         SalesOrder order = SalesOrder.create(
+            " tenant-a ",
             "  so-1000 ",
             " Customer@Acme.COM ",
             " usd ",
@@ -21,6 +22,7 @@ class OrderDomainTest {
             Instant.parse("2026-02-28T00:00:00Z")
         );
 
+        assertThat(order.getTenantCode()).isEqualTo("TENANT-A");
         assertThat(order.getOrderNumber()).isEqualTo("SO-1000");
         assertThat(order.getCustomerEmail()).isEqualTo("customer@acme.com");
         assertThat(order.getCurrencyCode()).isEqualTo("USD");
@@ -33,6 +35,7 @@ class OrderDomainTest {
     void salesOrderCreateRejectsNonPositiveTotalAmount() {
         assertThatThrownBy(() ->
             SalesOrder.create(
+                "TENANT-A",
                 "SO-1001",
                 "customer@acme.com",
                 "USD",
@@ -62,6 +65,7 @@ class OrderDomainTest {
     @Test
     void salesOrderTransitionAllowsOnlyDraftToFinalStates() {
         SalesOrder order = SalesOrder.create(
+            "TENANT-A",
             "SO-1002",
             "customer@acme.com",
             "USD",

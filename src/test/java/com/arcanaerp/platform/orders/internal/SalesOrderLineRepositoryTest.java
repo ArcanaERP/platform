@@ -22,7 +22,7 @@ class SalesOrderLineRepositoryTest {
     void findsOrderLinesByOrderIdInLineSequence() {
         Instant now = Instant.parse("2026-02-28T00:00:00Z");
         SalesOrder order = salesOrderRepository.save(
-            SalesOrder.create("so-2000", "customer@acme.com", "USD", new BigDecimal("25.00"), now)
+            SalesOrder.create("tenant-a", "so-2000", "customer@acme.com", "USD", new BigDecimal("25.00"), now)
         );
         salesOrderLineRepository.save(
             SalesOrderLine.create(order.getId(), 1, "arc-1000", new BigDecimal("1"), new BigDecimal("10.00"), now)

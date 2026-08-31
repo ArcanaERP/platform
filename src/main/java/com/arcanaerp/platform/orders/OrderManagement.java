@@ -12,6 +12,8 @@ public interface OrderManagement {
 
     PageResult<OrderView> listOrders(PageQuery pageQuery);
 
+    PageResult<OrderView> listOrders(String tenantCode, PageQuery pageQuery);
+
     OrderView changeOrderStatus(ChangeOrderStatusCommand command);
 
     PageResult<OrderStatusChangeView> listStatusHistory(

@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public record OrderView(
     UUID id,
+    String tenantCode,
     String orderNumber,
     String customerEmail,
     OrderStatus status,

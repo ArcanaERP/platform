@@ -115,7 +115,7 @@ Orders:
 
 - `POST /api/orders`
 - `GET /api/orders/{orderNumber}`
-- `GET /api/orders?page=&size=`
+- `GET /api/orders?page=&size=&tenantCode=`
 - `PATCH /api/orders/{orderNumber}/status` (request includes `status`, `reason`, `changedBy`)
 - `GET /api/orders/{orderNumber}/status-history?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/orders/status-activity/daily-summary?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`

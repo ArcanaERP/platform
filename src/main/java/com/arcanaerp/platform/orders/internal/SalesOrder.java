@@ -30,6 +30,9 @@ public class SalesOrder {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(nullable = false, length = 32)
+    private String tenantCode;
+
     @Column(nullable = false, length = 64)
     private String orderNumber;
 
@@ -55,6 +58,7 @@ public class SalesOrder {
 
     private SalesOrder(
         UUID id,
+        String tenantCode,
         String orderNumber,
         String customerEmail,
         String currencyCode,
@@ -65,6 +69,7 @@ public class SalesOrder {
         Instant cancelledAt
     ) {
         this.id = id;
+        this.tenantCode = tenantCode;
         this.orderNumber = orderNumber;
         this.customerEmail = customerEmail;
         this.currencyCode = currencyCode;
@@ -76,6 +81,7 @@ public class SalesOrder {
     }
 
     static SalesOrder create(
+        String tenantCode,
         String orderNumber,
         String customerEmail,
         String currencyCode,
@@ -88,6 +94,7 @@ public class SalesOrder {
 
         return new SalesOrder(
             null,
+            normalizeRequired(tenantCode, "tenantCode").toUpperCase(),
             normalizeRequired(orderNumber, "orderNumber").toUpperCase(),
             normalizeEmail(customerEmail),
             normalizeCurrencyCode(currencyCode),

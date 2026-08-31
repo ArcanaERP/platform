@@ -43,6 +43,25 @@ final class OrdersWebIntegrationTestSupport {
         );
     }
 
+    static ResultActions createSingleLineOrder(
+        MockMvc mockMvc,
+        String tenantCode,
+        String orderNumber,
+        String sku,
+        String customerEmail
+    ) throws Exception {
+        return OrderManagementWebTestSupport.createSingleLineOrder(
+            mockMvc,
+            tenantCode,
+            orderNumber,
+            customerEmail,
+            sku,
+            "1",
+            "10.00",
+            "USD"
+        );
+    }
+
     static ResultActions createOrder(
         MockMvc mockMvc,
         String orderNumber,
@@ -52,6 +71,24 @@ final class OrdersWebIntegrationTestSupport {
     ) throws Exception {
         return OrderManagementWebTestSupport.createOrder(
             mockMvc,
+            orderNumber,
+            customerEmail,
+            currencyCode,
+            lines
+        );
+    }
+
+    static ResultActions createOrder(
+        MockMvc mockMvc,
+        String tenantCode,
+        String orderNumber,
+        String customerEmail,
+        String currencyCode,
+        OrderManagementWebTestSupport.OrderLineRequest... lines
+    ) throws Exception {
+        return OrderManagementWebTestSupport.createOrder(
+            mockMvc,
+            tenantCode,
             orderNumber,
             customerEmail,
             currencyCode,
@@ -135,6 +172,10 @@ final class OrdersWebIntegrationTestSupport {
 
     static MockHttpServletRequestBuilder listOrdersRequest(int page, int size) {
         return OrderManagementWebTestSupport.listOrdersRequest(page, size);
+    }
+
+    static MockHttpServletRequestBuilder listOrdersRequest(String tenantCode, int page, int size) {
+        return OrderManagementWebTestSupport.listOrdersRequest(tenantCode, page, size);
     }
 
     static MockHttpServletRequestBuilder dailyStatusActivitySummaryRequest(

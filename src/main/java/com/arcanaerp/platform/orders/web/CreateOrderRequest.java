@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Pattern;
 import java.util.List;
 
 public record CreateOrderRequest(
+    @NotBlank String tenantCode,
     @NotBlank String orderNumber,
     @NotBlank @Email String customerEmail,
     @NotBlank @Pattern(regexp = "(?i)^[A-Z]{3}$") String currencyCode,

@@ -50,6 +50,7 @@ class OrdersControllerIntegrationTest {
             line("arc-5200", "1", "5.50")
         )
             .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.tenantCode").value("TENANT-ORDERS"))
             .andExpect(jsonPath("$.orderNumber").value("SO-5000"))
             .andExpect(jsonPath("$.customerEmail").value("buyer@acme.com"))
             .andExpect(jsonPath("$.status").value("DRAFT"))
@@ -64,7 +65,52 @@ class OrdersControllerIntegrationTest {
             .andExpect(jsonPath("$.page").value(0))
             .andExpect(jsonPath("$.size").value(10))
             .andExpect(jsonPath("$.totalItems", greaterThanOrEqualTo(1)))
+            .andExpect(jsonPath("$.items[?(@.orderNumber=='SO-5000')].tenantCode", hasItem("TENANT-ORDERS")))
             .andExpect(jsonPath("$.items[?(@.orderNumber=='SO-5000')].customerEmail", hasItem("buyer@acme.com")));
+    }
+
+    @Test
+    void listsOrdersByTenantCode() throws Exception {
+        registerProduct("arc-tenant-a");
+        registerProduct("arc-tenant-b");
+
+        OrdersWebIntegrationTestSupport.createOrder(
+            mockMvc,
+            "tenant-order-filter-a",
+            "so-filter-a",
+            "tenant-a@acme.com",
+            "usd",
+            line("arc-tenant-a", "1", "10.00")
+        )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.tenantCode").value("TENANT-ORDER-FILTER-A"));
+
+        OrdersWebIntegrationTestSupport.createOrder(
+            mockMvc,
+            "tenant-order-filter-b",
+            "so-filter-b",
+            "tenant-b@acme.com",
+            "usd",
+            line("arc-tenant-b", "1", "15.00")
+        )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.tenantCode").value("TENANT-ORDER-FILTER-B"));
+
+        mockMvc.perform(OrdersWebIntegrationTestSupport.listOrdersRequest("tenant-order-filter-a", 0, 10))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("TENANT-ORDER-FILTER-A"))
+            .andExpect(jsonPath("$.items[0].orderNumber").value("SO-FILTER-A"));
+    }
+
+    @Test
+    void rejectsBlankOrderTenantFilter() throws Exception {
+        mockMvc.perform(OrdersWebIntegrationTestSupport.listOrdersRequest("   ", 0, 10))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("tenantCode query parameter must not be blank"))
+            .andExpect(jsonPath("$.path").value("/api/orders"));
     }
 
     @Test
@@ -75,6 +121,7 @@ class OrdersControllerIntegrationTest {
 
         mockMvc.perform(OrdersWebIntegrationTestSupport.getOrderRequest("so-5008"))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tenantCode").value("TENANT-ORDERS"))
             .andExpect(jsonPath("$.orderNumber").value("SO-5008"))
             .andExpect(jsonPath("$.customerEmail").value("buyer@acme.com"))
             .andExpect(jsonPath("$.status").value("DRAFT"))

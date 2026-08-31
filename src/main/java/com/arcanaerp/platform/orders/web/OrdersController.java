@@ -44,6 +44,7 @@ public class OrdersController {
 
         OrderView created = orderManagement.createOrder(
             new CreateOrderCommand(
+                request.tenantCode(),
                 request.orderNumber(),
                 request.customerEmail(),
                 request.currencyCode(),
@@ -60,10 +61,11 @@ public class OrdersController {
 
     @GetMapping
     public PageResult<OrderResponse> listOrders(
+        @RequestParam(required = false) String tenantCode,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
-        return orderManagement.listOrders(PageQuery.of(page, size)).map(this::toResponse);
+        return orderManagement.listOrders(normalizeOptional(tenantCode, "tenantCode"), PageQuery.of(page, size)).map(this::toResponse);
     }
 
     @GetMapping("/status-activity/daily-summary")
@@ -186,6 +188,7 @@ public class OrdersController {
 
         return new OrderResponse(
             order.id(),
+            order.tenantCode(),
             order.orderNumber(),
             order.customerEmail(),
             order.status(),
@@ -289,5 +292,15 @@ public class OrdersController {
         if (changedAtFrom != null && changedAtTo != null && changedAtFrom.isAfter(changedAtTo)) {
             throw new IllegalArgumentException("changedAtFrom must be before or equal to changedAtTo");
         }
+    }
+
+    private static String normalizeOptional(String value, String parameterName) {
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
+            throw new IllegalArgumentException(parameterName + " query parameter must not be blank");
+        }
+        return value.trim();
     }
 }

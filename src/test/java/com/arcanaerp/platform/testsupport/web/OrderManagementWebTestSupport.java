@@ -11,6 +11,8 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 public final class OrderManagementWebTestSupport {
 
+    public static final String DEFAULT_ORDER_TENANT = "tenant-orders";
+
     private OrderManagementWebTestSupport() {}
 
     public static ResultActions createSingleLineOrder(
@@ -22,8 +24,31 @@ public final class OrderManagementWebTestSupport {
         String unitPrice,
         String currencyCode
     ) throws Exception {
+        return createSingleLineOrder(
+            mockMvc,
+            DEFAULT_ORDER_TENANT,
+            orderNumber,
+            customerEmail,
+            sku,
+            quantity,
+            unitPrice,
+            currencyCode
+        );
+    }
+
+    public static ResultActions createSingleLineOrder(
+        MockMvc mockMvc,
+        String tenantCode,
+        String orderNumber,
+        String customerEmail,
+        String sku,
+        String quantity,
+        String unitPrice,
+        String currencyCode
+    ) throws Exception {
         String payload = """
             {
+              "tenantCode": "%s",
               "orderNumber": "%s",
               "customerEmail": "%s",
               "currencyCode": "%s",
@@ -31,7 +56,7 @@ public final class OrderManagementWebTestSupport {
                 { "productSku": "%s", "quantity": %s, "unitPrice": %s }
               ]
             }
-            """.formatted(orderNumber, customerEmail, currencyCode, sku, quantity, unitPrice);
+            """.formatted(tenantCode, orderNumber, customerEmail, currencyCode, sku, quantity, unitPrice);
 
         return mockMvc.perform(post("/api/orders")
             .contentType(MediaType.APPLICATION_JSON)
@@ -45,14 +70,33 @@ public final class OrderManagementWebTestSupport {
         String currencyCode,
         OrderLineRequest... lines
     ) throws Exception {
+        return createOrder(
+            mockMvc,
+            DEFAULT_ORDER_TENANT,
+            orderNumber,
+            customerEmail,
+            currencyCode,
+            lines
+        );
+    }
+
+    public static ResultActions createOrder(
+        MockMvc mockMvc,
+        String tenantCode,
+        String orderNumber,
+        String customerEmail,
+        String currencyCode,
+        OrderLineRequest... lines
+    ) throws Exception {
         String payload = """
             {
+              "tenantCode": "%s",
               "orderNumber": "%s",
               "customerEmail": "%s",
               "currencyCode": "%s",
               "lines": [%s]
             }
-            """.formatted(orderNumber, customerEmail, currencyCode, joinLinePayloads(lines));
+            """.formatted(tenantCode, orderNumber, customerEmail, currencyCode, joinLinePayloads(lines));
 
         return mockMvc.perform(post("/api/orders")
             .contentType(MediaType.APPLICATION_JSON)
@@ -101,6 +145,10 @@ public final class OrderManagementWebTestSupport {
         return get("/api/orders")
             .param("page", String.valueOf(page))
             .param("size", String.valueOf(size));
+    }
+
+    public static MockHttpServletRequestBuilder listOrdersRequest(String tenantCode, int page, int size) {
+        return listOrdersRequest(page, size).param("tenantCode", tenantCode);
     }
 
     public record OrderLineRequest(String productSku, String quantity, String unitPrice) {}
