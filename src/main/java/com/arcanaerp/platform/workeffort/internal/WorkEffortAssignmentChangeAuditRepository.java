@@ -1,6 +1,7 @@
 package com.arcanaerp.platform.workeffort.internal;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -60,6 +61,24 @@ interface WorkEffortAssignmentChangeAuditRepository extends JpaRepository<WorkEf
         @Param("assignedAtFrom") Instant assignedAtFrom,
         @Param("assignedAtTo") Instant assignedAtTo,
         Pageable pageable
+    );
+
+    @Query(
+        """
+        select audit
+        from WorkEffortAssignmentChangeAudit audit
+        where audit.tenantCode = :tenantCode
+          and (:assignedTo is null or audit.currentAssignedTo = :assignedTo)
+          and (:assignedAtFrom is null or audit.assignedAt >= :assignedAtFrom)
+          and (:assignedAtTo is null or audit.assignedAt <= :assignedAtTo)
+        order by audit.assignedAt desc
+        """
+    )
+    List<WorkEffortAssignmentChangeAudit> findTenantHistoryFiltered(
+        @Param("tenantCode") String tenantCode,
+        @Param("assignedTo") String assignedTo,
+        @Param("assignedAtFrom") Instant assignedAtFrom,
+        @Param("assignedAtTo") Instant assignedAtTo
     );
 
     interface AssignmentActivitySummaryProjection {

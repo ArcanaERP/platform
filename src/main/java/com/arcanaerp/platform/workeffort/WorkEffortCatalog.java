@@ -27,6 +27,30 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    PageResult<DailyWorkEffortAssignmentActivitySummaryView> listDailyAssignmentActivitySummaries(
+        String tenantCode,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<WeeklyWorkEffortAssignmentActivitySummaryView> listWeeklyAssignmentActivitySummaries(
+        String tenantCode,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<MonthlyWorkEffortAssignmentActivitySummaryView> listMonthlyAssignmentActivitySummaries(
+        String tenantCode,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery
+    );
+
     WorkEffortView changeWorkEffortStatus(ChangeWorkEffortStatusCommand command);
 
     PageResult<WorkEffortStatusChangeView> listStatusHistory(

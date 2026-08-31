@@ -85,6 +85,9 @@ Rules:
 - `GET /api/work-efforts/{effortNumber}?tenantCode=`
 - `GET /api/work-efforts?tenantCode=&status=&assignedTo=&page=&size=`
 - `GET /api/work-efforts/assignment-activity-summary?tenantCode=&assignedTo=&assignedAtFrom=&assignedAtTo=&page=&size=`
+- `GET /api/work-efforts/assignment-activity/daily-summary?tenantCode=&assignedTo=&assignedAtFrom=&assignedAtTo=&page=&size=`
+- `GET /api/work-efforts/assignment-activity/weekly-summary?tenantCode=&assignedTo=&assignedAtFrom=&assignedAtTo=&page=&size=`
+- `GET /api/work-efforts/assignment-activity/monthly-summary?tenantCode=&assignedTo=&assignedAtFrom=&assignedAtTo=&page=&size=`
 - `PATCH /api/work-efforts/{effortNumber}/status` (request includes `tenantCode`, `status`, `reason`, `changedBy`)
 - `GET /api/work-efforts/{effortNumber}/status-history?tenantCode=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
 - `GET /api/work-efforts/{effortNumber}/assignment?tenantCode=`
@@ -98,3 +101,4 @@ Rules:
 - status-history ranges require `changedAtFrom <= changedAtTo`
 - assignment-history ranges require `assignedAtFrom <= assignedAtTo`
 - assignment activity summaries are grouped by current assignee from immutable assignment-change audits
+- daily, weekly, and monthly assignment activity summaries use UTC bucket boundaries

@@ -140,6 +140,56 @@ final class WorkEffortsWebIntegrationTestSupport {
         return builder;
     }
 
+    static MockHttpServletRequestBuilder dailyWorkEffortAssignmentActivitySummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return assignmentActivityBucketSummaryRequest("daily", tenantCode, page, size, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder weeklyWorkEffortAssignmentActivitySummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return assignmentActivityBucketSummaryRequest("weekly", tenantCode, page, size, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder monthlyWorkEffortAssignmentActivitySummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return assignmentActivityBucketSummaryRequest("monthly", tenantCode, page, size, optionalNameValuePairs);
+    }
+
+    private static MockHttpServletRequestBuilder assignmentActivityBucketSummaryRequest(
+        String bucket,
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        MockHttpServletRequestBuilder builder = get(WORK_EFFORTS_PATH + "/assignment-activity/" + bucket + "-summary")
+            .param("tenantCode", tenantCode)
+            .param("page", String.valueOf(page))
+            .param("size", String.valueOf(size));
+        if (optionalNameValuePairs == null || optionalNameValuePairs.length == 0) {
+            return builder;
+        }
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must contain name/value pairs");
+        }
+        for (int i = 0; i < optionalNameValuePairs.length; i += 2) {
+            builder.param(optionalNameValuePairs[i], optionalNameValuePairs[i + 1]);
+        }
+        return builder;
+    }
+
     static MockHttpServletRequestBuilder workEffortStatusHistoryRequest(
         String tenantCode,
         String effortNumber,

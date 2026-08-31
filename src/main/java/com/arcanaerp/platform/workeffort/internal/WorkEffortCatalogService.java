@@ -7,6 +7,9 @@ import com.arcanaerp.platform.identity.IdentityActorLookup;
 import com.arcanaerp.platform.workeffort.AssignWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.ChangeWorkEffortStatusCommand;
 import com.arcanaerp.platform.workeffort.CreateWorkEffortCommand;
+import com.arcanaerp.platform.workeffort.DailyWorkEffortAssignmentActivitySummaryView;
+import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivitySummaryView;
+import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
@@ -14,9 +17,20 @@ import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
+import java.time.DayOfWeek;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
+import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
@@ -127,6 +141,69 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             summary.getFirstAssignedAt(),
             summary.getLastAssignedAt()
         ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DailyWorkEffortAssignmentActivitySummaryView> listDailyAssignmentActivitySummaries(
+        String tenantCode,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeAssignmentActivityByBucket(
+            tenantCode,
+            assignedTo,
+            assignedAtFrom,
+            assignedAtTo,
+            pageQuery,
+            audit -> audit.getAssignedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            DailyWorkEffortAssignmentActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WeeklyWorkEffortAssignmentActivitySummaryView> listWeeklyAssignmentActivitySummaries(
+        String tenantCode,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeAssignmentActivityByBucket(
+            tenantCode,
+            assignedTo,
+            assignedAtFrom,
+            assignedAtTo,
+            pageQuery,
+            audit -> audit.getAssignedAt()
+                .atOffset(ZoneOffset.UTC)
+                .toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            WeeklyWorkEffortAssignmentActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyWorkEffortAssignmentActivitySummaryView> listMonthlyAssignmentActivitySummaries(
+        String tenantCode,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeAssignmentActivityByBucket(
+            tenantCode,
+            assignedTo,
+            assignedAtFrom,
+            assignedAtTo,
+            pageQuery,
+            audit -> YearMonth.from(audit.getAssignedAt().atOffset(ZoneOffset.UTC)),
+            MonthlyWorkEffortAssignmentActivitySummaryView::new
+        );
     }
 
     @Override
@@ -324,6 +401,72 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             workEffort.getEffortNumber(),
             workEffort.getAssignedTo()
         );
+    }
+
+    private <B extends Comparable<? super B>, T> PageResult<T> summarizeAssignmentActivityByBucket(
+        String tenantCode,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery,
+        AssignmentBucketExtractor<B> bucketExtractor,
+        AssignmentBucketSummaryFactory<B, T> summaryFactory
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeAssignedTo(assignedTo);
+        List<WorkEffortAssignmentChangeAudit> audits = workEffortAssignmentChangeAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            normalizedAssignedTo,
+            assignedAtFrom,
+            assignedAtTo
+        );
+        TreeMap<B, AssignmentBucketSummary> summaries = new TreeMap<>(java.util.Comparator.reverseOrder());
+        for (WorkEffortAssignmentChangeAudit audit : audits) {
+            B bucket = bucketExtractor.bucket(audit);
+            AssignmentBucketSummary summary = summaries.computeIfAbsent(bucket, ignored -> new AssignmentBucketSummary());
+            summary.assignmentCount++;
+            summary.workEffortIds.add(audit.getWorkEffortId());
+        }
+        List<T> rows = summaries.entrySet().stream()
+            .map(entry -> summaryFactory.create(
+                normalizedTenantCode,
+                entry.getKey(),
+                entry.getValue().assignmentCount,
+                entry.getValue().workEffortIds.size()
+            ))
+            .toList();
+        return paginate(rows, pageQuery);
+    }
+
+    private static <T> PageResult<T> paginate(List<T> rows, PageQuery pageQuery) {
+        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), rows.size());
+        int toIndex = Math.min(fromIndex + pageQuery.size(), rows.size());
+        List<T> pageRows = new ArrayList<>(rows.subList(fromIndex, toIndex));
+        int totalPages = rows.isEmpty() ? 0 : (int) Math.ceil((double) rows.size() / pageQuery.size());
+        return new PageResult<>(
+            pageRows,
+            pageQuery.page(),
+            pageQuery.size(),
+            rows.size(),
+            totalPages,
+            pageQuery.page() + 1 < totalPages,
+            pageQuery.page() > 0 && !rows.isEmpty()
+        );
+    }
+
+    @FunctionalInterface
+    private interface AssignmentBucketExtractor<B> {
+        B bucket(WorkEffortAssignmentChangeAudit audit);
+    }
+
+    @FunctionalInterface
+    private interface AssignmentBucketSummaryFactory<B, T> {
+        T create(String tenantCode, B bucket, long assignmentCount, long workEffortCount);
+    }
+
+    private static final class AssignmentBucketSummary {
+        private long assignmentCount;
+        private final Set<UUID> workEffortIds = new HashSet<>();
     }
 
     private static String normalizeRequired(String value, String fieldName) {

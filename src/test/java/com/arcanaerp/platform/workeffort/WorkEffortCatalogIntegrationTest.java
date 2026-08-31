@@ -8,12 +8,16 @@ import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.identity.RegisterUserCommand;
 import com.arcanaerp.platform.identity.UserDirectory;
 import java.time.Instant;
+import java.time.YearMonth;
 import java.util.NoSuchElementException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 
 @SpringBootTest
+@Import(WorkEffortDeterministicClockTestSupport.Configuration.class)
 class WorkEffortCatalogIntegrationTest {
 
     @Autowired
@@ -21,6 +25,14 @@ class WorkEffortCatalogIntegrationTest {
 
     @Autowired
     private UserDirectory userDirectory;
+
+    @Autowired
+    private WorkEffortDeterministicClockTestSupport.AdjustableClock testClock;
+
+    @BeforeEach
+    void resetClock() {
+        testClock.resetToBaseInstant();
+    }
 
     @Test
     void createsReadsAndListsWorkEfforts() {
@@ -310,6 +322,105 @@ class WorkEffortCatalogIntegrationTest {
         ))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("work effort assignment actor not found in tenant: WORK09/missing-manager@work.com");
+    }
+
+    @Test
+    void readsDailyWeeklyAndMonthlyAssignmentActivitySummaries() {
+        userDirectory.registerUser(
+            new RegisterUserCommand("work10", "Work Tenant", "ops", "Operations", "agent01@work.com", "Agent 01")
+        );
+        userDirectory.registerUser(
+            new RegisterUserCommand("work10", "Work Tenant", "ops", "Operations", "agent02@work.com", "Agent 02")
+        );
+        userDirectory.registerUser(
+            new RegisterUserCommand("work10", "Work Tenant", "ops", "Operations", "agent03@work.com", "Agent 03")
+        );
+        userDirectory.registerUser(
+            new RegisterUserCommand("work10", "Work Tenant", "ops", "Operations", "manager@work.com", "Manager")
+        );
+        workEffortCatalog.createWorkEffort(
+            new CreateWorkEffortCommand(
+                "work10",
+                "we-001",
+                "Prepare shipment",
+                "Prepare shipment for dispatch",
+                WorkEffortStatus.PLANNED,
+                "agent01@work.com",
+                null
+            )
+        );
+        workEffortCatalog.createWorkEffort(
+            new CreateWorkEffortCommand(
+                "work10",
+                "we-002",
+                "Confirm receipt",
+                "Confirm inbound receipt",
+                WorkEffortStatus.PLANNED,
+                "agent01@work.com",
+                null
+            )
+        );
+
+        testClock.setInstant(Instant.parse("2026-04-22T10:00:00Z"));
+        workEffortCatalog.assignWorkEffort(
+            new AssignWorkEffortCommand("work10", "we-001", "agent02@work.com", "Coverage handoff", "manager@work.com")
+        );
+        testClock.setInstant(Instant.parse("2026-04-23T11:00:00Z"));
+        workEffortCatalog.assignWorkEffort(
+            new AssignWorkEffortCommand("work10", "we-001", "agent03@work.com", "Escalation", "manager@work.com")
+        );
+        testClock.setInstant(Instant.parse("2026-05-04T12:00:00Z"));
+        workEffortCatalog.assignWorkEffort(
+            new AssignWorkEffortCommand("work10", "we-002", "agent03@work.com", "Month handoff", "manager@work.com")
+        );
+
+        var daily = workEffortCatalog.listDailyAssignmentActivitySummaries(
+            "work10",
+            null,
+            null,
+            null,
+            new PageQuery(0, 10)
+        );
+        var weekly = workEffortCatalog.listWeeklyAssignmentActivitySummaries(
+            "work10",
+            null,
+            null,
+            null,
+            new PageQuery(0, 10)
+        );
+        var monthly = workEffortCatalog.listMonthlyAssignmentActivitySummaries(
+            "work10",
+            null,
+            null,
+            null,
+            new PageQuery(0, 10)
+        );
+        var filteredDaily = workEffortCatalog.listDailyAssignmentActivitySummaries(
+            "work10",
+            "AGENT03@WORK.COM",
+            Instant.parse("2026-04-23T00:00:00Z"),
+            Instant.parse("2026-05-04T23:59:59Z"),
+            new PageQuery(0, 10)
+        );
+
+        assertThat(daily.totalItems()).isEqualTo(3);
+        assertThat(daily.items()).extracting(DailyWorkEffortAssignmentActivitySummaryView::businessDate)
+            .containsExactly(
+                java.time.LocalDate.parse("2026-05-04"),
+                java.time.LocalDate.parse("2026-04-23"),
+                java.time.LocalDate.parse("2026-04-22")
+            );
+        assertThat(weekly.totalItems()).isEqualTo(2);
+        assertThat(weekly.items().get(0).businessWeekStart()).isEqualTo(java.time.LocalDate.parse("2026-05-04"));
+        assertThat(weekly.items().get(1).businessWeekStart()).isEqualTo(java.time.LocalDate.parse("2026-04-20"));
+        assertThat(weekly.items().get(1).assignmentCount()).isEqualTo(2);
+        assertThat(weekly.items().get(1).workEffortCount()).isEqualTo(1);
+        assertThat(monthly.items()).extracting(MonthlyWorkEffortAssignmentActivitySummaryView::businessMonth)
+            .containsExactly(YearMonth.parse("2026-05"), YearMonth.parse("2026-04"));
+        assertThat(monthly.items().get(1).assignmentCount()).isEqualTo(2);
+        assertThat(filteredDaily.totalItems()).isEqualTo(2);
+        assertThat(filteredDaily.items()).extracting(DailyWorkEffortAssignmentActivitySummaryView::businessDate)
+            .containsExactly(java.time.LocalDate.parse("2026-05-04"), java.time.LocalDate.parse("2026-04-23"));
     }
 
     @Test

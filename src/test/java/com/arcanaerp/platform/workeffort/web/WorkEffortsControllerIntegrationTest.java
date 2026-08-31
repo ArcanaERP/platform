@@ -5,18 +5,23 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.arcanaerp.platform.workeffort.WorkEffortDeterministicClockTestSupport;
 import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(WorkEffortDeterministicClockTestSupport.Configuration.class)
 class WorkEffortsControllerIntegrationTest {
 
     @Autowired
@@ -24,6 +29,14 @@ class WorkEffortsControllerIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private WorkEffortDeterministicClockTestSupport.AdjustableClock testClock;
+
+    @BeforeEach
+    void resetClock() {
+        testClock.resetToBaseInstant();
+    }
 
     @Test
     void createsReadsAndListsWorkEfforts() throws Exception {
@@ -557,6 +570,127 @@ class WorkEffortsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].assignmentCount").value(1))
             .andExpect(jsonPath("$.items[0].firstAssignedAt").exists())
             .andExpect(jsonPath("$.items[0].lastAssignedAt").exists());
+    }
+
+    @Test
+    void readsDailyWeeklyAndMonthlyAssignmentActivitySummariesAtWebBoundary() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb14",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb14",
+            "agent02@work.com",
+            "Work Web",
+            "Agent 02"
+        );
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb14",
+            "agent03@work.com",
+            "Work Web",
+            "Agent 03"
+        );
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb14",
+            "manager@work.com",
+            "Work Web",
+            "Manager"
+        );
+
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workweb14",
+            "we-001",
+            "Prepare shipment",
+            "Prepare shipment for dispatch",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workweb14",
+            "we-002",
+            "Confirm receipt",
+            "Confirm inbound receipt",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        testClock.setInstant(Instant.parse("2026-04-22T10:00:00Z"));
+        WorkEffortsWebIntegrationTestSupport.assignWorkEffort(
+            mockMvc,
+            "workweb14",
+            "we-001",
+            "agent02@work.com",
+            "Coverage handoff",
+            "manager@work.com"
+        )
+            .andExpect(status().isOk());
+        testClock.setInstant(Instant.parse("2026-04-23T11:00:00Z"));
+        WorkEffortsWebIntegrationTestSupport.assignWorkEffort(
+            mockMvc,
+            "workweb14",
+            "we-001",
+            "agent03@work.com",
+            "Escalation",
+            "manager@work.com"
+        )
+            .andExpect(status().isOk());
+        testClock.setInstant(Instant.parse("2026-05-04T12:00:00Z"));
+        WorkEffortsWebIntegrationTestSupport.assignWorkEffort(
+            mockMvc,
+            "workweb14",
+            "we-002",
+            "agent03@work.com",
+            "Month handoff",
+            "manager@work.com"
+        )
+            .andExpect(status().isOk());
+
+        mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.dailyWorkEffortAssignmentActivitySummaryRequest("workweb14", 0, 10)
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].businessDate").value("2026-05-04"))
+            .andExpect(jsonPath("$.items[0].assignmentCount").value(1))
+            .andExpect(jsonPath("$.items[1].businessDate").value("2026-04-23"))
+            .andExpect(jsonPath("$.items[2].businessDate").value("2026-04-22"));
+
+        mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.weeklyWorkEffortAssignmentActivitySummaryRequest("workweb14", 0, 10)
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessWeekStart").value("2026-05-04"))
+            .andExpect(jsonPath("$.items[1].businessWeekStart").value("2026-04-20"))
+            .andExpect(jsonPath("$.items[1].assignmentCount").value(2))
+            .andExpect(jsonPath("$.items[1].workEffortCount").value(1));
+
+        mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.monthlyWorkEffortAssignmentActivitySummaryRequest(
+                "workweb14",
+                0,
+                10,
+                "assignedTo", "AGENT03@WORK.COM",
+                "assignedAtFrom", "2026-04-23T00:00:00Z",
+                "assignedAtTo", "2026-05-04T23:59:59Z"
+            )
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessMonth").value("2026-05"))
+            .andExpect(jsonPath("$.items[1].businessMonth").value("2026-04"));
     }
 
     @Test
