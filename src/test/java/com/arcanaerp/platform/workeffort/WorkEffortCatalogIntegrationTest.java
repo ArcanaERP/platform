@@ -233,6 +233,72 @@ class WorkEffortCatalogIntegrationTest {
     }
 
     @Test
+    void rejectsUnknownAssignmentAssignee() {
+        userDirectory.registerUser(
+            new RegisterUserCommand("work08", "Work Tenant", "ops", "Operations", "agent01@work.com", "Agent 01")
+        );
+        userDirectory.registerUser(
+            new RegisterUserCommand("work08", "Work Tenant", "ops", "Operations", "manager@work.com", "Manager")
+        );
+        workEffortCatalog.createWorkEffort(
+            new CreateWorkEffortCommand(
+                "work08",
+                "we-001",
+                "Prepare shipment",
+                "Prepare shipment for dispatch",
+                WorkEffortStatus.PLANNED,
+                "agent01@work.com",
+                null
+            )
+        );
+
+        assertThatThrownBy(() -> workEffortCatalog.assignWorkEffort(
+            new AssignWorkEffortCommand(
+                "work08",
+                "we-001",
+                "missing@work.com",
+                "Coverage handoff",
+                "manager@work.com"
+            )
+        ))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("work effort assignee not found in tenant: WORK08/missing@work.com");
+    }
+
+    @Test
+    void rejectsUnknownAssignmentActor() {
+        userDirectory.registerUser(
+            new RegisterUserCommand("work09", "Work Tenant", "ops", "Operations", "agent01@work.com", "Agent 01")
+        );
+        userDirectory.registerUser(
+            new RegisterUserCommand("work09", "Work Tenant", "ops", "Operations", "agent02@work.com", "Agent 02")
+        );
+        workEffortCatalog.createWorkEffort(
+            new CreateWorkEffortCommand(
+                "work09",
+                "we-001",
+                "Prepare shipment",
+                "Prepare shipment for dispatch",
+                WorkEffortStatus.PLANNED,
+                "agent01@work.com",
+                null
+            )
+        );
+
+        assertThatThrownBy(() -> workEffortCatalog.assignWorkEffort(
+            new AssignWorkEffortCommand(
+                "work09",
+                "we-001",
+                "agent02@work.com",
+                "Coverage handoff",
+                "missing-manager@work.com"
+            )
+        ))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("work effort assignment actor not found in tenant: WORK09/missing-manager@work.com");
+    }
+
+    @Test
     void rejectsUnknownStatusActor() {
         userDirectory.registerUser(
             new RegisterUserCommand("work06", "Work Tenant", "ops", "Operations", "agent01@work.com", "Agent 01")
