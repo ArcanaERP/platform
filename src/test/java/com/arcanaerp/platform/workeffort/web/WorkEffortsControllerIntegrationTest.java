@@ -350,6 +350,90 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void rejectsUnknownAssignmentAssignee() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb10",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb10",
+            "manager@work.com",
+            "Work Web",
+            "Manager"
+        );
+
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workweb10",
+            "we-001",
+            "Prepare shipment",
+            "Prepare shipment for dispatch",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        WorkEffortsWebIntegrationTestSupport.assignWorkEffort(
+            mockMvc,
+            "workweb10",
+            "we-001",
+            "missing@work.com",
+            "Coverage handoff",
+            "manager@work.com"
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("work effort assignee not found in tenant: WORKWEB10/missing@work.com"))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/we-001/assignment"));
+    }
+
+    @Test
+    void rejectsUnknownAssignmentActor() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb11",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb11",
+            "agent02@work.com",
+            "Work Web",
+            "Agent 02"
+        );
+
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workweb11",
+            "we-001",
+            "Prepare shipment",
+            "Prepare shipment for dispatch",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        WorkEffortsWebIntegrationTestSupport.assignWorkEffort(
+            mockMvc,
+            "workweb11",
+            "we-001",
+            "agent02@work.com",
+            "Coverage handoff",
+            "missing-manager@work.com"
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("work effort assignment actor not found in tenant: WORKWEB11/missing-manager@work.com"))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/we-001/assignment"));
+    }
+
+    @Test
     void rejectsInvalidFiltersAndPagination() throws Exception {
         mockMvc.perform(
             WorkEffortsWebIntegrationTestSupport.listWorkEffortsRequest("workweb06", 0, 10, "assignedTo", "   ")
