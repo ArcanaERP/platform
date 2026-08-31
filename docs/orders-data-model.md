@@ -68,9 +68,14 @@ erDiagram
 - `GET /api/orders?page=&size=`
 - `PATCH /api/orders/{orderNumber}/status` (request includes `status`, `reason`, `changedBy`)
 - `GET /api/orders/{orderNumber}/status-history?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/orders/status-activity/daily-summary?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/orders/status-activity/weekly-summary?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/orders/status-activity/monthly-summary?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
 
 ## Query Notes
 
 - status-history results are sorted by `changedAt DESC`
 - status-history supports optional `previousStatus`, `currentStatus`, `changedBy`, `changedAtFrom`, and `changedAtTo` filters
 - status-history ranges require `changedAtFrom <= changedAtTo`
+- status-activity summaries use UTC daily, Monday-start weekly, and calendar-month buckets
+- status-activity summaries support the same optional audit filters and return transition counts plus distinct order counts

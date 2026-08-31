@@ -121,4 +121,42 @@ class OrderStatusChangeAuditRepositoryTest {
         assertThat(rangeFiltered.getTotalElements()).isEqualTo(1);
         assertThat(rangeFiltered.getContent().get(0).getCurrentStatus()).isEqualTo(OrderStatus.CANCELLED);
     }
+
+    @Test
+    void listsGlobalStatusHistoryForActivitySummariesWithFilters() {
+        UUID firstOrderId = UUID.randomUUID();
+        UUID secondOrderId = UUID.randomUUID();
+        orderStatusChangeAuditRepository.save(
+            OrderStatusChangeAudit.create(
+                firstOrderId,
+                OrderStatus.DRAFT,
+                OrderStatus.CONFIRMED,
+                "Inventory allocated",
+                "agent01@orders.com",
+                Instant.parse("2026-04-22T10:00:00Z")
+            )
+        );
+        orderStatusChangeAuditRepository.save(
+            OrderStatusChangeAudit.create(
+                secondOrderId,
+                OrderStatus.DRAFT,
+                OrderStatus.CANCELLED,
+                "Customer request",
+                "agent02@orders.com",
+                Instant.parse("2026-05-04T12:00:00Z")
+            )
+        );
+
+        var audits = orderStatusChangeAuditRepository.findAllHistoryFiltered(
+            null,
+            OrderStatus.CANCELLED,
+            "agent02@orders.com",
+            Instant.parse("2026-05-01T00:00:00Z"),
+            Instant.parse("2026-05-31T23:59:59Z")
+        );
+
+        assertThat(audits).hasSize(1);
+        assertThat(audits.get(0).getSalesOrderId()).isEqualTo(secondOrderId);
+        assertThat(audits.get(0).getCurrentStatus()).isEqualTo(OrderStatus.CANCELLED);
+    }
 }

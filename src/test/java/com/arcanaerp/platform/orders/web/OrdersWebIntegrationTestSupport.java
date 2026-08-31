@@ -137,6 +137,30 @@ final class OrdersWebIntegrationTestSupport {
         return OrderManagementWebTestSupport.listOrdersRequest(page, size);
     }
 
+    static MockHttpServletRequestBuilder dailyStatusActivitySummaryRequest(
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest("daily", page, size, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder weeklyStatusActivitySummaryRequest(
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest("weekly", page, size, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder monthlyStatusActivitySummaryRequest(
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest("monthly", page, size, optionalNameValuePairs);
+    }
+
     static MockHttpServletRequestBuilder statusHistoryRequest(
         String orderNumber,
         Integer page,
@@ -168,5 +192,27 @@ final class OrdersWebIntegrationTestSupport {
             size,
             optionalNameValuePairs
         );
+    }
+
+    private static MockHttpServletRequestBuilder statusActivitySummaryRequest(
+        String bucket,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        MockHttpServletRequestBuilder builder = org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+            .get("/api/orders/status-activity/" + bucket + "-summary")
+            .param("page", String.valueOf(page))
+            .param("size", String.valueOf(size));
+        if (optionalNameValuePairs == null || optionalNameValuePairs.length == 0) {
+            return builder;
+        }
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must contain name/value pairs");
+        }
+        for (int i = 0; i < optionalNameValuePairs.length; i += 2) {
+            builder.param(optionalNameValuePairs[i], optionalNameValuePairs[i + 1]);
+        }
+        return builder;
     }
 }

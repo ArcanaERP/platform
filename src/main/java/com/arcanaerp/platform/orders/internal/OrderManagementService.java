@@ -5,21 +5,30 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.orders.ChangeOrderStatusCommand;
 import com.arcanaerp.platform.orders.CreateOrderCommand;
 import com.arcanaerp.platform.orders.CreateOrderLineCommand;
+import com.arcanaerp.platform.orders.DailyOrderStatusActivitySummaryView;
+import com.arcanaerp.platform.orders.MonthlyOrderStatusActivitySummaryView;
 import com.arcanaerp.platform.orders.OrderLineView;
 import com.arcanaerp.platform.orders.OrderManagement;
 import com.arcanaerp.platform.orders.OrderStatus;
 import com.arcanaerp.platform.orders.OrderStatusChangeView;
 import com.arcanaerp.platform.orders.OrderView;
+import com.arcanaerp.platform.orders.WeeklyOrderStatusActivitySummaryView;
 import com.arcanaerp.platform.products.ProductLookup;
 import com.arcanaerp.platform.products.ProductOrderability;
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -169,6 +178,75 @@ class OrderManagementService implements OrderManagement {
             ));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DailyOrderStatusActivitySummaryView> listDailyStatusActivitySummaries(
+        OrderStatus previousStatus,
+        OrderStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucket(
+            previousStatus,
+            currentStatus,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> audit.getChangedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            DailyOrderStatusActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WeeklyOrderStatusActivitySummaryView> listWeeklyStatusActivitySummaries(
+        OrderStatus previousStatus,
+        OrderStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucket(
+            previousStatus,
+            currentStatus,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> audit.getChangedAt()
+                .atOffset(ZoneOffset.UTC)
+                .toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            WeeklyOrderStatusActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyOrderStatusActivitySummaryView> listMonthlyStatusActivitySummaries(
+        OrderStatus previousStatus,
+        OrderStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucket(
+            previousStatus,
+            currentStatus,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> YearMonth.from(audit.getChangedAt().atOffset(ZoneOffset.UTC)),
+            MonthlyOrderStatusActivitySummaryView::new
+        );
+    }
+
     private List<CreateOrderLineCommand> normalizeLineCommands(List<CreateOrderLineCommand> lines) {
         if (lines == null || lines.isEmpty()) {
             throw new IllegalArgumentException("lines must contain at least one line");
@@ -240,5 +318,71 @@ class OrderManagementService implements OrderManagement {
             order.getCancelledAt(),
             lineViews
         );
+    }
+
+    private <B extends Comparable<? super B>, T> PageResult<T> summarizeStatusActivityByBucket(
+        OrderStatus previousStatus,
+        OrderStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery,
+        StatusBucketExtractor<B> bucketExtractor,
+        StatusBucketSummaryFactory<B, T> summaryFactory
+    ) {
+        String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy, "changedBy");
+        List<OrderStatusChangeAudit> audits = orderStatusChangeAuditRepository.findAllHistoryFiltered(
+            previousStatus,
+            currentStatus,
+            normalizedChangedBy,
+            changedAtFrom,
+            changedAtTo
+        );
+        TreeMap<B, StatusBucketSummary> summaries = new TreeMap<>(java.util.Comparator.reverseOrder());
+        for (OrderStatusChangeAudit audit : audits) {
+            B bucket = bucketExtractor.bucket(audit);
+            StatusBucketSummary summary = summaries.computeIfAbsent(bucket, ignored -> new StatusBucketSummary());
+            summary.transitionCount++;
+            summary.salesOrderIds.add(audit.getSalesOrderId());
+        }
+        List<T> rows = summaries.entrySet().stream()
+            .map(entry -> summaryFactory.create(
+                entry.getKey(),
+                entry.getValue().transitionCount,
+                entry.getValue().salesOrderIds.size()
+            ))
+            .toList();
+        return paginate(rows, pageQuery);
+    }
+
+    private static <T> PageResult<T> paginate(List<T> rows, PageQuery pageQuery) {
+        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), rows.size());
+        int toIndex = Math.min(fromIndex + pageQuery.size(), rows.size());
+        List<T> pageRows = new ArrayList<>(rows.subList(fromIndex, toIndex));
+        int totalPages = rows.isEmpty() ? 0 : (int) Math.ceil((double) rows.size() / pageQuery.size());
+        return new PageResult<>(
+            pageRows,
+            pageQuery.page(),
+            pageQuery.size(),
+            rows.size(),
+            totalPages,
+            pageQuery.page() + 1 < totalPages,
+            pageQuery.page() > 0 && !rows.isEmpty()
+        );
+    }
+
+    @FunctionalInterface
+    private interface StatusBucketExtractor<B> {
+        B bucket(OrderStatusChangeAudit audit);
+    }
+
+    @FunctionalInterface
+    private interface StatusBucketSummaryFactory<B, T> {
+        T create(B bucket, long transitionCount, long orderCount);
+    }
+
+    private static final class StatusBucketSummary {
+        private long transitionCount;
+        private final Set<UUID> salesOrderIds = new HashSet<>();
     }
 }

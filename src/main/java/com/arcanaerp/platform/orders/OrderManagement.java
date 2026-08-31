@@ -23,4 +23,31 @@ public interface OrderManagement {
         Instant changedAtTo,
         PageQuery pageQuery
     );
+
+    PageResult<DailyOrderStatusActivitySummaryView> listDailyStatusActivitySummaries(
+        OrderStatus previousStatus,
+        OrderStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<WeeklyOrderStatusActivitySummaryView> listWeeklyStatusActivitySummaries(
+        OrderStatus previousStatus,
+        OrderStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<MonthlyOrderStatusActivitySummaryView> listMonthlyStatusActivitySummaries(
+        OrderStatus previousStatus,
+        OrderStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
 }
