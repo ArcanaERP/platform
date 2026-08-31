@@ -203,6 +203,12 @@ class InvoicesStatusActivitySummaryIntegrationTest {
             "agent01@invoices.com"
         );
         testClock.setInstant(voidedAt);
+        InvoicesWebIntegrationTestSupport.registerInvoiceStatusActor(
+            mockMvc,
+            tenantCode,
+            "agent02@invoices.com",
+            "Invoice Status Actor"
+        );
         InvoicesWebIntegrationTestSupport.transitionInvoiceStatus(
             mockMvc,
             invoiceNumber,
@@ -232,6 +238,7 @@ class InvoicesStatusActivitySummaryIntegrationTest {
         InvoicesWebIntegrationTestSupport.createInvoice(mockMvc, tenantCode, invoiceNumber, orderNumber, DUE_AT)
             .andExpect(status().isCreated());
 
+        InvoicesWebIntegrationTestSupport.registerInvoiceStatusActor(mockMvc, tenantCode, changedBy, "Invoice Status Actor");
         testClock.setInstant(changedAt);
         InvoicesWebIntegrationTestSupport.transitionInvoiceStatus(mockMvc, invoiceNumber, targetStatus, reason, changedBy)
             .andExpect(status().isOk())

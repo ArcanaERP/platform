@@ -5,6 +5,7 @@ import com.arcanaerp.platform.testsupport.web.ProductCatalogWebTestSupport;
 import java.time.Instant;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
@@ -13,6 +14,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 final class InvoicesWebIntegrationTestSupport {
+
+    static final String DEFAULT_STATUS_ACTOR = "invoices-system@arcanaerp.com";
 
     private InvoicesWebIntegrationTestSupport() {}
 
@@ -74,7 +77,7 @@ final class InvoicesWebIntegrationTestSupport {
             invoiceNumber,
             status,
             "Invoice lifecycle transition",
-            "invoices-system@arcanaerp.com"
+            DEFAULT_STATUS_ACTOR
         );
     }
 
@@ -96,6 +99,35 @@ final class InvoicesWebIntegrationTestSupport {
         return mockMvc.perform(patch("/api/invoices/" + invoiceNumber + "/status")
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload));
+    }
+
+    static void registerInvoiceStatusActor(
+        MockMvc mockMvc,
+        String tenantCode,
+        String email,
+        String displayName
+    ) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/identity/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "tenantCode": "%s",
+                      "tenantName": "Invoice Tenant %s",
+                      "roleCode": "BILLING",
+                      "roleName": "Billing",
+                      "email": "%s",
+                      "displayName": "%s"
+                    }
+                    """.formatted(tenantCode, tenantCode, email, displayName)))
+            .andReturn();
+        int statusCode = result.getResponse().getStatus();
+        if (statusCode == 201) {
+            return;
+        }
+        if (statusCode == 400 && result.getResponse().getContentAsString().contains("User email already exists in tenant")) {
+            return;
+        }
+        throw new AssertionError("Unexpected status while registering invoice status actor: " + statusCode);
     }
 
     static MockHttpServletRequestBuilder getInvoiceRequest(String invoiceNumber) {

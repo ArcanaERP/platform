@@ -54,6 +54,7 @@ Core fields:
 
 Rules:
 - status-change audits capture trimmed reason and normalized lowercase `changedBy` actor email
+- status-change actors must exist in the invoice tenant through `identity::IdentityActorLookup`
 
 ### InvoiceLine
 
@@ -73,6 +74,7 @@ Core fields:
 ## Cross-Module Dependency
 
 - `invoicing` reads `orders` through public `OrderManagement`
+- `invoicing` validates status-change actors through public `IdentityActorLookup`
 - no dependency on `orders.internal`
 
 ## Minimal HTTP Surface

@@ -2,6 +2,7 @@ package com.arcanaerp.platform.invoicing.internal;
 
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.identity.IdentityActorLookup;
 import com.arcanaerp.platform.invoicing.ChangeInvoiceStatusCommand;
 import com.arcanaerp.platform.invoicing.CreateInvoiceCommand;
 import com.arcanaerp.platform.invoicing.DailyInvoiceStatusActivitySummaryView;
@@ -45,6 +46,7 @@ class InvoiceManagementService implements InvoiceManagement {
     private final InvoiceLineRepository invoiceLineRepository;
     private final InvoiceStatusChangeAuditRepository invoiceStatusChangeAuditRepository;
     private final OrderManagement orderManagement;
+    private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
 
     @Override
@@ -128,6 +130,9 @@ class InvoiceManagementService implements InvoiceManagement {
         String reason = normalizeRequired(command.reason(), "reason");
         String changedBy = normalizeActorEmail(command.changedBy(), "changedBy");
         Invoice invoice = findInvoiceByNumber(command.invoiceNumber());
+        if (!identityActorLookup.actorExists(invoice.getTenantCode(), changedBy)) {
+            throw new IllegalArgumentException("invoice status actor not found in tenant: " + invoice.getTenantCode() + "/" + changedBy);
+        }
         InvoiceStatus previousStatus = invoice.getStatus();
         Instant changedAt = Instant.now(clock);
         invoice.transitionTo(targetStatus, changedAt);

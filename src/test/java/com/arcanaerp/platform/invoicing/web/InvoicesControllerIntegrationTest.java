@@ -80,6 +80,7 @@ class InvoicesControllerIntegrationTest {
             .andExpect(jsonPath("$.totalItems", greaterThanOrEqualTo(1)))
             .andExpect(jsonPath("$.items[?(@.invoiceNumber=='INV-6101')].tenantCode", hasItem("TENANT-INV")));
 
+        registerInvoiceStatusActor("tenant-inv", InvoicesWebIntegrationTestSupport.DEFAULT_STATUS_ACTOR, "Invoice System");
         testClock.setInstant(ISSUED_AT);
         InvoicesWebIntegrationTestSupport.transitionInvoiceStatus(mockMvc, "inv-6101", "ISSUED")
             .andExpect(status().isOk())
@@ -121,6 +122,7 @@ class InvoicesControllerIntegrationTest {
     @Test
     void listsInvoiceStatusHistoryAndIgnoresNoOpTransitions() throws Exception {
         seedConfirmedOrderAndInvoice("arc-6103", "so-6103", "inv-6103");
+        registerInvoiceStatusActor("tenant-inv", "billing@invoices.com", "Billing User");
 
         testClock.setInstant(ISSUED_AT);
         InvoicesWebIntegrationTestSupport.transitionInvoiceStatus(
@@ -133,6 +135,7 @@ class InvoicesControllerIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("ISSUED"));
 
+        registerInvoiceStatusActor("tenant-inv", InvoicesWebIntegrationTestSupport.DEFAULT_STATUS_ACTOR, "Invoice System");
         testClock.setInstant(ISSUED_AT.plusSeconds(60));
         InvoicesWebIntegrationTestSupport.transitionInvoiceStatus(mockMvc, "inv-6103", "ISSUED")
             .andExpect(status().isOk())
@@ -159,8 +162,27 @@ class InvoicesControllerIntegrationTest {
     }
 
     @Test
+    void rejectsUnknownInvoiceStatusActor() throws Exception {
+        seedConfirmedOrderAndInvoice("arc-6107", "so-6107", "inv-6107");
+
+        testClock.setInstant(ISSUED_AT);
+        InvoicesWebIntegrationTestSupport.transitionInvoiceStatus(
+            mockMvc,
+            "inv-6107",
+            "ISSUED",
+            "Ready to bill",
+            "missing@invoices.com"
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.message").value("invoice status actor not found in tenant: TENANT-INV/missing@invoices.com"))
+            .andExpect(jsonPath("$.path").value("/api/invoices/inv-6107/status"));
+    }
+
+    @Test
     void filtersInvoiceStatusHistoryByStatusAndChangedAtRange() throws Exception {
         seedConfirmedOrderAndInvoice("arc-6104", "so-6104", "inv-6104");
+        registerInvoiceStatusActor("tenant-inv", InvoicesWebIntegrationTestSupport.DEFAULT_STATUS_ACTOR, "Invoice System");
 
         testClock.setInstant(ISSUED_AT);
         InvoicesWebIntegrationTestSupport.transitionInvoiceStatus(mockMvc, "inv-6104", "ISSUED")
@@ -223,6 +245,7 @@ class InvoicesControllerIntegrationTest {
     void listsInvoicesWithTenantStatusAndCurrencyFilters() throws Exception {
         seedConfirmedOrderAndInvoice(FILTER_TENANT_CODE, "arc-6105", "so-6105", "inv-6105");
         seedConfirmedOrderAndInvoice(FILTER_TENANT_CODE, "arc-6106", "so-6106", "inv-6106");
+        registerInvoiceStatusActor(FILTER_TENANT_CODE, InvoicesWebIntegrationTestSupport.DEFAULT_STATUS_ACTOR, "Invoice System");
 
         testClock.setInstant(ISSUED_AT);
         InvoicesWebIntegrationTestSupport.transitionInvoiceStatus(mockMvc, "inv-6105", "ISSUED")
@@ -267,5 +290,9 @@ class InvoicesControllerIntegrationTest {
         testClock.resetToBaseInstant();
         InvoicesWebIntegrationTestSupport.createInvoice(mockMvc, tenantCode, invoiceNumber, orderNumber, DUE_AT)
             .andExpect(status().isCreated());
+    }
+
+    private void registerInvoiceStatusActor(String tenantCode, String email, String displayName) throws Exception {
+        InvoicesWebIntegrationTestSupport.registerInvoiceStatusActor(mockMvc, tenantCode, email, displayName);
     }
 }

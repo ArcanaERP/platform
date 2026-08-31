@@ -4,13 +4,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import com.arcanaerp.platform.testsupport.web.OrderManagementWebTestSupport;
+import com.arcanaerp.platform.testsupport.web.ProductCatalogWebTestSupport;
 import java.time.Instant;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import com.arcanaerp.platform.testsupport.web.OrderManagementWebTestSupport;
-import com.arcanaerp.platform.testsupport.web.ProductCatalogWebTestSupport;
 
 final class PaymentsWebIntegrationTestSupport {
 
@@ -2109,6 +2110,7 @@ final class PaymentsWebIntegrationTestSupport {
         testClock.resetToBaseInstant();
         createInvoice(mockMvc, tenantCode, invoiceNumber, orderNumber, dueAt)
             .andReturn();
+        registerInvoiceStatusActorAllowingDuplicate(mockMvc, tenantCode);
         testClock.setInstant(PaymentsDeterministicClockTestSupport.BASE_TEST_INSTANT.plusSeconds(120));
         transitionInvoiceStatus(mockMvc, invoiceNumber, "ISSUED").andReturn();
         testClock.resetToBaseInstant();
@@ -2126,6 +2128,26 @@ final class PaymentsWebIntegrationTestSupport {
         return mockMvc.perform(patch("/api/invoices/" + invoiceNumber + "/status")
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload));
+    }
+
+    private static void registerInvoiceStatusActorAllowingDuplicate(MockMvc mockMvc, String tenantCode) throws Exception {
+        MvcResult result = createIdentityUser(
+            mockMvc,
+            tenantCode,
+            "Invoice Tenant " + tenantCode,
+            "BILLING",
+            "Billing",
+            "invoices-system@arcanaerp.com",
+            "Invoice System"
+        ).andReturn();
+        int statusCode = result.getResponse().getStatus();
+        if (statusCode == 201) {
+            return;
+        }
+        if (statusCode == 400 && result.getResponse().getContentAsString().contains("User email already exists in tenant")) {
+            return;
+        }
+        throw new AssertionError("Unexpected status while registering invoice status actor: " + statusCode);
     }
 
     private static ResultActions createInvoice(
