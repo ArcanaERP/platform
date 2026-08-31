@@ -69,7 +69,7 @@ public class OrdersController {
         @Valid @RequestBody ChangeOrderStatusRequest request
     ) {
         OrderView updated = orderManagement.changeOrderStatus(
-            new ChangeOrderStatusCommand(orderNumber, request.status())
+            new ChangeOrderStatusCommand(orderNumber, request.status(), request.reason(), request.changedBy())
         );
         return toResponse(updated);
     }
@@ -79,6 +79,7 @@ public class OrdersController {
         @PathVariable String orderNumber,
         @RequestParam(required = false) String previousStatus,
         @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedBy,
         @RequestParam(required = false) String changedAtFrom,
         @RequestParam(required = false) String changedAtTo,
         @RequestParam(required = false) Integer page,
@@ -91,6 +92,7 @@ public class OrdersController {
                 orderNumber,
                 parseOptionalStatus(previousStatus, "previousStatus"),
                 parseOptionalStatus(currentStatus, "currentStatus"),
+                normalizeOptionalChangedBy(changedBy),
                 parsedChangedAtFrom,
                 parsedChangedAtTo,
                 PageQuery.of(page, size)
@@ -130,6 +132,8 @@ public class OrdersController {
             change.orderNumber(),
             change.previousStatus(),
             change.currentStatus(),
+            change.reason(),
+            change.changedBy(),
             change.changedAt()
         );
     }
@@ -163,6 +167,20 @@ public class OrdersController {
         } catch (DateTimeParseException exception) {
             throw new IllegalArgumentException(parameterName + " query parameter must be a valid ISO-8601 instant");
         }
+    }
+
+    private static String normalizeOptionalChangedBy(String changedBy) {
+        if (changedBy == null) {
+            return null;
+        }
+        if (changedBy.isBlank()) {
+            throw new IllegalArgumentException("changedBy query parameter must not be blank");
+        }
+        String normalized = changedBy.trim().toLowerCase();
+        if (!normalized.contains("@")) {
+            throw new IllegalArgumentException("changedBy query parameter must be a valid email");
+        }
+        return normalized;
     }
 
     private static void validateChangedAtRange(Instant changedAtFrom, Instant changedAtTo) {

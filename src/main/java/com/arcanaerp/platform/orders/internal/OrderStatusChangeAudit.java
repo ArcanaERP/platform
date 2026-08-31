@@ -43,6 +43,12 @@ class OrderStatusChangeAudit {
     @Column(nullable = false, length = 16)
     private OrderStatus currentStatus;
 
+    @Column(nullable = false, length = 1000)
+    private String reason;
+
+    @Column(nullable = false, length = 320)
+    private String changedBy;
+
     @Column(nullable = false, updatable = false)
     private Instant changedAt;
 
@@ -51,12 +57,16 @@ class OrderStatusChangeAudit {
         UUID salesOrderId,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
+        String reason,
+        String changedBy,
         Instant changedAt
     ) {
         this.id = id;
         this.salesOrderId = salesOrderId;
         this.previousStatus = previousStatus;
         this.currentStatus = currentStatus;
+        this.reason = reason;
+        this.changedBy = changedBy;
         this.changedAt = changedAt;
     }
 
@@ -64,6 +74,8 @@ class OrderStatusChangeAudit {
         UUID salesOrderId,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
+        String reason,
+        String changedBy,
         Instant changedAt
     ) {
         if (salesOrderId == null) {
@@ -75,6 +87,12 @@ class OrderStatusChangeAudit {
         if (currentStatus == null) {
             throw new IllegalArgumentException("currentStatus is required");
         }
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("reason is required");
+        }
+        if (changedBy == null || changedBy.isBlank()) {
+            throw new IllegalArgumentException("changedBy is required");
+        }
         if (changedAt == null) {
             throw new IllegalArgumentException("changedAt is required");
         }
@@ -83,6 +101,8 @@ class OrderStatusChangeAudit {
             salesOrderId,
             previousStatus,
             currentStatus,
+            reason.trim(),
+            changedBy.trim().toLowerCase(),
             changedAt
         );
     }

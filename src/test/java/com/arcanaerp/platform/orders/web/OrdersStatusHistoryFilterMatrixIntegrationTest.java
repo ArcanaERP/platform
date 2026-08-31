@@ -47,6 +47,8 @@ class OrdersStatusHistoryFilterMatrixIntegrationTest {
                 filterCase.previousStatus(),
                 "currentStatus",
                 filterCase.currentStatus(),
+                "changedBy",
+                filterCase.changedBy(),
                 "changedAtFrom",
                 filterCase.changedAtFrom(),
                 "changedAtTo",
@@ -67,6 +69,8 @@ class OrdersStatusHistoryFilterMatrixIntegrationTest {
                 invalidCase.previousStatus(),
                 "currentStatus",
                 invalidCase.currentStatus(),
+                "changedBy",
+                invalidCase.changedBy(),
                 "changedAtFrom",
                 invalidCase.changedAtFrom(),
                 "changedAtTo",
@@ -81,21 +85,30 @@ class OrdersStatusHistoryFilterMatrixIntegrationTest {
 
     private static Stream<Arguments> validFilterCases() {
         return Stream.of(
-            Arguments.of("no_filters", new StatusHistoryFilterCase(null, null, null, null, 1)),
-            Arguments.of("previous_status_match", new StatusHistoryFilterCase("DRAFT", null, null, null, 1)),
-            Arguments.of("previous_status_miss", new StatusHistoryFilterCase("CONFIRMED", null, null, null, 0)),
-            Arguments.of("current_status_match", new StatusHistoryFilterCase(null, "CONFIRMED", null, null, 1)),
-            Arguments.of("current_status_miss", new StatusHistoryFilterCase(null, "CANCELLED", null, null, 0)),
-            Arguments.of("range_match", new StatusHistoryFilterCase(null, null, "2000-01-01T00:00:00Z", "2100-01-01T00:00:00Z", 1)),
-            Arguments.of("range_miss_from", new StatusHistoryFilterCase(null, null, "2100-01-01T00:00:00Z", null, 0)),
-            Arguments.of("range_miss_to", new StatusHistoryFilterCase(null, null, null, "2000-01-01T00:00:00Z", 0)),
+            Arguments.of("no_filters", new StatusHistoryFilterCase(null, null, null, null, null, 1)),
+            Arguments.of("previous_status_match", new StatusHistoryFilterCase("DRAFT", null, null, null, null, 1)),
+            Arguments.of("previous_status_miss", new StatusHistoryFilterCase("CONFIRMED", null, null, null, null, 0)),
+            Arguments.of("current_status_match", new StatusHistoryFilterCase(null, "CONFIRMED", null, null, null, 1)),
+            Arguments.of("current_status_miss", new StatusHistoryFilterCase(null, "CANCELLED", null, null, null, 0)),
+            Arguments.of("changed_by_match", new StatusHistoryFilterCase(null, null, "ORDERS-SYSTEM@ARCANAERP.COM", null, null, 1)),
+            Arguments.of("changed_by_miss", new StatusHistoryFilterCase(null, null, "other@arcanaerp.com", null, null, 0)),
+            Arguments.of("range_match", new StatusHistoryFilterCase(null, null, null, "2000-01-01T00:00:00Z", "2100-01-01T00:00:00Z", 1)),
+            Arguments.of("range_miss_from", new StatusHistoryFilterCase(null, null, null, "2100-01-01T00:00:00Z", null, 0)),
+            Arguments.of("range_miss_to", new StatusHistoryFilterCase(null, null, null, null, "2000-01-01T00:00:00Z", 0)),
             Arguments.of(
                 "combined_match",
-                new StatusHistoryFilterCase("DRAFT", "CONFIRMED", "2000-01-01T00:00:00Z", "2100-01-01T00:00:00Z", 1)
+                new StatusHistoryFilterCase(
+                    "DRAFT",
+                    "CONFIRMED",
+                    "ORDERS-SYSTEM@ARCANAERP.COM",
+                    "2000-01-01T00:00:00Z",
+                    "2100-01-01T00:00:00Z",
+                    1
+                )
             ),
             Arguments.of(
                 "combined_miss",
-                new StatusHistoryFilterCase("DRAFT", "CANCELLED", "2000-01-01T00:00:00Z", "2100-01-01T00:00:00Z", 0)
+                new StatusHistoryFilterCase("DRAFT", "CANCELLED", "ORDERS-SYSTEM@ARCANAERP.COM", "2000-01-01T00:00:00Z", "2100-01-01T00:00:00Z", 0)
             )
         );
     }
@@ -104,16 +117,17 @@ class OrdersStatusHistoryFilterMatrixIntegrationTest {
         return Stream.of(
             Arguments.of(
                 "previous_status_blank",
-                new InvalidFilterCase("   ", null, null, null, "previousStatus query parameter must not be blank")
+                new InvalidFilterCase("   ", null, null, null, null, "previousStatus query parameter must not be blank")
             ),
             Arguments.of(
                 "current_status_blank",
-                new InvalidFilterCase(null, "   ", null, null, "currentStatus query parameter must not be blank")
+                new InvalidFilterCase(null, "   ", null, null, null, "currentStatus query parameter must not be blank")
             ),
             Arguments.of(
                 "previous_status_invalid",
                 new InvalidFilterCase(
                     "invalid",
+                    null,
                     null,
                     null,
                     null,
@@ -127,12 +141,22 @@ class OrdersStatusHistoryFilterMatrixIntegrationTest {
                     "invalid",
                     null,
                     null,
+                    null,
                     "currentStatus query parameter must be one of: DRAFT, CONFIRMED, CANCELLED"
                 )
             ),
             Arguments.of(
+                "changed_by_blank",
+                new InvalidFilterCase(null, null, "   ", null, null, "changedBy query parameter must not be blank")
+            ),
+            Arguments.of(
+                "changed_by_invalid",
+                new InvalidFilterCase(null, null, "not-an-email", null, null, "changedBy query parameter must be a valid email")
+            ),
+            Arguments.of(
                 "changed_at_from_blank",
                 new InvalidFilterCase(
+                    null,
                     null,
                     null,
                     "   ",
@@ -146,6 +170,7 @@ class OrdersStatusHistoryFilterMatrixIntegrationTest {
                     null,
                     null,
                     null,
+                    null,
                     "   ",
                     "changedAtTo query parameter must not be blank"
                 )
@@ -153,6 +178,7 @@ class OrdersStatusHistoryFilterMatrixIntegrationTest {
             Arguments.of(
                 "changed_at_from_invalid",
                 new InvalidFilterCase(
+                    null,
                     null,
                     null,
                     "not-a-timestamp",
@@ -166,6 +192,7 @@ class OrdersStatusHistoryFilterMatrixIntegrationTest {
                     null,
                     null,
                     null,
+                    null,
                     "not-a-timestamp",
                     "changedAtTo query parameter must be a valid ISO-8601 instant"
                 )
@@ -173,6 +200,7 @@ class OrdersStatusHistoryFilterMatrixIntegrationTest {
             Arguments.of(
                 "changed_at_range_invalid",
                 new InvalidFilterCase(
+                    null,
                     null,
                     null,
                     "2026-03-02T00:00:00Z",
@@ -202,6 +230,7 @@ class OrdersStatusHistoryFilterMatrixIntegrationTest {
     private record StatusHistoryFilterCase(
         String previousStatus,
         String currentStatus,
+        String changedBy,
         String changedAtFrom,
         String changedAtTo,
         int expectedTotalItems
@@ -210,6 +239,7 @@ class OrdersStatusHistoryFilterMatrixIntegrationTest {
     private record InvalidFilterCase(
         String previousStatus,
         String currentStatus,
+        String changedBy,
         String changedAtFrom,
         String changedAtTo,
         String expectedMessage

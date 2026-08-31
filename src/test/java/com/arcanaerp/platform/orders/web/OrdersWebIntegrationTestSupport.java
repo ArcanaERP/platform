@@ -77,6 +77,16 @@ final class OrdersWebIntegrationTestSupport {
         return OrderManagementWebTestSupport.transitionOrderStatus(mockMvc, orderNumber, status);
     }
 
+    static ResultActions transitionOrderStatus(
+        MockMvc mockMvc,
+        String orderNumber,
+        String status,
+        String reason,
+        String changedBy
+    ) throws Exception {
+        return OrderManagementWebTestSupport.transitionOrderStatus(mockMvc, orderNumber, status, reason, changedBy);
+    }
+
     static ResultActions registerActor(MockMvc mockMvc, String tenantCode, String email, String displayName) throws Exception {
         return ActorActivationWebTestSupport.registerActor(
             mockMvc,

@@ -110,6 +110,8 @@ class OrderManagementService implements OrderManagement {
         if (targetStatus == null) {
             throw new IllegalArgumentException("status is required");
         }
+        String reason = normalizeRequired(command.reason(), "reason");
+        String changedBy = normalizeActorEmail(command.changedBy(), "changedBy");
 
         SalesOrder order = salesOrderRepository.findByOrderNumber(orderNumber)
             .orElseThrow(() -> new java.util.NoSuchElementException("Order not found: " + orderNumber));
@@ -124,6 +126,8 @@ class OrderManagementService implements OrderManagement {
                     saved.getId(),
                     previousStatus,
                     saved.getStatus(),
+                    reason,
+                    changedBy,
                     changedAt
                 )
             );
@@ -138,15 +142,18 @@ class OrderManagementService implements OrderManagement {
         String orderNumber,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
+        String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
         PageQuery pageQuery
     ) {
         SalesOrder order = findOrderByNumber(orderNumber);
+        String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy, "changedBy");
         Page<OrderStatusChangeAudit> audits = orderStatusChangeAuditRepository.findHistoryFiltered(
             order.getId(),
             previousStatus,
             currentStatus,
+            normalizedChangedBy,
             changedAtFrom,
             changedAtTo,
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
@@ -156,6 +163,8 @@ class OrderManagementService implements OrderManagement {
                 order.getOrderNumber(),
                 audit.getPreviousStatus(),
                 audit.getCurrentStatus(),
+                audit.getReason(),
+                audit.getChangedBy(),
                 audit.getChangedAt()
             ));
     }
@@ -191,6 +200,14 @@ class OrderManagementService implements OrderManagement {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private static String normalizeActorEmail(String value, String fieldName) {
+        String normalized = normalizeRequired(value, fieldName).toLowerCase();
+        if (!normalized.contains("@")) {
+            throw new IllegalArgumentException(fieldName + " is invalid");
+        }
+        return normalized;
     }
 
     private SalesOrder findOrderByNumber(String orderNumber) {

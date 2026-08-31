@@ -18,6 +18,7 @@ public interface OrderManagement {
         String orderNumber,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
+        String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
         PageQuery pageQuery

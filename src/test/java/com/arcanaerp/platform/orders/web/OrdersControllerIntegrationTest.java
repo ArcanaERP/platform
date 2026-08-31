@@ -147,7 +147,14 @@ class OrdersControllerIntegrationTest {
         createSingleLineOrder("so-5006", "arc-5501")
             .andExpect(status().isCreated());
 
-        transitionToConfirmed("so-5006", CONFIRMED_AT_INSTANT)
+        testClock.setInstant(CONFIRMED_AT_INSTANT);
+        OrdersWebIntegrationTestSupport.transitionOrderStatus(
+            mockMvc,
+            "so-5006",
+            "CONFIRMED",
+            "Inventory allocated",
+            "FULFILLMENT@ORDERS.COM"
+        )
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("CONFIRMED"));
 
@@ -159,6 +166,8 @@ class OrdersControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].orderNumber").value("SO-5006"))
             .andExpect(jsonPath("$.items[0].previousStatus").value("DRAFT"))
             .andExpect(jsonPath("$.items[0].currentStatus").value("CONFIRMED"))
+            .andExpect(jsonPath("$.items[0].reason").value("Inventory allocated"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("fulfillment@orders.com"))
             .andExpect(jsonPath("$.items[0].changedAt").value(CONFIRMED_AT_INSTANT.toString()));
     }
 

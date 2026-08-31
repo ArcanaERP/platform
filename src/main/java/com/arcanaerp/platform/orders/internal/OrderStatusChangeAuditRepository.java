@@ -20,6 +20,7 @@ interface OrderStatusChangeAuditRepository extends JpaRepository<OrderStatusChan
         where audit.salesOrderId = :salesOrderId
           and (:previousStatus is null or audit.previousStatus = :previousStatus)
           and (:currentStatus is null or audit.currentStatus = :currentStatus)
+          and (:changedBy is null or audit.changedBy = :changedBy)
           and (:changedAtFrom is null or audit.changedAt >= :changedAtFrom)
           and (:changedAtTo is null or audit.changedAt <= :changedAtTo)
         """
@@ -28,6 +29,7 @@ interface OrderStatusChangeAuditRepository extends JpaRepository<OrderStatusChan
         @Param("salesOrderId") UUID salesOrderId,
         @Param("previousStatus") OrderStatus previousStatus,
         @Param("currentStatus") OrderStatus currentStatus,
+        @Param("changedBy") String changedBy,
         @Param("changedAtFrom") Instant changedAtFrom,
         @Param("changedAtTo") Instant changedAtTo,
         Pageable pageable

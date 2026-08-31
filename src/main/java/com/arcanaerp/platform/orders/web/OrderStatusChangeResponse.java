@@ -9,6 +9,8 @@ public record OrderStatusChangeResponse(
     String orderNumber,
     OrderStatus previousStatus,
     OrderStatus currentStatus,
+    String reason,
+    String changedBy,
     Instant changedAt
 ) {
 }

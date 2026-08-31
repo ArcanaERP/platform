@@ -64,11 +64,29 @@ public final class OrderManagementWebTestSupport {
     }
 
     public static ResultActions transitionOrderStatus(MockMvc mockMvc, String orderNumber, String status) throws Exception {
+        return transitionOrderStatus(
+            mockMvc,
+            orderNumber,
+            status,
+            "Order lifecycle transition",
+            "orders-system@arcanaerp.com"
+        );
+    }
+
+    public static ResultActions transitionOrderStatus(
+        MockMvc mockMvc,
+        String orderNumber,
+        String status,
+        String reason,
+        String changedBy
+    ) throws Exception {
         String payload = """
             {
-              "status": "%s"
+              "status": "%s",
+              "reason": "%s",
+              "changedBy": "%s"
             }
-            """.formatted(status);
+            """.formatted(status, reason, changedBy);
 
         return mockMvc.perform(patch("/api/orders/" + orderNumber + "/status")
             .contentType(MediaType.APPLICATION_JSON)
