@@ -94,6 +94,46 @@ class WorkEffortAssignmentChangeAuditRepositoryTest {
             .containsExactly(Instant.parse("2026-04-22T11:00:00Z"));
     }
 
+    @Test
+    void summarizesAssignmentActivityByAssignee() {
+        seedAssignmentHistory();
+
+        var page = workEffortAssignmentChangeAuditRepository.summarizeAssignmentActivity(
+            "TENANT01",
+            null,
+            null,
+            null,
+            PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "assignedTo"))
+        );
+
+        assertThat(page.getTotalElements()).isEqualTo(2);
+        assertThat(page.getContent()).extracting(
+            WorkEffortAssignmentChangeAuditRepository.AssignmentActivitySummaryProjection::getAssignedTo
+        ).containsExactly("agent02@tenant.com", "agent03@tenant.com");
+        assertThat(page.getContent()).extracting(
+            WorkEffortAssignmentChangeAuditRepository.AssignmentActivitySummaryProjection::getAssignmentCount
+        ).containsExactly(1L, 1L);
+    }
+
+    @Test
+    void filtersAssignmentActivitySummaryByAssigneeAndAssignedAtRange() {
+        seedAssignmentHistory();
+
+        var page = workEffortAssignmentChangeAuditRepository.summarizeAssignmentActivity(
+            "TENANT01",
+            "agent03@tenant.com",
+            Instant.parse("2026-04-22T10:30:00Z"),
+            Instant.parse("2026-04-22T11:30:00Z"),
+            PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "assignedTo"))
+        );
+
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getContent().get(0).getAssignedTo()).isEqualTo("agent03@tenant.com");
+        assertThat(page.getContent().get(0).getAssignmentCount()).isEqualTo(1);
+        assertThat(page.getContent().get(0).getFirstAssignedAt()).isEqualTo(Instant.parse("2026-04-22T11:00:00Z"));
+        assertThat(page.getContent().get(0).getLastAssignedAt()).isEqualTo(Instant.parse("2026-04-22T11:00:00Z"));
+    }
+
     private WorkEffort seedAssignmentHistory() {
         WorkEffort workEffort = workEffortRepository.save(
             WorkEffort.create(

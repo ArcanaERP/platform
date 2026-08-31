@@ -118,6 +118,28 @@ final class WorkEffortsWebIntegrationTestSupport {
         return get(WORK_EFFORTS_PATH).param("tenantCode", tenantCode);
     }
 
+    static MockHttpServletRequestBuilder workEffortAssignmentActivitySummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        MockHttpServletRequestBuilder builder = get(WORK_EFFORTS_PATH + "/assignment-activity-summary")
+            .param("tenantCode", tenantCode)
+            .param("page", String.valueOf(page))
+            .param("size", String.valueOf(size));
+        if (optionalNameValuePairs == null || optionalNameValuePairs.length == 0) {
+            return builder;
+        }
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must contain name/value pairs");
+        }
+        for (int i = 0; i < optionalNameValuePairs.length; i += 2) {
+            builder.param(optionalNameValuePairs[i], optionalNameValuePairs[i + 1]);
+        }
+        return builder;
+    }
+
     static MockHttpServletRequestBuilder workEffortStatusHistoryRequest(
         String tenantCode,
         String effortNumber,

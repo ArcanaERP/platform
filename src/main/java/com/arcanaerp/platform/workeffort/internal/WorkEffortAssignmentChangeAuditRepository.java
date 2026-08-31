@@ -31,4 +31,44 @@ interface WorkEffortAssignmentChangeAuditRepository extends JpaRepository<WorkEf
         @Param("assignedAtTo") Instant assignedAtTo,
         Pageable pageable
     );
+
+    @Query(
+        value = """
+            select audit.currentAssignedTo as assignedTo,
+                   count(audit.id) as assignmentCount,
+                   min(audit.assignedAt) as firstAssignedAt,
+                   max(audit.assignedAt) as lastAssignedAt
+            from WorkEffortAssignmentChangeAudit audit
+            where audit.tenantCode = :tenantCode
+              and (:assignedTo is null or audit.currentAssignedTo = :assignedTo)
+              and (:assignedAtFrom is null or audit.assignedAt >= :assignedAtFrom)
+              and (:assignedAtTo is null or audit.assignedAt <= :assignedAtTo)
+            group by audit.currentAssignedTo
+            """,
+        countQuery = """
+            select count(distinct audit.currentAssignedTo)
+            from WorkEffortAssignmentChangeAudit audit
+            where audit.tenantCode = :tenantCode
+              and (:assignedTo is null or audit.currentAssignedTo = :assignedTo)
+              and (:assignedAtFrom is null or audit.assignedAt >= :assignedAtFrom)
+              and (:assignedAtTo is null or audit.assignedAt <= :assignedAtTo)
+            """
+    )
+    Page<AssignmentActivitySummaryProjection> summarizeAssignmentActivity(
+        @Param("tenantCode") String tenantCode,
+        @Param("assignedTo") String assignedTo,
+        @Param("assignedAtFrom") Instant assignedAtFrom,
+        @Param("assignedAtTo") Instant assignedAtTo,
+        Pageable pageable
+    );
+
+    interface AssignmentActivitySummaryProjection {
+        String getAssignedTo();
+
+        long getAssignmentCount();
+
+        Instant getFirstAssignedAt();
+
+        Instant getLastAssignedAt();
+    }
 }

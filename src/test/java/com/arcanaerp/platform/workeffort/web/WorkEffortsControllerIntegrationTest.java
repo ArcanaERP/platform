@@ -481,6 +481,85 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void readsAssignmentActivitySummaryAtWebBoundary() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb13",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb13",
+            "agent02@work.com",
+            "Work Web",
+            "Agent 02"
+        );
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb13",
+            "agent03@work.com",
+            "Work Web",
+            "Agent 03"
+        );
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb13",
+            "manager@work.com",
+            "Work Web",
+            "Manager"
+        );
+
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workweb13",
+            "we-001",
+            "Prepare shipment",
+            "Prepare shipment for dispatch",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        WorkEffortsWebIntegrationTestSupport.assignWorkEffort(
+            mockMvc,
+            "workweb13",
+            "we-001",
+            "AGENT02@WORK.COM",
+            "Coverage handoff",
+            "manager@work.com"
+        )
+            .andExpect(status().isOk());
+        WorkEffortsWebIntegrationTestSupport.assignWorkEffort(
+            mockMvc,
+            "workweb13",
+            "we-001",
+            "AGENT03@WORK.COM",
+            "Escalation",
+            "manager@work.com"
+        )
+            .andExpect(status().isOk());
+
+        mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.workEffortAssignmentActivitySummaryRequest(
+                "workweb13",
+                0,
+                10,
+                "assignedTo", "AGENT03@WORK.COM"
+            )
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("WORKWEB13"))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("agent03@work.com"))
+            .andExpect(jsonPath("$.items[0].assignmentCount").value(1))
+            .andExpect(jsonPath("$.items[0].firstAssignedAt").exists())
+            .andExpect(jsonPath("$.items[0].lastAssignedAt").exists());
+    }
+
+    @Test
     void rejectsUnknownAssignmentAssignee() throws Exception {
         ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
             mockMvc,

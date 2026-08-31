@@ -7,6 +7,7 @@ import com.arcanaerp.platform.identity.IdentityActorLookup;
 import com.arcanaerp.platform.workeffort.AssignWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.ChangeWorkEffortStatusCommand;
 import com.arcanaerp.platform.workeffort.CreateWorkEffortCommand;
+import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
@@ -98,6 +99,34 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
         String normalizedAssignedTo = assignedTo == null ? null : normalizeAssignedTo(assignedTo);
         Page<WorkEffort> page = findWorkEfforts(normalizedTenantCode, status, normalizedAssignedTo, pageQuery);
         return PageResult.from(page).map(this::toView);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkEffortAssignmentActivitySummaryView> listAssignmentActivitySummaries(
+        String tenantCode,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeAssignedTo(assignedTo);
+        Page<WorkEffortAssignmentChangeAuditRepository.AssignmentActivitySummaryProjection> page =
+            workEffortAssignmentChangeAuditRepository.summarizeAssignmentActivity(
+                normalizedTenantCode,
+                normalizedAssignedTo,
+                assignedAtFrom,
+                assignedAtTo,
+                pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "currentAssignedTo"))
+            );
+        return PageResult.from(page).map(summary -> new WorkEffortAssignmentActivitySummaryView(
+            normalizedTenantCode,
+            summary.getAssignedTo(),
+            summary.getAssignmentCount(),
+            summary.getFirstAssignedAt(),
+            summary.getLastAssignedAt()
+        ));
     }
 
     @Override

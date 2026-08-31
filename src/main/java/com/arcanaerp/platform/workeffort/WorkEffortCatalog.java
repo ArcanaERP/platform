@@ -19,6 +19,14 @@ public interface WorkEffortCatalog {
         String assignedTo
     );
 
+    PageResult<WorkEffortAssignmentActivitySummaryView> listAssignmentActivitySummaries(
+        String tenantCode,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery
+    );
+
     WorkEffortView changeWorkEffortStatus(ChangeWorkEffortStatusCommand command);
 
     PageResult<WorkEffortStatusChangeView> listStatusHistory(

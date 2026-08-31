@@ -84,6 +84,7 @@ Rules:
 - `POST /api/work-efforts`
 - `GET /api/work-efforts/{effortNumber}?tenantCode=`
 - `GET /api/work-efforts?tenantCode=&status=&assignedTo=&page=&size=`
+- `GET /api/work-efforts/assignment-activity-summary?tenantCode=&assignedTo=&assignedAtFrom=&assignedAtTo=&page=&size=`
 - `PATCH /api/work-efforts/{effortNumber}/status` (request includes `tenantCode`, `status`, `reason`, `changedBy`)
 - `GET /api/work-efforts/{effortNumber}/status-history?tenantCode=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
 - `GET /api/work-efforts/{effortNumber}/assignment?tenantCode=`
@@ -96,3 +97,4 @@ Rules:
 - blank query values are rejected at the HTTP boundary
 - status-history ranges require `changedAtFrom <= changedAtTo`
 - assignment-history ranges require `assignedAtFrom <= assignedAtTo`
+- assignment activity summaries are grouped by current assignee from immutable assignment-change audits

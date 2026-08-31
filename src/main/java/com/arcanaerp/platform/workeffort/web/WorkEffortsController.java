@@ -5,6 +5,7 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.workeffort.AssignWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.ChangeWorkEffortStatusCommand;
 import com.arcanaerp.platform.workeffort.CreateWorkEffortCommand;
+import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
@@ -114,6 +115,27 @@ public class WorkEffortsController {
         ).map(this::toResponse);
     }
 
+    @GetMapping("/assignment-activity-summary")
+    public PageResult<WorkEffortAssignmentActivitySummaryResponse> listAssignmentActivitySummaries(
+        @RequestParam String tenantCode,
+        @RequestParam(required = false) String assignedTo,
+        @RequestParam(required = false) String assignedAtFrom,
+        @RequestParam(required = false) String assignedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedAssignedAtFrom = parseOptionalInstant(assignedAtFrom, "assignedAtFrom");
+        Instant parsedAssignedAtTo = parseOptionalInstant(assignedAtTo, "assignedAtTo");
+        validateInstantRange(parsedAssignedAtFrom, parsedAssignedAtTo, "assignedAtFrom", "assignedAtTo");
+        return workEffortCatalog.listAssignmentActivitySummaries(
+            tenantCode,
+            normalizeOptionalAssignedTo(assignedTo),
+            parsedAssignedAtFrom,
+            parsedAssignedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toAssignmentActivitySummaryResponse);
+    }
+
     @GetMapping("/{effortNumber}/status-history")
     public PageResult<WorkEffortStatusChangeResponse> listStatusHistory(
         @PathVariable String effortNumber,
@@ -208,6 +230,18 @@ public class WorkEffortsController {
             view.tenantCode(),
             view.effortNumber(),
             view.assignedTo()
+        );
+    }
+
+    private WorkEffortAssignmentActivitySummaryResponse toAssignmentActivitySummaryResponse(
+        WorkEffortAssignmentActivitySummaryView view
+    ) {
+        return new WorkEffortAssignmentActivitySummaryResponse(
+            view.tenantCode(),
+            view.assignedTo(),
+            view.assignmentCount(),
+            view.firstAssignedAt(),
+            view.lastAssignedAt()
         );
     }
 

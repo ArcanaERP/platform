@@ -231,6 +231,19 @@ class WorkEffortCatalogIntegrationTest {
             .containsExactly("agent01@work.com");
         assertThat(history.items()).extracting(WorkEffortAssignmentChangeView::currentAssignedTo)
             .containsExactly("agent02@work.com");
+
+        var summaries = workEffortCatalog.listAssignmentActivitySummaries(
+            "work07",
+            "AGENT02@WORK.COM",
+            null,
+            null,
+            new PageQuery(0, 10)
+        );
+
+        assertThat(summaries.totalItems()).isEqualTo(1);
+        assertThat(summaries.items().get(0).tenantCode()).isEqualTo("WORK07");
+        assertThat(summaries.items().get(0).assignedTo()).isEqualTo("agent02@work.com");
+        assertThat(summaries.items().get(0).assignmentCount()).isEqualTo(1);
     }
 
     @Test
