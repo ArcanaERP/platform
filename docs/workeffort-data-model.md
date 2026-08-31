@@ -86,6 +86,7 @@ Rules:
 - `GET /api/work-efforts?tenantCode=&status=&assignedTo=&page=&size=`
 - `PATCH /api/work-efforts/{effortNumber}/status` (request includes `tenantCode`, `status`, `reason`, `changedBy`)
 - `GET /api/work-efforts/{effortNumber}/status-history?tenantCode=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
+- `GET /api/work-efforts/{effortNumber}/assignment?tenantCode=`
 - `PATCH /api/work-efforts/{effortNumber}/assignment` (request includes `tenantCode`, `assignedTo`, `reason`, `assignedBy`)
 - `GET /api/work-efforts/{effortNumber}/assignment-history?tenantCode=&assignedTo=&assignedBy=&assignedAtFrom=&assignedAtTo=&page=&size=`
 

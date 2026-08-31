@@ -338,6 +338,12 @@ class WorkEffortsControllerIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.assignedTo").value("agent02@work.com"));
 
+        mockMvc.perform(WorkEffortsWebIntegrationTestSupport.getWorkEffortAssignmentRequest("workweb09", "we-001"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tenantCode").value("WORKWEB09"))
+            .andExpect(jsonPath("$.effortNumber").value("WE-001"))
+            .andExpect(jsonPath("$.assignedTo").value("agent02@work.com"));
+
         mockMvc.perform(
             WorkEffortsWebIntegrationTestSupport.workEffortAssignmentHistoryRequest(
                 "workweb09",

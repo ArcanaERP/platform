@@ -225,6 +225,7 @@ class WorkEffortCatalogIntegrationTest {
         );
 
         assertThat(updated.assignedTo()).isEqualTo("agent02@work.com");
+        assertThat(workEffortCatalog.getWorkEffortAssignment("work07", "we-001").assignedTo()).isEqualTo("agent02@work.com");
         assertThat(history.totalItems()).isEqualTo(1);
         assertThat(history.items()).extracting(WorkEffortAssignmentChangeView::previousAssignedTo)
             .containsExactly("agent01@work.com");

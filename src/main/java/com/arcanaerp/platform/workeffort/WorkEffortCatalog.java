@@ -10,6 +10,8 @@ public interface WorkEffortCatalog {
 
     WorkEffortView getWorkEffort(String tenantCode, String effortNumber);
 
+    WorkEffortAssignmentSummaryView getWorkEffortAssignment(String tenantCode, String effortNumber);
+
     PageResult<WorkEffortView> listWorkEfforts(
         String tenantCode,
         PageQuery pageQuery,

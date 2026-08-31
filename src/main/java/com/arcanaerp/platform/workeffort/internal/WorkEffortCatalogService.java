@@ -8,6 +8,7 @@ import com.arcanaerp.platform.workeffort.AssignWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.ChangeWorkEffortStatusCommand;
 import com.arcanaerp.platform.workeffort.CreateWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
+import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
@@ -71,6 +72,18 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
                 "Work effort not found for tenant/effortNumber: " + normalizedTenantCode + "/" + normalizedEffortNumber
             ));
         return toView(workEffort);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkEffortAssignmentSummaryView getWorkEffortAssignment(String tenantCode, String effortNumber) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedEffortNumber = normalizeRequired(effortNumber, "effortNumber").toUpperCase();
+        WorkEffort workEffort = workEffortRepository.findByTenantCodeAndEffortNumber(normalizedTenantCode, normalizedEffortNumber)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Work effort not found for tenant/effortNumber: " + normalizedTenantCode + "/" + normalizedEffortNumber
+            ));
+        return toAssignmentSummaryView(workEffort);
     }
 
     @Override
@@ -272,6 +285,15 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             workEffort.getAssignedTo(),
             workEffort.getDueAt(),
             workEffort.getCreatedAt()
+        );
+    }
+
+    private WorkEffortAssignmentSummaryView toAssignmentSummaryView(WorkEffort workEffort) {
+        return new WorkEffortAssignmentSummaryView(
+            workEffort.getId(),
+            workEffort.getTenantCode(),
+            workEffort.getEffortNumber(),
+            workEffort.getAssignedTo()
         );
     }
 

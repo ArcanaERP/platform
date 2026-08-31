@@ -6,6 +6,7 @@ import com.arcanaerp.platform.workeffort.AssignWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.ChangeWorkEffortStatusCommand;
 import com.arcanaerp.platform.workeffort.CreateWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
+import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
@@ -55,6 +56,14 @@ public class WorkEffortsController {
         @RequestParam String tenantCode
     ) {
         return toResponse(workEffortCatalog.getWorkEffort(tenantCode, effortNumber));
+    }
+
+    @GetMapping("/{effortNumber}/assignment")
+    public WorkEffortAssignmentSummaryResponse getWorkEffortAssignment(
+        @PathVariable String effortNumber,
+        @RequestParam String tenantCode
+    ) {
+        return toAssignmentSummaryResponse(workEffortCatalog.getWorkEffortAssignment(tenantCode, effortNumber));
     }
 
     @PatchMapping("/{effortNumber}/status")
@@ -190,6 +199,15 @@ public class WorkEffortsController {
             view.reason(),
             view.assignedBy(),
             view.assignedAt()
+        );
+    }
+
+    private WorkEffortAssignmentSummaryResponse toAssignmentSummaryResponse(WorkEffortAssignmentSummaryView view) {
+        return new WorkEffortAssignmentSummaryResponse(
+            view.id(),
+            view.tenantCode(),
+            view.effortNumber(),
+            view.assignedTo()
         );
     }
 

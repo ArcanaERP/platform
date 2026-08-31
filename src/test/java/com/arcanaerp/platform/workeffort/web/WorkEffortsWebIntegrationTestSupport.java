@@ -53,6 +53,10 @@ final class WorkEffortsWebIntegrationTestSupport {
         return get(WORK_EFFORTS_PATH + "/" + effortNumber).param("tenantCode", tenantCode);
     }
 
+    static MockHttpServletRequestBuilder getWorkEffortAssignmentRequest(String tenantCode, String effortNumber) {
+        return get(WORK_EFFORTS_PATH + "/" + effortNumber + "/assignment").param("tenantCode", tenantCode);
+    }
+
     static ResultActions changeWorkEffortStatus(
         MockMvc mockMvc,
         String tenantCode,
