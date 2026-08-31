@@ -2,8 +2,10 @@ package com.arcanaerp.platform.workeffort.web;
 
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.workeffort.AssignWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.ChangeWorkEffortStatusCommand;
 import com.arcanaerp.platform.workeffort.CreateWorkEffortCommand;
+import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
@@ -71,6 +73,22 @@ public class WorkEffortsController {
         ));
     }
 
+    @PatchMapping("/{effortNumber}/assignment")
+    public WorkEffortResponse assignWorkEffort(
+        @PathVariable String effortNumber,
+        @Valid @RequestBody AssignWorkEffortRequest request
+    ) {
+        return toResponse(workEffortCatalog.assignWorkEffort(
+            new AssignWorkEffortCommand(
+                request.tenantCode(),
+                effortNumber,
+                request.assignedTo(),
+                request.reason(),
+                request.assignedBy()
+            )
+        ));
+    }
+
     @GetMapping
     public PageResult<WorkEffortResponse> listWorkEfforts(
         @RequestParam String tenantCode,
@@ -110,6 +128,31 @@ public class WorkEffortsController {
         ).map(this::toStatusChangeResponse);
     }
 
+    @GetMapping("/{effortNumber}/assignment-history")
+    public PageResult<WorkEffortAssignmentChangeResponse> listAssignmentHistory(
+        @PathVariable String effortNumber,
+        @RequestParam String tenantCode,
+        @RequestParam(required = false) String assignedTo,
+        @RequestParam(required = false) String assignedBy,
+        @RequestParam(required = false) String assignedAtFrom,
+        @RequestParam(required = false) String assignedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedAssignedAtFrom = parseOptionalInstant(assignedAtFrom, "assignedAtFrom");
+        Instant parsedAssignedAtTo = parseOptionalInstant(assignedAtTo, "assignedAtTo");
+        validateInstantRange(parsedAssignedAtFrom, parsedAssignedAtTo, "assignedAtFrom", "assignedAtTo");
+        return workEffortCatalog.listAssignmentHistory(
+            tenantCode,
+            effortNumber,
+            normalizeOptionalAssignedTo(assignedTo),
+            normalizeOptionalActorEmail(assignedBy, "assignedBy"),
+            parsedAssignedAtFrom,
+            parsedAssignedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toAssignmentChangeResponse);
+    }
+
     private WorkEffortResponse toResponse(WorkEffortView view) {
         return new WorkEffortResponse(
             view.id(),
@@ -137,6 +180,19 @@ public class WorkEffortsController {
         );
     }
 
+    private WorkEffortAssignmentChangeResponse toAssignmentChangeResponse(WorkEffortAssignmentChangeView view) {
+        return new WorkEffortAssignmentChangeResponse(
+            view.id(),
+            view.effortNumber(),
+            view.previousAssignedTo(),
+            view.currentAssignedTo(),
+            view.tenantCode(),
+            view.reason(),
+            view.assignedBy(),
+            view.assignedAt()
+        );
+    }
+
     private static String normalizeOptionalAssignedTo(String assignedTo) {
         if (assignedTo == null) {
             return null;
@@ -145,6 +201,16 @@ public class WorkEffortsController {
             throw new IllegalArgumentException("assignedTo query parameter must not be blank");
         }
         return assignedTo.trim().toLowerCase();
+    }
+
+    private static String normalizeOptionalActorEmail(String value, String parameterName) {
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
+            throw new IllegalArgumentException(parameterName + " query parameter must not be blank");
+        }
+        return value.trim().toLowerCase();
     }
 
     private static Instant parseOptionalInstant(String value, String parameterName) {
@@ -162,8 +228,12 @@ public class WorkEffortsController {
     }
 
     private static void validateChangedAtRange(Instant changedAtFrom, Instant changedAtTo) {
-        if (changedAtFrom != null && changedAtTo != null && changedAtFrom.isAfter(changedAtTo)) {
-            throw new IllegalArgumentException("changedAtFrom must be before or equal to changedAtTo");
+        validateInstantRange(changedAtFrom, changedAtTo, "changedAtFrom", "changedAtTo");
+    }
+
+    private static void validateInstantRange(Instant from, Instant to, String fromParameterName, String toParameterName) {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new IllegalArgumentException(fromParameterName + " must be before or equal to " + toParameterName);
         }
     }
 }

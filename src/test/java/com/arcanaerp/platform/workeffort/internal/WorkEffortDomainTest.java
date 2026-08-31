@@ -63,6 +63,42 @@ class WorkEffortDomainTest {
     }
 
     @Test
+    void assignsWorkEffortToNormalizedActor() {
+        WorkEffort workEffort = WorkEffort.create(
+            "tenant01",
+            "we-001",
+            "Prepare shipment",
+            "Prepare shipment for dispatch",
+            WorkEffortStatus.PLANNED,
+            "agent01@tenant.com",
+            null,
+            Instant.parse("2026-04-21T10:00:00Z")
+        );
+
+        workEffort.assignTo("Agent02@Tenant.com");
+
+        assertThat(workEffort.getAssignedTo()).isEqualTo("agent02@tenant.com");
+    }
+
+    @Test
+    void assignmentAuditCreateNormalizesFields() {
+        WorkEffortAssignmentChangeAudit audit = WorkEffortAssignmentChangeAudit.create(
+            java.util.UUID.randomUUID(),
+            "Agent01@Tenant.com",
+            "Agent02@Tenant.com",
+            "tenant01",
+            "Coverage handoff",
+            "Manager@Tenant.com",
+            Instant.parse("2026-04-22T10:00:00Z")
+        );
+
+        assertThat(audit.getTenantCode()).isEqualTo("TENANT01");
+        assertThat(audit.getPreviousAssignedTo()).isEqualTo("agent01@tenant.com");
+        assertThat(audit.getCurrentAssignedTo()).isEqualTo("agent02@tenant.com");
+        assertThat(audit.getAssignedBy()).isEqualTo("manager@tenant.com");
+    }
+
+    @Test
     void rejectsInvalidStatusTransition() {
         WorkEffort workEffort = WorkEffort.create(
             "tenant01",

@@ -275,6 +275,81 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void changesAssignmentAndReadsAssignmentHistory() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb09",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb09",
+            "agent02@work.com",
+            "Work Web",
+            "Agent 02"
+        );
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb09",
+            "manager@work.com",
+            "Work Web",
+            "Manager"
+        );
+
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workweb09",
+            "we-001",
+            "Prepare shipment",
+            "Prepare shipment for dispatch",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        WorkEffortsWebIntegrationTestSupport.assignWorkEffort(
+            mockMvc,
+            "workweb09",
+            "we-001",
+            "AGENT02@WORK.COM",
+            "Coverage handoff",
+            "MANAGER@WORK.COM"
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.assignedTo").value("agent02@work.com"));
+
+        WorkEffortsWebIntegrationTestSupport.assignWorkEffort(
+            mockMvc,
+            "workweb09",
+            "we-001",
+            "agent02@work.com",
+            "No-op assignment",
+            "manager@work.com"
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.assignedTo").value("agent02@work.com"));
+
+        mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.workEffortAssignmentHistoryRequest(
+                "workweb09",
+                "we-001",
+                0,
+                10,
+                "assignedTo", "agent02@work.com",
+                "assignedBy", "manager@work.com"
+            )
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].previousAssignedTo").value("agent01@work.com"))
+            .andExpect(jsonPath("$.items[0].currentAssignedTo").value("agent02@work.com"))
+            .andExpect(jsonPath("$.items[0].assignedBy").value("manager@work.com"));
+    }
+
+    @Test
     void rejectsInvalidFiltersAndPagination() throws Exception {
         mockMvc.perform(
             WorkEffortsWebIntegrationTestSupport.listWorkEffortsRequest("workweb06", 0, 10, "assignedTo", "   ")
@@ -322,5 +397,30 @@ class WorkEffortsControllerIntegrationTest {
         )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("changedAtFrom must be before or equal to changedAtTo"));
+
+        mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.workEffortAssignmentHistoryRequest(
+                "workweb06",
+                "we-001",
+                0,
+                10,
+                "assignedBy", "   "
+            )
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("assignedBy query parameter must not be blank"));
+
+        mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.workEffortAssignmentHistoryRequest(
+                "workweb06",
+                "we-001",
+                0,
+                10,
+                "assignedAtFrom", "2026-04-23T00:00:00Z",
+                "assignedAtTo", "2026-04-22T00:00:00Z"
+            )
+        )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("assignedAtFrom must be before or equal to assignedAtTo"));
     }
 }

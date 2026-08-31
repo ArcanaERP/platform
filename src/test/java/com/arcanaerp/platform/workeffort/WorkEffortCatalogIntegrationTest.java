@@ -173,6 +173,66 @@ class WorkEffortCatalogIntegrationTest {
     }
 
     @Test
+    void changesAssignmentAndReadsAssignmentHistory() {
+        userDirectory.registerUser(
+            new RegisterUserCommand("work07", "Work Tenant", "ops", "Operations", "agent01@work.com", "Agent 01")
+        );
+        userDirectory.registerUser(
+            new RegisterUserCommand("work07", "Work Tenant", "ops", "Operations", "agent02@work.com", "Agent 02")
+        );
+        userDirectory.registerUser(
+            new RegisterUserCommand("work07", "Work Tenant", "ops", "Operations", "manager@work.com", "Manager")
+        );
+        workEffortCatalog.createWorkEffort(
+            new CreateWorkEffortCommand(
+                "work07",
+                "we-001",
+                "Prepare shipment",
+                "Prepare shipment for dispatch",
+                WorkEffortStatus.PLANNED,
+                "agent01@work.com",
+                null
+            )
+        );
+
+        WorkEffortView updated = workEffortCatalog.assignWorkEffort(
+            new AssignWorkEffortCommand(
+                "work07",
+                "we-001",
+                "AGENT02@WORK.COM",
+                "Coverage handoff",
+                "MANAGER@WORK.COM"
+            )
+        );
+        workEffortCatalog.assignWorkEffort(
+            new AssignWorkEffortCommand(
+                "work07",
+                "we-001",
+                "agent02@work.com",
+                "No-op assignment",
+                "manager@work.com"
+            )
+        );
+
+        var history = workEffortCatalog.listAssignmentHistory(
+            "work07",
+            "we-001",
+            "agent02@work.com",
+            "manager@work.com",
+            null,
+            null,
+            new PageQuery(0, 10)
+        );
+
+        assertThat(updated.assignedTo()).isEqualTo("agent02@work.com");
+        assertThat(history.totalItems()).isEqualTo(1);
+        assertThat(history.items()).extracting(WorkEffortAssignmentChangeView::previousAssignedTo)
+            .containsExactly("agent01@work.com");
+        assertThat(history.items()).extracting(WorkEffortAssignmentChangeView::currentAssignedTo)
+            .containsExactly("agent02@work.com");
+    }
+
+    @Test
     void rejectsUnknownStatusActor() {
         userDirectory.registerUser(
             new RegisterUserCommand("work06", "Work Tenant", "ops", "Operations", "agent01@work.com", "Agent 01")

@@ -4,8 +4,10 @@ import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.IdentityActorLookup;
+import com.arcanaerp.platform.workeffort.AssignWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.ChangeWorkEffortStatusCommand;
 import com.arcanaerp.platform.workeffort.CreateWorkEffortCommand;
+import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
@@ -26,6 +28,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
 
     private final WorkEffortRepository workEffortRepository;
     private final WorkEffortStatusChangeAuditRepository workEffortStatusChangeAuditRepository;
+    private final WorkEffortAssignmentChangeAuditRepository workEffortAssignmentChangeAuditRepository;
     private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
 
@@ -160,6 +163,85 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
         ));
     }
 
+    @Override
+    public WorkEffortView assignWorkEffort(AssignWorkEffortCommand command) {
+        String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
+        String effortNumber = normalizeRequired(command.effortNumber(), "effortNumber").toUpperCase();
+        String assignedTo = normalizeAssignedTo(command.assignedTo());
+        String assignedBy = normalizeActorEmail(command.assignedBy(), "assignedBy");
+        String reason = normalizeRequired(command.reason(), "reason");
+
+        WorkEffort workEffort = workEffortRepository.findByTenantCodeAndEffortNumber(tenantCode, effortNumber)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Work effort not found for tenant/effortNumber: " + tenantCode + "/" + effortNumber
+            ));
+        if (!identityActorLookup.actorExists(tenantCode, assignedTo)) {
+            throw new IllegalArgumentException("work effort assignee not found in tenant: " + tenantCode + "/" + assignedTo);
+        }
+        if (!identityActorLookup.actorExists(tenantCode, assignedBy)) {
+            throw new IllegalArgumentException("work effort assignment actor not found in tenant: " + tenantCode + "/" + assignedBy);
+        }
+
+        String previousAssignedTo = workEffort.getAssignedTo();
+        workEffort.assignTo(assignedTo);
+        WorkEffort saved = workEffortRepository.save(workEffort);
+        if (!previousAssignedTo.equals(saved.getAssignedTo())) {
+            workEffortAssignmentChangeAuditRepository.save(
+                WorkEffortAssignmentChangeAudit.create(
+                    saved.getId(),
+                    previousAssignedTo,
+                    saved.getAssignedTo(),
+                    tenantCode,
+                    reason,
+                    assignedBy,
+                    Instant.now(clock)
+                )
+            );
+        }
+        return toView(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkEffortAssignmentChangeView> listAssignmentHistory(
+        String tenantCode,
+        String effortNumber,
+        String assignedTo,
+        String assignedBy,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedEffortNumber = normalizeRequired(effortNumber, "effortNumber").toUpperCase();
+        String normalizedAssignedTo = assignedTo == null ? null : normalizeAssignedTo(assignedTo);
+        String normalizedAssignedBy = assignedBy == null ? null : normalizeActorEmail(assignedBy, "assignedBy");
+
+        WorkEffort workEffort = workEffortRepository.findByTenantCodeAndEffortNumber(normalizedTenantCode, normalizedEffortNumber)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Work effort not found for tenant/effortNumber: " + normalizedTenantCode + "/" + normalizedEffortNumber
+            ));
+        Page<WorkEffortAssignmentChangeAudit> page = workEffortAssignmentChangeAuditRepository.findHistoryFiltered(
+            workEffort.getId(),
+            normalizedTenantCode,
+            normalizedAssignedTo,
+            normalizedAssignedBy,
+            assignedAtFrom,
+            assignedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "assignedAt"))
+        );
+        return PageResult.from(page).map(audit -> new WorkEffortAssignmentChangeView(
+            audit.getId(),
+            workEffort.getEffortNumber(),
+            audit.getPreviousAssignedTo(),
+            audit.getCurrentAssignedTo(),
+            audit.getTenantCode(),
+            audit.getReason(),
+            audit.getAssignedBy(),
+            audit.getAssignedAt()
+        ));
+    }
+
     private Page<WorkEffort> findWorkEfforts(
         String tenantCode,
         WorkEffortStatus status,
@@ -201,9 +283,13 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     }
 
     private static String normalizeAssignedTo(String assignedTo) {
-        String normalized = normalizeRequired(assignedTo, "assignedTo").toLowerCase();
+        return normalizeActorEmail(assignedTo, "assignedTo");
+    }
+
+    private static String normalizeActorEmail(String value, String fieldName) {
+        String normalized = normalizeRequired(value, fieldName).toLowerCase();
         if (!normalized.contains("@")) {
-            throw new IllegalArgumentException("assignedTo is invalid");
+            throw new IllegalArgumentException(fieldName + " is invalid");
         }
         return normalized;
     }

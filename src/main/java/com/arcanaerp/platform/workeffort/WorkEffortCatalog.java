@@ -27,4 +27,16 @@ public interface WorkEffortCatalog {
         Instant changedAtTo,
         PageQuery pageQuery
     );
+
+    WorkEffortView assignWorkEffort(AssignWorkEffortCommand command);
+
+    PageResult<WorkEffortAssignmentChangeView> listAssignmentHistory(
+        String tenantCode,
+        String effortNumber,
+        String assignedTo,
+        String assignedBy,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery
+    );
 }

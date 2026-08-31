@@ -133,6 +133,10 @@ class WorkEffort {
         throw new IllegalStateException("Invalid work effort status transition: " + status + " -> " + targetStatus);
     }
 
+    void assignTo(String assignee) {
+        assignedTo = normalizeEmail(assignee);
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");

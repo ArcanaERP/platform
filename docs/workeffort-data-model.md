@@ -1,10 +1,10 @@
 # Work Effort Data Model
 
-Updated: 2026-04-25
+Updated: 2026-08-30
 
 ## Scope
 
-Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, and append-only status history.
+Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, and append-only assignment history.
 
 ## Aggregate
 
@@ -28,7 +28,7 @@ Core fields:
 Rules:
 - `tenantCode` and `effortNumber` are normalized to uppercase
 - `assignedTo` is normalized to lowercase when present
-- create and status-transition commands validate actor emails through the `identity` module
+- create, status-transition, and assignment commands validate actor emails through the `identity` module
 - list filters currently support exact `tenantCode`, optional exact `status`, and optional exact `assignedTo`
 
 ### WorkEffortStatusChangeAudit
@@ -52,9 +52,31 @@ Rules:
 - history reads are newest-first by `changedAt`
 - optional history filters support exact `tenantCode`, exact `changedBy`, and `changedAtFrom` / `changedAtTo`
 
+### WorkEffortAssignmentChangeAudit
+
+Purpose:
+- keep assignment changes append-only and queryable for audit/history views
+
+Core fields:
+- `id` (`UUID`)
+- `workEffortId`
+- `effortNumber`
+- `previousAssignedTo`
+- `currentAssignedTo`
+- `tenantCode`
+- `reason`
+- `assignedBy`
+- `assignedAt`
+
+Rules:
+- each successful assignee change appends one audit row
+- no-op assignment changes return the current work effort without appending history
+- history reads are newest-first by `assignedAt`
+- optional history filters support exact `tenantCode`, exact current `assignedTo`, exact `assignedBy`, and `assignedAtFrom` / `assignedAtTo`
+
 ## Cross-Module Dependency
 
-- `workeffort` validates assignees and status actors through public `IdentityActorLookup`
+- `workeffort` validates assignees, status actors, and assignment actors through public `IdentityActorLookup`
 - no dependency on `identity.internal`
 
 ## Minimal HTTP Surface
@@ -64,9 +86,12 @@ Rules:
 - `GET /api/work-efforts?tenantCode=&status=&assignedTo=&page=&size=`
 - `PATCH /api/work-efforts/{effortNumber}/status` (request includes `tenantCode`, `status`, `reason`, `changedBy`)
 - `GET /api/work-efforts/{effortNumber}/status-history?tenantCode=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
+- `PATCH /api/work-efforts/{effortNumber}/assignment` (request includes `tenantCode`, `assignedTo`, `reason`, `assignedBy`)
+- `GET /api/work-efforts/{effortNumber}/assignment-history?tenantCode=&assignedTo=&assignedBy=&assignedAtFrom=&assignedAtTo=&page=&size=`
 
 ## Query Notes
 
 - work-effort listing is paged through the shared `PageQuery` contract
 - blank query values are rejected at the HTTP boundary
 - status-history ranges require `changedAtFrom <= changedAtTo`
+- assignment-history ranges require `assignedAtFrom <= assignedAtTo`

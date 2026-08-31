@@ -73,6 +73,26 @@ final class WorkEffortsWebIntegrationTestSupport {
                 """.formatted(tenantCode, status, reason, changedBy)));
     }
 
+    static ResultActions assignWorkEffort(
+        MockMvc mockMvc,
+        String tenantCode,
+        String effortNumber,
+        String assignedTo,
+        String reason,
+        String assignedBy
+    ) throws Exception {
+        return mockMvc.perform(patch(WORK_EFFORTS_PATH + "/" + effortNumber + "/assignment")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "%s",
+                  "assignedTo": "%s",
+                  "reason": "%s",
+                  "assignedBy": "%s"
+                }
+                """.formatted(tenantCode, assignedTo, reason, assignedBy)));
+    }
+
     static MockHttpServletRequestBuilder listWorkEffortsRequest(String tenantCode, int page, int size, String... optionalNameValuePairs) {
         MockHttpServletRequestBuilder builder = get(WORK_EFFORTS_PATH)
             .param("tenantCode", tenantCode)
@@ -102,6 +122,29 @@ final class WorkEffortsWebIntegrationTestSupport {
         String... optionalNameValuePairs
     ) {
         MockHttpServletRequestBuilder builder = get(WORK_EFFORTS_PATH + "/" + effortNumber + "/status-history")
+            .param("tenantCode", tenantCode)
+            .param("page", String.valueOf(page))
+            .param("size", String.valueOf(size));
+        if (optionalNameValuePairs == null || optionalNameValuePairs.length == 0) {
+            return builder;
+        }
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must contain name/value pairs");
+        }
+        for (int i = 0; i < optionalNameValuePairs.length; i += 2) {
+            builder.param(optionalNameValuePairs[i], optionalNameValuePairs[i + 1]);
+        }
+        return builder;
+    }
+
+    static MockHttpServletRequestBuilder workEffortAssignmentHistoryRequest(
+        String tenantCode,
+        String effortNumber,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        MockHttpServletRequestBuilder builder = get(WORK_EFFORTS_PATH + "/" + effortNumber + "/assignment-history")
             .param("tenantCode", tenantCode)
             .param("page", String.valueOf(page))
             .param("size", String.valueOf(size));
