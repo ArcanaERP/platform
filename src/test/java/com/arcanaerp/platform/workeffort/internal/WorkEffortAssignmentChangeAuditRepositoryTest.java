@@ -21,6 +21,80 @@ class WorkEffortAssignmentChangeAuditRepositoryTest {
 
     @Test
     void filtersAssignmentHistoryByTenantAssigneeActorAndAssignedAtRange() {
+        WorkEffort workEffort = seedAssignmentHistory();
+
+        var page = workEffortAssignmentChangeAuditRepository.findHistoryFiltered(
+            workEffort.getId(),
+            "TENANT01",
+            "agent02@tenant.com",
+            "manager@tenant.com",
+            Instant.parse("2026-04-22T09:00:00Z"),
+            Instant.parse("2026-04-22T10:30:00Z"),
+            PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "assignedAt"))
+        );
+
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getContent().get(0).getCurrentAssignedTo()).isEqualTo("agent02@tenant.com");
+    }
+
+    @Test
+    void filtersAssignmentHistoryByAssignedTo() {
+        WorkEffort workEffort = seedAssignmentHistory();
+
+        var page = workEffortAssignmentChangeAuditRepository.findHistoryFiltered(
+            workEffort.getId(),
+            "TENANT01",
+            "agent03@tenant.com",
+            null,
+            null,
+            null,
+            PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "assignedAt"))
+        );
+
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getContent()).extracting(WorkEffortAssignmentChangeAudit::getCurrentAssignedTo)
+            .containsExactly("agent03@tenant.com");
+    }
+
+    @Test
+    void filtersAssignmentHistoryByAssignedBy() {
+        WorkEffort workEffort = seedAssignmentHistory();
+
+        var page = workEffortAssignmentChangeAuditRepository.findHistoryFiltered(
+            workEffort.getId(),
+            "TENANT01",
+            null,
+            "manager@tenant.com",
+            null,
+            null,
+            PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "assignedAt"))
+        );
+
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getContent()).extracting(WorkEffortAssignmentChangeAudit::getAssignedBy)
+            .containsExactly("manager@tenant.com");
+    }
+
+    @Test
+    void filtersAssignmentHistoryByAssignedAtRange() {
+        WorkEffort workEffort = seedAssignmentHistory();
+
+        var page = workEffortAssignmentChangeAuditRepository.findHistoryFiltered(
+            workEffort.getId(),
+            "TENANT01",
+            null,
+            null,
+            Instant.parse("2026-04-22T10:30:00Z"),
+            Instant.parse("2026-04-22T11:30:00Z"),
+            PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "assignedAt"))
+        );
+
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getContent()).extracting(WorkEffortAssignmentChangeAudit::getAssignedAt)
+            .containsExactly(Instant.parse("2026-04-22T11:00:00Z"));
+    }
+
+    private WorkEffort seedAssignmentHistory() {
         WorkEffort workEffort = workEffortRepository.save(
             WorkEffort.create(
                 "tenant01",
@@ -55,18 +129,6 @@ class WorkEffortAssignmentChangeAuditRepositoryTest {
                 Instant.parse("2026-04-22T11:00:00Z")
             )
         );
-
-        var page = workEffortAssignmentChangeAuditRepository.findHistoryFiltered(
-            workEffort.getId(),
-            "TENANT01",
-            "agent02@tenant.com",
-            "manager@tenant.com",
-            Instant.parse("2026-04-22T09:00:00Z"),
-            Instant.parse("2026-04-22T10:30:00Z"),
-            PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "assignedAt"))
-        );
-
-        assertThat(page.getTotalElements()).isEqualTo(1);
-        assertThat(page.getContent().get(0).getCurrentAssignedTo()).isEqualTo("agent02@tenant.com");
+        return workEffort;
     }
 }
