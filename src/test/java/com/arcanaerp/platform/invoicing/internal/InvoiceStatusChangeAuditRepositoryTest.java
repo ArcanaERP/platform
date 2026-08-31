@@ -3,6 +3,7 @@ package com.arcanaerp.platform.invoicing.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.arcanaerp.platform.invoicing.InvoiceStatus;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,9 @@ class InvoiceStatusChangeAuditRepositoryTest {
 
     @Autowired
     private InvoiceStatusChangeAuditRepository invoiceStatusChangeAuditRepository;
+
+    @Autowired
+    private InvoiceRepository invoiceRepository;
 
     @Test
     void listsStatusChangesForInvoiceOrderedByChangedAtDesc() {
@@ -120,5 +124,65 @@ class InvoiceStatusChangeAuditRepositoryTest {
         assertThat(actorFiltered.getContent().get(0).getChangedBy()).isEqualTo("agent02@invoices.com");
         assertThat(rangeFiltered.getTotalElements()).isEqualTo(1);
         assertThat(rangeFiltered.getContent().get(0).getCurrentStatus()).isEqualTo(InvoiceStatus.VOID);
+    }
+
+    @Test
+    void listsGlobalStatusHistoryForActivitySummariesWithTenantAndAuditFilters() {
+        Instant createdAt = Instant.parse("2026-04-01T00:00:00Z");
+        Invoice firstInvoice = invoiceRepository.save(
+            Invoice.create(
+                "tenant-a",
+                "inv-repo-act-001",
+                "so-repo-act-001",
+                "USD",
+                new BigDecimal("10.00"),
+                createdAt,
+                createdAt.plusSeconds(86400)
+            )
+        );
+        Invoice secondInvoice = invoiceRepository.save(
+            Invoice.create(
+                "tenant-b",
+                "inv-repo-act-002",
+                "so-repo-act-002",
+                "USD",
+                new BigDecimal("10.00"),
+                createdAt,
+                createdAt.plusSeconds(86400)
+            )
+        );
+        invoiceStatusChangeAuditRepository.save(
+            InvoiceStatusChangeAudit.create(
+                firstInvoice.getId(),
+                InvoiceStatus.DRAFT,
+                InvoiceStatus.ISSUED,
+                "Ready to bill",
+                "agent01@invoices.com",
+                Instant.parse("2026-04-22T10:00:00Z")
+            )
+        );
+        invoiceStatusChangeAuditRepository.save(
+            InvoiceStatusChangeAudit.create(
+                secondInvoice.getId(),
+                InvoiceStatus.ISSUED,
+                InvoiceStatus.VOID,
+                "Customer dispute",
+                "agent02@invoices.com",
+                Instant.parse("2026-05-04T12:00:00Z")
+            )
+        );
+
+        var audits = invoiceStatusChangeAuditRepository.findAllHistoryFiltered(
+            "TENANT-B",
+            InvoiceStatus.ISSUED,
+            InvoiceStatus.VOID,
+            "agent02@invoices.com",
+            Instant.parse("2026-05-01T00:00:00Z"),
+            Instant.parse("2026-05-31T23:59:59Z")
+        );
+
+        assertThat(audits).hasSize(1);
+        assertThat(audits.get(0).getInvoiceId()).isEqualTo(secondInvoice.getId());
+        assertThat(audits.get(0).getCurrentStatus()).isEqualTo(InvoiceStatus.VOID);
     }
 }

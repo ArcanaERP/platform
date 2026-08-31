@@ -80,6 +80,9 @@ Core fields:
 - `POST /api/invoices`
 - `GET /api/invoices/{invoiceNumber}`
 - `GET /api/invoices?page=&size=&tenantCode=&status=&currencyCode=`
+- `GET /api/invoices/status-activity/daily-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/invoices/status-activity/weekly-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/invoices/status-activity/monthly-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
 - `PATCH /api/invoices/{invoiceNumber}/status` (request includes `status`, `reason`, `changedBy`)
 - `GET /api/invoices/{invoiceNumber}/status-history?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
 
@@ -90,3 +93,6 @@ Core fields:
 - blank query values are rejected at the HTTP boundary
 - invoice status history supports optional `previousStatus`, `currentStatus`, `changedBy`, `changedAtFrom`, and `changedAtTo` filters
 - status-history ranges require `changedAtFrom <= changedAtTo`
+- status-activity summaries use UTC daily, Monday-start weekly, and calendar-month buckets
+- status-activity summaries support optional `tenantCode`, `previousStatus`, `currentStatus`, `changedBy`, `changedAtFrom`, and `changedAtTo` filters
+- status-activity summaries return transition counts plus distinct invoice counts

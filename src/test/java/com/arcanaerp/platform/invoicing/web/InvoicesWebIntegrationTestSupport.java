@@ -118,4 +118,50 @@ final class InvoicesWebIntegrationTestSupport {
         }
         return request;
     }
+
+    static MockHttpServletRequestBuilder dailyStatusActivitySummaryRequest(
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest("daily", page, size, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder weeklyStatusActivitySummaryRequest(
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest("weekly", page, size, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder monthlyStatusActivitySummaryRequest(
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest("monthly", page, size, optionalNameValuePairs);
+    }
+
+    private static MockHttpServletRequestBuilder statusActivitySummaryRequest(
+        String bucket,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        MockHttpServletRequestBuilder request = get("/api/invoices/status-activity/" + bucket + "-summary")
+            .param("page", String.valueOf(page))
+            .param("size", String.valueOf(size));
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must have an even number of elements");
+        }
+        for (int index = 0; index < optionalNameValuePairs.length; index += 2) {
+            String name = optionalNameValuePairs[index];
+            String value = optionalNameValuePairs[index + 1];
+            if (value != null) {
+                request.param(name, value);
+            }
+        }
+        return request;
+    }
 }

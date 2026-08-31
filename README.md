@@ -190,6 +190,9 @@ Invoicing:
 - `POST /api/invoices`
 - `GET /api/invoices/{invoiceNumber}`
 - `GET /api/invoices?page=&size=&tenantCode=&status=&currencyCode=`
+- `GET /api/invoices/status-activity/daily-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/invoices/status-activity/weekly-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/invoices/status-activity/monthly-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
 - `PATCH /api/invoices/{invoiceNumber}/status` (request includes `status`, `reason`, `changedBy`)
 - `GET /api/invoices/{invoiceNumber}/status-history?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
 - invoice responses currently include snapshot `lines[]` copied from the source order at creation time

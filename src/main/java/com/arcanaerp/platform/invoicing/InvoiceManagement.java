@@ -30,4 +30,34 @@ public interface InvoiceManagement {
         Instant changedAtTo,
         PageQuery pageQuery
     );
+
+    PageResult<DailyInvoiceStatusActivitySummaryView> listDailyStatusActivitySummaries(
+        String tenantCode,
+        InvoiceStatus previousStatus,
+        InvoiceStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<WeeklyInvoiceStatusActivitySummaryView> listWeeklyStatusActivitySummaries(
+        String tenantCode,
+        InvoiceStatus previousStatus,
+        InvoiceStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<MonthlyInvoiceStatusActivitySummaryView> listMonthlyStatusActivitySummaries(
+        String tenantCode,
+        InvoiceStatus previousStatus,
+        InvoiceStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
 }
