@@ -6,10 +6,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.arcanaerp.platform.testsupport.web.ActorActivationWebTestSupport;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
@@ -18,6 +21,9 @@ class WorkEffortsControllerIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Test
     void createsReadsAndListsWorkEfforts() throws Exception {
@@ -347,6 +353,125 @@ class WorkEffortsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].previousAssignedTo").value("agent01@work.com"))
             .andExpect(jsonPath("$.items[0].currentAssignedTo").value("agent02@work.com"))
             .andExpect(jsonPath("$.items[0].assignedBy").value("manager@work.com"));
+    }
+
+    @Test
+    void filtersAssignmentHistoryAtWebBoundary() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb12",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb12",
+            "agent02@work.com",
+            "Work Web",
+            "Agent 02"
+        );
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb12",
+            "agent03@work.com",
+            "Work Web",
+            "Agent 03"
+        );
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb12",
+            "manager@work.com",
+            "Work Web",
+            "Manager"
+        );
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweb12",
+            "lead@work.com",
+            "Work Web",
+            "Lead"
+        );
+
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workweb12",
+            "we-001",
+            "Prepare shipment",
+            "Prepare shipment for dispatch",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        WorkEffortsWebIntegrationTestSupport.assignWorkEffort(
+            mockMvc,
+            "workweb12",
+            "we-001",
+            "AGENT02@WORK.COM",
+            "Coverage handoff",
+            "MANAGER@WORK.COM"
+        )
+            .andExpect(status().isOk());
+        WorkEffortsWebIntegrationTestSupport.assignWorkEffort(
+            mockMvc,
+            "workweb12",
+            "we-001",
+            "AGENT03@WORK.COM",
+            "Escalation",
+            "LEAD@WORK.COM"
+        )
+            .andExpect(status().isOk());
+
+        MvcResult allHistory = mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.workEffortAssignmentHistoryRequest("workweb12", "we-001", 0, 10)
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andReturn();
+        JsonNode newestAssignment = objectMapper.readTree(allHistory.getResponse().getContentAsString()).path("items").get(0);
+        String newestAssignedAt = newestAssignment.path("assignedAt").asText();
+
+        mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.workEffortAssignmentHistoryRequest(
+                "workweb12",
+                "we-001",
+                0,
+                10,
+                "assignedTo", "AGENT02@WORK.COM"
+            )
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].currentAssignedTo").value("agent02@work.com"));
+
+        mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.workEffortAssignmentHistoryRequest(
+                "workweb12",
+                "we-001",
+                0,
+                10,
+                "assignedBy", "LEAD@WORK.COM"
+            )
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].assignedBy").value("lead@work.com"));
+
+        mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.workEffortAssignmentHistoryRequest(
+                "workweb12",
+                "we-001",
+                0,
+                10,
+                "assignedAtFrom", newestAssignedAt,
+                "assignedAtTo", newestAssignedAt
+            )
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[*].currentAssignedTo").value(hasItem(newestAssignment.path("currentAssignedTo").asText())))
+            .andExpect(jsonPath("$.items[*].assignedBy").value(hasItem(newestAssignment.path("assignedBy").asText())));
     }
 
     @Test
