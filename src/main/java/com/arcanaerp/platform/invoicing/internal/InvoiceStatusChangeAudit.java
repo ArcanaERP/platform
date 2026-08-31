@@ -43,6 +43,12 @@ class InvoiceStatusChangeAudit {
     @Column(nullable = false, length = 16)
     private InvoiceStatus currentStatus;
 
+    @Column(nullable = false, length = 1000)
+    private String reason;
+
+    @Column(nullable = false, length = 320)
+    private String changedBy;
+
     @Column(nullable = false, updatable = false)
     private Instant changedAt;
 
@@ -51,12 +57,16 @@ class InvoiceStatusChangeAudit {
         UUID invoiceId,
         InvoiceStatus previousStatus,
         InvoiceStatus currentStatus,
+        String reason,
+        String changedBy,
         Instant changedAt
     ) {
         this.id = id;
         this.invoiceId = invoiceId;
         this.previousStatus = previousStatus;
         this.currentStatus = currentStatus;
+        this.reason = reason;
+        this.changedBy = changedBy;
         this.changedAt = changedAt;
     }
 
@@ -64,6 +74,8 @@ class InvoiceStatusChangeAudit {
         UUID invoiceId,
         InvoiceStatus previousStatus,
         InvoiceStatus currentStatus,
+        String reason,
+        String changedBy,
         Instant changedAt
     ) {
         if (invoiceId == null) {
@@ -75,9 +87,23 @@ class InvoiceStatusChangeAudit {
         if (currentStatus == null) {
             throw new IllegalArgumentException("currentStatus is required");
         }
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("reason is required");
+        }
+        if (changedBy == null || changedBy.isBlank()) {
+            throw new IllegalArgumentException("changedBy is required");
+        }
         if (changedAt == null) {
             throw new IllegalArgumentException("changedAt is required");
         }
-        return new InvoiceStatusChangeAudit(null, invoiceId, previousStatus, currentStatus, changedAt);
+        return new InvoiceStatusChangeAudit(
+            null,
+            invoiceId,
+            previousStatus,
+            currentStatus,
+            reason.trim(),
+            changedBy.trim().toLowerCase(),
+            changedAt
+        );
     }
 }

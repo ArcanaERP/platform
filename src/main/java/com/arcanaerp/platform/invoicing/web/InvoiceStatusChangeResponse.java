@@ -9,6 +9,8 @@ public record InvoiceStatusChangeResponse(
     String invoiceNumber,
     InvoiceStatus previousStatus,
     InvoiceStatus currentStatus,
+    String reason,
+    String changedBy,
     Instant changedAt
 ) {
 }

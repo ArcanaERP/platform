@@ -116,6 +116,8 @@ class InvoiceManagementService implements InvoiceManagement {
         if (targetStatus == null) {
             throw new IllegalArgumentException("status is required");
         }
+        String reason = normalizeRequired(command.reason(), "reason");
+        String changedBy = normalizeActorEmail(command.changedBy(), "changedBy");
         Invoice invoice = findInvoiceByNumber(command.invoiceNumber());
         InvoiceStatus previousStatus = invoice.getStatus();
         Instant changedAt = Instant.now(clock);
@@ -127,6 +129,8 @@ class InvoiceManagementService implements InvoiceManagement {
                     saved.getId(),
                     previousStatus,
                     saved.getStatus(),
+                    reason,
+                    changedBy,
                     changedAt
                 )
             );
@@ -140,15 +144,18 @@ class InvoiceManagementService implements InvoiceManagement {
         String invoiceNumber,
         InvoiceStatus previousStatus,
         InvoiceStatus currentStatus,
+        String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
         PageQuery pageQuery
     ) {
         Invoice invoice = findInvoiceByNumber(invoiceNumber);
+        String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy, "changedBy");
         Page<InvoiceStatusChangeAudit> audits = invoiceStatusChangeAuditRepository.findHistoryFiltered(
             invoice.getId(),
             previousStatus,
             currentStatus,
+            normalizedChangedBy,
             changedAtFrom,
             changedAtTo,
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
@@ -158,6 +165,8 @@ class InvoiceManagementService implements InvoiceManagement {
             invoice.getInvoiceNumber(),
             audit.getPreviousStatus(),
             audit.getCurrentStatus(),
+            audit.getReason(),
+            audit.getChangedBy(),
             audit.getChangedAt()
         ));
     }
@@ -177,6 +186,14 @@ class InvoiceManagementService implements InvoiceManagement {
 
     private static String normalizeOptional(String value) {
         return value == null ? null : value.trim().toUpperCase();
+    }
+
+    private static String normalizeActorEmail(String value, String fieldName) {
+        String normalized = normalizeRequired(value, fieldName).toLowerCase();
+        if (!normalized.contains("@")) {
+            throw new IllegalArgumentException(fieldName + " is invalid");
+        }
+        return normalized;
     }
 
     private PageResult<InvoiceView> toViewPage(Page<Invoice> invoices) {

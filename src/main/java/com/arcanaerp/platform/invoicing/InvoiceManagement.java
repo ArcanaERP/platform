@@ -25,6 +25,7 @@ public interface InvoiceManagement {
         String invoiceNumber,
         InvoiceStatus previousStatus,
         InvoiceStatus currentStatus,
+        String changedBy,
         Instant changedAtFrom,
         Instant changedAtTo,
         PageQuery pageQuery

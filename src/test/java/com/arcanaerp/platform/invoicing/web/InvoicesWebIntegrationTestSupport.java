@@ -69,11 +69,29 @@ final class InvoicesWebIntegrationTestSupport {
     }
 
     static ResultActions transitionInvoiceStatus(MockMvc mockMvc, String invoiceNumber, String status) throws Exception {
+        return transitionInvoiceStatus(
+            mockMvc,
+            invoiceNumber,
+            status,
+            "Invoice lifecycle transition",
+            "invoices-system@arcanaerp.com"
+        );
+    }
+
+    static ResultActions transitionInvoiceStatus(
+        MockMvc mockMvc,
+        String invoiceNumber,
+        String status,
+        String reason,
+        String changedBy
+    ) throws Exception {
         String payload = """
             {
-              "status": "%s"
+              "status": "%s",
+              "reason": "%s",
+              "changedBy": "%s"
             }
-            """.formatted(status);
+            """.formatted(status, reason, changedBy);
 
         return mockMvc.perform(patch("/api/invoices/" + invoiceNumber + "/status")
             .contentType(MediaType.APPLICATION_JSON)

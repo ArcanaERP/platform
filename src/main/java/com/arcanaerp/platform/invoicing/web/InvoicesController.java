@@ -73,7 +73,7 @@ public class InvoicesController {
         @Valid @RequestBody ChangeInvoiceStatusRequest request
     ) {
         return toResponse(invoiceManagement.changeInvoiceStatus(
-            new ChangeInvoiceStatusCommand(invoiceNumber, request.status())
+            new ChangeInvoiceStatusCommand(invoiceNumber, request.status(), request.reason(), request.changedBy())
         ));
     }
 
@@ -82,6 +82,7 @@ public class InvoicesController {
         @PathVariable String invoiceNumber,
         @RequestParam(required = false) String previousStatus,
         @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedBy,
         @RequestParam(required = false) String changedAtFrom,
         @RequestParam(required = false) String changedAtTo,
         @RequestParam(required = false) Integer page,
@@ -94,6 +95,7 @@ public class InvoicesController {
                 invoiceNumber,
                 parseOptionalStatus(previousStatus, "previousStatus"),
                 parseOptionalStatus(currentStatus, "currentStatus"),
+                normalizeOptionalChangedBy(changedBy),
                 parsedChangedAtFrom,
                 parsedChangedAtTo,
                 PageQuery.of(page, size)
@@ -138,6 +140,8 @@ public class InvoicesController {
             change.invoiceNumber(),
             change.previousStatus(),
             change.currentStatus(),
+            change.reason(),
+            change.changedBy(),
             change.changedAt()
         );
     }
@@ -177,6 +181,20 @@ public class InvoicesController {
         if (changedAtFrom != null && changedAtTo != null && changedAtFrom.isAfter(changedAtTo)) {
             throw new IllegalArgumentException("changedAtFrom must be before or equal to changedAtTo");
         }
+    }
+
+    private static String normalizeOptionalChangedBy(String changedBy) {
+        if (changedBy == null) {
+            return null;
+        }
+        if (changedBy.isBlank()) {
+            throw new IllegalArgumentException("changedBy query parameter must not be blank");
+        }
+        String normalized = changedBy.trim().toLowerCase();
+        if (!normalized.contains("@")) {
+            throw new IllegalArgumentException("changedBy query parameter must be a valid email");
+        }
+        return normalized;
     }
 
     private static String normalizeOptional(String value, String parameterName) {

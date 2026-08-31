@@ -123,7 +123,13 @@ class InvoicesControllerIntegrationTest {
         seedConfirmedOrderAndInvoice("arc-6103", "so-6103", "inv-6103");
 
         testClock.setInstant(ISSUED_AT);
-        InvoicesWebIntegrationTestSupport.transitionInvoiceStatus(mockMvc, "inv-6103", "ISSUED")
+        InvoicesWebIntegrationTestSupport.transitionInvoiceStatus(
+            mockMvc,
+            "inv-6103",
+            "ISSUED",
+            "Ready to bill",
+            "BILLING@INVOICES.COM"
+        )
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("ISSUED"));
 
@@ -138,6 +144,8 @@ class InvoicesControllerIntegrationTest {
             .andExpect(jsonPath("$.items[0].invoiceNumber").value("INV-6103"))
             .andExpect(jsonPath("$.items[0].previousStatus").value("DRAFT"))
             .andExpect(jsonPath("$.items[0].currentStatus").value("ISSUED"))
+            .andExpect(jsonPath("$.items[0].reason").value("Ready to bill"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("billing@invoices.com"))
             .andExpect(jsonPath("$.items[0].changedAt").value(ISSUED_AT.toString()));
     }
 
@@ -166,6 +174,8 @@ class InvoicesControllerIntegrationTest {
                 "inv-6104",
                 "currentStatus",
                 "VOID",
+                "changedBy",
+                "INVOICES-SYSTEM@ARCANAERP.COM",
                 "changedAtFrom",
                 VOIDED_AT.minusSeconds(1).toString(),
                 "changedAtTo",
@@ -174,7 +184,8 @@ class InvoicesControllerIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].previousStatus").value("ISSUED"))
-            .andExpect(jsonPath("$.items[0].currentStatus").value("VOID"));
+            .andExpect(jsonPath("$.items[0].currentStatus").value("VOID"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("invoices-system@arcanaerp.com"));
     }
 
     @Test
@@ -198,6 +209,14 @@ class InvoicesControllerIntegrationTest {
             ))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("changedAtFrom must be before or equal to changedAtTo"));
+
+        mockMvc.perform(InvoicesStatusHistoryWebTestSupport.statusHistoryRequestDefault(
+                "inv-invalid-actor",
+                "changedBy",
+                "not-an-email"
+            ))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("changedBy query parameter must be a valid email"));
     }
 
     @Test

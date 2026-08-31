@@ -2117,7 +2117,9 @@ final class PaymentsWebIntegrationTestSupport {
     static ResultActions transitionInvoiceStatus(MockMvc mockMvc, String invoiceNumber, String status) throws Exception {
         String payload = """
             {
-              "status": "%s"
+              "status": "%s",
+              "reason": "Invoice lifecycle transition",
+              "changedBy": "invoices-system@arcanaerp.com"
             }
             """.formatted(status);
 

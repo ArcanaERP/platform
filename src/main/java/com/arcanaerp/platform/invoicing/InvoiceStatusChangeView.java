@@ -8,6 +8,8 @@ public record InvoiceStatusChangeView(
     String invoiceNumber,
     InvoiceStatus previousStatus,
     InvoiceStatus currentStatus,
+    String reason,
+    String changedBy,
     Instant changedAt
 ) {
 }

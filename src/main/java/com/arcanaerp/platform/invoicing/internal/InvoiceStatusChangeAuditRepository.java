@@ -20,6 +20,7 @@ interface InvoiceStatusChangeAuditRepository extends JpaRepository<InvoiceStatus
         where audit.invoiceId = :invoiceId
           and (:previousStatus is null or audit.previousStatus = :previousStatus)
           and (:currentStatus is null or audit.currentStatus = :currentStatus)
+          and (:changedBy is null or audit.changedBy = :changedBy)
           and (:changedAtFrom is null or audit.changedAt >= :changedAtFrom)
           and (:changedAtTo is null or audit.changedAt <= :changedAtTo)
         """
@@ -28,6 +29,7 @@ interface InvoiceStatusChangeAuditRepository extends JpaRepository<InvoiceStatus
         @Param("invoiceId") UUID invoiceId,
         @Param("previousStatus") InvoiceStatus previousStatus,
         @Param("currentStatus") InvoiceStatus currentStatus,
+        @Param("changedBy") String changedBy,
         @Param("changedAtFrom") Instant changedAtFrom,
         @Param("changedAtTo") Instant changedAtTo,
         Pageable pageable

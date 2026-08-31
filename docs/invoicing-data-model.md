@@ -48,7 +48,12 @@ Core fields:
 - `invoiceId`
 - `previousStatus`
 - `currentStatus`
+- `reason`
+- `changedBy`
 - `changedAt`
+
+Rules:
+- status-change audits capture trimmed reason and normalized lowercase `changedBy` actor email
 
 ### InvoiceLine
 
@@ -75,11 +80,13 @@ Core fields:
 - `POST /api/invoices`
 - `GET /api/invoices/{invoiceNumber}`
 - `GET /api/invoices?page=&size=&tenantCode=&status=&currencyCode=`
-- `PATCH /api/invoices/{invoiceNumber}/status`
-- `GET /api/invoices/{invoiceNumber}/status-history?page=&size=&previousStatus=&currentStatus=&changedAtFrom=&changedAtTo=`
+- `PATCH /api/invoices/{invoiceNumber}/status` (request includes `status`, `reason`, `changedBy`)
+- `GET /api/invoices/{invoiceNumber}/status-history?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
 
 ## Query Notes
 
 - invoice listing is newest-first by `createdAt DESC`
 - optional invoice-list filters currently support `tenantCode`, `status`, and `currencyCode`
 - blank query values are rejected at the HTTP boundary
+- invoice status history supports optional `previousStatus`, `currentStatus`, `changedBy`, `changedAtFrom`, and `changedAtTo` filters
+- status-history ranges require `changedAtFrom <= changedAtTo`
