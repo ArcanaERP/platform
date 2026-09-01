@@ -124,6 +124,19 @@ final class AgreementsWebIntegrationTestSupport {
         return statusActivitySummaryRequest("/api/agreements/status-activity/daily-summary", page, size, optionalNameValuePairs);
     }
 
+    static MockHttpServletRequestBuilder dailyStatusActivityByCurrentStatusSummaryRequest(
+        Integer page,
+        Integer size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest(
+            "/api/agreements/status-activity/daily-summary/by-current-status",
+            page,
+            size,
+            optionalNameValuePairs
+        );
+    }
+
     static MockHttpServletRequestBuilder weeklyStatusActivitySummaryRequest(
         Integer page,
         Integer size,
@@ -132,12 +145,38 @@ final class AgreementsWebIntegrationTestSupport {
         return statusActivitySummaryRequest("/api/agreements/status-activity/weekly-summary", page, size, optionalNameValuePairs);
     }
 
+    static MockHttpServletRequestBuilder weeklyStatusActivityByCurrentStatusSummaryRequest(
+        Integer page,
+        Integer size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest(
+            "/api/agreements/status-activity/weekly-summary/by-current-status",
+            page,
+            size,
+            optionalNameValuePairs
+        );
+    }
+
     static MockHttpServletRequestBuilder monthlyStatusActivitySummaryRequest(
         Integer page,
         Integer size,
         String... optionalNameValuePairs
     ) {
         return statusActivitySummaryRequest("/api/agreements/status-activity/monthly-summary", page, size, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder monthlyStatusActivityByCurrentStatusSummaryRequest(
+        Integer page,
+        Integer size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest(
+            "/api/agreements/status-activity/monthly-summary/by-current-status",
+            page,
+            size,
+            optionalNameValuePairs
+        );
     }
 
     private static MockHttpServletRequestBuilder statusActivitySummaryRequest(

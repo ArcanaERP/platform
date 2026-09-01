@@ -132,6 +132,74 @@ class AgreementsStatusActivitySummaryIntegrationTest {
     }
 
     @Test
+    void readsDailyWeeklyAndMonthlyStatusActivitySummariesByCurrentStatus() throws Exception {
+        createAndTransition("agr-3500", TENANT_A, "Tenant A Active Mix", AgreementStatus.ACTIVE, "legal.summary@arcanaerp.com",
+            "2027-06-01T00:00:00Z");
+        createAndTransition("agr-3501", TENANT_A, "Tenant A Terminated Mix", AgreementStatus.TERMINATED, "legal.summary@arcanaerp.com",
+            "2027-06-01T01:00:00Z");
+        createAndTransition("agr-3502", TENANT_B, "Tenant B Active Mix", AgreementStatus.ACTIVE, "ops.summary@arcanaerp.com",
+            "2027-06-08T00:00:00Z");
+
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.dailyStatusActivityByCurrentStatusSummaryRequest(
+            0,
+            10,
+            "changedAtFrom",
+            "2027-06-01T00:00:00Z",
+            "changedAtTo",
+            "2027-06-30T23:59:59Z"
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[?(@.businessDate=='2027-06-01' && @.currentStatus=='ACTIVE')].transitionCount", hasItem(1)))
+            .andExpect(jsonPath("$.items[?(@.businessDate=='2027-06-01' && @.currentStatus=='TERMINATED')].agreementCount", hasItem(1)))
+            .andExpect(jsonPath("$.items[?(@.businessDate=='2027-06-08' && @.currentStatus=='ACTIVE')].transitionCount", hasItem(1)));
+
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.weeklyStatusActivityByCurrentStatusSummaryRequest(
+            0,
+            10,
+            "changedAtFrom",
+            "2027-06-01T00:00:00Z",
+            "changedAtTo",
+            "2027-06-30T23:59:59Z"
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[?(@.businessWeekStart=='2027-05-31' && @.currentStatus=='ACTIVE')].transitionCount", hasItem(1)))
+            .andExpect(jsonPath("$.items[?(@.businessWeekStart=='2027-05-31' && @.currentStatus=='TERMINATED')].transitionCount", hasItem(1)))
+            .andExpect(jsonPath("$.items[?(@.businessWeekStart=='2027-06-07' && @.currentStatus=='ACTIVE')].transitionCount", hasItem(1)));
+
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.monthlyStatusActivityByCurrentStatusSummaryRequest(
+            0,
+            10,
+            "tenantCode",
+            TENANT_A,
+            "changedAtFrom",
+            "2027-06-01T00:00:00Z",
+            "changedAtTo",
+            "2027-06-30T23:59:59Z"
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessMonth").value("2027-06"))
+            .andExpect(jsonPath("$.items[0].currentStatus").value("ACTIVE"))
+            .andExpect(jsonPath("$.items[1].currentStatus").value("TERMINATED"));
+
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.dailyStatusActivityByCurrentStatusSummaryRequest(
+            0,
+            1,
+            "changedAtFrom",
+            "2027-06-01T00:00:00Z",
+            "changedAtTo",
+            "2027-06-30T23:59:59Z"
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].businessDate").value("2027-06-08"))
+            .andExpect(jsonPath("$.items[0].currentStatus").value("ACTIVE"))
+            .andExpect(jsonPath("$.hasNext").value(true));
+    }
+
+    @Test
     void paginatesStatusActivitySummaryBuckets() throws Exception {
         createAndTransition("agr-3410", TENANT_A, "Tenant A Page One", AgreementStatus.ACTIVE, "legal.summary@arcanaerp.com",
             "2027-05-01T00:00:00Z");

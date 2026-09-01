@@ -6,8 +6,11 @@ import com.arcanaerp.platform.agreements.AgreementStatusChangeView;
 import com.arcanaerp.platform.agreements.AgreementView;
 import com.arcanaerp.platform.agreements.ChangeAgreementStatusCommand;
 import com.arcanaerp.platform.agreements.CreateAgreementCommand;
+import com.arcanaerp.platform.agreements.DailyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.DailyAgreementStatusActivitySummaryView;
+import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivitySummaryView;
+import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivitySummaryView;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
@@ -92,6 +95,31 @@ public class AgreementsController {
         ).map(this::toDailyStatusActivitySummaryResponse);
     }
 
+    @GetMapping("/status-activity/daily-summary/by-current-status")
+    public PageResult<DailyAgreementStatusActivityByCurrentStatusSummaryResponse> listDailyStatusActivityByCurrentStatusSummaries(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String previousStatus,
+        @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return agreementManagement.listDailyStatusActivityByCurrentStatusSummaries(
+            normalizeOptionalTenantCode(tenantCode),
+            parseOptionalStatus(previousStatus, "previousStatus"),
+            parseOptionalStatus(currentStatus, "currentStatus"),
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toDailyStatusActivityByCurrentStatusSummaryResponse);
+    }
+
     @GetMapping("/status-activity/weekly-summary")
     public PageResult<WeeklyAgreementStatusActivitySummaryResponse> listWeeklyStatusActivitySummaries(
         @RequestParam(required = false) String tenantCode,
@@ -117,6 +145,31 @@ public class AgreementsController {
         ).map(this::toWeeklyStatusActivitySummaryResponse);
     }
 
+    @GetMapping("/status-activity/weekly-summary/by-current-status")
+    public PageResult<WeeklyAgreementStatusActivityByCurrentStatusSummaryResponse> listWeeklyStatusActivityByCurrentStatusSummaries(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String previousStatus,
+        @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return agreementManagement.listWeeklyStatusActivityByCurrentStatusSummaries(
+            normalizeOptionalTenantCode(tenantCode),
+            parseOptionalStatus(previousStatus, "previousStatus"),
+            parseOptionalStatus(currentStatus, "currentStatus"),
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toWeeklyStatusActivityByCurrentStatusSummaryResponse);
+    }
+
     @GetMapping("/status-activity/monthly-summary")
     public PageResult<MonthlyAgreementStatusActivitySummaryResponse> listMonthlyStatusActivitySummaries(
         @RequestParam(required = false) String tenantCode,
@@ -140,6 +193,31 @@ public class AgreementsController {
             parsedChangedAtTo,
             PageQuery.of(page, size)
         ).map(this::toMonthlyStatusActivitySummaryResponse);
+    }
+
+    @GetMapping("/status-activity/monthly-summary/by-current-status")
+    public PageResult<MonthlyAgreementStatusActivityByCurrentStatusSummaryResponse> listMonthlyStatusActivityByCurrentStatusSummaries(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String previousStatus,
+        @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return agreementManagement.listMonthlyStatusActivityByCurrentStatusSummaries(
+            normalizeOptionalTenantCode(tenantCode),
+            parseOptionalStatus(previousStatus, "previousStatus"),
+            parseOptionalStatus(currentStatus, "currentStatus"),
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toMonthlyStatusActivityByCurrentStatusSummaryResponse);
     }
 
     @GetMapping("/{agreementNumber}/status-history")
@@ -221,6 +299,17 @@ public class AgreementsController {
         );
     }
 
+    private DailyAgreementStatusActivityByCurrentStatusSummaryResponse toDailyStatusActivityByCurrentStatusSummaryResponse(
+        DailyAgreementStatusActivityByCurrentStatusSummaryView view
+    ) {
+        return new DailyAgreementStatusActivityByCurrentStatusSummaryResponse(
+            view.businessDate(),
+            view.currentStatus(),
+            view.transitionCount(),
+            view.agreementCount()
+        );
+    }
+
     private WeeklyAgreementStatusActivitySummaryResponse toWeeklyStatusActivitySummaryResponse(
         WeeklyAgreementStatusActivitySummaryView view
     ) {
@@ -231,11 +320,33 @@ public class AgreementsController {
         );
     }
 
+    private WeeklyAgreementStatusActivityByCurrentStatusSummaryResponse toWeeklyStatusActivityByCurrentStatusSummaryResponse(
+        WeeklyAgreementStatusActivityByCurrentStatusSummaryView view
+    ) {
+        return new WeeklyAgreementStatusActivityByCurrentStatusSummaryResponse(
+            view.businessWeekStart(),
+            view.currentStatus(),
+            view.transitionCount(),
+            view.agreementCount()
+        );
+    }
+
     private MonthlyAgreementStatusActivitySummaryResponse toMonthlyStatusActivitySummaryResponse(
         MonthlyAgreementStatusActivitySummaryView view
     ) {
         return new MonthlyAgreementStatusActivitySummaryResponse(
             view.businessMonth(),
+            view.transitionCount(),
+            view.agreementCount()
+        );
+    }
+
+    private MonthlyAgreementStatusActivityByCurrentStatusSummaryResponse toMonthlyStatusActivityByCurrentStatusSummaryResponse(
+        MonthlyAgreementStatusActivityByCurrentStatusSummaryView view
+    ) {
+        return new MonthlyAgreementStatusActivityByCurrentStatusSummaryResponse(
+            view.businessMonth(),
+            view.currentStatus(),
             view.transitionCount(),
             view.agreementCount()
         );

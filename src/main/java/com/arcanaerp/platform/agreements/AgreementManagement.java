@@ -35,6 +35,16 @@ public interface AgreementManagement {
         PageQuery pageQuery
     );
 
+    PageResult<DailyAgreementStatusActivityByCurrentStatusSummaryView> listDailyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
+        AgreementStatus previousStatus,
+        AgreementStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<WeeklyAgreementStatusActivitySummaryView> listWeeklyStatusActivitySummaries(
         String tenantCode,
         AgreementStatus previousStatus,
@@ -45,7 +55,27 @@ public interface AgreementManagement {
         PageQuery pageQuery
     );
 
+    PageResult<WeeklyAgreementStatusActivityByCurrentStatusSummaryView> listWeeklyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
+        AgreementStatus previousStatus,
+        AgreementStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<MonthlyAgreementStatusActivitySummaryView> listMonthlyStatusActivitySummaries(
+        String tenantCode,
+        AgreementStatus previousStatus,
+        AgreementStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<MonthlyAgreementStatusActivityByCurrentStatusSummaryView> listMonthlyStatusActivityByCurrentStatusSummaries(
         String tenantCode,
         AgreementStatus previousStatus,
         AgreementStatus currentStatus,
