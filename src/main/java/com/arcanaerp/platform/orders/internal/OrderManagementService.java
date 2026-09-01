@@ -2,6 +2,7 @@ package com.arcanaerp.platform.orders.internal;
 
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.identity.IdentityActorLookup;
 import com.arcanaerp.platform.orders.ChangeOrderStatusCommand;
 import com.arcanaerp.platform.orders.CreateOrderCommand;
 import com.arcanaerp.platform.orders.CreateOrderLineCommand;
@@ -45,6 +46,7 @@ class OrderManagementService implements OrderManagement {
     private final SalesOrderLineRepository salesOrderLineRepository;
     private final OrderStatusChangeAuditRepository orderStatusChangeAuditRepository;
     private final ProductLookup productLookup;
+    private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
 
     @Override
@@ -139,6 +141,9 @@ class OrderManagementService implements OrderManagement {
 
         SalesOrder order = salesOrderRepository.findByOrderNumber(orderNumber)
             .orElseThrow(() -> new java.util.NoSuchElementException("Order not found: " + orderNumber));
+        if (!identityActorLookup.actorExists(order.getTenantCode(), changedBy)) {
+            throw new IllegalArgumentException("order status actor not found in tenant: " + order.getTenantCode() + "/" + changedBy);
+        }
 
         OrderStatus previousStatus = order.getStatus();
         Instant changedAt = Instant.now(clock);

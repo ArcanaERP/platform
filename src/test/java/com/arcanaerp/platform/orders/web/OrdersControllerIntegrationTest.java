@@ -4,10 +4,12 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.nullValue;
 import static com.arcanaerp.platform.orders.web.OrdersWebIntegrationTestSupport.line;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
+import org.springframework.http.MediaType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -186,6 +188,30 @@ class OrdersControllerIntegrationTest {
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.path").value("/api/orders/so-5003/status"));
+    }
+
+    @Test
+    void rejectsOrderStatusTransitionForUnknownTenantActor() throws Exception {
+        registerProduct("arc-5510");
+        createSingleLineOrder("so-5010", "arc-5510")
+            .andExpect(status().isCreated());
+
+        String payload = """
+            {
+              "status": "CONFIRMED",
+              "reason": "Inventory allocated",
+              "changedBy": "missing@orders.com"
+            }
+            """;
+
+        mockMvc.perform(patch("/api/orders/so-5010/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payload))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("order status actor not found in tenant: TENANT-ORDERS/missing@orders.com"))
+            .andExpect(jsonPath("$.path").value("/api/orders/so-5010/status"));
     }
 
     @Test

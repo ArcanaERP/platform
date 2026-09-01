@@ -124,6 +124,14 @@ public final class OrderManagementWebTestSupport {
         String reason,
         String changedBy
     ) throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            DEFAULT_ORDER_TENANT,
+            changedBy,
+            "Order Tenant",
+            "Order Status Actor"
+        );
+
         String payload = """
             {
               "status": "%s",

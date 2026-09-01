@@ -51,6 +51,7 @@ erDiagram
 - The relationship is modeled as an explicit ID link (no bidirectional JPA mapping).
 - `SalesOrder.tenantCode` is normalized to uppercase and currently scopes list queries.
 - `SalesOrder.status` is persisted as a string enum (`DRAFT`, `CONFIRMED`, `CANCELLED`).
+- Order status transitions validate normalized `changedBy` against identity users in the order tenant before applying the transition.
 - Order status-change audits capture normalized `changedBy` actor email and a free-form reason.
 
 ## Constraint and Index Notes
