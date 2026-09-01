@@ -72,8 +72,11 @@ erDiagram
 - `PATCH /api/orders/{orderNumber}/status` (request includes `status`, `reason`, `changedBy`)
 - `GET /api/orders/{orderNumber}/status-history?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/orders/status-activity/daily-summary?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/orders/status-activity/daily-summary/by-current-status?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/orders/status-activity/weekly-summary?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/orders/status-activity/weekly-summary/by-current-status?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/orders/status-activity/monthly-summary?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/orders/status-activity/monthly-summary/by-current-status?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
 
 ## Query Notes
 
@@ -83,3 +86,4 @@ erDiagram
 - status-history ranges require `changedAtFrom <= changedAtTo`
 - status-activity summaries use UTC daily, Monday-start weekly, and calendar-month buckets
 - status-activity summaries support the same optional audit filters and return transition counts plus distinct order counts
+- status-activity by-current-status summaries add a `currentStatus` grouping dimension within each bucket and sort by bucket descending, then status ascending

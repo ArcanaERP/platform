@@ -119,8 +119,11 @@ Orders:
 - `PATCH /api/orders/{orderNumber}/status` (request includes `status`, `reason`, `changedBy`)
 - `GET /api/orders/{orderNumber}/status-history?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/orders/status-activity/daily-summary?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/orders/status-activity/daily-summary/by-current-status?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/orders/status-activity/weekly-summary?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/orders/status-activity/weekly-summary/by-current-status?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/orders/status-activity/monthly-summary?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/orders/status-activity/monthly-summary/by-current-status?page=&size=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
 
 Communication Events:
 

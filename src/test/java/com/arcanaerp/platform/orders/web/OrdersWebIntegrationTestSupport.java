@@ -186,6 +186,14 @@ final class OrdersWebIntegrationTestSupport {
         return statusActivitySummaryRequest("daily", page, size, optionalNameValuePairs);
     }
 
+    static MockHttpServletRequestBuilder dailyStatusActivityByCurrentStatusSummaryRequest(
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivityByCurrentStatusSummaryRequest("daily", page, size, optionalNameValuePairs);
+    }
+
     static MockHttpServletRequestBuilder weeklyStatusActivitySummaryRequest(
         int page,
         int size,
@@ -194,12 +202,28 @@ final class OrdersWebIntegrationTestSupport {
         return statusActivitySummaryRequest("weekly", page, size, optionalNameValuePairs);
     }
 
+    static MockHttpServletRequestBuilder weeklyStatusActivityByCurrentStatusSummaryRequest(
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivityByCurrentStatusSummaryRequest("weekly", page, size, optionalNameValuePairs);
+    }
+
     static MockHttpServletRequestBuilder monthlyStatusActivitySummaryRequest(
         int page,
         int size,
         String... optionalNameValuePairs
     ) {
         return statusActivitySummaryRequest("monthly", page, size, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder monthlyStatusActivityByCurrentStatusSummaryRequest(
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivityByCurrentStatusSummaryRequest("monthly", page, size, optionalNameValuePairs);
     }
 
     static MockHttpServletRequestBuilder statusHistoryRequest(
@@ -243,6 +267,28 @@ final class OrdersWebIntegrationTestSupport {
     ) {
         MockHttpServletRequestBuilder builder = org.springframework.test.web.servlet.request.MockMvcRequestBuilders
             .get("/api/orders/status-activity/" + bucket + "-summary")
+            .param("page", String.valueOf(page))
+            .param("size", String.valueOf(size));
+        if (optionalNameValuePairs == null || optionalNameValuePairs.length == 0) {
+            return builder;
+        }
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must contain name/value pairs");
+        }
+        for (int i = 0; i < optionalNameValuePairs.length; i += 2) {
+            builder.param(optionalNameValuePairs[i], optionalNameValuePairs[i + 1]);
+        }
+        return builder;
+    }
+
+    private static MockHttpServletRequestBuilder statusActivityByCurrentStatusSummaryRequest(
+        String bucket,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        MockHttpServletRequestBuilder builder = org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+            .get("/api/orders/status-activity/" + bucket + "-summary/by-current-status")
             .param("page", String.valueOf(page))
             .param("size", String.valueOf(size));
         if (optionalNameValuePairs == null || optionalNameValuePairs.length == 0) {

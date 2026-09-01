@@ -35,6 +35,15 @@ public interface OrderManagement {
         PageQuery pageQuery
     );
 
+    PageResult<DailyOrderStatusActivityByCurrentStatusSummaryView> listDailyStatusActivityByCurrentStatusSummaries(
+        OrderStatus previousStatus,
+        OrderStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<WeeklyOrderStatusActivitySummaryView> listWeeklyStatusActivitySummaries(
         OrderStatus previousStatus,
         OrderStatus currentStatus,
@@ -44,7 +53,25 @@ public interface OrderManagement {
         PageQuery pageQuery
     );
 
+    PageResult<WeeklyOrderStatusActivityByCurrentStatusSummaryView> listWeeklyStatusActivityByCurrentStatusSummaries(
+        OrderStatus previousStatus,
+        OrderStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<MonthlyOrderStatusActivitySummaryView> listMonthlyStatusActivitySummaries(
+        OrderStatus previousStatus,
+        OrderStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<MonthlyOrderStatusActivityByCurrentStatusSummaryView> listMonthlyStatusActivityByCurrentStatusSummaries(
         OrderStatus previousStatus,
         OrderStatus currentStatus,
         String changedBy,

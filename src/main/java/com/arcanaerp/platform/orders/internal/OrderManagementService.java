@@ -6,13 +6,16 @@ import com.arcanaerp.platform.identity.IdentityActorLookup;
 import com.arcanaerp.platform.orders.ChangeOrderStatusCommand;
 import com.arcanaerp.platform.orders.CreateOrderCommand;
 import com.arcanaerp.platform.orders.CreateOrderLineCommand;
+import com.arcanaerp.platform.orders.DailyOrderStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.orders.DailyOrderStatusActivitySummaryView;
 import com.arcanaerp.platform.orders.MonthlyOrderStatusActivitySummaryView;
+import com.arcanaerp.platform.orders.MonthlyOrderStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.orders.OrderLineView;
 import com.arcanaerp.platform.orders.OrderManagement;
 import com.arcanaerp.platform.orders.OrderStatus;
 import com.arcanaerp.platform.orders.OrderStatusChangeView;
 import com.arcanaerp.platform.orders.OrderView;
+import com.arcanaerp.platform.orders.WeeklyOrderStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.orders.WeeklyOrderStatusActivitySummaryView;
 import com.arcanaerp.platform.products.ProductLookup;
 import com.arcanaerp.platform.products.ProductOrderability;
@@ -222,6 +225,28 @@ class OrderManagementService implements OrderManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<DailyOrderStatusActivityByCurrentStatusSummaryView> listDailyStatusActivityByCurrentStatusSummaries(
+        OrderStatus previousStatus,
+        OrderStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucketAndCurrentStatus(
+            previousStatus,
+            currentStatus,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> audit.getChangedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            DailyOrderStatusActivityByCurrentStatusSummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<WeeklyOrderStatusActivitySummaryView> listWeeklyStatusActivitySummaries(
         OrderStatus previousStatus,
         OrderStatus currentStatus,
@@ -247,6 +272,31 @@ class OrderManagementService implements OrderManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<WeeklyOrderStatusActivityByCurrentStatusSummaryView> listWeeklyStatusActivityByCurrentStatusSummaries(
+        OrderStatus previousStatus,
+        OrderStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucketAndCurrentStatus(
+            previousStatus,
+            currentStatus,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> audit.getChangedAt()
+                .atOffset(ZoneOffset.UTC)
+                .toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            WeeklyOrderStatusActivityByCurrentStatusSummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<MonthlyOrderStatusActivitySummaryView> listMonthlyStatusActivitySummaries(
         OrderStatus previousStatus,
         OrderStatus currentStatus,
@@ -264,6 +314,28 @@ class OrderManagementService implements OrderManagement {
             pageQuery,
             audit -> YearMonth.from(audit.getChangedAt().atOffset(ZoneOffset.UTC)),
             MonthlyOrderStatusActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyOrderStatusActivityByCurrentStatusSummaryView> listMonthlyStatusActivityByCurrentStatusSummaries(
+        OrderStatus previousStatus,
+        OrderStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucketAndCurrentStatus(
+            previousStatus,
+            currentStatus,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> YearMonth.from(audit.getChangedAt().atOffset(ZoneOffset.UTC)),
+            MonthlyOrderStatusActivityByCurrentStatusSummaryView::new
         );
     }
 
@@ -376,6 +448,49 @@ class OrderManagementService implements OrderManagement {
         return paginate(rows, pageQuery);
     }
 
+    private <B extends Comparable<? super B>, T> PageResult<T> summarizeStatusActivityByBucketAndCurrentStatus(
+        OrderStatus previousStatus,
+        OrderStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery,
+        StatusBucketExtractor<B> bucketExtractor,
+        StatusBucketStatusSummaryFactory<B, T> summaryFactory
+    ) {
+        String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy, "changedBy");
+        List<OrderStatusChangeAudit> audits = orderStatusChangeAuditRepository.findAllHistoryFiltered(
+            previousStatus,
+            currentStatus,
+            normalizedChangedBy,
+            changedAtFrom,
+            changedAtTo
+        );
+        Map<StatusBucketStatusKey<B>, StatusBucketSummary> summaries = new HashMap<>();
+        for (OrderStatusChangeAudit audit : audits) {
+            StatusBucketStatusKey<B> key = new StatusBucketStatusKey<>(bucketExtractor.bucket(audit), audit.getCurrentStatus());
+            StatusBucketSummary summary = summaries.computeIfAbsent(key, ignored -> new StatusBucketSummary());
+            summary.transitionCount++;
+            summary.salesOrderIds.add(audit.getSalesOrderId());
+        }
+        List<T> rows = summaries.entrySet().stream()
+            .sorted((left, right) -> {
+                int bucketComparison = right.getKey().bucket().compareTo(left.getKey().bucket());
+                if (bucketComparison != 0) {
+                    return bucketComparison;
+                }
+                return left.getKey().currentStatus().compareTo(right.getKey().currentStatus());
+            })
+            .map(entry -> summaryFactory.create(
+                entry.getKey().bucket(),
+                entry.getKey().currentStatus(),
+                entry.getValue().transitionCount,
+                entry.getValue().salesOrderIds.size()
+            ))
+            .toList();
+        return paginate(rows, pageQuery);
+    }
+
     private static <T> PageResult<T> paginate(List<T> rows, PageQuery pageQuery) {
         int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), rows.size());
         int toIndex = Math.min(fromIndex + pageQuery.size(), rows.size());
@@ -401,6 +516,13 @@ class OrderManagementService implements OrderManagement {
     private interface StatusBucketSummaryFactory<B, T> {
         T create(B bucket, long transitionCount, long orderCount);
     }
+
+    @FunctionalInterface
+    private interface StatusBucketStatusSummaryFactory<B, T> {
+        T create(B bucket, OrderStatus currentStatus, long transitionCount, long orderCount);
+    }
+
+    private record StatusBucketStatusKey<B extends Comparable<? super B>>(B bucket, OrderStatus currentStatus) {}
 
     private static final class StatusBucketSummary {
         private long transitionCount;

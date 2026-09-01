@@ -5,12 +5,15 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.orders.ChangeOrderStatusCommand;
 import com.arcanaerp.platform.orders.CreateOrderCommand;
 import com.arcanaerp.platform.orders.CreateOrderLineCommand;
+import com.arcanaerp.platform.orders.DailyOrderStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.orders.DailyOrderStatusActivitySummaryView;
+import com.arcanaerp.platform.orders.MonthlyOrderStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.orders.MonthlyOrderStatusActivitySummaryView;
 import com.arcanaerp.platform.orders.OrderManagement;
 import com.arcanaerp.platform.orders.OrderStatus;
 import com.arcanaerp.platform.orders.OrderStatusChangeView;
 import com.arcanaerp.platform.orders.OrderView;
+import com.arcanaerp.platform.orders.WeeklyOrderStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.orders.WeeklyOrderStatusActivitySummaryView;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -91,6 +94,29 @@ public class OrdersController {
         ).map(this::toDailyStatusActivitySummaryResponse);
     }
 
+    @GetMapping("/status-activity/daily-summary/by-current-status")
+    public PageResult<DailyOrderStatusActivityByCurrentStatusSummaryResponse> listDailyStatusActivityByCurrentStatusSummaries(
+        @RequestParam(required = false) String previousStatus,
+        @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return orderManagement.listDailyStatusActivityByCurrentStatusSummaries(
+            parseOptionalStatus(previousStatus, "previousStatus"),
+            parseOptionalStatus(currentStatus, "currentStatus"),
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toDailyStatusActivityByCurrentStatusSummaryResponse);
+    }
+
     @GetMapping("/status-activity/weekly-summary")
     public PageResult<WeeklyOrderStatusActivitySummaryResponse> listWeeklyStatusActivitySummaries(
         @RequestParam(required = false) String previousStatus,
@@ -114,6 +140,29 @@ public class OrdersController {
         ).map(this::toWeeklyStatusActivitySummaryResponse);
     }
 
+    @GetMapping("/status-activity/weekly-summary/by-current-status")
+    public PageResult<WeeklyOrderStatusActivityByCurrentStatusSummaryResponse> listWeeklyStatusActivityByCurrentStatusSummaries(
+        @RequestParam(required = false) String previousStatus,
+        @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return orderManagement.listWeeklyStatusActivityByCurrentStatusSummaries(
+            parseOptionalStatus(previousStatus, "previousStatus"),
+            parseOptionalStatus(currentStatus, "currentStatus"),
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toWeeklyStatusActivityByCurrentStatusSummaryResponse);
+    }
+
     @GetMapping("/status-activity/monthly-summary")
     public PageResult<MonthlyOrderStatusActivitySummaryResponse> listMonthlyStatusActivitySummaries(
         @RequestParam(required = false) String previousStatus,
@@ -135,6 +184,29 @@ public class OrdersController {
             parsedChangedAtTo,
             PageQuery.of(page, size)
         ).map(this::toMonthlyStatusActivitySummaryResponse);
+    }
+
+    @GetMapping("/status-activity/monthly-summary/by-current-status")
+    public PageResult<MonthlyOrderStatusActivityByCurrentStatusSummaryResponse> listMonthlyStatusActivityByCurrentStatusSummaries(
+        @RequestParam(required = false) String previousStatus,
+        @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return orderManagement.listMonthlyStatusActivityByCurrentStatusSummaries(
+            parseOptionalStatus(previousStatus, "previousStatus"),
+            parseOptionalStatus(currentStatus, "currentStatus"),
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toMonthlyStatusActivityByCurrentStatusSummaryResponse);
     }
 
     @PatchMapping("/{orderNumber}/status")
@@ -223,6 +295,17 @@ public class OrdersController {
         );
     }
 
+    private DailyOrderStatusActivityByCurrentStatusSummaryResponse toDailyStatusActivityByCurrentStatusSummaryResponse(
+        DailyOrderStatusActivityByCurrentStatusSummaryView view
+    ) {
+        return new DailyOrderStatusActivityByCurrentStatusSummaryResponse(
+            view.businessDate(),
+            view.currentStatus(),
+            view.transitionCount(),
+            view.orderCount()
+        );
+    }
+
     private WeeklyOrderStatusActivitySummaryResponse toWeeklyStatusActivitySummaryResponse(
         WeeklyOrderStatusActivitySummaryView view
     ) {
@@ -233,11 +316,33 @@ public class OrdersController {
         );
     }
 
+    private WeeklyOrderStatusActivityByCurrentStatusSummaryResponse toWeeklyStatusActivityByCurrentStatusSummaryResponse(
+        WeeklyOrderStatusActivityByCurrentStatusSummaryView view
+    ) {
+        return new WeeklyOrderStatusActivityByCurrentStatusSummaryResponse(
+            view.businessWeekStart(),
+            view.currentStatus(),
+            view.transitionCount(),
+            view.orderCount()
+        );
+    }
+
     private MonthlyOrderStatusActivitySummaryResponse toMonthlyStatusActivitySummaryResponse(
         MonthlyOrderStatusActivitySummaryView view
     ) {
         return new MonthlyOrderStatusActivitySummaryResponse(
             view.businessMonth(),
+            view.transitionCount(),
+            view.orderCount()
+        );
+    }
+
+    private MonthlyOrderStatusActivityByCurrentStatusSummaryResponse toMonthlyStatusActivityByCurrentStatusSummaryResponse(
+        MonthlyOrderStatusActivityByCurrentStatusSummaryView view
+    ) {
+        return new MonthlyOrderStatusActivityByCurrentStatusSummaryResponse(
+            view.businessMonth(),
+            view.currentStatus(),
             view.transitionCount(),
             view.orderCount()
         );
