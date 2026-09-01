@@ -62,6 +62,11 @@ erDiagram
     - `tenantCode` (uppercase-normalized)
     - `changedBy` (lowercase-normalized)
     - `changedAtFrom` / `changedAtTo` (ISO-8601 instant range)
+- Lifecycle activity summaries:
+  - daily, weekly, and monthly summaries bucket status transitions by UTC `changedAt`
+  - weekly buckets start on Monday
+  - summary rows include `transitionCount` and distinct `agreementCount`
+  - summary endpoints support optional `tenantCode`, `previousStatus`, `currentStatus`, `changedBy`, `changedAtFrom`, and `changedAtTo` filters
 
 ## Constraint Notes
 
@@ -76,5 +81,8 @@ erDiagram
 - `POST /api/agreements`
 - `GET /api/agreements/{agreementNumber}`
 - `GET /api/agreements?page=&size=&tenantCode=&status=`
+- `GET /api/agreements/status-activity/daily-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/agreements/status-activity/weekly-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/agreements/status-activity/monthly-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
 - `PATCH /api/agreements/{agreementNumber}/status` (request includes `status`, `tenantCode`, `reason`, `changedBy`)
 - `GET /api/agreements/{agreementNumber}/status-history?page=&size=&tenantCode=&changedBy=&changedAtFrom=&changedAtTo=`

@@ -115,4 +115,46 @@ final class AgreementsWebIntegrationTestSupport {
     ) {
         return AgreementStatusHistoryWebTestSupport.statusHistoryRequestDefault(agreementNumber, optionalNameValuePairs);
     }
+
+    static MockHttpServletRequestBuilder dailyStatusActivitySummaryRequest(
+        Integer page,
+        Integer size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest("/api/agreements/status-activity/daily-summary", page, size, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder weeklyStatusActivitySummaryRequest(
+        Integer page,
+        Integer size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest("/api/agreements/status-activity/weekly-summary", page, size, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder monthlyStatusActivitySummaryRequest(
+        Integer page,
+        Integer size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest("/api/agreements/status-activity/monthly-summary", page, size, optionalNameValuePairs);
+    }
+
+    private static MockHttpServletRequestBuilder statusActivitySummaryRequest(
+        String path,
+        Integer page,
+        Integer size,
+        String... optionalNameValuePairs
+    ) {
+        MockHttpServletRequestBuilder request = org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(path)
+            .param("page", String.valueOf(page))
+            .param("size", String.valueOf(size));
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must contain name/value pairs");
+        }
+        for (int index = 0; index < optionalNameValuePairs.length; index += 2) {
+            request.param(optionalNameValuePairs[index], optionalNameValuePairs[index + 1]);
+        }
+        return request;
+    }
 }

@@ -6,11 +6,24 @@ import com.arcanaerp.platform.agreements.AgreementStatusChangeView;
 import com.arcanaerp.platform.agreements.AgreementView;
 import com.arcanaerp.platform.agreements.ChangeAgreementStatusCommand;
 import com.arcanaerp.platform.agreements.CreateAgreementCommand;
+import com.arcanaerp.platform.agreements.DailyAgreementStatusActivitySummaryView;
+import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivitySummaryView;
+import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivitySummaryView;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.IdentityActorLookup;
 import java.time.Clock;
+import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
+import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
@@ -158,6 +171,81 @@ class AgreementManagementService implements AgreementManagement {
             ));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DailyAgreementStatusActivitySummaryView> listDailyStatusActivitySummaries(
+        String tenantCode,
+        AgreementStatus previousStatus,
+        AgreementStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucket(
+            tenantCode,
+            previousStatus,
+            currentStatus,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> audit.getChangedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            DailyAgreementStatusActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WeeklyAgreementStatusActivitySummaryView> listWeeklyStatusActivitySummaries(
+        String tenantCode,
+        AgreementStatus previousStatus,
+        AgreementStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucket(
+            tenantCode,
+            previousStatus,
+            currentStatus,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> audit.getChangedAt()
+                .atOffset(ZoneOffset.UTC)
+                .toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            WeeklyAgreementStatusActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyAgreementStatusActivitySummaryView> listMonthlyStatusActivitySummaries(
+        String tenantCode,
+        AgreementStatus previousStatus,
+        AgreementStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucket(
+            tenantCode,
+            previousStatus,
+            currentStatus,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> YearMonth.from(audit.getChangedAt().atOffset(ZoneOffset.UTC)),
+            MonthlyAgreementStatusActivitySummaryView::new
+        );
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");
@@ -202,5 +290,74 @@ class AgreementManagementService implements AgreementManagement {
             agreement.getActivatedAt(),
             agreement.getTerminatedAt()
         );
+    }
+
+    private <B extends Comparable<? super B>, T> PageResult<T> summarizeStatusActivityByBucket(
+        String tenantCode,
+        AgreementStatus previousStatus,
+        AgreementStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery,
+        StatusBucketExtractor<B> bucketExtractor,
+        StatusBucketSummaryFactory<B, T> summaryFactory
+    ) {
+        String normalizedTenantCode = normalizeOptionalTenantCode(tenantCode);
+        String normalizedChangedBy = normalizeOptionalChangedBy(changedBy);
+        List<AgreementStatusChangeAudit> audits = agreementStatusChangeAuditRepository.findAllHistoryFiltered(
+            normalizedTenantCode,
+            previousStatus,
+            currentStatus,
+            normalizedChangedBy,
+            changedAtFrom,
+            changedAtTo
+        );
+        TreeMap<B, StatusBucketSummary> summaries = new TreeMap<>(java.util.Comparator.reverseOrder());
+        for (AgreementStatusChangeAudit audit : audits) {
+            B bucket = bucketExtractor.bucket(audit);
+            StatusBucketSummary summary = summaries.computeIfAbsent(bucket, ignored -> new StatusBucketSummary());
+            summary.transitionCount++;
+            summary.agreementIds.add(audit.getAgreementId());
+        }
+        List<T> rows = summaries.entrySet().stream()
+            .map(entry -> summaryFactory.create(
+                entry.getKey(),
+                entry.getValue().transitionCount,
+                entry.getValue().agreementIds.size()
+            ))
+            .toList();
+        return paginate(rows, pageQuery);
+    }
+
+    private static <T> PageResult<T> paginate(List<T> rows, PageQuery pageQuery) {
+        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), rows.size());
+        int toIndex = Math.min(fromIndex + pageQuery.size(), rows.size());
+        List<T> pageRows = new ArrayList<>(rows.subList(fromIndex, toIndex));
+        int totalPages = rows.isEmpty() ? 0 : (int) Math.ceil((double) rows.size() / pageQuery.size());
+        return new PageResult<>(
+            pageRows,
+            pageQuery.page(),
+            pageQuery.size(),
+            rows.size(),
+            totalPages,
+            pageQuery.page() + 1 < totalPages,
+            pageQuery.page() > 0 && !rows.isEmpty()
+        );
+    }
+
+    @FunctionalInterface
+    private interface StatusBucketExtractor<B> {
+        B bucket(AgreementStatusChangeAudit audit);
+    }
+
+    @FunctionalInterface
+    private interface StatusBucketSummaryFactory<B, T> {
+        T create(B bucket, long transitionCount, long agreementCount);
+    }
+
+    private static final class StatusBucketSummary {
+        private long transitionCount;
+        private final Set<UUID> agreementIds = new HashSet<>();
     }
 }

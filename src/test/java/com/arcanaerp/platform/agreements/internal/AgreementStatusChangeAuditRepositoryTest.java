@@ -114,4 +114,45 @@ class AgreementStatusChangeAuditRepositoryTest {
         assertThat(rangeFiltered.getTotalElements()).isEqualTo(1);
         assertThat(rangeFiltered.getContent().get(0).getCurrentStatus()).isEqualTo(AgreementStatus.TERMINATED);
     }
+
+    @Test
+    void listsGlobalStatusHistoryForActivitySummariesWithFilters() {
+        UUID tenantAAgreementId = UUID.randomUUID();
+        UUID tenantBAgreementId = UUID.randomUUID();
+        agreementStatusChangeAuditRepository.save(
+            AgreementStatusChangeAudit.create(
+                tenantAAgreementId,
+                AgreementStatus.DRAFT,
+                AgreementStatus.ACTIVE,
+                "TENANT01",
+                "First activation",
+                "actor.one@arcanaerp.com",
+                Instant.parse("2026-03-01T01:00:00Z")
+            )
+        );
+        agreementStatusChangeAuditRepository.save(
+            AgreementStatusChangeAudit.create(
+                tenantBAgreementId,
+                AgreementStatus.DRAFT,
+                AgreementStatus.TERMINATED,
+                "TENANT02",
+                "Termination",
+                "actor.two@arcanaerp.com",
+                Instant.parse("2026-03-02T01:00:00Z")
+            )
+        );
+
+        var audits = agreementStatusChangeAuditRepository.findAllHistoryFiltered(
+            "TENANT01",
+            AgreementStatus.DRAFT,
+            AgreementStatus.ACTIVE,
+            "actor.one@arcanaerp.com",
+            Instant.parse("2026-03-01T00:00:00Z"),
+            Instant.parse("2026-03-01T23:59:59Z")
+        );
+
+        assertThat(audits)
+            .extracting(AgreementStatusChangeAudit::getAgreementId)
+            .containsExactly(tenantAAgreementId);
+    }
 }

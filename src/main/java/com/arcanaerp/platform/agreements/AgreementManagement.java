@@ -24,4 +24,34 @@ public interface AgreementManagement {
         Instant changedAtTo,
         PageQuery pageQuery
     );
+
+    PageResult<DailyAgreementStatusActivitySummaryView> listDailyStatusActivitySummaries(
+        String tenantCode,
+        AgreementStatus previousStatus,
+        AgreementStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<WeeklyAgreementStatusActivitySummaryView> listWeeklyStatusActivitySummaries(
+        String tenantCode,
+        AgreementStatus previousStatus,
+        AgreementStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<MonthlyAgreementStatusActivitySummaryView> listMonthlyStatusActivitySummaries(
+        String tenantCode,
+        AgreementStatus previousStatus,
+        AgreementStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
 }
