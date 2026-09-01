@@ -44,6 +44,7 @@ class AgreementsControllerIntegrationTest {
     void createsAgreement() throws Exception {
         String payload = """
             {
+              "tenantCode": " tenant-agreements ",
               "agreementNumber": " agr-3000 ",
               "name": "  Master Services Agreement ",
               "agreementType": "service",
@@ -55,6 +56,7 @@ class AgreementsControllerIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload))
             .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.tenantCode").value("TENANT-AGREEMENTS"))
             .andExpect(jsonPath("$.agreementNumber").value("AGR-3000"))
             .andExpect(jsonPath("$.name").value("Master Services Agreement"))
             .andExpect(jsonPath("$.agreementType").value("SERVICE"))
@@ -69,6 +71,7 @@ class AgreementsControllerIntegrationTest {
     void returnsErrorEnvelopeForDuplicateAgreementNumber() throws Exception {
         String payload = """
             {
+              "tenantCode": "tenant-agreements",
               "agreementNumber": "agr-3001",
               "name": "Master Services Agreement",
               "agreementType": "service",
@@ -95,6 +98,7 @@ class AgreementsControllerIntegrationTest {
     void getsAgreementByAgreementNumber() throws Exception {
         String payload = """
             {
+              "tenantCode": "tenant-agreements",
               "agreementNumber": "agr-3004",
               "name": "Read Agreement",
               "agreementType": "service",
@@ -109,6 +113,7 @@ class AgreementsControllerIntegrationTest {
 
         mockMvc.perform(AgreementsWebIntegrationTestSupport.getAgreementRequest("agr-3004"))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$.tenantCode").value("TENANT-AGREEMENTS"))
             .andExpect(jsonPath("$.agreementNumber").value("AGR-3004"))
             .andExpect(jsonPath("$.name").value("Read Agreement"))
             .andExpect(jsonPath("$.agreementType").value("SERVICE"))
@@ -130,6 +135,9 @@ class AgreementsControllerIntegrationTest {
     void listsAgreementsWithOptionalStatusFilter() throws Exception {
 
         AgreementsIntegrationTestSupport.createAgreement(mockMvc, "agr-3010", "Draft Agreement");
+
+        AgreementsWebIntegrationTestSupport.createAgreement(mockMvc, "tenant-agreements-alt", "agr-3013", "Other Tenant Agreement")
+            .andExpect(status().isCreated());
 
         AgreementsIntegrationTestSupport.createAgreement(mockMvc, "agr-3011", "Active Agreement");
 
@@ -165,6 +173,16 @@ class AgreementsControllerIntegrationTest {
             .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3010')].status", hasItem("DRAFT")))
             .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3011')].status", hasItem("ACTIVE")))
             .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3012')].status", hasItem("TERMINATED")));
+
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.listAgreementsRequest(0, 100, "tenant-agreements", null))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3010')].tenantCode", hasItem("TENANT-AGREEMENTS")))
+            .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3013')]").isEmpty());
+
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.listAgreementsRequest(0, 100, "tenant-agreements", "ACTIVE"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3011')].status", hasItem("ACTIVE")))
+            .andExpect(jsonPath("$.items[?(@.agreementNumber=='AGR-3010')]").isEmpty());
 
         mockMvc.perform(AgreementsWebIntegrationTestSupport.listAgreementsRequest(0, 100, "ACTIVE"))
             .andExpect(status().isOk())
@@ -393,6 +411,16 @@ class AgreementsControllerIntegrationTest {
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.message").value("status query parameter must not be blank"))
+            .andExpect(jsonPath("$.path").value("/api/agreements"));
+    }
+
+    @Test
+    void rejectsBlankAgreementTenantFilter() throws Exception {
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.listAgreementsRequest(0, 10, "   ", null))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("Bad Request"))
+            .andExpect(jsonPath("$.message").value("tenantCode query parameter must not be blank"))
             .andExpect(jsonPath("$.path").value("/api/agreements"));
     }
 

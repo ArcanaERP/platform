@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record AgreementResponse(
     UUID id,
+    String tenantCode,
     String agreementNumber,
     String name,
     String agreementType,

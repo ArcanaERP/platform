@@ -40,6 +40,7 @@ class AgreementManagementService implements AgreementManagement {
 
         Agreement agreement = agreementRepository.save(
             Agreement.create(
+                command.tenantCode(),
                 normalizedAgreementNumber,
                 command.name(),
                 command.agreementType(),
@@ -103,9 +104,24 @@ class AgreementManagementService implements AgreementManagement {
     @Override
     @Transactional(readOnly = true)
     public PageResult<AgreementView> listAgreements(PageQuery pageQuery, AgreementStatus status) {
-        Page<Agreement> agreements = status == null
-            ? agreementRepository.findAll(pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt")))
-            : agreementRepository.findByStatus(status, pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt")));
+        return listAgreements(null, pageQuery, status);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<AgreementView> listAgreements(String tenantCode, PageQuery pageQuery, AgreementStatus status) {
+        String normalizedTenantCode = normalizeOptionalTenantCode(tenantCode);
+        var pageable = pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Agreement> agreements;
+        if (normalizedTenantCode == null && status == null) {
+            agreements = agreementRepository.findAll(pageable);
+        } else if (normalizedTenantCode == null) {
+            agreements = agreementRepository.findByStatus(status, pageable);
+        } else if (status == null) {
+            agreements = agreementRepository.findByTenantCode(normalizedTenantCode, pageable);
+        } else {
+            agreements = agreementRepository.findByTenantCodeAndStatus(normalizedTenantCode, status, pageable);
+        }
         return PageResult.from(agreements).map(this::toView);
     }
 
@@ -176,6 +192,7 @@ class AgreementManagementService implements AgreementManagement {
     private AgreementView toView(Agreement agreement) {
         return new AgreementView(
             agreement.getId(),
+            agreement.getTenantCode(),
             agreement.getAgreementNumber(),
             agreement.getName(),
             agreement.getAgreementType(),

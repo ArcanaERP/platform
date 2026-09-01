@@ -35,6 +35,7 @@ public class AgreementsController {
     public AgreementResponse createAgreement(@Valid @RequestBody CreateAgreementRequest request) {
         AgreementView agreement = agreementManagement.createAgreement(
             new CreateAgreementCommand(
+                request.tenantCode(),
                 request.agreementNumber(),
                 request.name(),
                 request.agreementType(),
@@ -53,9 +54,14 @@ public class AgreementsController {
     public PageResult<AgreementResponse> listAgreements(
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size,
+        @RequestParam(required = false) String tenantCode,
         @RequestParam(required = false) String status
     ) {
-        return agreementManagement.listAgreements(PageQuery.of(page, size), parseOptionalStatus(status)).map(this::toResponse);
+        return agreementManagement.listAgreements(
+            normalizeOptionalTenantCode(tenantCode),
+            PageQuery.of(page, size),
+            parseOptionalStatus(status)
+        ).map(this::toResponse);
     }
 
     @GetMapping("/{agreementNumber}/status-history")
@@ -102,6 +108,7 @@ public class AgreementsController {
     private AgreementResponse toResponse(AgreementView agreement) {
         return new AgreementResponse(
                 agreement.id(),
+                agreement.tenantCode(),
                 agreement.agreementNumber(),
                 agreement.name(),
                 agreement.agreementType(),

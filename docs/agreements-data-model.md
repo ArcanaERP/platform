@@ -8,6 +8,7 @@ Updated: 2026-04-25
 erDiagram
     AGREEMENTS {
       UUID id PK
+      STRING tenantCode
       STRING agreementNumber UK
       STRING name
       STRING agreementType
@@ -33,6 +34,7 @@ erDiagram
 ## Relationship Notes
 
 - This initial `agreements` slice models a single aggregate (`Agreement`) with no external entity links.
+- `tenantCode` is normalized to uppercase and currently scopes list queries.
 - `agreementNumber` is the external business identifier and is normalized to uppercase.
 - `agreementNumber` is also the direct-read lookup key for `GET /api/agreements/{agreementNumber}`.
 - `agreementType` is stored as an uppercase normalized string for consistent filtering/parity expansion.
@@ -53,7 +55,7 @@ erDiagram
   - history rows include `tenantCode`, `reason`, and normalized-lowercase `changedBy`
   - no-op transitions (`ACTIVE -> ACTIVE`, etc.) do not append history rows
 - Listing/query behavior:
-  - agreements list endpoint supports optional `status` filter (`DRAFT`, `ACTIVE`, `TERMINATED`)
+  - agreements list endpoint supports optional `tenantCode` and `status` filters (`DRAFT`, `ACTIVE`, `TERMINATED`)
   - list results are sorted by `createdAt DESC`
   - status-history results are sorted by `changedAt DESC`
   - status-history supports optional filters:
@@ -64,7 +66,7 @@ erDiagram
 ## Constraint Notes
 
 - Unique constraints:
-  - `agreements(agreementNumber)`
+  - `agreements(agreementNumber)` remains globally unique during this early iteration
 - Indexes:
   - `agreement_status_change_audits(agreementId, changedAt)`
   - `agreement_status_change_audits(agreementId, tenantCode, changedAt)`
@@ -73,6 +75,6 @@ erDiagram
 
 - `POST /api/agreements`
 - `GET /api/agreements/{agreementNumber}`
-- `GET /api/agreements?page=&size=&status=`
+- `GET /api/agreements?page=&size=&tenantCode=&status=`
 - `PATCH /api/agreements/{agreementNumber}/status` (request includes `status`, `tenantCode`, `reason`, `changedBy`)
 - `GET /api/agreements/{agreementNumber}/status-history?page=&size=&tenantCode=&changedBy=&changedAtFrom=&changedAtTo=`

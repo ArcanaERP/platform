@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record AgreementView(
     UUID id,
+    String tenantCode,
     String agreementNumber,
     String name,
     String agreementType,

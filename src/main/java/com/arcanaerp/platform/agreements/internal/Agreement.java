@@ -29,6 +29,9 @@ class Agreement {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(nullable = false, length = 32)
+    private String tenantCode;
+
     @Column(nullable = false, length = 64)
     private String agreementNumber;
 
@@ -54,6 +57,7 @@ class Agreement {
 
     private Agreement(
         UUID id,
+        String tenantCode,
         String agreementNumber,
         String name,
         String agreementType,
@@ -64,6 +68,7 @@ class Agreement {
         Instant terminatedAt
     ) {
         this.id = id;
+        this.tenantCode = tenantCode;
         this.agreementNumber = agreementNumber;
         this.name = name;
         this.agreementType = agreementType;
@@ -75,6 +80,7 @@ class Agreement {
     }
 
     static Agreement create(
+        String tenantCode,
         String agreementNumber,
         String name,
         String agreementType,
@@ -90,6 +96,7 @@ class Agreement {
 
         return new Agreement(
             null,
+            normalizeRequired(tenantCode, "tenantCode").toUpperCase(),
             normalizeRequired(agreementNumber, "agreementNumber").toUpperCase(),
             normalizeRequired(name, "name"),
             normalizeRequired(agreementType, "agreementType").toUpperCase(),

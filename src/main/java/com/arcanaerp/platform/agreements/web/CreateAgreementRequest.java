@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 
 public record CreateAgreementRequest(
+    @NotBlank String tenantCode,
     @NotBlank String agreementNumber,
     @NotBlank String name,
     @NotBlank String agreementType,

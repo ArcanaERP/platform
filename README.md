@@ -289,7 +289,7 @@ Agreements:
 
 - `POST /api/agreements`
 - `GET /api/agreements/{agreementNumber}`
-- `GET /api/agreements?page=&size=&status=`
+- `GET /api/agreements?page=&size=&tenantCode=&status=`
 - `PATCH /api/agreements/{agreementNumber}/status` (request includes `status`, `tenantCode`, `reason`, `changedBy`)
 - `GET /api/agreements/{agreementNumber}/status-history?page=&size=&tenantCode=&changedBy=&changedAtFrom=&changedAtTo=`
 

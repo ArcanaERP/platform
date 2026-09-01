@@ -12,6 +12,8 @@ public interface AgreementManagement {
 
     PageResult<AgreementView> listAgreements(PageQuery pageQuery, AgreementStatus status);
 
+    PageResult<AgreementView> listAgreements(String tenantCode, PageQuery pageQuery, AgreementStatus status);
+
     AgreementView changeAgreementStatus(ChangeAgreementStatusCommand command);
 
     PageResult<AgreementStatusChangeView> listStatusHistory(

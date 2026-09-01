@@ -17,8 +17,16 @@ final class AgreementsWebIntegrationTestSupport {
         return AgreementCatalogWebTestSupport.createAgreement(mockMvc, agreementNumber, name);
     }
 
+    static ResultActions createAgreement(MockMvc mockMvc, String tenantCode, String agreementNumber, String name) throws Exception {
+        return AgreementCatalogWebTestSupport.createAgreement(mockMvc, tenantCode, agreementNumber, name);
+    }
+
     static String createAgreementPayload(String agreementNumber, String name) {
         return AgreementCatalogWebTestSupport.createAgreementPayload(agreementNumber, name);
+    }
+
+    static String createAgreementPayload(String tenantCode, String agreementNumber, String name) {
+        return AgreementCatalogWebTestSupport.createAgreementPayload(tenantCode, agreementNumber, name);
     }
 
     static MockHttpServletRequestBuilder getAgreementRequest(String agreementNumber) {
@@ -31,6 +39,15 @@ final class AgreementsWebIntegrationTestSupport {
 
     static MockHttpServletRequestBuilder listAgreementsRequest(Integer page, Integer size, String status) {
         return AgreementCatalogWebTestSupport.listAgreementsRequest(page, size, status);
+    }
+
+    static MockHttpServletRequestBuilder listAgreementsRequest(
+        Integer page,
+        Integer size,
+        String tenantCode,
+        String status
+    ) {
+        return AgreementCatalogWebTestSupport.listAgreementsRequest(page, size, tenantCode, status);
     }
 
     static ResultActions transitionAgreementStatus(

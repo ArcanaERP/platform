@@ -12,6 +12,7 @@ class AgreementDomainTest {
     @Test
     void createNormalizesAgreementFields() {
         Agreement agreement = Agreement.create(
+            "tenant-agreements",
             "  agr-1000 ",
             "  Master Supply Agreement ",
             " purchase ",
@@ -19,6 +20,7 @@ class AgreementDomainTest {
             Instant.parse("2026-03-01T01:00:00Z")
         );
 
+        assertThat(agreement.getTenantCode()).isEqualTo("TENANT-AGREEMENTS");
         assertThat(agreement.getAgreementNumber()).isEqualTo("AGR-1000");
         assertThat(agreement.getName()).isEqualTo("Master Supply Agreement");
         assertThat(agreement.getAgreementType()).isEqualTo("PURCHASE");
@@ -29,6 +31,7 @@ class AgreementDomainTest {
     void createRejectsMissingEffectiveFrom() {
         assertThatThrownBy(() ->
             Agreement.create(
+                "tenant-agreements",
                 "AGR-1001",
                 "Master Supply Agreement",
                 "PURCHASE",
@@ -44,6 +47,7 @@ class AgreementDomainTest {
     void createRejectsBlankName() {
         assertThatThrownBy(() ->
             Agreement.create(
+                "tenant-agreements",
                 "AGR-1002",
                 "   ",
                 "PURCHASE",
@@ -58,6 +62,7 @@ class AgreementDomainTest {
     @Test
     void transitionAllowsDraftToActive() {
         Agreement agreement = Agreement.create(
+            "tenant-agreements",
             "AGR-1003",
             "Master Supply Agreement",
             "PURCHASE",
@@ -76,6 +81,7 @@ class AgreementDomainTest {
     @Test
     void transitionAllowsActiveToTerminated() {
         Agreement agreement = Agreement.create(
+            "tenant-agreements",
             "AGR-1004",
             "Master Supply Agreement",
             "PURCHASE",
@@ -95,6 +101,7 @@ class AgreementDomainTest {
     @Test
     void transitionRejectsTerminatedToActive() {
         Agreement agreement = Agreement.create(
+            "tenant-agreements",
             "AGR-1005",
             "Master Supply Agreement",
             "PURCHASE",

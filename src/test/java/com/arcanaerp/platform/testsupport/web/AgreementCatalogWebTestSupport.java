@@ -10,25 +10,41 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 public final class AgreementCatalogWebTestSupport {
 
+    public static final String DEFAULT_AGREEMENT_TENANT = "tenant-agreements";
+
     private AgreementCatalogWebTestSupport() {}
 
     public static ResultActions createAgreement(MockMvc mockMvc, String agreementNumber, String name) throws Exception {
+        return createAgreement(mockMvc, DEFAULT_AGREEMENT_TENANT, agreementNumber, name);
+    }
+
+    public static ResultActions createAgreement(
+        MockMvc mockMvc,
+        String tenantCode,
+        String agreementNumber,
+        String name
+    ) throws Exception {
         return mockMvc.perform(
             post("/api/agreements")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(createAgreementPayload(agreementNumber, name))
+                .content(createAgreementPayload(tenantCode, agreementNumber, name))
         );
     }
 
     public static String createAgreementPayload(String agreementNumber, String name) {
+        return createAgreementPayload(DEFAULT_AGREEMENT_TENANT, agreementNumber, name);
+    }
+
+    public static String createAgreementPayload(String tenantCode, String agreementNumber, String name) {
         return """
             {
+              "tenantCode": "%s",
               "agreementNumber": "%s",
               "name": "%s",
               "agreementType": "service",
               "effectiveFrom": "2026-03-01T00:00:00Z"
             }
-            """.formatted(agreementNumber, name);
+            """.formatted(tenantCode, agreementNumber, name);
     }
 
     public static MockHttpServletRequestBuilder listAgreementsRequest(int page, int size) {
@@ -41,6 +57,19 @@ public final class AgreementCatalogWebTestSupport {
         MockHttpServletRequestBuilder request = listAgreementsRequest(page, size);
         if (status != null) {
             request.param("status", status);
+        }
+        return request;
+    }
+
+    public static MockHttpServletRequestBuilder listAgreementsRequest(
+        int page,
+        int size,
+        String tenantCode,
+        String status
+    ) {
+        MockHttpServletRequestBuilder request = listAgreementsRequest(page, size, status);
+        if (tenantCode != null) {
+            request.param("tenantCode", tenantCode);
         }
         return request;
     }

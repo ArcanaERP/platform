@@ -11,5 +11,9 @@ interface AgreementRepository extends JpaRepository<Agreement, UUID> {
 
     Optional<Agreement> findByAgreementNumber(String agreementNumber);
 
+    Page<Agreement> findByTenantCode(String tenantCode, Pageable pageable);
+
     Page<Agreement> findByStatus(AgreementStatus status, Pageable pageable);
+
+    Page<Agreement> findByTenantCodeAndStatus(String tenantCode, AgreementStatus status, Pageable pageable);
 }
