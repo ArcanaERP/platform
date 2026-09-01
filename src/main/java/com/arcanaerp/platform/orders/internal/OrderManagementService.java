@@ -204,6 +204,7 @@ class OrderManagementService implements OrderManagement {
     @Override
     @Transactional(readOnly = true)
     public PageResult<DailyOrderStatusActivitySummaryView> listDailyStatusActivitySummaries(
+        String tenantCode,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
         String changedBy,
@@ -212,6 +213,7 @@ class OrderManagementService implements OrderManagement {
         PageQuery pageQuery
     ) {
         return summarizeStatusActivityByBucket(
+            tenantCode,
             previousStatus,
             currentStatus,
             changedBy,
@@ -226,6 +228,7 @@ class OrderManagementService implements OrderManagement {
     @Override
     @Transactional(readOnly = true)
     public PageResult<DailyOrderStatusActivityByCurrentStatusSummaryView> listDailyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
         String changedBy,
@@ -234,6 +237,7 @@ class OrderManagementService implements OrderManagement {
         PageQuery pageQuery
     ) {
         return summarizeStatusActivityByBucketAndCurrentStatus(
+            tenantCode,
             previousStatus,
             currentStatus,
             changedBy,
@@ -248,6 +252,7 @@ class OrderManagementService implements OrderManagement {
     @Override
     @Transactional(readOnly = true)
     public PageResult<WeeklyOrderStatusActivitySummaryView> listWeeklyStatusActivitySummaries(
+        String tenantCode,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
         String changedBy,
@@ -256,6 +261,7 @@ class OrderManagementService implements OrderManagement {
         PageQuery pageQuery
     ) {
         return summarizeStatusActivityByBucket(
+            tenantCode,
             previousStatus,
             currentStatus,
             changedBy,
@@ -273,6 +279,7 @@ class OrderManagementService implements OrderManagement {
     @Override
     @Transactional(readOnly = true)
     public PageResult<WeeklyOrderStatusActivityByCurrentStatusSummaryView> listWeeklyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
         String changedBy,
@@ -281,6 +288,7 @@ class OrderManagementService implements OrderManagement {
         PageQuery pageQuery
     ) {
         return summarizeStatusActivityByBucketAndCurrentStatus(
+            tenantCode,
             previousStatus,
             currentStatus,
             changedBy,
@@ -298,6 +306,7 @@ class OrderManagementService implements OrderManagement {
     @Override
     @Transactional(readOnly = true)
     public PageResult<MonthlyOrderStatusActivitySummaryView> listMonthlyStatusActivitySummaries(
+        String tenantCode,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
         String changedBy,
@@ -306,6 +315,7 @@ class OrderManagementService implements OrderManagement {
         PageQuery pageQuery
     ) {
         return summarizeStatusActivityByBucket(
+            tenantCode,
             previousStatus,
             currentStatus,
             changedBy,
@@ -320,6 +330,7 @@ class OrderManagementService implements OrderManagement {
     @Override
     @Transactional(readOnly = true)
     public PageResult<MonthlyOrderStatusActivityByCurrentStatusSummaryView> listMonthlyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
         String changedBy,
@@ -328,6 +339,7 @@ class OrderManagementService implements OrderManagement {
         PageQuery pageQuery
     ) {
         return summarizeStatusActivityByBucketAndCurrentStatus(
+            tenantCode,
             previousStatus,
             currentStatus,
             changedBy,
@@ -414,6 +426,7 @@ class OrderManagementService implements OrderManagement {
     }
 
     private <B extends Comparable<? super B>, T> PageResult<T> summarizeStatusActivityByBucket(
+        String tenantCode,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
         String changedBy,
@@ -423,8 +436,10 @@ class OrderManagementService implements OrderManagement {
         StatusBucketExtractor<B> bucketExtractor,
         StatusBucketSummaryFactory<B, T> summaryFactory
     ) {
+        String normalizedTenantCode = tenantCode == null ? null : normalizeRequired(tenantCode, "tenantCode").toUpperCase();
         String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy, "changedBy");
         List<OrderStatusChangeAudit> audits = orderStatusChangeAuditRepository.findAllHistoryFiltered(
+            normalizedTenantCode,
             previousStatus,
             currentStatus,
             normalizedChangedBy,
@@ -449,6 +464,7 @@ class OrderManagementService implements OrderManagement {
     }
 
     private <B extends Comparable<? super B>, T> PageResult<T> summarizeStatusActivityByBucketAndCurrentStatus(
+        String tenantCode,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
         String changedBy,
@@ -458,8 +474,10 @@ class OrderManagementService implements OrderManagement {
         StatusBucketExtractor<B> bucketExtractor,
         StatusBucketStatusSummaryFactory<B, T> summaryFactory
     ) {
+        String normalizedTenantCode = tenantCode == null ? null : normalizeRequired(tenantCode, "tenantCode").toUpperCase();
         String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy, "changedBy");
         List<OrderStatusChangeAudit> audits = orderStatusChangeAuditRepository.findAllHistoryFiltered(
+            normalizedTenantCode,
             previousStatus,
             currentStatus,
             normalizedChangedBy,

@@ -73,6 +73,7 @@ public class OrdersController {
 
     @GetMapping("/status-activity/daily-summary")
     public PageResult<DailyOrderStatusActivitySummaryResponse> listDailyStatusActivitySummaries(
+        @RequestParam(required = false) String tenantCode,
         @RequestParam(required = false) String previousStatus,
         @RequestParam(required = false) String currentStatus,
         @RequestParam(required = false) String changedBy,
@@ -85,6 +86,7 @@ public class OrdersController {
         Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
         validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
         return orderManagement.listDailyStatusActivitySummaries(
+            normalizeOptional(tenantCode, "tenantCode"),
             parseOptionalStatus(previousStatus, "previousStatus"),
             parseOptionalStatus(currentStatus, "currentStatus"),
             normalizeOptionalChangedBy(changedBy),
@@ -96,6 +98,7 @@ public class OrdersController {
 
     @GetMapping("/status-activity/daily-summary/by-current-status")
     public PageResult<DailyOrderStatusActivityByCurrentStatusSummaryResponse> listDailyStatusActivityByCurrentStatusSummaries(
+        @RequestParam(required = false) String tenantCode,
         @RequestParam(required = false) String previousStatus,
         @RequestParam(required = false) String currentStatus,
         @RequestParam(required = false) String changedBy,
@@ -108,6 +111,7 @@ public class OrdersController {
         Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
         validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
         return orderManagement.listDailyStatusActivityByCurrentStatusSummaries(
+            normalizeOptional(tenantCode, "tenantCode"),
             parseOptionalStatus(previousStatus, "previousStatus"),
             parseOptionalStatus(currentStatus, "currentStatus"),
             normalizeOptionalChangedBy(changedBy),
@@ -119,6 +123,7 @@ public class OrdersController {
 
     @GetMapping("/status-activity/weekly-summary")
     public PageResult<WeeklyOrderStatusActivitySummaryResponse> listWeeklyStatusActivitySummaries(
+        @RequestParam(required = false) String tenantCode,
         @RequestParam(required = false) String previousStatus,
         @RequestParam(required = false) String currentStatus,
         @RequestParam(required = false) String changedBy,
@@ -131,6 +136,7 @@ public class OrdersController {
         Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
         validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
         return orderManagement.listWeeklyStatusActivitySummaries(
+            normalizeOptional(tenantCode, "tenantCode"),
             parseOptionalStatus(previousStatus, "previousStatus"),
             parseOptionalStatus(currentStatus, "currentStatus"),
             normalizeOptionalChangedBy(changedBy),
@@ -142,6 +148,7 @@ public class OrdersController {
 
     @GetMapping("/status-activity/weekly-summary/by-current-status")
     public PageResult<WeeklyOrderStatusActivityByCurrentStatusSummaryResponse> listWeeklyStatusActivityByCurrentStatusSummaries(
+        @RequestParam(required = false) String tenantCode,
         @RequestParam(required = false) String previousStatus,
         @RequestParam(required = false) String currentStatus,
         @RequestParam(required = false) String changedBy,
@@ -154,6 +161,7 @@ public class OrdersController {
         Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
         validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
         return orderManagement.listWeeklyStatusActivityByCurrentStatusSummaries(
+            normalizeOptional(tenantCode, "tenantCode"),
             parseOptionalStatus(previousStatus, "previousStatus"),
             parseOptionalStatus(currentStatus, "currentStatus"),
             normalizeOptionalChangedBy(changedBy),
@@ -165,6 +173,7 @@ public class OrdersController {
 
     @GetMapping("/status-activity/monthly-summary")
     public PageResult<MonthlyOrderStatusActivitySummaryResponse> listMonthlyStatusActivitySummaries(
+        @RequestParam(required = false) String tenantCode,
         @RequestParam(required = false) String previousStatus,
         @RequestParam(required = false) String currentStatus,
         @RequestParam(required = false) String changedBy,
@@ -177,6 +186,7 @@ public class OrdersController {
         Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
         validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
         return orderManagement.listMonthlyStatusActivitySummaries(
+            normalizeOptional(tenantCode, "tenantCode"),
             parseOptionalStatus(previousStatus, "previousStatus"),
             parseOptionalStatus(currentStatus, "currentStatus"),
             normalizeOptionalChangedBy(changedBy),
@@ -188,6 +198,7 @@ public class OrdersController {
 
     @GetMapping("/status-activity/monthly-summary/by-current-status")
     public PageResult<MonthlyOrderStatusActivityByCurrentStatusSummaryResponse> listMonthlyStatusActivityByCurrentStatusSummaries(
+        @RequestParam(required = false) String tenantCode,
         @RequestParam(required = false) String previousStatus,
         @RequestParam(required = false) String currentStatus,
         @RequestParam(required = false) String changedBy,
@@ -200,6 +211,7 @@ public class OrdersController {
         Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
         validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
         return orderManagement.listMonthlyStatusActivityByCurrentStatusSummaries(
+            normalizeOptional(tenantCode, "tenantCode"),
             parseOptionalStatus(previousStatus, "previousStatus"),
             parseOptionalStatus(currentStatus, "currentStatus"),
             normalizeOptionalChangedBy(changedBy),

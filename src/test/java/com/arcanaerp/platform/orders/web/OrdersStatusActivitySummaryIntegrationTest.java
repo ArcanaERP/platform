@@ -31,6 +31,7 @@ class OrdersStatusActivitySummaryIntegrationTest {
     @Test
     void readsDailyWeeklyAndMonthlyStatusActivitySummariesAtWebBoundary() throws Exception {
         seedStatusTransition(
+            "tenant-order-act",
             "so-osact-001",
             "arc-osact-001",
             "CONFIRMED",
@@ -39,6 +40,7 @@ class OrdersStatusActivitySummaryIntegrationTest {
             "agent01@orders.com"
         );
         seedStatusTransition(
+            "tenant-order-act",
             "so-osact-002",
             "arc-osact-002",
             "CANCELLED",
@@ -47,6 +49,7 @@ class OrdersStatusActivitySummaryIntegrationTest {
             "agent02@orders.com"
         );
         seedStatusTransition(
+            "tenant-order-act",
             "so-osact-003",
             "arc-osact-003",
             "CONFIRMED",
@@ -54,11 +57,21 @@ class OrdersStatusActivitySummaryIntegrationTest {
             "Expedite fulfillment",
             "agent01@orders.com"
         );
+        seedStatusTransition(
+            "tenant-other-order-act",
+            "so-osact-004",
+            "arc-osact-004",
+            "CONFIRMED",
+            Instant.parse("2026-05-06T12:00:00Z"),
+            "Other tenant",
+            "agent01@orders.com"
+        );
 
         mockMvc.perform(
             OrdersWebIntegrationTestSupport.dailyStatusActivitySummaryRequest(
                 0,
                 10,
+                "tenantCode", "tenant-order-act",
                 "changedAtFrom", "2026-04-01T00:00:00Z",
                 "changedAtTo", "2026-05-31T23:59:59Z"
             )
@@ -75,6 +88,7 @@ class OrdersStatusActivitySummaryIntegrationTest {
             OrdersWebIntegrationTestSupport.weeklyStatusActivitySummaryRequest(
                 0,
                 10,
+                "tenantCode", "tenant-order-act",
                 "changedAtFrom", "2026-04-01T00:00:00Z",
                 "changedAtTo", "2026-05-31T23:59:59Z"
             )
@@ -90,6 +104,7 @@ class OrdersStatusActivitySummaryIntegrationTest {
             OrdersWebIntegrationTestSupport.monthlyStatusActivitySummaryRequest(
                 0,
                 10,
+                "tenantCode", "tenant-order-act",
                 "currentStatus", "CONFIRMED",
                 "changedBy", "AGENT01@ORDERS.COM",
                 "changedAtFrom", "2026-04-01T00:00:00Z",
@@ -105,6 +120,7 @@ class OrdersStatusActivitySummaryIntegrationTest {
             OrdersWebIntegrationTestSupport.dailyStatusActivityByCurrentStatusSummaryRequest(
                 0,
                 10,
+                "tenantCode", "tenant-order-act",
                 "changedAtFrom", "2026-04-01T00:00:00Z",
                 "changedAtTo", "2026-05-31T23:59:59Z"
             )
@@ -124,6 +140,7 @@ class OrdersStatusActivitySummaryIntegrationTest {
             OrdersWebIntegrationTestSupport.weeklyStatusActivityByCurrentStatusSummaryRequest(
                 0,
                 10,
+                "tenantCode", "tenant-order-act",
                 "changedAtFrom", "2026-04-01T00:00:00Z",
                 "changedAtTo", "2026-05-31T23:59:59Z"
             )
@@ -141,6 +158,7 @@ class OrdersStatusActivitySummaryIntegrationTest {
             OrdersWebIntegrationTestSupport.monthlyStatusActivityByCurrentStatusSummaryRequest(
                 0,
                 10,
+                "tenantCode", "tenant-order-act",
                 "currentStatus", "CONFIRMED",
                 "changedBy", "AGENT01@ORDERS.COM",
                 "changedAtFrom", "2026-04-01T00:00:00Z",
@@ -158,6 +176,7 @@ class OrdersStatusActivitySummaryIntegrationTest {
     @Test
     void paginatesStatusActivitySummaryBuckets() throws Exception {
         seedStatusTransition(
+            "tenant-order-act-page",
             "so-osact-pg-001",
             "arc-osact-pg-001",
             "CONFIRMED",
@@ -166,6 +185,7 @@ class OrdersStatusActivitySummaryIntegrationTest {
             "agent01@orders.com"
         );
         seedStatusTransition(
+            "tenant-order-act-page",
             "so-osact-pg-002",
             "arc-osact-pg-002",
             "CANCELLED",
@@ -178,6 +198,7 @@ class OrdersStatusActivitySummaryIntegrationTest {
             OrdersWebIntegrationTestSupport.dailyStatusActivitySummaryRequest(
                 0,
                 1,
+                "tenantCode", "tenant-order-act-page",
                 "changedAtFrom", "2026-06-01T00:00:00Z",
                 "changedAtTo", "2026-07-31T23:59:59Z"
             )
@@ -195,6 +216,7 @@ class OrdersStatusActivitySummaryIntegrationTest {
             OrdersWebIntegrationTestSupport.dailyStatusActivitySummaryRequest(
                 1,
                 1,
+                "tenantCode", "tenant-order-act-page",
                 "changedAtFrom", "2026-06-01T00:00:00Z",
                 "changedAtTo", "2026-07-31T23:59:59Z"
             )
@@ -212,6 +234,7 @@ class OrdersStatusActivitySummaryIntegrationTest {
             OrdersWebIntegrationTestSupport.dailyStatusActivityByCurrentStatusSummaryRequest(
                 0,
                 1,
+                "tenantCode", "tenant-order-act-page",
                 "changedAtFrom", "2026-06-01T00:00:00Z",
                 "changedAtTo", "2026-07-31T23:59:59Z"
             )
@@ -228,6 +251,7 @@ class OrdersStatusActivitySummaryIntegrationTest {
     }
 
     private void seedStatusTransition(
+        String tenantCode,
         String orderNumber,
         String sku,
         String targetStatus,
@@ -242,9 +266,21 @@ class OrdersStatusActivitySummaryIntegrationTest {
             "Order Status Activity Category"
         )
             .andExpect(status().isCreated());
-        OrdersWebIntegrationTestSupport.createSingleLineOrder(mockMvc, orderNumber, sku, "activity@orders.arcanaerp.com")
+        OrdersWebIntegrationTestSupport.createSingleLineOrder(
+            mockMvc,
+            tenantCode,
+            orderNumber,
+            sku,
+            "activity@orders.arcanaerp.com"
+        )
             .andExpect(status().isCreated());
 
+        OrdersWebIntegrationTestSupport.registerActorAllowingDuplicate(
+            mockMvc,
+            tenantCode,
+            changedBy,
+            "Order Status Actor"
+        );
         testClock.setInstant(changedAt);
         OrdersWebIntegrationTestSupport.transitionOrderStatus(mockMvc, orderNumber, targetStatus, reason, changedBy)
             .andExpect(status().isOk())

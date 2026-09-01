@@ -134,6 +134,16 @@ final class OrdersWebIntegrationTestSupport {
         );
     }
 
+    static void registerActorAllowingDuplicate(MockMvc mockMvc, String tenantCode, String email, String displayName) throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            tenantCode,
+            email,
+            "Order Tenant",
+            displayName
+        );
+    }
+
     static ResultActions setProductActive(
         MockMvc mockMvc,
         String sku,

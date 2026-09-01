@@ -27,6 +27,7 @@ public interface OrderManagement {
     );
 
     PageResult<DailyOrderStatusActivitySummaryView> listDailyStatusActivitySummaries(
+        String tenantCode,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
         String changedBy,
@@ -36,6 +37,7 @@ public interface OrderManagement {
     );
 
     PageResult<DailyOrderStatusActivityByCurrentStatusSummaryView> listDailyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
         String changedBy,
@@ -45,6 +47,7 @@ public interface OrderManagement {
     );
 
     PageResult<WeeklyOrderStatusActivitySummaryView> listWeeklyStatusActivitySummaries(
+        String tenantCode,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
         String changedBy,
@@ -54,6 +57,7 @@ public interface OrderManagement {
     );
 
     PageResult<WeeklyOrderStatusActivityByCurrentStatusSummaryView> listWeeklyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
         String changedBy,
@@ -63,6 +67,7 @@ public interface OrderManagement {
     );
 
     PageResult<MonthlyOrderStatusActivitySummaryView> listMonthlyStatusActivitySummaries(
+        String tenantCode,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
         String changedBy,
@@ -72,6 +77,7 @@ public interface OrderManagement {
     );
 
     PageResult<MonthlyOrderStatusActivityByCurrentStatusSummaryView> listMonthlyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
         OrderStatus previousStatus,
         OrderStatus currentStatus,
         String changedBy,

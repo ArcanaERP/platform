@@ -17,6 +17,9 @@ class OrderStatusChangeAuditRepositoryTest {
     @Autowired
     private OrderStatusChangeAuditRepository orderStatusChangeAuditRepository;
 
+    @Autowired
+    private SalesOrderRepository salesOrderRepository;
+
     @Test
     void listsStatusChangesForOrderOrderedByChangedAtDesc() {
         UUID salesOrderId = UUID.randomUUID();
@@ -124,8 +127,8 @@ class OrderStatusChangeAuditRepositoryTest {
 
     @Test
     void listsGlobalStatusHistoryForActivitySummariesWithFilters() {
-        UUID firstOrderId = UUID.randomUUID();
-        UUID secondOrderId = UUID.randomUUID();
+        UUID firstOrderId = saveOrder("tenant-a", "so-osca-tenant-a").getId();
+        UUID secondOrderId = saveOrder("tenant-b", "so-osca-tenant-b").getId();
         orderStatusChangeAuditRepository.save(
             OrderStatusChangeAudit.create(
                 firstOrderId,
@@ -148,6 +151,7 @@ class OrderStatusChangeAuditRepositoryTest {
         );
 
         var audits = orderStatusChangeAuditRepository.findAllHistoryFiltered(
+            "TENANT-B",
             null,
             OrderStatus.CANCELLED,
             "agent02@orders.com",
@@ -158,5 +162,18 @@ class OrderStatusChangeAuditRepositoryTest {
         assertThat(audits).hasSize(1);
         assertThat(audits.get(0).getSalesOrderId()).isEqualTo(secondOrderId);
         assertThat(audits.get(0).getCurrentStatus()).isEqualTo(OrderStatus.CANCELLED);
+    }
+
+    private SalesOrder saveOrder(String tenantCode, String orderNumber) {
+        return salesOrderRepository.save(
+            SalesOrder.create(
+                tenantCode,
+                orderNumber,
+                "buyer@orders.com",
+                "USD",
+                java.math.BigDecimal.TEN,
+                Instant.parse("2026-04-01T00:00:00Z")
+            )
+        );
     }
 }

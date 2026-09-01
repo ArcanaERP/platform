@@ -39,8 +39,10 @@ interface OrderStatusChangeAuditRepository extends JpaRepository<OrderStatusChan
     @Query(
         """
         select audit
-        from OrderStatusChangeAudit audit
-        where (:previousStatus is null or audit.previousStatus = :previousStatus)
+        from OrderStatusChangeAudit audit, SalesOrder salesOrder
+        where salesOrder.id = audit.salesOrderId
+          and (:tenantCode is null or salesOrder.tenantCode = :tenantCode)
+          and (:previousStatus is null or audit.previousStatus = :previousStatus)
           and (:currentStatus is null or audit.currentStatus = :currentStatus)
           and (:changedBy is null or audit.changedBy = :changedBy)
           and (:changedAtFrom is null or audit.changedAt >= :changedAtFrom)
@@ -48,6 +50,7 @@ interface OrderStatusChangeAuditRepository extends JpaRepository<OrderStatusChan
         """
     )
     List<OrderStatusChangeAudit> findAllHistoryFiltered(
+        @Param("tenantCode") String tenantCode,
         @Param("previousStatus") OrderStatus previousStatus,
         @Param("currentStatus") OrderStatus currentStatus,
         @Param("changedBy") String changedBy,
