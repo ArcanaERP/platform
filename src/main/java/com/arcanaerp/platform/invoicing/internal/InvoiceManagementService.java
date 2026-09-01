@@ -5,13 +5,16 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.IdentityActorLookup;
 import com.arcanaerp.platform.invoicing.ChangeInvoiceStatusCommand;
 import com.arcanaerp.platform.invoicing.CreateInvoiceCommand;
+import com.arcanaerp.platform.invoicing.DailyInvoiceStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.invoicing.DailyInvoiceStatusActivitySummaryView;
 import com.arcanaerp.platform.invoicing.InvoiceLineView;
 import com.arcanaerp.platform.invoicing.InvoiceManagement;
 import com.arcanaerp.platform.invoicing.InvoiceStatus;
 import com.arcanaerp.platform.invoicing.InvoiceStatusChangeView;
 import com.arcanaerp.platform.invoicing.InvoiceView;
+import com.arcanaerp.platform.invoicing.MonthlyInvoiceStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.invoicing.MonthlyInvoiceStatusActivitySummaryView;
+import com.arcanaerp.platform.invoicing.WeeklyInvoiceStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.invoicing.WeeklyInvoiceStatusActivitySummaryView;
 import com.arcanaerp.platform.orders.OrderManagement;
 import com.arcanaerp.platform.orders.OrderLineView;
@@ -211,6 +214,30 @@ class InvoiceManagementService implements InvoiceManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<DailyInvoiceStatusActivityByCurrentStatusSummaryView> listDailyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
+        InvoiceStatus previousStatus,
+        InvoiceStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucketAndCurrentStatus(
+            tenantCode,
+            previousStatus,
+            currentStatus,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> audit.getChangedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            DailyInvoiceStatusActivityByCurrentStatusSummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<WeeklyInvoiceStatusActivitySummaryView> listWeeklyStatusActivitySummaries(
         String tenantCode,
         InvoiceStatus previousStatus,
@@ -238,6 +265,33 @@ class InvoiceManagementService implements InvoiceManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<WeeklyInvoiceStatusActivityByCurrentStatusSummaryView> listWeeklyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
+        InvoiceStatus previousStatus,
+        InvoiceStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucketAndCurrentStatus(
+            tenantCode,
+            previousStatus,
+            currentStatus,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> audit.getChangedAt()
+                .atOffset(ZoneOffset.UTC)
+                .toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            WeeklyInvoiceStatusActivityByCurrentStatusSummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<MonthlyInvoiceStatusActivitySummaryView> listMonthlyStatusActivitySummaries(
         String tenantCode,
         InvoiceStatus previousStatus,
@@ -257,6 +311,30 @@ class InvoiceManagementService implements InvoiceManagement {
             pageQuery,
             audit -> YearMonth.from(audit.getChangedAt().atOffset(ZoneOffset.UTC)),
             MonthlyInvoiceStatusActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyInvoiceStatusActivityByCurrentStatusSummaryView> listMonthlyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
+        InvoiceStatus previousStatus,
+        InvoiceStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucketAndCurrentStatus(
+            tenantCode,
+            previousStatus,
+            currentStatus,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> YearMonth.from(audit.getChangedAt().atOffset(ZoneOffset.UTC)),
+            MonthlyInvoiceStatusActivityByCurrentStatusSummaryView::new
         );
     }
 
@@ -365,6 +443,52 @@ class InvoiceManagementService implements InvoiceManagement {
         return paginate(rows, pageQuery);
     }
 
+    private <B extends Comparable<? super B>, T> PageResult<T> summarizeStatusActivityByBucketAndCurrentStatus(
+        String tenantCode,
+        InvoiceStatus previousStatus,
+        InvoiceStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery,
+        StatusBucketExtractor<B> bucketExtractor,
+        StatusBucketStatusSummaryFactory<B, T> summaryFactory
+    ) {
+        String normalizedTenantCode = normalizeOptional(tenantCode);
+        String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy, "changedBy");
+        List<InvoiceStatusChangeAudit> audits = invoiceStatusChangeAuditRepository.findAllHistoryFiltered(
+            normalizedTenantCode,
+            previousStatus,
+            currentStatus,
+            normalizedChangedBy,
+            changedAtFrom,
+            changedAtTo
+        );
+        Map<StatusBucketStatusKey<B>, StatusBucketSummary> summaries = new HashMap<>();
+        for (InvoiceStatusChangeAudit audit : audits) {
+            StatusBucketStatusKey<B> key = new StatusBucketStatusKey<>(bucketExtractor.bucket(audit), audit.getCurrentStatus());
+            StatusBucketSummary summary = summaries.computeIfAbsent(key, ignored -> new StatusBucketSummary());
+            summary.transitionCount++;
+            summary.invoiceIds.add(audit.getInvoiceId());
+        }
+        List<T> rows = summaries.entrySet().stream()
+            .sorted((left, right) -> {
+                int bucketComparison = right.getKey().bucket().compareTo(left.getKey().bucket());
+                if (bucketComparison != 0) {
+                    return bucketComparison;
+                }
+                return left.getKey().currentStatus().compareTo(right.getKey().currentStatus());
+            })
+            .map(entry -> summaryFactory.create(
+                entry.getKey().bucket(),
+                entry.getKey().currentStatus(),
+                entry.getValue().transitionCount,
+                entry.getValue().invoiceIds.size()
+            ))
+            .toList();
+        return paginate(rows, pageQuery);
+    }
+
     private static <T> PageResult<T> paginate(List<T> rows, PageQuery pageQuery) {
         int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), rows.size());
         int toIndex = Math.min(fromIndex + pageQuery.size(), rows.size());
@@ -390,6 +514,13 @@ class InvoiceManagementService implements InvoiceManagement {
     private interface StatusBucketSummaryFactory<B, T> {
         T create(B bucket, long transitionCount, long invoiceCount);
     }
+
+    @FunctionalInterface
+    private interface StatusBucketStatusSummaryFactory<B, T> {
+        T create(B bucket, InvoiceStatus currentStatus, long transitionCount, long invoiceCount);
+    }
+
+    private record StatusBucketStatusKey<B extends Comparable<? super B>>(B bucket, InvoiceStatus currentStatus) {}
 
     private static final class StatusBucketSummary {
         private long transitionCount;

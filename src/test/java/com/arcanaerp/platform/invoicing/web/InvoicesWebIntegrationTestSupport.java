@@ -159,12 +159,28 @@ final class InvoicesWebIntegrationTestSupport {
         return statusActivitySummaryRequest("daily", page, size, optionalNameValuePairs);
     }
 
+    static MockHttpServletRequestBuilder dailyStatusActivityByCurrentStatusSummaryRequest(
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivityByCurrentStatusSummaryRequest("daily", page, size, optionalNameValuePairs);
+    }
+
     static MockHttpServletRequestBuilder weeklyStatusActivitySummaryRequest(
         int page,
         int size,
         String... optionalNameValuePairs
     ) {
         return statusActivitySummaryRequest("weekly", page, size, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder weeklyStatusActivityByCurrentStatusSummaryRequest(
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivityByCurrentStatusSummaryRequest("weekly", page, size, optionalNameValuePairs);
     }
 
     static MockHttpServletRequestBuilder monthlyStatusActivitySummaryRequest(
@@ -175,6 +191,14 @@ final class InvoicesWebIntegrationTestSupport {
         return statusActivitySummaryRequest("monthly", page, size, optionalNameValuePairs);
     }
 
+    static MockHttpServletRequestBuilder monthlyStatusActivityByCurrentStatusSummaryRequest(
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivityByCurrentStatusSummaryRequest("monthly", page, size, optionalNameValuePairs);
+    }
+
     private static MockHttpServletRequestBuilder statusActivitySummaryRequest(
         String bucket,
         int page,
@@ -182,6 +206,28 @@ final class InvoicesWebIntegrationTestSupport {
         String... optionalNameValuePairs
     ) {
         MockHttpServletRequestBuilder request = get("/api/invoices/status-activity/" + bucket + "-summary")
+            .param("page", String.valueOf(page))
+            .param("size", String.valueOf(size));
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must have an even number of elements");
+        }
+        for (int index = 0; index < optionalNameValuePairs.length; index += 2) {
+            String name = optionalNameValuePairs[index];
+            String value = optionalNameValuePairs[index + 1];
+            if (value != null) {
+                request.param(name, value);
+            }
+        }
+        return request;
+    }
+
+    private static MockHttpServletRequestBuilder statusActivityByCurrentStatusSummaryRequest(
+        String bucket,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        MockHttpServletRequestBuilder request = get("/api/invoices/status-activity/" + bucket + "-summary/by-current-status")
             .param("page", String.valueOf(page))
             .param("size", String.valueOf(size));
         if (optionalNameValuePairs.length % 2 != 0) {

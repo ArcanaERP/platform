@@ -4,13 +4,16 @@ import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.invoicing.ChangeInvoiceStatusCommand;
 import com.arcanaerp.platform.invoicing.CreateInvoiceCommand;
+import com.arcanaerp.platform.invoicing.DailyInvoiceStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.invoicing.DailyInvoiceStatusActivitySummaryView;
 import com.arcanaerp.platform.invoicing.InvoiceLineView;
 import com.arcanaerp.platform.invoicing.InvoiceManagement;
 import com.arcanaerp.platform.invoicing.InvoiceStatus;
 import com.arcanaerp.platform.invoicing.InvoiceStatusChangeView;
 import com.arcanaerp.platform.invoicing.InvoiceView;
+import com.arcanaerp.platform.invoicing.MonthlyInvoiceStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.invoicing.MonthlyInvoiceStatusActivitySummaryView;
+import com.arcanaerp.platform.invoicing.WeeklyInvoiceStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.invoicing.WeeklyInvoiceStatusActivitySummaryView;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -95,6 +98,31 @@ public class InvoicesController {
         ).map(this::toDailyStatusActivitySummaryResponse);
     }
 
+    @GetMapping("/status-activity/daily-summary/by-current-status")
+    public PageResult<DailyInvoiceStatusActivityByCurrentStatusSummaryResponse> listDailyStatusActivityByCurrentStatusSummaries(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String previousStatus,
+        @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return invoiceManagement.listDailyStatusActivityByCurrentStatusSummaries(
+            normalizeOptional(tenantCode, "tenantCode"),
+            parseOptionalStatus(previousStatus, "previousStatus"),
+            parseOptionalStatus(currentStatus, "currentStatus"),
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toDailyStatusActivityByCurrentStatusSummaryResponse);
+    }
+
     @GetMapping("/status-activity/weekly-summary")
     public PageResult<WeeklyInvoiceStatusActivitySummaryResponse> listWeeklyStatusActivitySummaries(
         @RequestParam(required = false) String tenantCode,
@@ -120,6 +148,31 @@ public class InvoicesController {
         ).map(this::toWeeklyStatusActivitySummaryResponse);
     }
 
+    @GetMapping("/status-activity/weekly-summary/by-current-status")
+    public PageResult<WeeklyInvoiceStatusActivityByCurrentStatusSummaryResponse> listWeeklyStatusActivityByCurrentStatusSummaries(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String previousStatus,
+        @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return invoiceManagement.listWeeklyStatusActivityByCurrentStatusSummaries(
+            normalizeOptional(tenantCode, "tenantCode"),
+            parseOptionalStatus(previousStatus, "previousStatus"),
+            parseOptionalStatus(currentStatus, "currentStatus"),
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toWeeklyStatusActivityByCurrentStatusSummaryResponse);
+    }
+
     @GetMapping("/status-activity/monthly-summary")
     public PageResult<MonthlyInvoiceStatusActivitySummaryResponse> listMonthlyStatusActivitySummaries(
         @RequestParam(required = false) String tenantCode,
@@ -143,6 +196,31 @@ public class InvoicesController {
             parsedChangedAtTo,
             PageQuery.of(page, size)
         ).map(this::toMonthlyStatusActivitySummaryResponse);
+    }
+
+    @GetMapping("/status-activity/monthly-summary/by-current-status")
+    public PageResult<MonthlyInvoiceStatusActivityByCurrentStatusSummaryResponse> listMonthlyStatusActivityByCurrentStatusSummaries(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String previousStatus,
+        @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return invoiceManagement.listMonthlyStatusActivityByCurrentStatusSummaries(
+            normalizeOptional(tenantCode, "tenantCode"),
+            parseOptionalStatus(previousStatus, "previousStatus"),
+            parseOptionalStatus(currentStatus, "currentStatus"),
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toMonthlyStatusActivityByCurrentStatusSummaryResponse);
     }
 
     @PatchMapping("/{invoiceNumber}/status")
@@ -234,6 +312,17 @@ public class InvoicesController {
         );
     }
 
+    private DailyInvoiceStatusActivityByCurrentStatusSummaryResponse toDailyStatusActivityByCurrentStatusSummaryResponse(
+        DailyInvoiceStatusActivityByCurrentStatusSummaryView view
+    ) {
+        return new DailyInvoiceStatusActivityByCurrentStatusSummaryResponse(
+            view.businessDate(),
+            view.currentStatus(),
+            view.transitionCount(),
+            view.invoiceCount()
+        );
+    }
+
     private WeeklyInvoiceStatusActivitySummaryResponse toWeeklyStatusActivitySummaryResponse(
         WeeklyInvoiceStatusActivitySummaryView view
     ) {
@@ -244,11 +333,33 @@ public class InvoicesController {
         );
     }
 
+    private WeeklyInvoiceStatusActivityByCurrentStatusSummaryResponse toWeeklyStatusActivityByCurrentStatusSummaryResponse(
+        WeeklyInvoiceStatusActivityByCurrentStatusSummaryView view
+    ) {
+        return new WeeklyInvoiceStatusActivityByCurrentStatusSummaryResponse(
+            view.businessWeekStart(),
+            view.currentStatus(),
+            view.transitionCount(),
+            view.invoiceCount()
+        );
+    }
+
     private MonthlyInvoiceStatusActivitySummaryResponse toMonthlyStatusActivitySummaryResponse(
         MonthlyInvoiceStatusActivitySummaryView view
     ) {
         return new MonthlyInvoiceStatusActivitySummaryResponse(
             view.businessMonth(),
+            view.transitionCount(),
+            view.invoiceCount()
+        );
+    }
+
+    private MonthlyInvoiceStatusActivityByCurrentStatusSummaryResponse toMonthlyStatusActivityByCurrentStatusSummaryResponse(
+        MonthlyInvoiceStatusActivityByCurrentStatusSummaryView view
+    ) {
+        return new MonthlyInvoiceStatusActivityByCurrentStatusSummaryResponse(
+            view.businessMonth(),
+            view.currentStatus(),
             view.transitionCount(),
             view.invoiceCount()
         );

@@ -122,6 +122,66 @@ class InvoicesStatusActivitySummaryIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(2))
             .andExpect(jsonPath("$.items[0].businessMonth").value("2026-05"))
             .andExpect(jsonPath("$.items[1].businessMonth").value("2026-04"));
+
+        mockMvc.perform(
+            InvoicesWebIntegrationTestSupport.dailyStatusActivityByCurrentStatusSummaryRequest(
+                0,
+                10,
+                "tenantCode", "tenant-inv-act",
+                "changedAtFrom", "2026-04-01T00:00:00Z",
+                "changedAtTo", "2026-05-31T23:59:59Z"
+            )
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(4))
+            .andExpect(jsonPath("$.items[0].businessDate").value("2026-05-05"))
+            .andExpect(jsonPath("$.items[0].currentStatus").value("VOID"))
+            .andExpect(jsonPath("$.items[0].transitionCount").value(1))
+            .andExpect(jsonPath("$.items[0].invoiceCount").value(1))
+            .andExpect(jsonPath("$.items[1].businessDate").value("2026-05-04"))
+            .andExpect(jsonPath("$.items[1].currentStatus").value("ISSUED"))
+            .andExpect(jsonPath("$.items[2].businessDate").value("2026-04-23"))
+            .andExpect(jsonPath("$.items[2].currentStatus").value("VOID"))
+            .andExpect(jsonPath("$.items[3].businessDate").value("2026-04-22"))
+            .andExpect(jsonPath("$.items[3].currentStatus").value("ISSUED"));
+
+        mockMvc.perform(
+            InvoicesWebIntegrationTestSupport.weeklyStatusActivityByCurrentStatusSummaryRequest(
+                0,
+                10,
+                "tenantCode", "tenant-inv-act",
+                "changedAtFrom", "2026-04-01T00:00:00Z",
+                "changedAtTo", "2026-05-31T23:59:59Z"
+            )
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(4))
+            .andExpect(jsonPath("$.items[0].businessWeekStart").value("2026-05-04"))
+            .andExpect(jsonPath("$.items[0].currentStatus").value("ISSUED"))
+            .andExpect(jsonPath("$.items[1].businessWeekStart").value("2026-05-04"))
+            .andExpect(jsonPath("$.items[1].currentStatus").value("VOID"))
+            .andExpect(jsonPath("$.items[2].businessWeekStart").value("2026-04-20"))
+            .andExpect(jsonPath("$.items[2].currentStatus").value("ISSUED"))
+            .andExpect(jsonPath("$.items[3].businessWeekStart").value("2026-04-20"))
+            .andExpect(jsonPath("$.items[3].currentStatus").value("VOID"));
+
+        mockMvc.perform(
+            InvoicesWebIntegrationTestSupport.monthlyStatusActivityByCurrentStatusSummaryRequest(
+                0,
+                10,
+                "tenantCode", "tenant-inv-act",
+                "currentStatus", "ISSUED",
+                "changedBy", "AGENT01@INVOICES.COM",
+                "changedAtFrom", "2026-04-01T00:00:00Z",
+                "changedAtTo", "2026-05-31T23:59:59Z"
+            )
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessMonth").value("2026-05"))
+            .andExpect(jsonPath("$.items[0].currentStatus").value("ISSUED"))
+            .andExpect(jsonPath("$.items[1].businessMonth").value("2026-04"))
+            .andExpect(jsonPath("$.items[1].currentStatus").value("ISSUED"));
     }
 
     @Test
@@ -182,6 +242,25 @@ class InvoicesStatusActivitySummaryIntegrationTest {
             .andExpect(jsonPath("$.hasNext").value(false))
             .andExpect(jsonPath("$.hasPrevious").value(true))
             .andExpect(jsonPath("$.items[0].businessDate").value("2026-06-22"));
+
+        mockMvc.perform(
+            InvoicesWebIntegrationTestSupport.dailyStatusActivityByCurrentStatusSummaryRequest(
+                0,
+                1,
+                "tenantCode", "tenant-inv-act-page",
+                "changedAtFrom", "2026-06-01T00:00:00Z",
+                "changedAtTo", "2026-07-31T23:59:59Z"
+            )
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.page").value(0))
+            .andExpect(jsonPath("$.size").value(1))
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.totalPages").value(2))
+            .andExpect(jsonPath("$.hasNext").value(true))
+            .andExpect(jsonPath("$.hasPrevious").value(false))
+            .andExpect(jsonPath("$.items[0].businessDate").value("2026-07-04"))
+            .andExpect(jsonPath("$.items[0].currentStatus").value("VOID"));
     }
 
     private void seedIssuedThenVoidedInvoice(

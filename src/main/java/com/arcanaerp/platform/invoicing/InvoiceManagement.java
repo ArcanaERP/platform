@@ -41,6 +41,16 @@ public interface InvoiceManagement {
         PageQuery pageQuery
     );
 
+    PageResult<DailyInvoiceStatusActivityByCurrentStatusSummaryView> listDailyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
+        InvoiceStatus previousStatus,
+        InvoiceStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<WeeklyInvoiceStatusActivitySummaryView> listWeeklyStatusActivitySummaries(
         String tenantCode,
         InvoiceStatus previousStatus,
@@ -51,7 +61,27 @@ public interface InvoiceManagement {
         PageQuery pageQuery
     );
 
+    PageResult<WeeklyInvoiceStatusActivityByCurrentStatusSummaryView> listWeeklyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
+        InvoiceStatus previousStatus,
+        InvoiceStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<MonthlyInvoiceStatusActivitySummaryView> listMonthlyStatusActivitySummaries(
+        String tenantCode,
+        InvoiceStatus previousStatus,
+        InvoiceStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<MonthlyInvoiceStatusActivityByCurrentStatusSummaryView> listMonthlyStatusActivityByCurrentStatusSummaries(
         String tenantCode,
         InvoiceStatus previousStatus,
         InvoiceStatus currentStatus,
