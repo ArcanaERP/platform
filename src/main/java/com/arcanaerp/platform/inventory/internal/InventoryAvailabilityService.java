@@ -3,17 +3,20 @@ package com.arcanaerp.platform.inventory.internal;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.AdjustInventoryCommand;
+import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivitySummaryView;
 import com.arcanaerp.platform.inventory.DuplicateTransferReversalException;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
+import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivitySummaryView;
 import com.arcanaerp.platform.inventory.ReverseInventoryTransferCommand;
 import com.arcanaerp.platform.inventory.ReversalIdempotencyPayloadConflictException;
 import com.arcanaerp.platform.inventory.ReversalIdempotencyRaceConflictException;
 import com.arcanaerp.platform.inventory.InventoryTransferView;
 import com.arcanaerp.platform.inventory.TransferInventoryCommand;
+import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivitySummaryView;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -28,6 +31,7 @@ import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -579,6 +583,53 @@ class InventoryAvailabilityService implements InventoryAvailability {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<DailyInventoryAdjustmentActivityByLocationSummaryView> listDailyAdjustmentActivityByLocationSummaries(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeAdjustmentActivityByBucketAndLocation(
+            sku,
+            locationCode,
+            adjustedBy,
+            adjustedAtFrom,
+            adjustedAtTo,
+            pageQuery,
+            adjustment -> adjustment.getAdjustedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            DailyInventoryAdjustmentActivityByLocationSummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WeeklyInventoryAdjustmentActivityByLocationSummaryView> listWeeklyAdjustmentActivityByLocationSummaries(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeAdjustmentActivityByBucketAndLocation(
+            sku,
+            locationCode,
+            adjustedBy,
+            adjustedAtFrom,
+            adjustedAtTo,
+            pageQuery,
+            adjustment -> adjustment.getAdjustedAt()
+                .atOffset(ZoneOffset.UTC)
+                .toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            WeeklyInventoryAdjustmentActivityByLocationSummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<MonthlyInventoryAdjustmentActivitySummaryView> listMonthlyAdjustmentActivitySummaries(
         String sku,
         String locationCode,
@@ -596,6 +647,28 @@ class InventoryAvailabilityService implements InventoryAvailability {
             pageQuery,
             adjustment -> YearMonth.from(adjustment.getAdjustedAt().atOffset(ZoneOffset.UTC)),
             MonthlyInventoryAdjustmentActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyInventoryAdjustmentActivityByLocationSummaryView> listMonthlyAdjustmentActivityByLocationSummaries(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeAdjustmentActivityByBucketAndLocation(
+            sku,
+            locationCode,
+            adjustedBy,
+            adjustedAtFrom,
+            adjustedAtTo,
+            pageQuery,
+            adjustment -> YearMonth.from(adjustment.getAdjustedAt().atOffset(ZoneOffset.UTC)),
+            MonthlyInventoryAdjustmentActivityByLocationSummaryView::new
         );
     }
 
@@ -638,6 +711,56 @@ class InventoryAvailabilityService implements InventoryAvailability {
         return paginate(rows, pageQuery);
     }
 
+    private <B extends Comparable<? super B>, T> PageResult<T> summarizeAdjustmentActivityByBucketAndLocation(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery,
+        AdjustmentBucketExtractor<B> bucketExtractor,
+        AdjustmentBucketLocationSummaryFactory<B, T> summaryFactory
+    ) {
+        String normalizedSku = normalizeRequired(sku, "sku").toUpperCase();
+        ensureSkuExists(normalizedSku);
+        String normalizedLocationCode = normalizeOptionalLocationCodeFilter(locationCode, "locationCode");
+        String normalizedAdjustedBy = adjustedBy == null ? null : normalizeRequired(adjustedBy, "adjustedBy").toLowerCase();
+        List<InventoryAdjustment> adjustments = inventoryAdjustmentRepository.findSkuHistoryRowsFiltered(
+            normalizedSku,
+            normalizedLocationCode,
+            normalizedAdjustedBy,
+            adjustedAtFrom,
+            adjustedAtTo
+        );
+        Map<AdjustmentBucketLocationKey<B>, AdjustmentBucketSummary> summaries = new java.util.HashMap<>();
+        for (InventoryAdjustment adjustment : adjustments) {
+            AdjustmentBucketLocationKey<B> key = new AdjustmentBucketLocationKey<>(
+                bucketExtractor.bucket(adjustment),
+                adjustment.getLocationCode()
+            );
+            AdjustmentBucketSummary summary = summaries.computeIfAbsent(key, ignored -> new AdjustmentBucketSummary());
+            summary.adjustmentCount++;
+            summary.netQuantityDelta = summary.netQuantityDelta.add(adjustment.getQuantityDelta());
+        }
+        List<T> rows = summaries.entrySet().stream()
+            .sorted((left, right) -> {
+                int bucketComparison = right.getKey().bucket().compareTo(left.getKey().bucket());
+                if (bucketComparison != 0) {
+                    return bucketComparison;
+                }
+                return left.getKey().locationCode().compareTo(right.getKey().locationCode());
+            })
+            .map(entry -> summaryFactory.create(
+                normalizedSku,
+                entry.getKey().bucket(),
+                entry.getKey().locationCode(),
+                entry.getValue().adjustmentCount,
+                entry.getValue().netQuantityDelta
+            ))
+            .toList();
+        return paginate(rows, pageQuery);
+    }
+
     private static <T> PageResult<T> paginate(List<T> rows, PageQuery pageQuery) {
         int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), rows.size());
         int toIndex = Math.min(fromIndex + pageQuery.size(), rows.size());
@@ -662,6 +785,14 @@ class InventoryAvailabilityService implements InventoryAvailability {
     @FunctionalInterface
     private interface AdjustmentBucketSummaryFactory<B, T> {
         T create(String sku, String locationCode, B bucket, long adjustmentCount, BigDecimal netQuantityDelta);
+    }
+
+    @FunctionalInterface
+    private interface AdjustmentBucketLocationSummaryFactory<B, T> {
+        T create(String sku, B bucket, String locationCode, long adjustmentCount, BigDecimal netQuantityDelta);
+    }
+
+    private record AdjustmentBucketLocationKey<B extends Comparable<? super B>>(B bucket, String locationCode) {
     }
 
     private static final class AdjustmentBucketSummary {

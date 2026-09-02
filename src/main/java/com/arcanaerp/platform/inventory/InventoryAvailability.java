@@ -49,6 +49,15 @@ public interface InventoryAvailability {
         PageQuery pageQuery
     );
 
+    PageResult<DailyInventoryAdjustmentActivityByLocationSummaryView> listDailyAdjustmentActivityByLocationSummaries(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<WeeklyInventoryAdjustmentActivitySummaryView> listWeeklyAdjustmentActivitySummaries(
         String sku,
         String locationCode,
@@ -58,7 +67,25 @@ public interface InventoryAvailability {
         PageQuery pageQuery
     );
 
+    PageResult<WeeklyInventoryAdjustmentActivityByLocationSummaryView> listWeeklyAdjustmentActivityByLocationSummaries(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<MonthlyInventoryAdjustmentActivitySummaryView> listMonthlyAdjustmentActivitySummaries(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<MonthlyInventoryAdjustmentActivityByLocationSummaryView> listMonthlyAdjustmentActivityByLocationSummaries(
         String sku,
         String locationCode,
         String adjustedBy,

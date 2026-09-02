@@ -305,6 +305,99 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void readsDailyWeeklyAndMonthlyAdjustmentActivitySummariesByLocation() throws Exception {
+        InventoryItem mainItem = inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9241",
+                "main",
+                new BigDecimal("20"),
+                SEED_INSTANT
+            )
+        );
+        InventoryItem eastItem = inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9241",
+                "wh-east",
+                new BigDecimal("5"),
+                SEED_INSTANT
+            )
+        );
+        InventoryItem westItem = inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9241",
+                "wh-west",
+                new BigDecimal("7"),
+                SEED_INSTANT
+            )
+        );
+        seedAdjustment(mainItem, "20", "-3", "17", "Cycle count correction", "ops-a@arcanaerp.com", "2027-03-01T01:00:00Z");
+        seedAdjustment(eastItem, "5", "6", "11", "East receiving", "ops-b@arcanaerp.com", "2027-03-01T02:00:00Z");
+        seedAdjustment(westItem, "7", "4", "11", "West receiving", "ops-b@arcanaerp.com", "2027-03-08T03:00:00Z");
+
+        mockMvc.perform(get("/api/inventory/{sku}/adjustment-activity/daily-summary/by-location", "arc-9241")
+            .param("adjustedAtFrom", "2027-03-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-03-31T23:59:59Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].businessDate").value("2027-03-08"))
+            .andExpect(jsonPath("$.items[0].locationCode").value("WH-WEST"))
+            .andExpect(jsonPath("$.items[0].netQuantityDelta").value(4))
+            .andExpect(jsonPath("$.items[1].businessDate").value("2027-03-01"))
+            .andExpect(jsonPath("$.items[1].locationCode").value("MAIN"))
+            .andExpect(jsonPath("$.items[2].businessDate").value("2027-03-01"))
+            .andExpect(jsonPath("$.items[2].locationCode").value("WH-EAST"));
+
+        mockMvc.perform(get("/api/inventory/{sku}/adjustment-activity/weekly-summary/by-location", "arc-9241")
+            .param("adjustedAtFrom", "2027-03-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-03-31T23:59:59Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].businessWeekStart").value("2027-03-08"))
+            .andExpect(jsonPath("$.items[0].locationCode").value("WH-WEST"))
+            .andExpect(jsonPath("$.items[1].businessWeekStart").value("2027-03-01"))
+            .andExpect(jsonPath("$.items[1].locationCode").value("MAIN"))
+            .andExpect(jsonPath("$.items[2].locationCode").value("WH-EAST"));
+
+        mockMvc.perform(get("/api/inventory/{sku}/adjustment-activity/monthly-summary/by-location", "arc-9241")
+            .param("adjustedBy", "OPS-B@ARCANAERP.COM")
+            .param("adjustedAtFrom", "2027-03-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-03-31T23:59:59Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessMonth").value("2027-03"))
+            .andExpect(jsonPath("$.items[0].locationCode").value("WH-EAST"))
+            .andExpect(jsonPath("$.items[0].netQuantityDelta").value(6))
+            .andExpect(jsonPath("$.items[1].locationCode").value("WH-WEST"))
+            .andExpect(jsonPath("$.items[1].netQuantityDelta").value(4));
+
+        mockMvc.perform(get("/api/inventory/{sku}/adjustment-activity/daily-summary/by-location", "arc-9241")
+            .param("locationCode", "wh-east")
+            .param("adjustedAtFrom", "2027-03-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-03-31T23:59:59Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].locationCode").value("WH-EAST"));
+
+        mockMvc.perform(get("/api/inventory/{sku}/adjustment-activity/daily-summary/by-location", "arc-9241")
+            .param("adjustedAtFrom", "2027-03-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-03-31T23:59:59Z")
+            .param("page", "0")
+            .param("size", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].businessDate").value("2027-03-08"))
+            .andExpect(jsonPath("$.hasNext").value(true));
+    }
+
+    @Test
     void transfersInventoryBetweenLocationsWithPairedAdjustmentRecords() throws Exception {
         inventoryItemRepository.save(
             InventoryItem.create(

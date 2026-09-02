@@ -191,6 +191,70 @@ class InventoryAdjustmentRepositoryTest {
     }
 
     @Test
+    void listsSkuHistoryRowsForAdjustmentActivityByLocationSummaries() {
+        InventoryItem mainItem = inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9310",
+                "main",
+                new BigDecimal("20"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+        InventoryItem westItem = inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9310",
+                "wh-west",
+                new BigDecimal("4"),
+                Instant.parse("2026-03-01T00:00:00Z")
+            )
+        );
+        inventoryAdjustmentRepository.save(
+            InventoryAdjustment.create(
+                mainItem.getId(),
+                mainItem.getSku(),
+                mainItem.getLocationCode(),
+                null,
+                new BigDecimal("20"),
+                new BigDecimal("-2"),
+                new BigDecimal("18"),
+                "Cycle count correction",
+                "ops-a@arcanaerp.com",
+                null,
+                null,
+                Instant.parse("2026-03-01T01:00:00Z")
+            )
+        );
+        inventoryAdjustmentRepository.save(
+            InventoryAdjustment.create(
+                westItem.getId(),
+                westItem.getSku(),
+                westItem.getLocationCode(),
+                null,
+                new BigDecimal("4"),
+                new BigDecimal("6"),
+                new BigDecimal("10"),
+                "West receiving",
+                "ops-b@arcanaerp.com",
+                null,
+                null,
+                Instant.parse("2026-03-02T02:00:00Z")
+            )
+        );
+
+        var rows = inventoryAdjustmentRepository.findSkuHistoryRowsFiltered(
+            "ARC-9310",
+            "WH-WEST",
+            "ops-b@arcanaerp.com",
+            Instant.parse("2026-03-02T00:00:00Z"),
+            Instant.parse("2026-03-02T23:59:59Z")
+        );
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.getFirst().getLocationCode()).isEqualTo("WH-WEST");
+        assertThat(rows.getFirst().getQuantityDelta()).isEqualByComparingTo("6");
+    }
+
+    @Test
     void findsTransferAdjustmentsByTransferIdOldestFirst() {
         InventoryItem sourceItem = inventoryItemRepository.save(
             InventoryItem.create(

@@ -82,6 +82,26 @@ interface InventoryAdjustmentRepository extends JpaRepository<InventoryAdjustmen
     );
 
     @Query(
+        """
+        select adjustment
+        from InventoryAdjustment adjustment
+        where adjustment.sku = :sku
+          and (:locationCode is null or adjustment.locationCode = :locationCode)
+          and (:adjustedBy is null or adjustment.adjustedBy = :adjustedBy)
+          and (:adjustedAtFrom is null or adjustment.adjustedAt >= :adjustedAtFrom)
+          and (:adjustedAtTo is null or adjustment.adjustedAt <= :adjustedAtTo)
+        order by adjustment.adjustedAt desc
+        """
+    )
+    List<InventoryAdjustment> findSkuHistoryRowsFiltered(
+        @Param("sku") String sku,
+        @Param("locationCode") String locationCode,
+        @Param("adjustedBy") String adjustedBy,
+        @Param("adjustedAtFrom") Instant adjustedAtFrom,
+        @Param("adjustedAtTo") Instant adjustedAtTo
+    );
+
+    @Query(
         value =
         """
         select
