@@ -691,6 +691,45 @@ class WorkEffortsControllerIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(2))
             .andExpect(jsonPath("$.items[0].businessMonth").value("2026-05"))
             .andExpect(jsonPath("$.items[1].businessMonth").value("2026-04"));
+
+        mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.dailyWorkEffortAssignmentActivityByAssigneeSummaryRequest("workweb14", 0, 10)
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].businessDate").value("2026-05-04"))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("agent03@work.com"))
+            .andExpect(jsonPath("$.items[1].businessDate").value("2026-04-23"))
+            .andExpect(jsonPath("$.items[1].assignedTo").value("agent03@work.com"))
+            .andExpect(jsonPath("$.items[2].businessDate").value("2026-04-22"))
+            .andExpect(jsonPath("$.items[2].assignedTo").value("agent02@work.com"));
+
+        mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.weeklyWorkEffortAssignmentActivityByAssigneeSummaryRequest("workweb14", 0, 10)
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].businessWeekStart").value("2026-05-04"))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("agent03@work.com"))
+            .andExpect(jsonPath("$.items[1].businessWeekStart").value("2026-04-20"))
+            .andExpect(jsonPath("$.items[1].assignedTo").value("agent02@work.com"))
+            .andExpect(jsonPath("$.items[2].assignedTo").value("agent03@work.com"));
+
+        mockMvc.perform(
+            WorkEffortsWebIntegrationTestSupport.monthlyWorkEffortAssignmentActivityByAssigneeSummaryRequest(
+                "workweb14",
+                0,
+                1,
+                "assignedTo", "AGENT03@WORK.COM",
+                "assignedAtFrom", "2026-04-01T00:00:00Z",
+                "assignedAtTo", "2026-05-31T23:59:59Z"
+            )
+        )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessMonth").value("2026-05"))
+            .andExpect(jsonPath("$.items[0].assignedTo").value("agent03@work.com"))
+            .andExpect(jsonPath("$.hasNext").value(true));
     }
 
     @Test

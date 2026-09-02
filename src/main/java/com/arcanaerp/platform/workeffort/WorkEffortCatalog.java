@@ -35,6 +35,14 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    PageResult<DailyWorkEffortAssignmentActivityByAssigneeSummaryView> listDailyAssignmentActivityByAssigneeSummaries(
+        String tenantCode,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<WeeklyWorkEffortAssignmentActivitySummaryView> listWeeklyAssignmentActivitySummaries(
         String tenantCode,
         String assignedTo,
@@ -43,7 +51,23 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    PageResult<WeeklyWorkEffortAssignmentActivityByAssigneeSummaryView> listWeeklyAssignmentActivityByAssigneeSummaries(
+        String tenantCode,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<MonthlyWorkEffortAssignmentActivitySummaryView> listMonthlyAssignmentActivitySummaries(
+        String tenantCode,
+        String assignedTo,
+        Instant assignedAtFrom,
+        Instant assignedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<MonthlyWorkEffortAssignmentActivityByAssigneeSummaryView> listMonthlyAssignmentActivityByAssigneeSummaries(
         String tenantCode,
         String assignedTo,
         Instant assignedAtFrom,

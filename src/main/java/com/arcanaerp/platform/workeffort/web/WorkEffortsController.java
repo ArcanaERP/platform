@@ -5,12 +5,15 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.workeffort.AssignWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.ChangeWorkEffortStatusCommand;
 import com.arcanaerp.platform.workeffort.CreateWorkEffortCommand;
+import com.arcanaerp.platform.workeffort.DailyWorkEffortAssignmentActivityByAssigneeSummaryView;
 import com.arcanaerp.platform.workeffort.DailyWorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.DailyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.DailyWorkEffortStatusActivitySummaryView;
+import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivityByAssigneeSummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivitySummaryView;
+import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivityByAssigneeSummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryView;
@@ -166,6 +169,27 @@ public class WorkEffortsController {
         ).map(this::toDailyAssignmentActivitySummaryResponse);
     }
 
+    @GetMapping("/assignment-activity/daily-summary/by-assignee")
+    public PageResult<DailyWorkEffortAssignmentActivityByAssigneeSummaryResponse> listDailyAssignmentActivityByAssigneeSummaries(
+        @RequestParam String tenantCode,
+        @RequestParam(required = false) String assignedTo,
+        @RequestParam(required = false) String assignedAtFrom,
+        @RequestParam(required = false) String assignedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedAssignedAtFrom = parseOptionalInstant(assignedAtFrom, "assignedAtFrom");
+        Instant parsedAssignedAtTo = parseOptionalInstant(assignedAtTo, "assignedAtTo");
+        validateInstantRange(parsedAssignedAtFrom, parsedAssignedAtTo, "assignedAtFrom", "assignedAtTo");
+        return workEffortCatalog.listDailyAssignmentActivityByAssigneeSummaries(
+            tenantCode,
+            normalizeOptionalAssignedTo(assignedTo),
+            parsedAssignedAtFrom,
+            parsedAssignedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toDailyAssignmentActivityByAssigneeSummaryResponse);
+    }
+
     @GetMapping("/assignment-activity/weekly-summary")
     public PageResult<WeeklyWorkEffortAssignmentActivitySummaryResponse> listWeeklyAssignmentActivitySummaries(
         @RequestParam String tenantCode,
@@ -187,6 +211,27 @@ public class WorkEffortsController {
         ).map(this::toWeeklyAssignmentActivitySummaryResponse);
     }
 
+    @GetMapping("/assignment-activity/weekly-summary/by-assignee")
+    public PageResult<WeeklyWorkEffortAssignmentActivityByAssigneeSummaryResponse> listWeeklyAssignmentActivityByAssigneeSummaries(
+        @RequestParam String tenantCode,
+        @RequestParam(required = false) String assignedTo,
+        @RequestParam(required = false) String assignedAtFrom,
+        @RequestParam(required = false) String assignedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedAssignedAtFrom = parseOptionalInstant(assignedAtFrom, "assignedAtFrom");
+        Instant parsedAssignedAtTo = parseOptionalInstant(assignedAtTo, "assignedAtTo");
+        validateInstantRange(parsedAssignedAtFrom, parsedAssignedAtTo, "assignedAtFrom", "assignedAtTo");
+        return workEffortCatalog.listWeeklyAssignmentActivityByAssigneeSummaries(
+            tenantCode,
+            normalizeOptionalAssignedTo(assignedTo),
+            parsedAssignedAtFrom,
+            parsedAssignedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toWeeklyAssignmentActivityByAssigneeSummaryResponse);
+    }
+
     @GetMapping("/assignment-activity/monthly-summary")
     public PageResult<MonthlyWorkEffortAssignmentActivitySummaryResponse> listMonthlyAssignmentActivitySummaries(
         @RequestParam String tenantCode,
@@ -206,6 +251,27 @@ public class WorkEffortsController {
             parsedAssignedAtTo,
             PageQuery.of(page, size)
         ).map(this::toMonthlyAssignmentActivitySummaryResponse);
+    }
+
+    @GetMapping("/assignment-activity/monthly-summary/by-assignee")
+    public PageResult<MonthlyWorkEffortAssignmentActivityByAssigneeSummaryResponse> listMonthlyAssignmentActivityByAssigneeSummaries(
+        @RequestParam String tenantCode,
+        @RequestParam(required = false) String assignedTo,
+        @RequestParam(required = false) String assignedAtFrom,
+        @RequestParam(required = false) String assignedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedAssignedAtFrom = parseOptionalInstant(assignedAtFrom, "assignedAtFrom");
+        Instant parsedAssignedAtTo = parseOptionalInstant(assignedAtTo, "assignedAtTo");
+        validateInstantRange(parsedAssignedAtFrom, parsedAssignedAtTo, "assignedAtFrom", "assignedAtTo");
+        return workEffortCatalog.listMonthlyAssignmentActivityByAssigneeSummaries(
+            tenantCode,
+            normalizeOptionalAssignedTo(assignedTo),
+            parsedAssignedAtFrom,
+            parsedAssignedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toMonthlyAssignmentActivityByAssigneeSummaryResponse);
     }
 
     @GetMapping("/status-activity/daily-summary")
@@ -489,12 +555,48 @@ public class WorkEffortsController {
         );
     }
 
+    private DailyWorkEffortAssignmentActivityByAssigneeSummaryResponse toDailyAssignmentActivityByAssigneeSummaryResponse(
+        DailyWorkEffortAssignmentActivityByAssigneeSummaryView view
+    ) {
+        return new DailyWorkEffortAssignmentActivityByAssigneeSummaryResponse(
+            view.tenantCode(),
+            view.businessDate(),
+            view.assignedTo(),
+            view.assignmentCount(),
+            view.workEffortCount()
+        );
+    }
+
+    private WeeklyWorkEffortAssignmentActivityByAssigneeSummaryResponse toWeeklyAssignmentActivityByAssigneeSummaryResponse(
+        WeeklyWorkEffortAssignmentActivityByAssigneeSummaryView view
+    ) {
+        return new WeeklyWorkEffortAssignmentActivityByAssigneeSummaryResponse(
+            view.tenantCode(),
+            view.businessWeekStart(),
+            view.assignedTo(),
+            view.assignmentCount(),
+            view.workEffortCount()
+        );
+    }
+
     private MonthlyWorkEffortAssignmentActivitySummaryResponse toMonthlyAssignmentActivitySummaryResponse(
         MonthlyWorkEffortAssignmentActivitySummaryView view
     ) {
         return new MonthlyWorkEffortAssignmentActivitySummaryResponse(
             view.tenantCode(),
             view.businessMonth(),
+            view.assignmentCount(),
+            view.workEffortCount()
+        );
+    }
+
+    private MonthlyWorkEffortAssignmentActivityByAssigneeSummaryResponse toMonthlyAssignmentActivityByAssigneeSummaryResponse(
+        MonthlyWorkEffortAssignmentActivityByAssigneeSummaryView view
+    ) {
+        return new MonthlyWorkEffortAssignmentActivityByAssigneeSummaryResponse(
+            view.tenantCode(),
+            view.businessMonth(),
+            view.assignedTo(),
             view.assignmentCount(),
             view.workEffortCount()
         );

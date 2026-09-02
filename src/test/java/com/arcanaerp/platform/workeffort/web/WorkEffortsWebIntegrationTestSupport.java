@@ -167,6 +167,33 @@ final class WorkEffortsWebIntegrationTestSupport {
         return assignmentActivityBucketSummaryRequest("monthly", tenantCode, page, size, optionalNameValuePairs);
     }
 
+    static MockHttpServletRequestBuilder dailyWorkEffortAssignmentActivityByAssigneeSummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return assignmentActivityBucketSummaryRequest("daily", tenantCode, page, size, true, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder weeklyWorkEffortAssignmentActivityByAssigneeSummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return assignmentActivityBucketSummaryRequest("weekly", tenantCode, page, size, true, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder monthlyWorkEffortAssignmentActivityByAssigneeSummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return assignmentActivityBucketSummaryRequest("monthly", tenantCode, page, size, true, optionalNameValuePairs);
+    }
+
     static MockHttpServletRequestBuilder dailyWorkEffortStatusActivitySummaryRequest(
         String tenantCode,
         int page,
@@ -228,7 +255,22 @@ final class WorkEffortsWebIntegrationTestSupport {
         int size,
         String... optionalNameValuePairs
     ) {
-        MockHttpServletRequestBuilder builder = get(WORK_EFFORTS_PATH + "/assignment-activity/" + bucket + "-summary")
+        return assignmentActivityBucketSummaryRequest(bucket, tenantCode, page, size, false, optionalNameValuePairs);
+    }
+
+    private static MockHttpServletRequestBuilder assignmentActivityBucketSummaryRequest(
+        String bucket,
+        String tenantCode,
+        int page,
+        int size,
+        boolean byAssignee,
+        String... optionalNameValuePairs
+    ) {
+        String path = WORK_EFFORTS_PATH + "/assignment-activity/" + bucket + "-summary";
+        if (byAssignee) {
+            path = path + "/by-assignee";
+        }
+        MockHttpServletRequestBuilder builder = get(path)
             .param("tenantCode", tenantCode)
             .param("page", String.valueOf(page))
             .param("size", String.valueOf(size));

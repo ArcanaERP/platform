@@ -402,6 +402,20 @@ class WorkEffortCatalogIntegrationTest {
             Instant.parse("2026-05-04T23:59:59Z"),
             new PageQuery(0, 10)
         );
+        var dailyByAssignee = workEffortCatalog.listDailyAssignmentActivityByAssigneeSummaries(
+            "work10",
+            null,
+            Instant.parse("2026-04-01T00:00:00Z"),
+            Instant.parse("2026-05-31T23:59:59Z"),
+            new PageQuery(0, 10)
+        );
+        var monthlyByAssignee = workEffortCatalog.listMonthlyAssignmentActivityByAssigneeSummaries(
+            "work10",
+            "AGENT03@WORK.COM",
+            Instant.parse("2026-04-01T00:00:00Z"),
+            Instant.parse("2026-05-31T23:59:59Z"),
+            new PageQuery(0, 10)
+        );
 
         assertThat(daily.totalItems()).isEqualTo(3);
         assertThat(daily.items()).extracting(DailyWorkEffortAssignmentActivitySummaryView::businessDate)
@@ -421,6 +435,14 @@ class WorkEffortCatalogIntegrationTest {
         assertThat(filteredDaily.totalItems()).isEqualTo(2);
         assertThat(filteredDaily.items()).extracting(DailyWorkEffortAssignmentActivitySummaryView::businessDate)
             .containsExactly(java.time.LocalDate.parse("2026-05-04"), java.time.LocalDate.parse("2026-04-23"));
+        assertThat(dailyByAssignee.totalItems()).isEqualTo(3);
+        assertThat(dailyByAssignee.items()).extracting(DailyWorkEffortAssignmentActivityByAssigneeSummaryView::assignedTo)
+            .containsExactly("agent03@work.com", "agent03@work.com", "agent02@work.com");
+        assertThat(monthlyByAssignee.totalItems()).isEqualTo(2);
+        assertThat(monthlyByAssignee.items().get(0).businessMonth()).isEqualTo(YearMonth.parse("2026-05"));
+        assertThat(monthlyByAssignee.items().get(0).assignedTo()).isEqualTo("agent03@work.com");
+        assertThat(monthlyByAssignee.items().get(1).businessMonth()).isEqualTo(YearMonth.parse("2026-04"));
+        assertThat(monthlyByAssignee.items().get(1).assignedTo()).isEqualTo("agent03@work.com");
     }
 
     @Test
