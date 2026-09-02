@@ -125,4 +125,49 @@ class CommunicationEventStatusChangeAuditRepositoryTest {
         assertThat(rangeFiltered.getTotalElements()).isEqualTo(1);
         assertThat(rangeFiltered.getContent().get(0).getCurrentStatusCode()).isEqualTo("CLOSED");
     }
+
+    @Test
+    void listsTenantStatusHistoryForActivitySummariesWithFilters() {
+        UUID tenantAEventId = UUID.randomUUID();
+        UUID tenantBEventId = UUID.randomUUID();
+        communicationEventStatusChangeAuditRepository.save(
+            CommunicationEventStatusChangeAudit.create(
+                tenantAEventId,
+                "OPEN",
+                "Open",
+                "CLOSED",
+                "Closed",
+                "TENANT01",
+                "Resolved",
+                "actor.one@arcanaerp.com",
+                Instant.parse("2027-07-01T01:00:00Z")
+            )
+        );
+        communicationEventStatusChangeAuditRepository.save(
+            CommunicationEventStatusChangeAudit.create(
+                tenantBEventId,
+                "OPEN",
+                "Open",
+                "ESCALATED",
+                "Escalated",
+                "TENANT02",
+                "Escalated",
+                "actor.two@arcanaerp.com",
+                Instant.parse("2027-07-02T01:00:00Z")
+            )
+        );
+
+        var audits = communicationEventStatusChangeAuditRepository.findTenantHistoryFiltered(
+            "TENANT01",
+            "OPEN",
+            "CLOSED",
+            "actor.one@arcanaerp.com",
+            Instant.parse("2027-07-01T00:00:00Z"),
+            Instant.parse("2027-07-01T23:59:59Z")
+        );
+
+        assertThat(audits)
+            .extracting(CommunicationEventStatusChangeAudit::getCommunicationEventId)
+            .containsExactly(tenantAEventId);
+    }
 }

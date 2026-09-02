@@ -30,4 +30,34 @@ public interface CommunicationEventLog {
         Instant changedAtTo,
         PageQuery pageQuery
     );
+
+    PageResult<DailyCommunicationEventStatusActivitySummaryView> listDailyStatusActivitySummaries(
+        String tenantCode,
+        String previousStatusCode,
+        String currentStatusCode,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<WeeklyCommunicationEventStatusActivitySummaryView> listWeeklyStatusActivitySummaries(
+        String tenantCode,
+        String previousStatusCode,
+        String currentStatusCode,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<MonthlyCommunicationEventStatusActivitySummaryView> listMonthlyStatusActivitySummaries(
+        String tenantCode,
+        String previousStatusCode,
+        String currentStatusCode,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
 }

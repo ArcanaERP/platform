@@ -136,8 +136,61 @@ final class CommunicationEventsWebIntegrationTestSupport {
         return builder;
     }
 
+    static MockHttpServletRequestBuilder dailyStatusActivitySummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest(COMMUNICATION_EVENTS_PATH + "/status-activity/daily-summary", tenantCode, page, size,
+            optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder weeklyStatusActivitySummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest(COMMUNICATION_EVENTS_PATH + "/status-activity/weekly-summary", tenantCode, page, size,
+            optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder monthlyStatusActivitySummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest(COMMUNICATION_EVENTS_PATH + "/status-activity/monthly-summary", tenantCode, page, size,
+            optionalNameValuePairs);
+    }
+
     static MockHttpServletRequestBuilder listEventsRequest(String tenantCode, int page, int size, String... optionalNameValuePairs) {
         MockHttpServletRequestBuilder builder = get(COMMUNICATION_EVENTS_PATH)
+            .param("tenantCode", tenantCode)
+            .param("page", String.valueOf(page))
+            .param("size", String.valueOf(size));
+        if (optionalNameValuePairs == null || optionalNameValuePairs.length == 0) {
+            return builder;
+        }
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must contain name/value pairs");
+        }
+        for (int i = 0; i < optionalNameValuePairs.length; i += 2) {
+            builder.param(optionalNameValuePairs[i], optionalNameValuePairs[i + 1]);
+        }
+        return builder;
+    }
+
+    private static MockHttpServletRequestBuilder statusActivitySummaryRequest(
+        String path,
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        MockHttpServletRequestBuilder builder = get(path)
             .param("tenantCode", tenantCode)
             .param("page", String.valueOf(page))
             .param("size", String.valueOf(size));

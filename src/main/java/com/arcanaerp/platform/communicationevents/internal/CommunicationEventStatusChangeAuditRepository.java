@@ -1,6 +1,7 @@
 package com.arcanaerp.platform.communicationevents.internal;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,5 +29,26 @@ interface CommunicationEventStatusChangeAuditRepository extends JpaRepository<Co
         @Param("changedAtFrom") Instant changedAtFrom,
         @Param("changedAtTo") Instant changedAtTo,
         Pageable pageable
+    );
+
+    @Query(
+        """
+        select audit
+        from CommunicationEventStatusChangeAudit audit
+        where audit.tenantCode = :tenantCode
+          and (:previousStatusCode is null or audit.previousStatusCode = :previousStatusCode)
+          and (:currentStatusCode is null or audit.currentStatusCode = :currentStatusCode)
+          and (:changedBy is null or audit.changedBy = :changedBy)
+          and (:changedAtFrom is null or audit.changedAt >= :changedAtFrom)
+          and (:changedAtTo is null or audit.changedAt <= :changedAtTo)
+        """
+    )
+    List<CommunicationEventStatusChangeAudit> findTenantHistoryFiltered(
+        @Param("tenantCode") String tenantCode,
+        @Param("previousStatusCode") String previousStatusCode,
+        @Param("currentStatusCode") String currentStatusCode,
+        @Param("changedBy") String changedBy,
+        @Param("changedAtFrom") Instant changedAtFrom,
+        @Param("changedAtTo") Instant changedAtTo
     );
 }
