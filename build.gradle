@@ -52,4 +52,8 @@ dependencyManagement {
 
 tasks.named('test') {
     useJUnitPlatform()
+    maxParallelForks = providers.gradleProperty('arcanaerp.test.maxParallelForks').map { it.toInteger() }.orElse(3).get()
+    minHeapSize = '256m'
+    maxHeapSize = providers.gradleProperty('arcanaerp.test.maxHeapSize').orElse('768m').get()
+    jvmArgs "-XX:MaxMetaspaceSize=${providers.gradleProperty('arcanaerp.test.maxMetaspaceSize').orElse('512m').get()}"
 }

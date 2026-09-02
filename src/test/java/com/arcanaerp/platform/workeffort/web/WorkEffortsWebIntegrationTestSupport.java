@@ -167,6 +167,33 @@ final class WorkEffortsWebIntegrationTestSupport {
         return assignmentActivityBucketSummaryRequest("monthly", tenantCode, page, size, optionalNameValuePairs);
     }
 
+    static MockHttpServletRequestBuilder dailyWorkEffortStatusActivitySummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivityBucketSummaryRequest("daily", tenantCode, page, size, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder weeklyWorkEffortStatusActivitySummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivityBucketSummaryRequest("weekly", tenantCode, page, size, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder monthlyWorkEffortStatusActivitySummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivityBucketSummaryRequest("monthly", tenantCode, page, size, optionalNameValuePairs);
+    }
+
     private static MockHttpServletRequestBuilder assignmentActivityBucketSummaryRequest(
         String bucket,
         String tenantCode,
@@ -175,6 +202,29 @@ final class WorkEffortsWebIntegrationTestSupport {
         String... optionalNameValuePairs
     ) {
         MockHttpServletRequestBuilder builder = get(WORK_EFFORTS_PATH + "/assignment-activity/" + bucket + "-summary")
+            .param("tenantCode", tenantCode)
+            .param("page", String.valueOf(page))
+            .param("size", String.valueOf(size));
+        if (optionalNameValuePairs == null || optionalNameValuePairs.length == 0) {
+            return builder;
+        }
+        if (optionalNameValuePairs.length % 2 != 0) {
+            throw new IllegalArgumentException("optionalNameValuePairs must contain name/value pairs");
+        }
+        for (int i = 0; i < optionalNameValuePairs.length; i += 2) {
+            builder.param(optionalNameValuePairs[i], optionalNameValuePairs[i + 1]);
+        }
+        return builder;
+    }
+
+    private static MockHttpServletRequestBuilder statusActivityBucketSummaryRequest(
+        String bucket,
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        MockHttpServletRequestBuilder builder = get(WORK_EFFORTS_PATH + "/status-activity/" + bucket + "-summary")
             .param("tenantCode", tenantCode)
             .param("page", String.valueOf(page))
             .param("size", String.valueOf(size));

@@ -4,7 +4,7 @@ Updated: 2026-08-30
 
 ## Scope
 
-Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, and append-only assignment history.
+Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, and status activity summaries.
 
 ## Aggregate
 
@@ -51,6 +51,9 @@ Rules:
 - each successful status transition appends one audit row
 - history reads are newest-first by `changedAt`
 - optional history filters support exact `tenantCode`, exact `changedBy`, and `changedAtFrom` / `changedAtTo`
+- status activity summaries bucket status transitions by UTC `changedAt`; weekly buckets start on Monday
+- status activity summary rows include `transitionCount` and distinct `workEffortCount`
+- status activity summaries require `tenantCode` and support optional `previousStatus`, `currentStatus`, `changedBy`, `changedAtFrom`, and `changedAtTo` filters
 
 ### WorkEffortAssignmentChangeAudit
 
@@ -88,6 +91,9 @@ Rules:
 - `GET /api/work-efforts/assignment-activity/daily-summary?tenantCode=&assignedTo=&assignedAtFrom=&assignedAtTo=&page=&size=`
 - `GET /api/work-efforts/assignment-activity/weekly-summary?tenantCode=&assignedTo=&assignedAtFrom=&assignedAtTo=&page=&size=`
 - `GET /api/work-efforts/assignment-activity/monthly-summary?tenantCode=&assignedTo=&assignedAtFrom=&assignedAtTo=&page=&size=`
+- `GET /api/work-efforts/status-activity/daily-summary?tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
+- `GET /api/work-efforts/status-activity/weekly-summary?tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
+- `GET /api/work-efforts/status-activity/monthly-summary?tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
 - `PATCH /api/work-efforts/{effortNumber}/status` (request includes `tenantCode`, `status`, `reason`, `changedBy`)
 - `GET /api/work-efforts/{effortNumber}/status-history?tenantCode=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
 - `GET /api/work-efforts/{effortNumber}/assignment?tenantCode=`
@@ -102,3 +108,4 @@ Rules:
 - assignment-history ranges require `assignedAtFrom <= assignedAtTo`
 - assignment activity summaries are grouped by current assignee from immutable assignment-change audits
 - daily, weekly, and monthly assignment activity summaries use UTC bucket boundaries
+- daily, weekly, and monthly status activity summaries use UTC bucket boundaries

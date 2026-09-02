@@ -6,8 +6,11 @@ import com.arcanaerp.platform.workeffort.AssignWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.ChangeWorkEffortStatusCommand;
 import com.arcanaerp.platform.workeffort.CreateWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.DailyWorkEffortAssignmentActivitySummaryView;
+import com.arcanaerp.platform.workeffort.DailyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivitySummaryView;
+import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySummaryView;
+import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
@@ -202,6 +205,81 @@ public class WorkEffortsController {
         ).map(this::toMonthlyAssignmentActivitySummaryResponse);
     }
 
+    @GetMapping("/status-activity/daily-summary")
+    public PageResult<DailyWorkEffortStatusActivitySummaryResponse> listDailyStatusActivitySummaries(
+        @RequestParam String tenantCode,
+        @RequestParam(required = false) String previousStatus,
+        @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return workEffortCatalog.listDailyStatusActivitySummaries(
+            tenantCode,
+            parseOptionalStatus(previousStatus, "previousStatus"),
+            parseOptionalStatus(currentStatus, "currentStatus"),
+            normalizeOptionalActorEmail(changedBy, "changedBy"),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toDailyStatusActivitySummaryResponse);
+    }
+
+    @GetMapping("/status-activity/weekly-summary")
+    public PageResult<WeeklyWorkEffortStatusActivitySummaryResponse> listWeeklyStatusActivitySummaries(
+        @RequestParam String tenantCode,
+        @RequestParam(required = false) String previousStatus,
+        @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return workEffortCatalog.listWeeklyStatusActivitySummaries(
+            tenantCode,
+            parseOptionalStatus(previousStatus, "previousStatus"),
+            parseOptionalStatus(currentStatus, "currentStatus"),
+            normalizeOptionalActorEmail(changedBy, "changedBy"),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toWeeklyStatusActivitySummaryResponse);
+    }
+
+    @GetMapping("/status-activity/monthly-summary")
+    public PageResult<MonthlyWorkEffortStatusActivitySummaryResponse> listMonthlyStatusActivitySummaries(
+        @RequestParam String tenantCode,
+        @RequestParam(required = false) String previousStatus,
+        @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return workEffortCatalog.listMonthlyStatusActivitySummaries(
+            tenantCode,
+            parseOptionalStatus(previousStatus, "previousStatus"),
+            parseOptionalStatus(currentStatus, "currentStatus"),
+            normalizeOptionalActorEmail(changedBy, "changedBy"),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toMonthlyStatusActivitySummaryResponse);
+    }
+
     @GetMapping("/{effortNumber}/status-history")
     public PageResult<WorkEffortStatusChangeResponse> listStatusHistory(
         @PathVariable String effortNumber,
@@ -342,6 +420,53 @@ public class WorkEffortsController {
             view.assignmentCount(),
             view.workEffortCount()
         );
+    }
+
+    private DailyWorkEffortStatusActivitySummaryResponse toDailyStatusActivitySummaryResponse(
+        DailyWorkEffortStatusActivitySummaryView view
+    ) {
+        return new DailyWorkEffortStatusActivitySummaryResponse(
+            view.tenantCode(),
+            view.businessDate(),
+            view.transitionCount(),
+            view.workEffortCount()
+        );
+    }
+
+    private WeeklyWorkEffortStatusActivitySummaryResponse toWeeklyStatusActivitySummaryResponse(
+        WeeklyWorkEffortStatusActivitySummaryView view
+    ) {
+        return new WeeklyWorkEffortStatusActivitySummaryResponse(
+            view.tenantCode(),
+            view.businessWeekStart(),
+            view.transitionCount(),
+            view.workEffortCount()
+        );
+    }
+
+    private MonthlyWorkEffortStatusActivitySummaryResponse toMonthlyStatusActivitySummaryResponse(
+        MonthlyWorkEffortStatusActivitySummaryView view
+    ) {
+        return new MonthlyWorkEffortStatusActivitySummaryResponse(
+            view.tenantCode(),
+            view.businessMonth(),
+            view.transitionCount(),
+            view.workEffortCount()
+        );
+    }
+
+    private static WorkEffortStatus parseOptionalStatus(String status, String parameterName) {
+        if (status == null) {
+            return null;
+        }
+        if (status.isBlank()) {
+            throw new IllegalArgumentException(parameterName + " query parameter must not be blank");
+        }
+        try {
+            return WorkEffortStatus.valueOf(status.trim().toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException(parameterName + " query parameter must be one of: PLANNED, IN_PROGRESS, COMPLETED");
+        }
     }
 
     private static String normalizeOptionalAssignedTo(String assignedTo) {

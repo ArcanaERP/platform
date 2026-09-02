@@ -68,4 +68,67 @@ class WorkEffortStatusChangeAuditRepositoryTest {
         assertThat(page.getTotalElements()).isEqualTo(1);
         assertThat(page.getContent().get(0).getCurrentStatus()).isEqualTo(WorkEffortStatus.IN_PROGRESS);
     }
+
+    @Test
+    void listsTenantStatusHistoryForActivitySummariesWithFilters() {
+        WorkEffort workEffort = workEffortRepository.save(
+            WorkEffort.create(
+                "tenant01",
+                "we-010",
+                "Prepare shipment",
+                "Prepare shipment for dispatch",
+                WorkEffortStatus.PLANNED,
+                "agent01@tenant.com",
+                null,
+                Instant.parse("2027-11-01T10:00:00Z")
+            )
+        );
+        WorkEffort otherTenantWorkEffort = workEffortRepository.save(
+            WorkEffort.create(
+                "tenant02",
+                "we-011",
+                "Confirm receipt",
+                "Confirm inbound receipt",
+                WorkEffortStatus.PLANNED,
+                "agent02@tenant.com",
+                null,
+                Instant.parse("2027-11-01T10:00:00Z")
+            )
+        );
+        workEffortStatusChangeAuditRepository.save(
+            WorkEffortStatusChangeAudit.create(
+                workEffort.getId(),
+                WorkEffortStatus.PLANNED,
+                WorkEffortStatus.IN_PROGRESS,
+                "tenant01",
+                "Started work",
+                "agent01@tenant.com",
+                Instant.parse("2027-11-02T10:00:00Z")
+            )
+        );
+        workEffortStatusChangeAuditRepository.save(
+            WorkEffortStatusChangeAudit.create(
+                otherTenantWorkEffort.getId(),
+                WorkEffortStatus.PLANNED,
+                WorkEffortStatus.COMPLETED,
+                "tenant02",
+                "Finished work",
+                "agent02@tenant.com",
+                Instant.parse("2027-11-02T11:00:00Z")
+            )
+        );
+
+        var audits = workEffortStatusChangeAuditRepository.findTenantHistoryFiltered(
+            "TENANT01",
+            WorkEffortStatus.PLANNED,
+            WorkEffortStatus.IN_PROGRESS,
+            "agent01@tenant.com",
+            Instant.parse("2027-11-02T00:00:00Z"),
+            Instant.parse("2027-11-02T23:59:59Z")
+        );
+
+        assertThat(audits)
+            .extracting(WorkEffortStatusChangeAudit::getWorkEffortId)
+            .containsExactly(workEffort.getId());
+    }
 }

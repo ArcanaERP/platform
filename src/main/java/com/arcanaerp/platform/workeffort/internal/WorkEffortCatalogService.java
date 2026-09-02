@@ -8,8 +8,11 @@ import com.arcanaerp.platform.workeffort.AssignWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.ChangeWorkEffortStatusCommand;
 import com.arcanaerp.platform.workeffort.CreateWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.DailyWorkEffortAssignmentActivitySummaryView;
+import com.arcanaerp.platform.workeffort.DailyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivitySummaryView;
+import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySummaryView;
+import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
@@ -203,6 +206,81 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery,
             audit -> YearMonth.from(audit.getAssignedAt().atOffset(ZoneOffset.UTC)),
             MonthlyWorkEffortAssignmentActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DailyWorkEffortStatusActivitySummaryView> listDailyStatusActivitySummaries(
+        String tenantCode,
+        WorkEffortStatus previousStatus,
+        WorkEffortStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucket(
+            tenantCode,
+            previousStatus,
+            currentStatus,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> audit.getChangedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            DailyWorkEffortStatusActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WeeklyWorkEffortStatusActivitySummaryView> listWeeklyStatusActivitySummaries(
+        String tenantCode,
+        WorkEffortStatus previousStatus,
+        WorkEffortStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucket(
+            tenantCode,
+            previousStatus,
+            currentStatus,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> audit.getChangedAt()
+                .atOffset(ZoneOffset.UTC)
+                .toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            WeeklyWorkEffortStatusActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyWorkEffortStatusActivitySummaryView> listMonthlyStatusActivitySummaries(
+        String tenantCode,
+        WorkEffortStatus previousStatus,
+        WorkEffortStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucket(
+            tenantCode,
+            previousStatus,
+            currentStatus,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> YearMonth.from(audit.getChangedAt().atOffset(ZoneOffset.UTC)),
+            MonthlyWorkEffortStatusActivitySummaryView::new
         );
     }
 
@@ -438,6 +516,45 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
         return paginate(rows, pageQuery);
     }
 
+    private <B extends Comparable<? super B>, T> PageResult<T> summarizeStatusActivityByBucket(
+        String tenantCode,
+        WorkEffortStatus previousStatus,
+        WorkEffortStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery,
+        StatusBucketExtractor<B> bucketExtractor,
+        StatusBucketSummaryFactory<B, T> summaryFactory
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedChangedBy = changedBy == null ? null : normalizeActorEmail(changedBy, "changedBy");
+        List<WorkEffortStatusChangeAudit> audits = workEffortStatusChangeAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            previousStatus,
+            currentStatus,
+            normalizedChangedBy,
+            changedAtFrom,
+            changedAtTo
+        );
+        TreeMap<B, StatusBucketSummary> summaries = new TreeMap<>(java.util.Comparator.reverseOrder());
+        for (WorkEffortStatusChangeAudit audit : audits) {
+            B bucket = bucketExtractor.bucket(audit);
+            StatusBucketSummary summary = summaries.computeIfAbsent(bucket, ignored -> new StatusBucketSummary());
+            summary.transitionCount++;
+            summary.workEffortIds.add(audit.getWorkEffortId());
+        }
+        List<T> rows = summaries.entrySet().stream()
+            .map(entry -> summaryFactory.create(
+                normalizedTenantCode,
+                entry.getKey(),
+                entry.getValue().transitionCount,
+                entry.getValue().workEffortIds.size()
+            ))
+            .toList();
+        return paginate(rows, pageQuery);
+    }
+
     private static <T> PageResult<T> paginate(List<T> rows, PageQuery pageQuery) {
         int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), rows.size());
         int toIndex = Math.min(fromIndex + pageQuery.size(), rows.size());
@@ -464,8 +581,23 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
         T create(String tenantCode, B bucket, long assignmentCount, long workEffortCount);
     }
 
+    @FunctionalInterface
+    private interface StatusBucketExtractor<B> {
+        B bucket(WorkEffortStatusChangeAudit audit);
+    }
+
+    @FunctionalInterface
+    private interface StatusBucketSummaryFactory<B, T> {
+        T create(String tenantCode, B bucket, long transitionCount, long workEffortCount);
+    }
+
     private static final class AssignmentBucketSummary {
         private long assignmentCount;
+        private final Set<UUID> workEffortIds = new HashSet<>();
+    }
+
+    private static final class StatusBucketSummary {
+        private long transitionCount;
         private final Set<UUID> workEffortIds = new HashSet<>();
     }
 
