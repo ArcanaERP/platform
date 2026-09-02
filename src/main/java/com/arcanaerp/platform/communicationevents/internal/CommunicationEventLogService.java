@@ -7,8 +7,11 @@ import com.arcanaerp.platform.communicationevents.CommunicationEventLog;
 import com.arcanaerp.platform.communicationevents.CommunicationEventStatusChangeView;
 import com.arcanaerp.platform.communicationevents.CommunicationEventView;
 import com.arcanaerp.platform.communicationevents.CreateCommunicationEventCommand;
+import com.arcanaerp.platform.communicationevents.DailyCommunicationEventStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.communicationevents.DailyCommunicationEventStatusActivitySummaryView;
+import com.arcanaerp.platform.communicationevents.MonthlyCommunicationEventStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.communicationevents.MonthlyCommunicationEventStatusActivitySummaryView;
+import com.arcanaerp.platform.communicationevents.WeeklyCommunicationEventStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.communicationevents.WeeklyCommunicationEventStatusActivitySummaryView;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
@@ -24,6 +27,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.NoSuchElementException;
@@ -279,6 +283,57 @@ class CommunicationEventLogService implements CommunicationEventLog {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<DailyCommunicationEventStatusActivityByCurrentStatusSummaryView> listDailyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
+        String previousStatusCode,
+        String currentStatusCode,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucketAndCurrentStatus(
+            tenantCode,
+            previousStatusCode,
+            currentStatusCode,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> audit.getChangedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            DailyCommunicationEventStatusActivityByCurrentStatusSummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WeeklyCommunicationEventStatusActivityByCurrentStatusSummaryView> listWeeklyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
+        String previousStatusCode,
+        String currentStatusCode,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucketAndCurrentStatus(
+            tenantCode,
+            previousStatusCode,
+            currentStatusCode,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> audit.getChangedAt()
+                .atOffset(ZoneOffset.UTC)
+                .toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            WeeklyCommunicationEventStatusActivityByCurrentStatusSummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<MonthlyCommunicationEventStatusActivitySummaryView> listMonthlyStatusActivitySummaries(
         String tenantCode,
         String previousStatusCode,
@@ -298,6 +353,30 @@ class CommunicationEventLogService implements CommunicationEventLog {
             pageQuery,
             audit -> YearMonth.from(audit.getChangedAt().atOffset(ZoneOffset.UTC)),
             MonthlyCommunicationEventStatusActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyCommunicationEventStatusActivityByCurrentStatusSummaryView> listMonthlyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
+        String previousStatusCode,
+        String currentStatusCode,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeStatusActivityByBucketAndCurrentStatus(
+            tenantCode,
+            previousStatusCode,
+            currentStatusCode,
+            changedBy,
+            changedAtFrom,
+            changedAtTo,
+            pageQuery,
+            audit -> YearMonth.from(audit.getChangedAt().atOffset(ZoneOffset.UTC)),
+            MonthlyCommunicationEventStatusActivityByCurrentStatusSummaryView::new
         );
     }
 
@@ -476,6 +555,59 @@ class CommunicationEventLogService implements CommunicationEventLog {
         return paginate(rows, pageQuery);
     }
 
+    private <B extends Comparable<? super B>, T> PageResult<T> summarizeStatusActivityByBucketAndCurrentStatus(
+        String tenantCode,
+        String previousStatusCode,
+        String currentStatusCode,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery,
+        StatusBucketExtractor<B> bucketExtractor,
+        StatusBucketStatusSummaryFactory<B, T> summaryFactory
+    ) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase(Locale.ROOT);
+        String normalizedPreviousStatusCode = normalizeOptionalCode(previousStatusCode, "previousStatusCode");
+        String normalizedCurrentStatusCode = normalizeOptionalCode(currentStatusCode, "currentStatusCode");
+        String normalizedChangedBy = normalizeOptionalActor(changedBy);
+        List<CommunicationEventStatusChangeAudit> audits = communicationEventStatusChangeAuditRepository.findTenantHistoryFiltered(
+            normalizedTenantCode,
+            normalizedPreviousStatusCode,
+            normalizedCurrentStatusCode,
+            normalizedChangedBy,
+            changedAtFrom,
+            changedAtTo
+        );
+        Map<StatusBucketStatusKey<B>, StatusBucketSummary> summaries = new java.util.HashMap<>();
+        for (CommunicationEventStatusChangeAudit audit : audits) {
+            StatusBucketStatusKey<B> key = new StatusBucketStatusKey<>(
+                bucketExtractor.bucket(audit),
+                audit.getCurrentStatusCode(),
+                audit.getCurrentStatusName()
+            );
+            StatusBucketSummary summary = summaries.computeIfAbsent(key, ignored -> new StatusBucketSummary());
+            summary.transitionCount++;
+            summary.eventIds.add(audit.getCommunicationEventId());
+        }
+        List<T> rows = summaries.entrySet().stream()
+            .sorted((left, right) -> {
+                int bucketComparison = right.getKey().bucket().compareTo(left.getKey().bucket());
+                if (bucketComparison != 0) {
+                    return bucketComparison;
+                }
+                return left.getKey().currentStatusCode().compareTo(right.getKey().currentStatusCode());
+            })
+            .map(entry -> summaryFactory.create(
+                entry.getKey().bucket(),
+                entry.getKey().currentStatusCode(),
+                entry.getKey().currentStatusName(),
+                entry.getValue().transitionCount,
+                entry.getValue().eventIds.size()
+            ))
+            .toList();
+        return paginate(rows, pageQuery);
+    }
+
     private static <T> PageResult<T> paginate(List<T> rows, PageQuery pageQuery) {
         int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), rows.size());
         int toIndex = Math.min(fromIndex + pageQuery.size(), rows.size());
@@ -501,6 +633,17 @@ class CommunicationEventLogService implements CommunicationEventLog {
     private interface StatusBucketSummaryFactory<B, T> {
         T create(B bucket, long transitionCount, long eventCount);
     }
+
+    @FunctionalInterface
+    private interface StatusBucketStatusSummaryFactory<B, T> {
+        T create(B bucket, String currentStatusCode, String currentStatusName, long transitionCount, long eventCount);
+    }
+
+    private record StatusBucketStatusKey<B extends Comparable<? super B>>(
+        B bucket,
+        String currentStatusCode,
+        String currentStatusName
+    ) {}
 
     private static final class StatusBucketSummary {
         private long transitionCount;

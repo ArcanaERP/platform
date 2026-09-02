@@ -5,8 +5,11 @@ import com.arcanaerp.platform.communicationevents.CommunicationEventLog;
 import com.arcanaerp.platform.communicationevents.CommunicationEventStatusChangeView;
 import com.arcanaerp.platform.communicationevents.CommunicationEventView;
 import com.arcanaerp.platform.communicationevents.CreateCommunicationEventCommand;
+import com.arcanaerp.platform.communicationevents.DailyCommunicationEventStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.communicationevents.DailyCommunicationEventStatusActivitySummaryView;
+import com.arcanaerp.platform.communicationevents.MonthlyCommunicationEventStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.communicationevents.MonthlyCommunicationEventStatusActivitySummaryView;
+import com.arcanaerp.platform.communicationevents.WeeklyCommunicationEventStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.communicationevents.WeeklyCommunicationEventStatusActivitySummaryView;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
@@ -123,6 +126,31 @@ public class CommunicationEventsController {
         ).map(this::toDailyStatusActivitySummaryResponse);
     }
 
+    @GetMapping("/status-activity/daily-summary/by-current-status")
+    public PageResult<DailyCommunicationEventStatusActivityByCurrentStatusSummaryResponse> listDailyStatusActivityByCurrentStatusSummaries(
+        @RequestParam String tenantCode,
+        @RequestParam(required = false) String previousStatusCode,
+        @RequestParam(required = false) String currentStatusCode,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return communicationEventLog.listDailyStatusActivityByCurrentStatusSummaries(
+            tenantCode,
+            previousStatusCode,
+            currentStatusCode,
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toDailyStatusActivityByCurrentStatusSummaryResponse);
+    }
+
     @GetMapping("/status-activity/weekly-summary")
     public PageResult<WeeklyCommunicationEventStatusActivitySummaryResponse> listWeeklyStatusActivitySummaries(
         @RequestParam String tenantCode,
@@ -148,6 +176,31 @@ public class CommunicationEventsController {
         ).map(this::toWeeklyStatusActivitySummaryResponse);
     }
 
+    @GetMapping("/status-activity/weekly-summary/by-current-status")
+    public PageResult<WeeklyCommunicationEventStatusActivityByCurrentStatusSummaryResponse> listWeeklyStatusActivityByCurrentStatusSummaries(
+        @RequestParam String tenantCode,
+        @RequestParam(required = false) String previousStatusCode,
+        @RequestParam(required = false) String currentStatusCode,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return communicationEventLog.listWeeklyStatusActivityByCurrentStatusSummaries(
+            tenantCode,
+            previousStatusCode,
+            currentStatusCode,
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toWeeklyStatusActivityByCurrentStatusSummaryResponse);
+    }
+
     @GetMapping("/status-activity/monthly-summary")
     public PageResult<MonthlyCommunicationEventStatusActivitySummaryResponse> listMonthlyStatusActivitySummaries(
         @RequestParam String tenantCode,
@@ -171,6 +224,31 @@ public class CommunicationEventsController {
             parsedChangedAtTo,
             PageQuery.of(page, size)
         ).map(this::toMonthlyStatusActivitySummaryResponse);
+    }
+
+    @GetMapping("/status-activity/monthly-summary/by-current-status")
+    public PageResult<MonthlyCommunicationEventStatusActivityByCurrentStatusSummaryResponse> listMonthlyStatusActivityByCurrentStatusSummaries(
+        @RequestParam String tenantCode,
+        @RequestParam(required = false) String previousStatusCode,
+        @RequestParam(required = false) String currentStatusCode,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return communicationEventLog.listMonthlyStatusActivityByCurrentStatusSummaries(
+            tenantCode,
+            previousStatusCode,
+            currentStatusCode,
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toMonthlyStatusActivityByCurrentStatusSummaryResponse);
     }
 
     @GetMapping("/{eventNumber}/status-history")
@@ -241,6 +319,18 @@ public class CommunicationEventsController {
         );
     }
 
+    private DailyCommunicationEventStatusActivityByCurrentStatusSummaryResponse toDailyStatusActivityByCurrentStatusSummaryResponse(
+        DailyCommunicationEventStatusActivityByCurrentStatusSummaryView view
+    ) {
+        return new DailyCommunicationEventStatusActivityByCurrentStatusSummaryResponse(
+            view.businessDate(),
+            view.currentStatusCode(),
+            view.currentStatusName(),
+            view.transitionCount(),
+            view.eventCount()
+        );
+    }
+
     private WeeklyCommunicationEventStatusActivitySummaryResponse toWeeklyStatusActivitySummaryResponse(
         WeeklyCommunicationEventStatusActivitySummaryView view
     ) {
@@ -251,11 +341,35 @@ public class CommunicationEventsController {
         );
     }
 
+    private WeeklyCommunicationEventStatusActivityByCurrentStatusSummaryResponse toWeeklyStatusActivityByCurrentStatusSummaryResponse(
+        WeeklyCommunicationEventStatusActivityByCurrentStatusSummaryView view
+    ) {
+        return new WeeklyCommunicationEventStatusActivityByCurrentStatusSummaryResponse(
+            view.businessWeekStart(),
+            view.currentStatusCode(),
+            view.currentStatusName(),
+            view.transitionCount(),
+            view.eventCount()
+        );
+    }
+
     private MonthlyCommunicationEventStatusActivitySummaryResponse toMonthlyStatusActivitySummaryResponse(
         MonthlyCommunicationEventStatusActivitySummaryView view
     ) {
         return new MonthlyCommunicationEventStatusActivitySummaryResponse(
             view.businessMonth(),
+            view.transitionCount(),
+            view.eventCount()
+        );
+    }
+
+    private MonthlyCommunicationEventStatusActivityByCurrentStatusSummaryResponse toMonthlyStatusActivityByCurrentStatusSummaryResponse(
+        MonthlyCommunicationEventStatusActivityByCurrentStatusSummaryView view
+    ) {
+        return new MonthlyCommunicationEventStatusActivityByCurrentStatusSummaryResponse(
+            view.businessMonth(),
+            view.currentStatusCode(),
+            view.currentStatusName(),
             view.transitionCount(),
             view.eventCount()
         );

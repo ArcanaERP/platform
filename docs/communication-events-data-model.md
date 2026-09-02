@@ -65,6 +65,7 @@ erDiagram
 - Events snapshot `statusCode/statusName` and `purposeCode/purposeName` at write time so event reads do not depend on live joins to the reference-data tables.
 - Lifecycle activity summaries bucket status transitions by UTC `changedAt`; weekly buckets start on Monday.
 - Lifecycle activity summary rows include `transitionCount` and distinct `eventCount`.
+- By-current-status summaries split each time bucket by tenant-local `currentStatusCode` and include the snapshotted status name.
 - Lifecycle activity summaries require `tenantCode` and support optional `previousStatusCode`, `currentStatusCode`, `changedBy`, `changedAtFrom`, and `changedAtTo` filters.
 - The current slice still keeps communication events as a small tenant-scoped log aggregate instead of reproducing the legacy party-role/contact-mechanism graph.
 
@@ -90,8 +91,11 @@ erDiagram
 - `GET /api/communication-events/{eventNumber}?tenantCode=`
 - `GET /api/communication-events?tenantCode=&statusCode=&purposeCode=&channel=&direction=&recordedBy=&page=&size=`
 - `GET /api/communication-events/status-activity/daily-summary?tenantCode=&page=&size=&previousStatusCode=&currentStatusCode=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/communication-events/status-activity/daily-summary/by-current-status?tenantCode=&page=&size=&previousStatusCode=&currentStatusCode=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/communication-events/status-activity/weekly-summary?tenantCode=&page=&size=&previousStatusCode=&currentStatusCode=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/communication-events/status-activity/weekly-summary/by-current-status?tenantCode=&page=&size=&previousStatusCode=&currentStatusCode=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/communication-events/status-activity/monthly-summary?tenantCode=&page=&size=&previousStatusCode=&currentStatusCode=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/communication-events/status-activity/monthly-summary/by-current-status?tenantCode=&page=&size=&previousStatusCode=&currentStatusCode=&changedBy=&changedAtFrom=&changedAtTo=`
 - `PATCH /api/communication-events/{eventNumber}/status` (request includes `tenantCode`, `statusCode`, `reason`, `changedBy`)
 - `GET /api/communication-events/{eventNumber}/status-history?page=&size=&tenantCode=&changedBy=&changedAtFrom=&changedAtTo=`
 - `POST /api/communication-events/status-types`

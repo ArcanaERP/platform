@@ -41,6 +41,16 @@ public interface CommunicationEventLog {
         PageQuery pageQuery
     );
 
+    PageResult<DailyCommunicationEventStatusActivityByCurrentStatusSummaryView> listDailyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
+        String previousStatusCode,
+        String currentStatusCode,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<WeeklyCommunicationEventStatusActivitySummaryView> listWeeklyStatusActivitySummaries(
         String tenantCode,
         String previousStatusCode,
@@ -51,7 +61,27 @@ public interface CommunicationEventLog {
         PageQuery pageQuery
     );
 
+    PageResult<WeeklyCommunicationEventStatusActivityByCurrentStatusSummaryView> listWeeklyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
+        String previousStatusCode,
+        String currentStatusCode,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<MonthlyCommunicationEventStatusActivitySummaryView> listMonthlyStatusActivitySummaries(
+        String tenantCode,
+        String previousStatusCode,
+        String currentStatusCode,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<MonthlyCommunicationEventStatusActivityByCurrentStatusSummaryView> listMonthlyStatusActivityByCurrentStatusSummaries(
         String tenantCode,
         String previousStatusCode,
         String currentStatusCode,

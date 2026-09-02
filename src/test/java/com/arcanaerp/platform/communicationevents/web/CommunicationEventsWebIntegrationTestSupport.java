@@ -146,6 +146,21 @@ final class CommunicationEventsWebIntegrationTestSupport {
             optionalNameValuePairs);
     }
 
+    static MockHttpServletRequestBuilder dailyStatusActivityByCurrentStatusSummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest(
+            COMMUNICATION_EVENTS_PATH + "/status-activity/daily-summary/by-current-status",
+            tenantCode,
+            page,
+            size,
+            optionalNameValuePairs
+        );
+    }
+
     static MockHttpServletRequestBuilder weeklyStatusActivitySummaryRequest(
         String tenantCode,
         int page,
@@ -156,6 +171,21 @@ final class CommunicationEventsWebIntegrationTestSupport {
             optionalNameValuePairs);
     }
 
+    static MockHttpServletRequestBuilder weeklyStatusActivityByCurrentStatusSummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest(
+            COMMUNICATION_EVENTS_PATH + "/status-activity/weekly-summary/by-current-status",
+            tenantCode,
+            page,
+            size,
+            optionalNameValuePairs
+        );
+    }
+
     static MockHttpServletRequestBuilder monthlyStatusActivitySummaryRequest(
         String tenantCode,
         int page,
@@ -164,6 +194,21 @@ final class CommunicationEventsWebIntegrationTestSupport {
     ) {
         return statusActivitySummaryRequest(COMMUNICATION_EVENTS_PATH + "/status-activity/monthly-summary", tenantCode, page, size,
             optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder monthlyStatusActivityByCurrentStatusSummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivitySummaryRequest(
+            COMMUNICATION_EVENTS_PATH + "/status-activity/monthly-summary/by-current-status",
+            tenantCode,
+            page,
+            size,
+            optionalNameValuePairs
+        );
     }
 
     static MockHttpServletRequestBuilder listEventsRequest(String tenantCode, int page, int size, String... optionalNameValuePairs) {

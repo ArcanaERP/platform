@@ -105,6 +105,93 @@ class CommunicationEventsStatusActivitySummaryIntegrationTest {
     }
 
     @Test
+    void readsDailyWeeklyAndMonthlyStatusActivitySummariesByCurrentStatusCode() throws Exception {
+        seedTenant("commact05", "agent05@commact.com");
+        seedTenant("commact06", "agent06@commact.com");
+
+        createAndTransition("commact05", "agent05@commact.com", "closed", "2027-10-01T00:00:00Z");
+        createAndTransition("commact05", "agent05@commact.com", "escalated", "2027-10-01T01:00:00Z");
+        createAndTransition("commact06", "agent06@commact.com", "closed", "2027-10-08T00:00:00Z");
+
+        mockMvc.perform(CommunicationEventsWebIntegrationTestSupport.dailyStatusActivityByCurrentStatusSummaryRequest(
+            "commact05",
+            0,
+            10,
+            "changedAtFrom",
+            "2027-10-01T00:00:00Z",
+            "changedAtTo",
+            "2027-10-31T23:59:59Z"
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[?(@.businessDate=='2027-10-01' && @.currentStatusCode=='CLOSED')].currentStatusName",
+                hasItem("Closed")))
+            .andExpect(jsonPath("$.items[?(@.businessDate=='2027-10-01' && @.currentStatusCode=='ESCALATED')].transitionCount",
+                hasItem(1)))
+            .andExpect(jsonPath("$.items[?(@.businessDate=='2027-10-08')]").isEmpty());
+
+        mockMvc.perform(CommunicationEventsWebIntegrationTestSupport.weeklyStatusActivityByCurrentStatusSummaryRequest(
+            "commact05",
+            0,
+            10,
+            "changedAtFrom",
+            "2027-10-01T00:00:00Z",
+            "changedAtTo",
+            "2027-10-31T23:59:59Z"
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[?(@.businessWeekStart=='2027-09-27' && @.currentStatusCode=='CLOSED')].eventCount",
+                hasItem(1)))
+            .andExpect(jsonPath("$.items[?(@.businessWeekStart=='2027-09-27' && @.currentStatusCode=='ESCALATED')].eventCount",
+                hasItem(1)));
+
+        mockMvc.perform(CommunicationEventsWebIntegrationTestSupport.monthlyStatusActivityByCurrentStatusSummaryRequest(
+            "commact05",
+            0,
+            10,
+            "changedAtFrom",
+            "2027-10-01T00:00:00Z",
+            "changedAtTo",
+            "2027-10-31T23:59:59Z"
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessMonth").value("2027-10"))
+            .andExpect(jsonPath("$.items[0].currentStatusCode").value("CLOSED"))
+            .andExpect(jsonPath("$.items[1].currentStatusCode").value("ESCALATED"));
+
+        mockMvc.perform(CommunicationEventsWebIntegrationTestSupport.dailyStatusActivityByCurrentStatusSummaryRequest(
+            "commact05",
+            0,
+            1,
+            "changedAtFrom",
+            "2027-10-01T00:00:00Z",
+            "changedAtTo",
+            "2027-10-31T23:59:59Z"
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].currentStatusCode").value("CLOSED"))
+            .andExpect(jsonPath("$.hasNext").value(true));
+
+        mockMvc.perform(CommunicationEventsWebIntegrationTestSupport.dailyStatusActivityByCurrentStatusSummaryRequest(
+            "commact05",
+            0,
+            10,
+            "currentStatusCode",
+            "closed",
+            "changedAtFrom",
+            "2027-10-01T00:00:00Z",
+            "changedAtTo",
+            "2027-10-31T23:59:59Z"
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].currentStatusCode").value("CLOSED"));
+    }
+
+    @Test
     void paginatesStatusActivitySummaryBuckets() throws Exception {
         seedTenant("commact03", "agent03@commact.com");
 

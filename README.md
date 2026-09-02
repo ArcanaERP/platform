@@ -131,8 +131,11 @@ Communication Events:
 - `GET /api/communication-events/{eventNumber}?tenantCode=`
 - `GET /api/communication-events?tenantCode=&statusCode=&purposeCode=&channel=&direction=&recordedBy=&page=&size=`
 - `GET /api/communication-events/status-activity/daily-summary?tenantCode=&page=&size=&previousStatusCode=&currentStatusCode=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/communication-events/status-activity/daily-summary/by-current-status?tenantCode=&page=&size=&previousStatusCode=&currentStatusCode=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/communication-events/status-activity/weekly-summary?tenantCode=&page=&size=&previousStatusCode=&currentStatusCode=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/communication-events/status-activity/weekly-summary/by-current-status?tenantCode=&page=&size=&previousStatusCode=&currentStatusCode=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/communication-events/status-activity/monthly-summary?tenantCode=&page=&size=&previousStatusCode=&currentStatusCode=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/communication-events/status-activity/monthly-summary/by-current-status?tenantCode=&page=&size=&previousStatusCode=&currentStatusCode=&changedBy=&changedAtFrom=&changedAtTo=`
 - `PATCH /api/communication-events/{eventNumber}/status` (request includes `tenantCode`, `statusCode`, `reason`, `changedBy`)
 - `GET /api/communication-events/{eventNumber}/status-history?page=&size=&tenantCode=&changedBy=&changedAtFrom=&changedAtTo=`
 - `POST /api/communication-events/status-types`
