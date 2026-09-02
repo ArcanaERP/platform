@@ -3,24 +3,33 @@ package com.arcanaerp.platform.inventory.internal;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.AdjustInventoryCommand;
+import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivitySummaryView;
 import com.arcanaerp.platform.inventory.DuplicateTransferReversalException;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
+import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivitySummaryView;
 import com.arcanaerp.platform.inventory.ReverseInventoryTransferCommand;
 import com.arcanaerp.platform.inventory.ReversalIdempotencyPayloadConflictException;
 import com.arcanaerp.platform.inventory.ReversalIdempotencyRaceConflictException;
 import com.arcanaerp.platform.inventory.InventoryTransferView;
 import com.arcanaerp.platform.inventory.TransferInventoryCommand;
+import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivitySummaryView;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.DayOfWeek;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
+import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.TreeMap;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -519,6 +528,145 @@ class InventoryAvailabilityService implements InventoryAvailability {
                 adjustment.getAdjustedBy(),
                 adjustment.getAdjustedAt()
             ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DailyInventoryAdjustmentActivitySummaryView> listDailyAdjustmentActivitySummaries(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeAdjustmentActivityByBucket(
+            sku,
+            locationCode,
+            adjustedBy,
+            adjustedAtFrom,
+            adjustedAtTo,
+            pageQuery,
+            adjustment -> adjustment.getAdjustedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            DailyInventoryAdjustmentActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WeeklyInventoryAdjustmentActivitySummaryView> listWeeklyAdjustmentActivitySummaries(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeAdjustmentActivityByBucket(
+            sku,
+            locationCode,
+            adjustedBy,
+            adjustedAtFrom,
+            adjustedAtTo,
+            pageQuery,
+            adjustment -> adjustment.getAdjustedAt()
+                .atOffset(ZoneOffset.UTC)
+                .toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            WeeklyInventoryAdjustmentActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyInventoryAdjustmentActivitySummaryView> listMonthlyAdjustmentActivitySummaries(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeAdjustmentActivityByBucket(
+            sku,
+            locationCode,
+            adjustedBy,
+            adjustedAtFrom,
+            adjustedAtTo,
+            pageQuery,
+            adjustment -> YearMonth.from(adjustment.getAdjustedAt().atOffset(ZoneOffset.UTC)),
+            MonthlyInventoryAdjustmentActivitySummaryView::new
+        );
+    }
+
+    private <B extends Comparable<? super B>, T> PageResult<T> summarizeAdjustmentActivityByBucket(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery,
+        AdjustmentBucketExtractor<B> bucketExtractor,
+        AdjustmentBucketSummaryFactory<B, T> summaryFactory
+    ) {
+        InventoryItem item = findInventoryItem(sku, locationCode);
+        String normalizedAdjustedBy = adjustedBy == null ? null : normalizeRequired(adjustedBy, "adjustedBy").toLowerCase();
+        List<InventoryAdjustment> adjustments = inventoryAdjustmentRepository.findHistoryRowsFiltered(
+            item.getId(),
+            normalizedAdjustedBy,
+            adjustedAtFrom,
+            adjustedAtTo
+        );
+        TreeMap<B, AdjustmentBucketSummary> summaries = new TreeMap<>(java.util.Comparator.reverseOrder());
+        for (InventoryAdjustment adjustment : adjustments) {
+            AdjustmentBucketSummary summary = summaries.computeIfAbsent(
+                bucketExtractor.bucket(adjustment),
+                ignored -> new AdjustmentBucketSummary()
+            );
+            summary.adjustmentCount++;
+            summary.netQuantityDelta = summary.netQuantityDelta.add(adjustment.getQuantityDelta());
+        }
+        List<T> rows = summaries.entrySet().stream()
+            .map(entry -> summaryFactory.create(
+                item.getSku(),
+                item.getLocationCode(),
+                entry.getKey(),
+                entry.getValue().adjustmentCount,
+                entry.getValue().netQuantityDelta
+            ))
+            .toList();
+        return paginate(rows, pageQuery);
+    }
+
+    private static <T> PageResult<T> paginate(List<T> rows, PageQuery pageQuery) {
+        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), rows.size());
+        int toIndex = Math.min(fromIndex + pageQuery.size(), rows.size());
+        List<T> pageRows = new ArrayList<>(rows.subList(fromIndex, toIndex));
+        int totalPages = rows.isEmpty() ? 0 : (int) Math.ceil((double) rows.size() / pageQuery.size());
+        return new PageResult<>(
+            pageRows,
+            pageQuery.page(),
+            pageQuery.size(),
+            rows.size(),
+            totalPages,
+            pageQuery.page() + 1 < totalPages,
+            pageQuery.page() > 0 && !rows.isEmpty()
+        );
+    }
+
+    @FunctionalInterface
+    private interface AdjustmentBucketExtractor<B> {
+        B bucket(InventoryAdjustment adjustment);
+    }
+
+    @FunctionalInterface
+    private interface AdjustmentBucketSummaryFactory<B, T> {
+        T create(String sku, String locationCode, B bucket, long adjustmentCount, BigDecimal netQuantityDelta);
+    }
+
+    private static final class AdjustmentBucketSummary {
+        private long adjustmentCount;
+        private BigDecimal netQuantityDelta = BigDecimal.ZERO;
     }
 
     private static BigDecimal normalizeQuantityDelta(BigDecimal quantityDelta) {

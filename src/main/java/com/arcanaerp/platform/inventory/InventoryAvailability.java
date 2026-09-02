@@ -39,4 +39,31 @@ public interface InventoryAvailability {
         Instant adjustedAtTo,
         PageQuery pageQuery
     );
+
+    PageResult<DailyInventoryAdjustmentActivitySummaryView> listDailyAdjustmentActivitySummaries(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<WeeklyInventoryAdjustmentActivitySummaryView> listWeeklyAdjustmentActivitySummaries(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<MonthlyInventoryAdjustmentActivitySummaryView> listMonthlyAdjustmentActivitySummaries(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    );
 }

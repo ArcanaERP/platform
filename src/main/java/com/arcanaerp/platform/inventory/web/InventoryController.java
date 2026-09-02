@@ -3,12 +3,15 @@ package com.arcanaerp.platform.inventory.web;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.AdjustInventoryCommand;
+import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivitySummaryView;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
+import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivitySummaryView;
 import com.arcanaerp.platform.inventory.ReverseInventoryTransferCommand;
 import com.arcanaerp.platform.inventory.InventoryTransferView;
 import com.arcanaerp.platform.inventory.TransferInventoryCommand;
+import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivitySummaryView;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -92,6 +95,81 @@ public class InventoryController {
             )
         );
         return toAdjustmentResponse(adjustment);
+    }
+
+    @GetMapping("/{sku}/adjustment-activity/daily-summary")
+    public PageResult<DailyInventoryAdjustmentActivitySummaryResponse> listDailyAdjustmentActivitySummaries(
+        @PathVariable String sku,
+        @RequestParam(required = false) String locationCode,
+        @RequestParam(required = false) String adjustedBy,
+        @RequestParam(required = false) String adjustedAtFrom,
+        @RequestParam(required = false) String adjustedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedAdjustedAtFrom = parseOptionalInstant(adjustedAtFrom, "adjustedAtFrom");
+        Instant parsedAdjustedAtTo = parseOptionalInstant(adjustedAtTo, "adjustedAtTo");
+        validateAdjustedAtRange(parsedAdjustedAtFrom, parsedAdjustedAtTo);
+
+        return inventoryAvailability.listDailyAdjustmentActivitySummaries(
+                sku,
+                normalizeOptionalLocationCode(locationCode),
+                normalizeOptionalAdjustedBy(adjustedBy),
+                parsedAdjustedAtFrom,
+                parsedAdjustedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toDailyAdjustmentActivitySummaryResponse);
+    }
+
+    @GetMapping("/{sku}/adjustment-activity/weekly-summary")
+    public PageResult<WeeklyInventoryAdjustmentActivitySummaryResponse> listWeeklyAdjustmentActivitySummaries(
+        @PathVariable String sku,
+        @RequestParam(required = false) String locationCode,
+        @RequestParam(required = false) String adjustedBy,
+        @RequestParam(required = false) String adjustedAtFrom,
+        @RequestParam(required = false) String adjustedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedAdjustedAtFrom = parseOptionalInstant(adjustedAtFrom, "adjustedAtFrom");
+        Instant parsedAdjustedAtTo = parseOptionalInstant(adjustedAtTo, "adjustedAtTo");
+        validateAdjustedAtRange(parsedAdjustedAtFrom, parsedAdjustedAtTo);
+
+        return inventoryAvailability.listWeeklyAdjustmentActivitySummaries(
+                sku,
+                normalizeOptionalLocationCode(locationCode),
+                normalizeOptionalAdjustedBy(adjustedBy),
+                parsedAdjustedAtFrom,
+                parsedAdjustedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toWeeklyAdjustmentActivitySummaryResponse);
+    }
+
+    @GetMapping("/{sku}/adjustment-activity/monthly-summary")
+    public PageResult<MonthlyInventoryAdjustmentActivitySummaryResponse> listMonthlyAdjustmentActivitySummaries(
+        @PathVariable String sku,
+        @RequestParam(required = false) String locationCode,
+        @RequestParam(required = false) String adjustedBy,
+        @RequestParam(required = false) String adjustedAtFrom,
+        @RequestParam(required = false) String adjustedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedAdjustedAtFrom = parseOptionalInstant(adjustedAtFrom, "adjustedAtFrom");
+        Instant parsedAdjustedAtTo = parseOptionalInstant(adjustedAtTo, "adjustedAtTo");
+        validateAdjustedAtRange(parsedAdjustedAtFrom, parsedAdjustedAtTo);
+
+        return inventoryAvailability.listMonthlyAdjustmentActivitySummaries(
+                sku,
+                normalizeOptionalLocationCode(locationCode),
+                normalizeOptionalAdjustedBy(adjustedBy),
+                parsedAdjustedAtFrom,
+                parsedAdjustedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toMonthlyAdjustmentActivitySummaryResponse);
     }
 
     @PostMapping("/{sku}/transfers")
@@ -221,6 +299,42 @@ public class InventoryController {
             transfer.referenceType(),
             transfer.referenceId(),
             transfer.transferredAt()
+        );
+    }
+
+    private DailyInventoryAdjustmentActivitySummaryResponse toDailyAdjustmentActivitySummaryResponse(
+        DailyInventoryAdjustmentActivitySummaryView summary
+    ) {
+        return new DailyInventoryAdjustmentActivitySummaryResponse(
+            summary.sku(),
+            summary.locationCode(),
+            summary.businessDate(),
+            summary.adjustmentCount(),
+            summary.netQuantityDelta()
+        );
+    }
+
+    private WeeklyInventoryAdjustmentActivitySummaryResponse toWeeklyAdjustmentActivitySummaryResponse(
+        WeeklyInventoryAdjustmentActivitySummaryView summary
+    ) {
+        return new WeeklyInventoryAdjustmentActivitySummaryResponse(
+            summary.sku(),
+            summary.locationCode(),
+            summary.businessWeekStart(),
+            summary.adjustmentCount(),
+            summary.netQuantityDelta()
+        );
+    }
+
+    private MonthlyInventoryAdjustmentActivitySummaryResponse toMonthlyAdjustmentActivitySummaryResponse(
+        MonthlyInventoryAdjustmentActivitySummaryView summary
+    ) {
+        return new MonthlyInventoryAdjustmentActivitySummaryResponse(
+            summary.sku(),
+            summary.locationCode(),
+            summary.businessMonth(),
+            summary.adjustmentCount(),
+            summary.netQuantityDelta()
         );
     }
 
