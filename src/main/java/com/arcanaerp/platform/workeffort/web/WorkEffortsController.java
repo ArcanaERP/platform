@@ -6,10 +6,13 @@ import com.arcanaerp.platform.workeffort.AssignWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.ChangeWorkEffortStatusCommand;
 import com.arcanaerp.platform.workeffort.CreateWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.DailyWorkEffortAssignmentActivitySummaryView;
+import com.arcanaerp.platform.workeffort.DailyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.DailyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivitySummaryView;
+import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySummaryView;
+import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
@@ -230,6 +233,31 @@ public class WorkEffortsController {
         ).map(this::toDailyStatusActivitySummaryResponse);
     }
 
+    @GetMapping("/status-activity/daily-summary/by-current-status")
+    public PageResult<DailyWorkEffortStatusActivityByCurrentStatusSummaryResponse> listDailyStatusActivityByCurrentStatusSummaries(
+        @RequestParam String tenantCode,
+        @RequestParam(required = false) String previousStatus,
+        @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return workEffortCatalog.listDailyStatusActivityByCurrentStatusSummaries(
+            tenantCode,
+            parseOptionalStatus(previousStatus, "previousStatus"),
+            parseOptionalStatus(currentStatus, "currentStatus"),
+            normalizeOptionalActorEmail(changedBy, "changedBy"),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toDailyStatusActivityByCurrentStatusSummaryResponse);
+    }
+
     @GetMapping("/status-activity/weekly-summary")
     public PageResult<WeeklyWorkEffortStatusActivitySummaryResponse> listWeeklyStatusActivitySummaries(
         @RequestParam String tenantCode,
@@ -255,6 +283,31 @@ public class WorkEffortsController {
         ).map(this::toWeeklyStatusActivitySummaryResponse);
     }
 
+    @GetMapping("/status-activity/weekly-summary/by-current-status")
+    public PageResult<WeeklyWorkEffortStatusActivityByCurrentStatusSummaryResponse> listWeeklyStatusActivityByCurrentStatusSummaries(
+        @RequestParam String tenantCode,
+        @RequestParam(required = false) String previousStatus,
+        @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return workEffortCatalog.listWeeklyStatusActivityByCurrentStatusSummaries(
+            tenantCode,
+            parseOptionalStatus(previousStatus, "previousStatus"),
+            parseOptionalStatus(currentStatus, "currentStatus"),
+            normalizeOptionalActorEmail(changedBy, "changedBy"),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toWeeklyStatusActivityByCurrentStatusSummaryResponse);
+    }
+
     @GetMapping("/status-activity/monthly-summary")
     public PageResult<MonthlyWorkEffortStatusActivitySummaryResponse> listMonthlyStatusActivitySummaries(
         @RequestParam String tenantCode,
@@ -278,6 +331,31 @@ public class WorkEffortsController {
             parsedChangedAtTo,
             PageQuery.of(page, size)
         ).map(this::toMonthlyStatusActivitySummaryResponse);
+    }
+
+    @GetMapping("/status-activity/monthly-summary/by-current-status")
+    public PageResult<MonthlyWorkEffortStatusActivityByCurrentStatusSummaryResponse> listMonthlyStatusActivityByCurrentStatusSummaries(
+        @RequestParam String tenantCode,
+        @RequestParam(required = false) String previousStatus,
+        @RequestParam(required = false) String currentStatus,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return workEffortCatalog.listMonthlyStatusActivityByCurrentStatusSummaries(
+            tenantCode,
+            parseOptionalStatus(previousStatus, "previousStatus"),
+            parseOptionalStatus(currentStatus, "currentStatus"),
+            normalizeOptionalActorEmail(changedBy, "changedBy"),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toMonthlyStatusActivityByCurrentStatusSummaryResponse);
     }
 
     @GetMapping("/{effortNumber}/status-history")
@@ -444,12 +522,48 @@ public class WorkEffortsController {
         );
     }
 
+    private DailyWorkEffortStatusActivityByCurrentStatusSummaryResponse toDailyStatusActivityByCurrentStatusSummaryResponse(
+        DailyWorkEffortStatusActivityByCurrentStatusSummaryView view
+    ) {
+        return new DailyWorkEffortStatusActivityByCurrentStatusSummaryResponse(
+            view.tenantCode(),
+            view.businessDate(),
+            view.currentStatus(),
+            view.transitionCount(),
+            view.workEffortCount()
+        );
+    }
+
+    private WeeklyWorkEffortStatusActivityByCurrentStatusSummaryResponse toWeeklyStatusActivityByCurrentStatusSummaryResponse(
+        WeeklyWorkEffortStatusActivityByCurrentStatusSummaryView view
+    ) {
+        return new WeeklyWorkEffortStatusActivityByCurrentStatusSummaryResponse(
+            view.tenantCode(),
+            view.businessWeekStart(),
+            view.currentStatus(),
+            view.transitionCount(),
+            view.workEffortCount()
+        );
+    }
+
     private MonthlyWorkEffortStatusActivitySummaryResponse toMonthlyStatusActivitySummaryResponse(
         MonthlyWorkEffortStatusActivitySummaryView view
     ) {
         return new MonthlyWorkEffortStatusActivitySummaryResponse(
             view.tenantCode(),
             view.businessMonth(),
+            view.transitionCount(),
+            view.workEffortCount()
+        );
+    }
+
+    private MonthlyWorkEffortStatusActivityByCurrentStatusSummaryResponse toMonthlyStatusActivityByCurrentStatusSummaryResponse(
+        MonthlyWorkEffortStatusActivityByCurrentStatusSummaryView view
+    ) {
+        return new MonthlyWorkEffortStatusActivityByCurrentStatusSummaryResponse(
+            view.tenantCode(),
+            view.businessMonth(),
+            view.currentStatus(),
             view.transitionCount(),
             view.workEffortCount()
         );

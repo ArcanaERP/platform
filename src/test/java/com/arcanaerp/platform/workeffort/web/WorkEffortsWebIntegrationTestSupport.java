@@ -194,6 +194,33 @@ final class WorkEffortsWebIntegrationTestSupport {
         return statusActivityBucketSummaryRequest("monthly", tenantCode, page, size, optionalNameValuePairs);
     }
 
+    static MockHttpServletRequestBuilder dailyWorkEffortStatusActivityByCurrentStatusSummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivityBucketSummaryRequest("daily", tenantCode, page, size, true, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder weeklyWorkEffortStatusActivityByCurrentStatusSummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivityBucketSummaryRequest("weekly", tenantCode, page, size, true, optionalNameValuePairs);
+    }
+
+    static MockHttpServletRequestBuilder monthlyWorkEffortStatusActivityByCurrentStatusSummaryRequest(
+        String tenantCode,
+        int page,
+        int size,
+        String... optionalNameValuePairs
+    ) {
+        return statusActivityBucketSummaryRequest("monthly", tenantCode, page, size, true, optionalNameValuePairs);
+    }
+
     private static MockHttpServletRequestBuilder assignmentActivityBucketSummaryRequest(
         String bucket,
         String tenantCode,
@@ -224,7 +251,22 @@ final class WorkEffortsWebIntegrationTestSupport {
         int size,
         String... optionalNameValuePairs
     ) {
-        MockHttpServletRequestBuilder builder = get(WORK_EFFORTS_PATH + "/status-activity/" + bucket + "-summary")
+        return statusActivityBucketSummaryRequest(bucket, tenantCode, page, size, false, optionalNameValuePairs);
+    }
+
+    private static MockHttpServletRequestBuilder statusActivityBucketSummaryRequest(
+        String bucket,
+        String tenantCode,
+        int page,
+        int size,
+        boolean byCurrentStatus,
+        String... optionalNameValuePairs
+    ) {
+        String path = WORK_EFFORTS_PATH + "/status-activity/" + bucket + "-summary";
+        if (byCurrentStatus) {
+            path = path + "/by-current-status";
+        }
+        MockHttpServletRequestBuilder builder = get(path)
             .param("tenantCode", tenantCode)
             .param("page", String.valueOf(page))
             .param("size", String.valueOf(size));

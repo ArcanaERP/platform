@@ -92,8 +92,11 @@ Rules:
 - `GET /api/work-efforts/assignment-activity/weekly-summary?tenantCode=&assignedTo=&assignedAtFrom=&assignedAtTo=&page=&size=`
 - `GET /api/work-efforts/assignment-activity/monthly-summary?tenantCode=&assignedTo=&assignedAtFrom=&assignedAtTo=&page=&size=`
 - `GET /api/work-efforts/status-activity/daily-summary?tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
+- `GET /api/work-efforts/status-activity/daily-summary/by-current-status?tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
 - `GET /api/work-efforts/status-activity/weekly-summary?tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
+- `GET /api/work-efforts/status-activity/weekly-summary/by-current-status?tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
 - `GET /api/work-efforts/status-activity/monthly-summary?tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
+- `GET /api/work-efforts/status-activity/monthly-summary/by-current-status?tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
 - `PATCH /api/work-efforts/{effortNumber}/status` (request includes `tenantCode`, `status`, `reason`, `changedBy`)
 - `GET /api/work-efforts/{effortNumber}/status-history?tenantCode=&changedBy=&changedAtFrom=&changedAtTo=&page=&size=`
 - `GET /api/work-efforts/{effortNumber}/assignment?tenantCode=`

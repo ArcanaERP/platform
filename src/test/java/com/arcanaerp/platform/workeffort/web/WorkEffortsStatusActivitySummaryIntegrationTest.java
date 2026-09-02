@@ -107,6 +107,82 @@ class WorkEffortsStatusActivitySummaryIntegrationTest {
     }
 
     @Test
+    void readsDailyWeeklyAndMonthlyStatusActivitySummariesByCurrentStatus() throws Exception {
+        seedTenant("workmix01", "agent01@workmix.com");
+        seedTenant("workmix02", "agent02@workmix.com");
+
+        createAndTransition("workmix01", "we-mix-001", "agent01@workmix.com", "IN_PROGRESS", "2027-12-06T01:00:00Z");
+        createAndTransition("workmix01", "we-mix-002", "agent01@workmix.com", "COMPLETED", "2027-12-06T02:00:00Z");
+        createAndTransition("workmix01", "we-mix-003", "agent01@workmix.com", "IN_PROGRESS", "2027-12-13T01:00:00Z");
+        createAndTransition("workmix02", "we-mix-004", "agent02@workmix.com", "COMPLETED", "2027-12-06T03:00:00Z");
+
+        mockMvc.perform(WorkEffortsWebIntegrationTestSupport.dailyWorkEffortStatusActivityByCurrentStatusSummaryRequest(
+            "workmix01",
+            0,
+            10,
+            "changedAtFrom",
+            "2027-12-01T00:00:00Z",
+            "changedAtTo",
+            "2027-12-31T23:59:59Z"
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[?(@.businessDate=='2027-12-06' && @.currentStatus=='IN_PROGRESS')].transitionCount", hasItem(1)))
+            .andExpect(jsonPath("$.items[?(@.businessDate=='2027-12-06' && @.currentStatus=='COMPLETED')].workEffortCount", hasItem(1)))
+            .andExpect(jsonPath("$.items[?(@.businessDate=='2027-12-13' && @.currentStatus=='IN_PROGRESS')].tenantCode", hasItem("WORKMIX01")))
+            .andExpect(jsonPath("$.items[?(@.tenantCode=='WORKMIX02')]").isEmpty());
+
+        mockMvc.perform(WorkEffortsWebIntegrationTestSupport.weeklyWorkEffortStatusActivityByCurrentStatusSummaryRequest(
+            "workmix01",
+            0,
+            10,
+            "changedAtFrom",
+            "2027-12-01T00:00:00Z",
+            "changedAtTo",
+            "2027-12-31T23:59:59Z"
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[?(@.businessWeekStart=='2027-12-06' && @.currentStatus=='IN_PROGRESS')].transitionCount", hasItem(1)))
+            .andExpect(jsonPath("$.items[?(@.businessWeekStart=='2027-12-06' && @.currentStatus=='COMPLETED')].transitionCount", hasItem(1)))
+            .andExpect(jsonPath("$.items[?(@.businessWeekStart=='2027-12-13' && @.currentStatus=='IN_PROGRESS')].transitionCount", hasItem(1)));
+
+        mockMvc.perform(WorkEffortsWebIntegrationTestSupport.monthlyWorkEffortStatusActivityByCurrentStatusSummaryRequest(
+            "workmix01",
+            0,
+            10,
+            "changedAtFrom",
+            "2027-12-01T00:00:00Z",
+            "changedAtTo",
+            "2027-12-31T23:59:59Z"
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessMonth").value("2027-12"))
+            .andExpect(jsonPath("$.items[0].currentStatus").value("IN_PROGRESS"))
+            .andExpect(jsonPath("$.items[0].transitionCount").value(2))
+            .andExpect(jsonPath("$.items[1].currentStatus").value("COMPLETED"))
+            .andExpect(jsonPath("$.items[1].transitionCount").value(1));
+
+        mockMvc.perform(WorkEffortsWebIntegrationTestSupport.dailyWorkEffortStatusActivityByCurrentStatusSummaryRequest(
+            "workmix01",
+            0,
+            1,
+            "currentStatus",
+            "IN_PROGRESS",
+            "changedAtFrom",
+            "2027-12-01T00:00:00Z",
+            "changedAtTo",
+            "2027-12-31T23:59:59Z"
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessDate").value("2027-12-13"))
+            .andExpect(jsonPath("$.items[0].currentStatus").value("IN_PROGRESS"))
+            .andExpect(jsonPath("$.hasNext").value(true));
+    }
+
+    @Test
     void paginatesStatusActivitySummaryBuckets() throws Exception {
         seedTenant("workact03", "agent03@workact.com");
 

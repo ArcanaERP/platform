@@ -61,6 +61,16 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    PageResult<DailyWorkEffortStatusActivityByCurrentStatusSummaryView> listDailyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
+        WorkEffortStatus previousStatus,
+        WorkEffortStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<WeeklyWorkEffortStatusActivitySummaryView> listWeeklyStatusActivitySummaries(
         String tenantCode,
         WorkEffortStatus previousStatus,
@@ -71,7 +81,27 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    PageResult<WeeklyWorkEffortStatusActivityByCurrentStatusSummaryView> listWeeklyStatusActivityByCurrentStatusSummaries(
+        String tenantCode,
+        WorkEffortStatus previousStatus,
+        WorkEffortStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<MonthlyWorkEffortStatusActivitySummaryView> listMonthlyStatusActivitySummaries(
+        String tenantCode,
+        WorkEffortStatus previousStatus,
+        WorkEffortStatus currentStatus,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<MonthlyWorkEffortStatusActivityByCurrentStatusSummaryView> listMonthlyStatusActivityByCurrentStatusSummaries(
         String tenantCode,
         WorkEffortStatus previousStatus,
         WorkEffortStatus currentStatus,
