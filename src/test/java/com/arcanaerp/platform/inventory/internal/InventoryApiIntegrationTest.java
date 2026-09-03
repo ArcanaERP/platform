@@ -611,6 +611,100 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void readsDailyWeeklyAndMonthlyTransferActivitySummaries() throws Exception {
+        InventoryItem mainItem = inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9243",
+                "main",
+                new BigDecimal("20"),
+                SEED_INSTANT
+            )
+        );
+        InventoryItem eastItem = inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9243",
+                "wh-east",
+                new BigDecimal("5"),
+                SEED_INSTANT
+            )
+        );
+        InventoryItem westItem = inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9243",
+                "wh-west",
+                new BigDecimal("7"),
+                SEED_INSTANT
+            )
+        );
+        seedTransfer(mainItem, eastItem, "20", "17", "5", "8", "3", "Main to east", "ops-a@arcanaerp.com", "FULFILLMENT", "FUL-9243-1", "2027-05-03T01:00:00Z");
+        seedTransfer(mainItem, eastItem, "17", "15", "8", "10", "2", "Main to east repeat", "ops-a@arcanaerp.com", "FULFILLMENT", "FUL-9243-2", "2027-05-03T02:00:00Z");
+        seedTransfer(eastItem, westItem, "10", "6", "7", "11", "4", "East to west", "ops-b@arcanaerp.com", "REBALANCE", "REB-9243-1", "2027-05-10T03:00:00Z");
+        seedTransfer(westItem, mainItem, "11", "5", "15", "21", "6", "West to main", "ops-c@arcanaerp.com", "REBALANCE", "REB-9243-2", "2027-05-10T04:00:00Z");
+
+        mockMvc.perform(get("/api/inventory/{sku}/transfer-activity/daily-summary", "arc-9243")
+            .param("adjustedAtFrom", "2027-05-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-05-31T23:59:59Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].businessDate").value("2027-05-10"))
+            .andExpect(jsonPath("$.items[0].sourceLocationCode").value("WH-EAST"))
+            .andExpect(jsonPath("$.items[0].destinationLocationCode").value("WH-WEST"))
+            .andExpect(jsonPath("$.items[0].adjustedBy").value("ops-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].transferCount").value(1))
+            .andExpect(jsonPath("$.items[0].totalQuantity").value(4))
+            .andExpect(jsonPath("$.items[1].sourceLocationCode").value("WH-WEST"))
+            .andExpect(jsonPath("$.items[1].destinationLocationCode").value("MAIN"))
+            .andExpect(jsonPath("$.items[2].businessDate").value("2027-05-03"))
+            .andExpect(jsonPath("$.items[2].sourceLocationCode").value("MAIN"))
+            .andExpect(jsonPath("$.items[2].destinationLocationCode").value("WH-EAST"))
+            .andExpect(jsonPath("$.items[2].transferCount").value(2))
+            .andExpect(jsonPath("$.items[2].totalQuantity").value(5));
+
+        mockMvc.perform(get("/api/inventory/{sku}/transfer-activity/weekly-summary", "arc-9243")
+            .param("adjustedAtFrom", "2027-05-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-05-31T23:59:59Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].businessWeekStart").value("2027-05-10"))
+            .andExpect(jsonPath("$.items[1].businessWeekStart").value("2027-05-10"))
+            .andExpect(jsonPath("$.items[2].businessWeekStart").value("2027-05-03"))
+            .andExpect(jsonPath("$.items[2].transferCount").value(2))
+            .andExpect(jsonPath("$.items[2].totalQuantity").value(5));
+
+        mockMvc.perform(get("/api/inventory/{sku}/transfer-activity/monthly-summary", "arc-9243")
+            .param("sourceLocationCode", "main")
+            .param("destinationLocationCode", "wh-east")
+            .param("adjustedBy", "OPS-A@ARCANAERP.COM")
+            .param("referenceType", "fulfillment")
+            .param("adjustedAtFrom", "2027-05-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-05-31T23:59:59Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].businessMonth").value("2027-05"))
+            .andExpect(jsonPath("$.items[0].sourceLocationCode").value("MAIN"))
+            .andExpect(jsonPath("$.items[0].destinationLocationCode").value("WH-EAST"))
+            .andExpect(jsonPath("$.items[0].adjustedBy").value("ops-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].transferCount").value(2))
+            .andExpect(jsonPath("$.items[0].totalQuantity").value(5));
+
+        mockMvc.perform(get("/api/inventory/{sku}/transfer-activity/daily-summary", "arc-9243")
+            .param("adjustedAtFrom", "2027-05-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-05-31T23:59:59Z")
+            .param("page", "0")
+            .param("size", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].businessDate").value("2027-05-10"))
+            .andExpect(jsonPath("$.hasNext").value(true));
+    }
+
+    @Test
     void returnsTransferByTransferId() throws Exception {
         String payload = InventoryManagementWebTestSupport.transferPayload(
             "main",
@@ -1912,6 +2006,56 @@ class InventoryApiIntegrationTest {
                 null,
                 null,
                 Instant.parse(adjustedAt)
+            )
+        );
+    }
+
+    private void seedTransfer(
+        InventoryItem sourceItem,
+        InventoryItem destinationItem,
+        String sourcePreviousOnHandQuantity,
+        String sourceCurrentOnHandQuantity,
+        String destinationPreviousOnHandQuantity,
+        String destinationCurrentOnHandQuantity,
+        String quantity,
+        String reason,
+        String adjustedBy,
+        String referenceType,
+        String referenceId,
+        String adjustedAt
+    ) {
+        UUID transferId = UUID.randomUUID();
+        Instant transferredAt = Instant.parse(adjustedAt);
+        inventoryAdjustmentRepository.save(
+            InventoryAdjustment.create(
+                sourceItem.getId(),
+                sourceItem.getSku(),
+                sourceItem.getLocationCode(),
+                transferId,
+                new BigDecimal(sourcePreviousOnHandQuantity),
+                new BigDecimal(quantity).negate(),
+                new BigDecimal(sourceCurrentOnHandQuantity),
+                reason,
+                adjustedBy,
+                referenceType,
+                referenceId,
+                transferredAt
+            )
+        );
+        inventoryAdjustmentRepository.save(
+            InventoryAdjustment.create(
+                destinationItem.getId(),
+                destinationItem.getSku(),
+                destinationItem.getLocationCode(),
+                transferId,
+                new BigDecimal(destinationPreviousOnHandQuantity),
+                new BigDecimal(quantity),
+                new BigDecimal(destinationCurrentOnHandQuantity),
+                reason,
+                adjustedBy,
+                referenceType,
+                referenceId,
+                transferredAt
             )
         );
     }

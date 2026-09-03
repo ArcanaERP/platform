@@ -165,4 +165,48 @@ interface InventoryAdjustmentRepository extends JpaRepository<InventoryAdjustmen
         @Param("adjustedAtTo") Instant adjustedAtTo,
         Pageable pageable
     );
+
+    @Query(
+        """
+        select
+            source.transferId as transferId,
+            source.sku as sku,
+            source.locationCode as sourceLocationCode,
+            destination.locationCode as destinationLocationCode,
+            source.quantityDelta as sourceQuantityDelta,
+            source.currentOnHandQuantity as sourceOnHandQuantity,
+            destination.currentOnHandQuantity as destinationOnHandQuantity,
+            source.reason as reason,
+            source.adjustedBy as adjustedBy,
+            source.referenceType as referenceType,
+            source.referenceId as referenceId,
+            source.adjustedAt as transferredAt
+        from InventoryAdjustment source
+        join InventoryAdjustment destination
+          on destination.transferId = source.transferId
+         and destination.quantityDelta > 0
+         and destination.sku = source.sku
+        where source.transferId is not null
+          and source.quantityDelta < 0
+          and source.sku = :sku
+          and (:sourceLocationCode is null or source.locationCode = :sourceLocationCode)
+          and (:destinationLocationCode is null or destination.locationCode = :destinationLocationCode)
+          and (:adjustedBy is null or source.adjustedBy = :adjustedBy)
+          and (:referenceType is null or source.referenceType = :referenceType)
+          and (:referenceId is null or source.referenceId = :referenceId)
+          and (:adjustedAtFrom is null or source.adjustedAt >= :adjustedAtFrom)
+          and (:adjustedAtTo is null or source.adjustedAt <= :adjustedAtTo)
+        order by source.adjustedAt desc
+        """
+    )
+    List<TransferHistoryProjection> findTransferHistoryRowsFiltered(
+        @Param("sku") String sku,
+        @Param("sourceLocationCode") String sourceLocationCode,
+        @Param("destinationLocationCode") String destinationLocationCode,
+        @Param("adjustedBy") String adjustedBy,
+        @Param("referenceType") String referenceType,
+        @Param("referenceId") String referenceId,
+        @Param("adjustedAtFrom") Instant adjustedAtFrom,
+        @Param("adjustedAtTo") Instant adjustedAtTo
+    );
 }

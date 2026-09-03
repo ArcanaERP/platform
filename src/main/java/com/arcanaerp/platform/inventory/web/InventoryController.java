@@ -12,9 +12,12 @@ import com.arcanaerp.platform.inventory.InventoryItemView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivitySummaryView;
+import com.arcanaerp.platform.inventory.DailyInventoryTransferActivitySummaryView;
+import com.arcanaerp.platform.inventory.MonthlyInventoryTransferActivitySummaryView;
 import com.arcanaerp.platform.inventory.ReverseInventoryTransferCommand;
 import com.arcanaerp.platform.inventory.InventoryTransferView;
 import com.arcanaerp.platform.inventory.TransferInventoryCommand;
+import com.arcanaerp.platform.inventory.WeeklyInventoryTransferActivitySummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivitySummaryView;
@@ -427,6 +430,117 @@ public class InventoryController {
             .map(this::toTransferResponse);
     }
 
+    @GetMapping("/{sku}/transfer-activity/daily-summary")
+    public PageResult<DailyInventoryTransferActivitySummaryResponse> listDailyTransferActivitySummaries(
+        @PathVariable String sku,
+        @RequestParam(required = false) String sourceLocationCode,
+        @RequestParam(required = false) String destinationLocationCode,
+        @RequestParam(required = false) String adjustedBy,
+        @RequestParam(required = false) String referenceType,
+        @RequestParam(required = false) String referenceId,
+        @RequestParam(required = false) String adjustedAtFrom,
+        @RequestParam(required = false) String adjustedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        TransferActivityQuery query = parseTransferActivityQuery(
+            sourceLocationCode,
+            destinationLocationCode,
+            adjustedBy,
+            referenceType,
+            referenceId,
+            adjustedAtFrom,
+            adjustedAtTo
+        );
+
+        return inventoryAvailability.listDailyTransferActivitySummaries(
+                sku,
+                query.sourceLocationCode(),
+                query.destinationLocationCode(),
+                query.adjustedBy(),
+                query.referenceType(),
+                query.referenceId(),
+                query.adjustedAtFrom(),
+                query.adjustedAtTo(),
+                PageQuery.of(page, size)
+            )
+            .map(this::toDailyTransferActivitySummaryResponse);
+    }
+
+    @GetMapping("/{sku}/transfer-activity/weekly-summary")
+    public PageResult<WeeklyInventoryTransferActivitySummaryResponse> listWeeklyTransferActivitySummaries(
+        @PathVariable String sku,
+        @RequestParam(required = false) String sourceLocationCode,
+        @RequestParam(required = false) String destinationLocationCode,
+        @RequestParam(required = false) String adjustedBy,
+        @RequestParam(required = false) String referenceType,
+        @RequestParam(required = false) String referenceId,
+        @RequestParam(required = false) String adjustedAtFrom,
+        @RequestParam(required = false) String adjustedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        TransferActivityQuery query = parseTransferActivityQuery(
+            sourceLocationCode,
+            destinationLocationCode,
+            adjustedBy,
+            referenceType,
+            referenceId,
+            adjustedAtFrom,
+            adjustedAtTo
+        );
+
+        return inventoryAvailability.listWeeklyTransferActivitySummaries(
+                sku,
+                query.sourceLocationCode(),
+                query.destinationLocationCode(),
+                query.adjustedBy(),
+                query.referenceType(),
+                query.referenceId(),
+                query.adjustedAtFrom(),
+                query.adjustedAtTo(),
+                PageQuery.of(page, size)
+            )
+            .map(this::toWeeklyTransferActivitySummaryResponse);
+    }
+
+    @GetMapping("/{sku}/transfer-activity/monthly-summary")
+    public PageResult<MonthlyInventoryTransferActivitySummaryResponse> listMonthlyTransferActivitySummaries(
+        @PathVariable String sku,
+        @RequestParam(required = false) String sourceLocationCode,
+        @RequestParam(required = false) String destinationLocationCode,
+        @RequestParam(required = false) String adjustedBy,
+        @RequestParam(required = false) String referenceType,
+        @RequestParam(required = false) String referenceId,
+        @RequestParam(required = false) String adjustedAtFrom,
+        @RequestParam(required = false) String adjustedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        TransferActivityQuery query = parseTransferActivityQuery(
+            sourceLocationCode,
+            destinationLocationCode,
+            adjustedBy,
+            referenceType,
+            referenceId,
+            adjustedAtFrom,
+            adjustedAtTo
+        );
+
+        return inventoryAvailability.listMonthlyTransferActivitySummaries(
+                sku,
+                query.sourceLocationCode(),
+                query.destinationLocationCode(),
+                query.adjustedBy(),
+                query.referenceType(),
+                query.referenceId(),
+                query.adjustedAtFrom(),
+                query.adjustedAtTo(),
+                PageQuery.of(page, size)
+            )
+            .map(this::toMonthlyTransferActivitySummaryResponse);
+    }
+
     private InventoryAdjustmentResponse toAdjustmentResponse(InventoryAdjustmentView adjustment) {
         return new InventoryAdjustmentResponse(
             adjustment.id(),
@@ -566,6 +680,48 @@ public class InventoryController {
         );
     }
 
+    private DailyInventoryTransferActivitySummaryResponse toDailyTransferActivitySummaryResponse(
+        DailyInventoryTransferActivitySummaryView summary
+    ) {
+        return new DailyInventoryTransferActivitySummaryResponse(
+            summary.sku(),
+            summary.businessDate(),
+            summary.sourceLocationCode(),
+            summary.destinationLocationCode(),
+            summary.adjustedBy(),
+            summary.transferCount(),
+            summary.totalQuantity()
+        );
+    }
+
+    private WeeklyInventoryTransferActivitySummaryResponse toWeeklyTransferActivitySummaryResponse(
+        WeeklyInventoryTransferActivitySummaryView summary
+    ) {
+        return new WeeklyInventoryTransferActivitySummaryResponse(
+            summary.sku(),
+            summary.businessWeekStart(),
+            summary.sourceLocationCode(),
+            summary.destinationLocationCode(),
+            summary.adjustedBy(),
+            summary.transferCount(),
+            summary.totalQuantity()
+        );
+    }
+
+    private MonthlyInventoryTransferActivitySummaryResponse toMonthlyTransferActivitySummaryResponse(
+        MonthlyInventoryTransferActivitySummaryView summary
+    ) {
+        return new MonthlyInventoryTransferActivitySummaryResponse(
+            summary.sku(),
+            summary.businessMonth(),
+            summary.sourceLocationCode(),
+            summary.destinationLocationCode(),
+            summary.adjustedBy(),
+            summary.transferCount(),
+            summary.totalQuantity()
+        );
+    }
+
     private static String normalizeOptionalLocationCode(String locationCode) {
         if (locationCode == null) {
             return DEFAULT_LOCATION_CODE;
@@ -614,6 +770,40 @@ public class InventoryController {
             throw new IllegalArgumentException("referenceId query parameter must not be blank");
         }
         return referenceId.trim();
+    }
+
+    private static TransferActivityQuery parseTransferActivityQuery(
+        String sourceLocationCode,
+        String destinationLocationCode,
+        String adjustedBy,
+        String referenceType,
+        String referenceId,
+        String adjustedAtFrom,
+        String adjustedAtTo
+    ) {
+        Instant parsedAdjustedAtFrom = parseOptionalInstant(adjustedAtFrom, "adjustedAtFrom");
+        Instant parsedAdjustedAtTo = parseOptionalInstant(adjustedAtTo, "adjustedAtTo");
+        validateAdjustedAtRange(parsedAdjustedAtFrom, parsedAdjustedAtTo);
+        return new TransferActivityQuery(
+            normalizeOptionalTransferLocationCode(sourceLocationCode, "sourceLocationCode"),
+            normalizeOptionalTransferLocationCode(destinationLocationCode, "destinationLocationCode"),
+            normalizeOptionalAdjustedBy(adjustedBy),
+            normalizeOptionalReferenceType(referenceType),
+            normalizeOptionalReferenceId(referenceId),
+            parsedAdjustedAtFrom,
+            parsedAdjustedAtTo
+        );
+    }
+
+    private record TransferActivityQuery(
+        String sourceLocationCode,
+        String destinationLocationCode,
+        String adjustedBy,
+        String referenceType,
+        String referenceId,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo
+    ) {
     }
 
     private static Instant parseOptionalInstant(String value, String parameterName) {

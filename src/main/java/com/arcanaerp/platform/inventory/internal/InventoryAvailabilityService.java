@@ -10,6 +10,8 @@ import com.arcanaerp.platform.inventory.DuplicateTransferReversalException;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
+import com.arcanaerp.platform.inventory.DailyInventoryTransferActivitySummaryView;
+import com.arcanaerp.platform.inventory.MonthlyInventoryTransferActivitySummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivitySummaryView;
@@ -18,6 +20,7 @@ import com.arcanaerp.platform.inventory.ReversalIdempotencyPayloadConflictExcept
 import com.arcanaerp.platform.inventory.ReversalIdempotencyRaceConflictException;
 import com.arcanaerp.platform.inventory.InventoryTransferView;
 import com.arcanaerp.platform.inventory.TransferInventoryCommand;
+import com.arcanaerp.platform.inventory.WeeklyInventoryTransferActivitySummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivitySummaryView;
@@ -539,6 +542,93 @@ class InventoryAvailabilityService implements InventoryAvailability {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<DailyInventoryTransferActivitySummaryView> listDailyTransferActivitySummaries(
+        String sku,
+        String sourceLocationCode,
+        String destinationLocationCode,
+        String adjustedBy,
+        String referenceType,
+        String referenceId,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeTransferActivityByBucket(
+            sku,
+            sourceLocationCode,
+            destinationLocationCode,
+            adjustedBy,
+            referenceType,
+            referenceId,
+            adjustedAtFrom,
+            adjustedAtTo,
+            pageQuery,
+            transfer -> transfer.getTransferredAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            DailyInventoryTransferActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WeeklyInventoryTransferActivitySummaryView> listWeeklyTransferActivitySummaries(
+        String sku,
+        String sourceLocationCode,
+        String destinationLocationCode,
+        String adjustedBy,
+        String referenceType,
+        String referenceId,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeTransferActivityByBucket(
+            sku,
+            sourceLocationCode,
+            destinationLocationCode,
+            adjustedBy,
+            referenceType,
+            referenceId,
+            adjustedAtFrom,
+            adjustedAtTo,
+            pageQuery,
+            transfer -> transfer.getTransferredAt()
+                .atOffset(ZoneOffset.UTC)
+                .toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            WeeklyInventoryTransferActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyInventoryTransferActivitySummaryView> listMonthlyTransferActivitySummaries(
+        String sku,
+        String sourceLocationCode,
+        String destinationLocationCode,
+        String adjustedBy,
+        String referenceType,
+        String referenceId,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeTransferActivityByBucket(
+            sku,
+            sourceLocationCode,
+            destinationLocationCode,
+            adjustedBy,
+            referenceType,
+            referenceId,
+            adjustedAtFrom,
+            adjustedAtTo,
+            pageQuery,
+            transfer -> YearMonth.from(transfer.getTransferredAt().atOffset(ZoneOffset.UTC)),
+            MonthlyInventoryTransferActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<DailyInventoryAdjustmentActivitySummaryView> listDailyAdjustmentActivitySummaries(
         String sku,
         String locationCode,
@@ -783,6 +873,83 @@ class InventoryAvailabilityService implements InventoryAvailability {
         return paginate(rows, pageQuery);
     }
 
+    private <B extends Comparable<? super B>, T> PageResult<T> summarizeTransferActivityByBucket(
+        String sku,
+        String sourceLocationCode,
+        String destinationLocationCode,
+        String adjustedBy,
+        String referenceType,
+        String referenceId,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery,
+        TransferBucketExtractor<B> bucketExtractor,
+        TransferBucketSummaryFactory<B, T> summaryFactory
+    ) {
+        String normalizedSku = normalizeRequired(sku, "sku").toUpperCase();
+        ensureSkuExists(normalizedSku);
+        String normalizedSourceLocationCode = normalizeOptionalLocationCodeFilter(sourceLocationCode, "sourceLocationCode");
+        String normalizedDestinationLocationCode = normalizeOptionalLocationCodeFilter(
+            destinationLocationCode,
+            "destinationLocationCode"
+        );
+        String normalizedAdjustedBy = adjustedBy == null ? null : normalizeRequired(adjustedBy, "adjustedBy").toLowerCase();
+        String normalizedReferenceType = normalizeOptionalReferenceType(referenceType);
+        String normalizedReferenceId = normalizeOptionalReferenceId(referenceId);
+
+        List<InventoryAdjustmentRepository.TransferHistoryProjection> transfers =
+            inventoryAdjustmentRepository.findTransferHistoryRowsFiltered(
+                normalizedSku,
+                normalizedSourceLocationCode,
+                normalizedDestinationLocationCode,
+                normalizedAdjustedBy,
+                normalizedReferenceType,
+                normalizedReferenceId,
+                adjustedAtFrom,
+                adjustedAtTo
+            );
+        Map<TransferBucketKey<B>, TransferBucketSummary> summaries = new java.util.HashMap<>();
+        for (InventoryAdjustmentRepository.TransferHistoryProjection transfer : transfers) {
+            TransferBucketKey<B> key = new TransferBucketKey<>(
+                bucketExtractor.bucket(transfer),
+                transfer.getSourceLocationCode(),
+                transfer.getDestinationLocationCode(),
+                transfer.getAdjustedBy()
+            );
+            TransferBucketSummary summary = summaries.computeIfAbsent(key, ignored -> new TransferBucketSummary());
+            summary.transferCount++;
+            summary.totalQuantity = summary.totalQuantity.add(transfer.getSourceQuantityDelta().abs());
+        }
+        List<T> rows = summaries.entrySet().stream()
+            .sorted((left, right) -> {
+                int bucketComparison = right.getKey().bucket().compareTo(left.getKey().bucket());
+                if (bucketComparison != 0) {
+                    return bucketComparison;
+                }
+                int sourceComparison = left.getKey().sourceLocationCode().compareTo(right.getKey().sourceLocationCode());
+                if (sourceComparison != 0) {
+                    return sourceComparison;
+                }
+                int destinationComparison = left.getKey().destinationLocationCode()
+                    .compareTo(right.getKey().destinationLocationCode());
+                if (destinationComparison != 0) {
+                    return destinationComparison;
+                }
+                return left.getKey().adjustedBy().compareTo(right.getKey().adjustedBy());
+            })
+            .map(entry -> summaryFactory.create(
+                normalizedSku,
+                entry.getKey().bucket(),
+                entry.getKey().sourceLocationCode(),
+                entry.getKey().destinationLocationCode(),
+                entry.getKey().adjustedBy(),
+                entry.getValue().transferCount,
+                entry.getValue().totalQuantity
+            ))
+            .toList();
+        return paginate(rows, pageQuery);
+    }
+
     private <B extends Comparable<? super B>, T> PageResult<T> summarizeAdjustmentActivityByBucketAndLocation(
         String sku,
         String locationCode,
@@ -905,6 +1072,11 @@ class InventoryAvailabilityService implements InventoryAvailability {
     }
 
     @FunctionalInterface
+    private interface TransferBucketExtractor<B> {
+        B bucket(InventoryAdjustmentRepository.TransferHistoryProjection transfer);
+    }
+
+    @FunctionalInterface
     private interface AdjustmentBucketSummaryFactory<B, T> {
         T create(String sku, String locationCode, B bucket, long adjustmentCount, BigDecimal netQuantityDelta);
     }
@@ -919,15 +1091,41 @@ class InventoryAvailabilityService implements InventoryAvailability {
         T create(String sku, B bucket, String adjustedBy, long adjustmentCount, BigDecimal netQuantityDelta);
     }
 
+    @FunctionalInterface
+    private interface TransferBucketSummaryFactory<B, T> {
+        T create(
+            String sku,
+            B bucket,
+            String sourceLocationCode,
+            String destinationLocationCode,
+            String adjustedBy,
+            long transferCount,
+            BigDecimal totalQuantity
+        );
+    }
+
     private record AdjustmentBucketLocationKey<B extends Comparable<? super B>>(B bucket, String locationCode) {
     }
 
     private record AdjustmentBucketAdjustedByKey<B extends Comparable<? super B>>(B bucket, String adjustedBy) {
     }
 
+    private record TransferBucketKey<B extends Comparable<? super B>>(
+        B bucket,
+        String sourceLocationCode,
+        String destinationLocationCode,
+        String adjustedBy
+    ) {
+    }
+
     private static final class AdjustmentBucketSummary {
         private long adjustmentCount;
         private BigDecimal netQuantityDelta = BigDecimal.ZERO;
+    }
+
+    private static final class TransferBucketSummary {
+        private long transferCount;
+        private BigDecimal totalQuantity = BigDecimal.ZERO;
     }
 
     private static BigDecimal normalizeQuantityDelta(BigDecimal quantityDelta) {
