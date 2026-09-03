@@ -149,7 +149,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.code").value("WH-CENTRAL"))
             .andExpect(jsonPath("$.name").value("Central Warehouse"))
             .andExpect(jsonPath("$.active").value(true))
-            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andExpect(jsonPath("$.updatedAt").isNotEmpty());
 
         mockMvc.perform(get("/api/inventory/locations/{code}", "wh-central"))
             .andExpect(status().isOk())
@@ -202,6 +203,106 @@ class InventoryApiIntegrationTest {
             mockMvc.perform(get("/api/inventory/locations/{code}", "wh-missing")),
             "WH-MISSING",
             "/api/inventory/locations/wh-missing"
+        );
+    }
+
+    @Test
+    void updatesInventoryLocationActiveStateAndFiltersByLifecycleState() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/locations")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": "wh-retire",
+                  "name": "Retirable Warehouse"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.active").value(true));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/inventory/locations/{code}/active", "wh-retire")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "active": false
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("WH-RETIRE"))
+            .andExpect(jsonPath("$.active").value(false))
+            .andExpect(jsonPath("$.updatedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/locations")
+            .param("active", "false")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].code").value("WH-RETIRE"))
+            .andExpect(jsonPath("$.items[0].active").value(false));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/inventory/locations/{code}/active", "wh-retire")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "active": true
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("WH-RETIRE"))
+            .andExpect(jsonPath("$.active").value(true));
+    }
+
+    @Test
+    void rejectsNoOpInventoryLocationActiveStateChange() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/locations")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": "wh-noop",
+                  "name": "No-op Warehouse"
+                }
+                """))
+            .andExpect(status().isCreated());
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/inventory/locations/{code}/active", "wh-noop")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "active": true
+                    }
+                    """)),
+            "Inventory location active flag is already true",
+            "/api/inventory/locations/wh-noop/active"
+        );
+    }
+
+    @Test
+    void rejectsAdjustmentAtInactiveInventoryLocation() throws Exception {
+        InventoryLocation inactiveLocation = inventoryLocationRepository.save(
+            InventoryLocation.create("wh-inactive", "Inactive Warehouse", SEED_INSTANT)
+        );
+        inactiveLocation.setActive(false, SEED_INSTANT.plusSeconds(60));
+        inventoryLocationRepository.save(inactiveLocation);
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9202a",
+                "wh-inactive",
+                new BigDecimal("5"),
+                SEED_INSTANT
+            )
+        );
+
+        String payload = InventoryManagementWebTestSupport.adjustmentPayload(
+            "1",
+            "Receiving posted",
+            DEFAULT_ACTOR
+        );
+
+        expectBadRequest(
+            InventoryManagementWebTestSupport.adjustInventory(mockMvc, "arc-9202a", "wh-inactive", payload),
+            "Inventory location is inactive: WH-INACTIVE",
+            "/api/inventory/arc-9202a/adjustments"
         );
     }
 

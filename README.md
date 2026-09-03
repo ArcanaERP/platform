@@ -318,6 +318,7 @@ Inventory:
 
 - `POST /api/inventory/locations`
 - `GET /api/inventory/locations/{code}`
+- `PATCH /api/inventory/locations/{code}/active`
 - `GET /api/inventory/locations?page=&size=&active=`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)

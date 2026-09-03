@@ -6,6 +6,7 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.InventoryLocationDirectory;
 import com.arcanaerp.platform.inventory.InventoryLocationView;
 import com.arcanaerp.platform.inventory.RegisterInventoryLocationCommand;
+import com.arcanaerp.platform.inventory.UpdateInventoryLocationActiveCommand;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.NoSuchElementException;
@@ -46,6 +47,22 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
     }
 
     @Override
+    public InventoryLocationView updateLocationActive(String code, UpdateInventoryLocationActiveCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        String normalizedCode = normalizeRequired(code, "code").toUpperCase();
+        String commandCode = normalizeRequired(command.code(), "code").toUpperCase();
+        if (!normalizedCode.equals(commandCode)) {
+            throw new IllegalArgumentException("code path variable must match command code");
+        }
+        InventoryLocation location = inventoryLocationRepository.findByCode(normalizedCode)
+            .orElseThrow(() -> new NoSuchElementException("Inventory location not found for code: " + normalizedCode));
+        location.setActive(command.active(), Instant.now(clock));
+        return toView(inventoryLocationRepository.save(location));
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public PageResult<InventoryLocationView> listLocations(Boolean active, PageQuery pageQuery) {
         Sort sort = Sort.by(Sort.Direction.ASC, "code");
@@ -61,7 +78,8 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
             location.getCode(),
             location.getName(),
             location.isActive(),
-            location.getCreatedAt()
+            location.getCreatedAt(),
+            location.getUpdatedAt()
         );
     }
 

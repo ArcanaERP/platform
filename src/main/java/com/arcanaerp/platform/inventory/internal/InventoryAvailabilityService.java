@@ -1430,9 +1430,12 @@ class InventoryAvailabilityService implements InventoryAvailability {
     }
 
     private void ensureLocationExists(String locationCode) {
-        inventoryLocationRepository.findByCode(locationCode)
+        InventoryLocation location = inventoryLocationRepository.findByCode(locationCode)
             .orElseGet(() -> inventoryLocationRepository.save(
                 InventoryLocation.create(locationCode, locationCode, Instant.now(clock))
             ));
+        if (!location.isActive()) {
+            throw new IllegalArgumentException("Inventory location is inactive: " + locationCode);
+        }
     }
 }

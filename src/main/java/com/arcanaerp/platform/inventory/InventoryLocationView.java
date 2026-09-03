@@ -8,6 +8,7 @@ public record InventoryLocationView(
     String code,
     String name,
     boolean active,
-    Instant createdAt
+    Instant createdAt,
+    Instant updatedAt
 ) {
 }

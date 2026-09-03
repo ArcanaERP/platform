@@ -16,6 +16,7 @@ erDiagram
       STRING name
       BOOLEAN active
       INSTANT createdAt
+      INSTANT updatedAt
     }
 
     INVENTORY_ITEMS {
@@ -83,6 +84,7 @@ erDiagram
 
 - `POST /api/inventory/locations`
 - `GET /api/inventory/locations/{code}`
+- `PATCH /api/inventory/locations/{code}/active`
 - `GET /api/inventory/locations?page=&size=&active=`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
 - `GET /api/inventory/{sku}/adjustments?page=&size=&locationCode=&adjustedBy=&adjustedAtFrom=&adjustedAtTo=` (`locationCode` defaults to `MAIN`)
@@ -111,6 +113,7 @@ erDiagram
 ## Query Notes
 
 - inventory location codes are normalized to uppercase at write and lookup boundaries
+- inactive inventory locations remain readable but reject new adjustment and transfer writes
 - adjustment activity summaries bucket append-only `inventory_adjustments` rows by UTC `adjustedAt`
 - weekly adjustment activity summaries use Monday as the business week start
 - adjustment activity rows include `adjustmentCount` and `netQuantityDelta` for the requested `sku + locationCode`

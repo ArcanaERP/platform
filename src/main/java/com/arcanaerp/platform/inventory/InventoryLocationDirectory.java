@@ -9,5 +9,7 @@ public interface InventoryLocationDirectory {
 
     InventoryLocationView locationByCode(String code);
 
+    InventoryLocationView updateLocationActive(String code, UpdateInventoryLocationActiveCommand command);
+
     PageResult<InventoryLocationView> listLocations(Boolean active, PageQuery pageQuery);
 }

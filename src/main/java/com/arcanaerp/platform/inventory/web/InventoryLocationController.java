@@ -5,10 +5,12 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.InventoryLocationDirectory;
 import com.arcanaerp.platform.inventory.InventoryLocationView;
 import com.arcanaerp.platform.inventory.RegisterInventoryLocationCommand;
+import com.arcanaerp.platform.inventory.UpdateInventoryLocationActiveCommand;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,6 +40,17 @@ public class InventoryLocationController {
         return toResponse(inventoryLocationDirectory.locationByCode(code));
     }
 
+    @PatchMapping("/{code}/active")
+    public InventoryLocationResponse updateLocationActive(
+        @PathVariable String code,
+        @Valid @RequestBody UpdateInventoryLocationActiveRequest request
+    ) {
+        return toResponse(inventoryLocationDirectory.updateLocationActive(
+            code,
+            new UpdateInventoryLocationActiveCommand(code, request.active())
+        ));
+    }
+
     @GetMapping
     public PageResult<InventoryLocationResponse> listLocations(
         @RequestParam(required = false) Boolean active,
@@ -53,7 +66,8 @@ public class InventoryLocationController {
             location.code(),
             location.name(),
             location.active(),
-            location.createdAt()
+            location.createdAt(),
+            location.updatedAt()
         );
     }
 }
