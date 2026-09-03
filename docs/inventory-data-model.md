@@ -81,6 +81,9 @@ erDiagram
 
 ## Minimal HTTP Surface
 
+- `POST /api/inventory/locations`
+- `GET /api/inventory/locations/{code}`
+- `GET /api/inventory/locations?page=&size=&active=`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
 - `GET /api/inventory/{sku}/adjustments?page=&size=&locationCode=&adjustedBy=&adjustedAtFrom=&adjustedAtTo=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)
@@ -107,6 +110,7 @@ erDiagram
 
 ## Query Notes
 
+- inventory location codes are normalized to uppercase at write and lookup boundaries
 - adjustment activity summaries bucket append-only `inventory_adjustments` rows by UTC `adjustedAt`
 - weekly adjustment activity summaries use Monday as the business week start
 - adjustment activity rows include `adjustmentCount` and `netQuantityDelta` for the requested `sku + locationCode`

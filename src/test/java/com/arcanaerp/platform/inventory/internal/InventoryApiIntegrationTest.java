@@ -135,6 +135,77 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsInventoryLocations() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/locations")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " wh-central ",
+                  "name": " Central Warehouse "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.code").value("WH-CENTRAL"))
+            .andExpect(jsonPath("$.name").value("Central Warehouse"))
+            .andExpect(jsonPath("$.active").value(true))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/locations/{code}", "wh-central"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("WH-CENTRAL"))
+            .andExpect(jsonPath("$.name").value("Central Warehouse"))
+            .andExpect(jsonPath("$.active").value(true));
+
+        mockMvc.perform(get("/api/inventory/locations")
+            .param("active", "true")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].code").value("WH-CENTRAL"));
+
+        mockMvc.perform(get("/api/inventory/locations")
+            .param("active", "false")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(0))
+            .andExpect(jsonPath("$.items").isEmpty());
+    }
+
+    @Test
+    void rejectsDuplicateInventoryLocationCode() throws Exception {
+        String payload = """
+            {
+              "code": "wh-central",
+              "name": "Central Warehouse"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/locations")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/locations")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory location already exists for code: WH-CENTRAL",
+            "/api/inventory/locations"
+        );
+    }
+
+    @Test
+    void returnsNotFoundForUnknownInventoryLocation() throws Exception {
+        expectInventoryLocationNotFound(
+            mockMvc.perform(get("/api/inventory/locations/{code}", "wh-missing")),
+            "WH-MISSING",
+            "/api/inventory/locations/wh-missing"
+        );
+    }
+
+    @Test
     void adjustsInventoryAtDefaultMainLocationAndAppendsAdjustmentHistory() throws Exception {
         InventoryItem item = inventoryItemRepository.save(
             InventoryItem.create(
@@ -1889,6 +1960,15 @@ class InventoryApiIntegrationTest {
                         "Inventory item not found for SKU: " + sku.toUpperCase() + " at location: " + locationCode.toUpperCase()
                     )
             )
+            .andExpect(jsonPath("$.path").value(path));
+    }
+
+    private void expectInventoryLocationNotFound(ResultActions result, String code, String path) throws Exception {
+        result
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Inventory location not found for code: " + code))
             .andExpect(jsonPath("$.path").value(path));
     }
 

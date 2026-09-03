@@ -316,6 +316,9 @@ Agreements:
 
 Inventory:
 
+- `POST /api/inventory/locations`
+- `GET /api/inventory/locations/{code}`
+- `GET /api/inventory/locations?page=&size=&active=`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/transfers`
