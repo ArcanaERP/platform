@@ -3,12 +3,14 @@ package com.arcanaerp.platform.inventory.internal;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.AdjustInventoryCommand;
+import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivitySummaryView;
 import com.arcanaerp.platform.inventory.DuplicateTransferReversalException;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
+import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivitySummaryView;
 import com.arcanaerp.platform.inventory.ReverseInventoryTransferCommand;
@@ -16,6 +18,7 @@ import com.arcanaerp.platform.inventory.ReversalIdempotencyPayloadConflictExcept
 import com.arcanaerp.platform.inventory.ReversalIdempotencyRaceConflictException;
 import com.arcanaerp.platform.inventory.InventoryTransferView;
 import com.arcanaerp.platform.inventory.TransferInventoryCommand;
+import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivitySummaryView;
 import java.math.BigDecimal;
@@ -630,6 +633,53 @@ class InventoryAvailabilityService implements InventoryAvailability {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<DailyInventoryAdjustmentActivityByAdjustedBySummaryView> listDailyAdjustmentActivityByAdjustedBySummaries(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeAdjustmentActivityByBucketAndAdjustedBy(
+            sku,
+            locationCode,
+            adjustedBy,
+            adjustedAtFrom,
+            adjustedAtTo,
+            pageQuery,
+            adjustment -> adjustment.getAdjustedAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            DailyInventoryAdjustmentActivityByAdjustedBySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WeeklyInventoryAdjustmentActivityByAdjustedBySummaryView> listWeeklyAdjustmentActivityByAdjustedBySummaries(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeAdjustmentActivityByBucketAndAdjustedBy(
+            sku,
+            locationCode,
+            adjustedBy,
+            adjustedAtFrom,
+            adjustedAtTo,
+            pageQuery,
+            adjustment -> adjustment.getAdjustedAt()
+                .atOffset(ZoneOffset.UTC)
+                .toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            WeeklyInventoryAdjustmentActivityByAdjustedBySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<MonthlyInventoryAdjustmentActivitySummaryView> listMonthlyAdjustmentActivitySummaries(
         String sku,
         String locationCode,
@@ -669,6 +719,28 @@ class InventoryAvailabilityService implements InventoryAvailability {
             pageQuery,
             adjustment -> YearMonth.from(adjustment.getAdjustedAt().atOffset(ZoneOffset.UTC)),
             MonthlyInventoryAdjustmentActivityByLocationSummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyInventoryAdjustmentActivityByAdjustedBySummaryView> listMonthlyAdjustmentActivityByAdjustedBySummaries(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeAdjustmentActivityByBucketAndAdjustedBy(
+            sku,
+            locationCode,
+            adjustedBy,
+            adjustedAtFrom,
+            adjustedAtTo,
+            pageQuery,
+            adjustment -> YearMonth.from(adjustment.getAdjustedAt().atOffset(ZoneOffset.UTC)),
+            MonthlyInventoryAdjustmentActivityByAdjustedBySummaryView::new
         );
     }
 
@@ -761,6 +833,56 @@ class InventoryAvailabilityService implements InventoryAvailability {
         return paginate(rows, pageQuery);
     }
 
+    private <B extends Comparable<? super B>, T> PageResult<T> summarizeAdjustmentActivityByBucketAndAdjustedBy(
+        String sku,
+        String locationCode,
+        String adjustedBy,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery,
+        AdjustmentBucketExtractor<B> bucketExtractor,
+        AdjustmentBucketAdjustedBySummaryFactory<B, T> summaryFactory
+    ) {
+        String normalizedSku = normalizeRequired(sku, "sku").toUpperCase();
+        ensureSkuExists(normalizedSku);
+        String normalizedLocationCode = normalizeOptionalLocationCodeFilter(locationCode, "locationCode");
+        String normalizedAdjustedBy = adjustedBy == null ? null : normalizeRequired(adjustedBy, "adjustedBy").toLowerCase();
+        List<InventoryAdjustment> adjustments = inventoryAdjustmentRepository.findSkuHistoryRowsFiltered(
+            normalizedSku,
+            normalizedLocationCode,
+            normalizedAdjustedBy,
+            adjustedAtFrom,
+            adjustedAtTo
+        );
+        Map<AdjustmentBucketAdjustedByKey<B>, AdjustmentBucketSummary> summaries = new java.util.HashMap<>();
+        for (InventoryAdjustment adjustment : adjustments) {
+            AdjustmentBucketAdjustedByKey<B> key = new AdjustmentBucketAdjustedByKey<>(
+                bucketExtractor.bucket(adjustment),
+                adjustment.getAdjustedBy()
+            );
+            AdjustmentBucketSummary summary = summaries.computeIfAbsent(key, ignored -> new AdjustmentBucketSummary());
+            summary.adjustmentCount++;
+            summary.netQuantityDelta = summary.netQuantityDelta.add(adjustment.getQuantityDelta());
+        }
+        List<T> rows = summaries.entrySet().stream()
+            .sorted((left, right) -> {
+                int bucketComparison = right.getKey().bucket().compareTo(left.getKey().bucket());
+                if (bucketComparison != 0) {
+                    return bucketComparison;
+                }
+                return left.getKey().adjustedBy().compareTo(right.getKey().adjustedBy());
+            })
+            .map(entry -> summaryFactory.create(
+                normalizedSku,
+                entry.getKey().bucket(),
+                entry.getKey().adjustedBy(),
+                entry.getValue().adjustmentCount,
+                entry.getValue().netQuantityDelta
+            ))
+            .toList();
+        return paginate(rows, pageQuery);
+    }
+
     private static <T> PageResult<T> paginate(List<T> rows, PageQuery pageQuery) {
         int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), rows.size());
         int toIndex = Math.min(fromIndex + pageQuery.size(), rows.size());
@@ -792,7 +914,15 @@ class InventoryAvailabilityService implements InventoryAvailability {
         T create(String sku, B bucket, String locationCode, long adjustmentCount, BigDecimal netQuantityDelta);
     }
 
+    @FunctionalInterface
+    private interface AdjustmentBucketAdjustedBySummaryFactory<B, T> {
+        T create(String sku, B bucket, String adjustedBy, long adjustmentCount, BigDecimal netQuantityDelta);
+    }
+
     private record AdjustmentBucketLocationKey<B extends Comparable<? super B>>(B bucket, String locationCode) {
+    }
+
+    private record AdjustmentBucketAdjustedByKey<B extends Comparable<? super B>>(B bucket, String adjustedBy) {
     }
 
     private static final class AdjustmentBucketSummary {

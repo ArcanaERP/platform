@@ -398,6 +398,108 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void readsDailyWeeklyAndMonthlyAdjustmentActivitySummariesByAdjustedBy() throws Exception {
+        InventoryItem mainItem = inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9242",
+                "main",
+                new BigDecimal("20"),
+                SEED_INSTANT
+            )
+        );
+        InventoryItem eastItem = inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9242",
+                "wh-east",
+                new BigDecimal("5"),
+                SEED_INSTANT
+            )
+        );
+        InventoryItem westItem = inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9242",
+                "wh-west",
+                new BigDecimal("7"),
+                SEED_INSTANT
+            )
+        );
+        seedAdjustment(mainItem, "20", "-3", "17", "Cycle count correction", "ops-a@arcanaerp.com", "2027-04-05T01:00:00Z");
+        seedAdjustment(eastItem, "5", "6", "11", "East receiving", "ops-b@arcanaerp.com", "2027-04-05T02:00:00Z");
+        seedAdjustment(westItem, "7", "4", "11", "West receiving", "ops-b@arcanaerp.com", "2027-04-12T03:00:00Z");
+        seedAdjustment(mainItem, "17", "-2", "15", "Pick variance", "ops-c@arcanaerp.com", "2027-04-12T04:00:00Z");
+
+        mockMvc.perform(get("/api/inventory/{sku}/adjustment-activity/daily-summary/by-adjusted-by", "arc-9242")
+            .param("adjustedAtFrom", "2027-04-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-04-30T23:59:59Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(4))
+            .andExpect(jsonPath("$.items[0].businessDate").value("2027-04-12"))
+            .andExpect(jsonPath("$.items[0].adjustedBy").value("ops-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].netQuantityDelta").value(4))
+            .andExpect(jsonPath("$.items[1].businessDate").value("2027-04-12"))
+            .andExpect(jsonPath("$.items[1].adjustedBy").value("ops-c@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[2].businessDate").value("2027-04-05"))
+            .andExpect(jsonPath("$.items[2].adjustedBy").value("ops-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[3].businessDate").value("2027-04-05"))
+            .andExpect(jsonPath("$.items[3].adjustedBy").value("ops-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[3].sku").value("ARC-9242"));
+
+        mockMvc.perform(get("/api/inventory/{sku}/adjustment-activity/weekly-summary/by-adjusted-by", "arc-9242")
+            .param("adjustedAtFrom", "2027-04-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-04-30T23:59:59Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(4))
+            .andExpect(jsonPath("$.items[0].businessWeekStart").value("2027-04-12"))
+            .andExpect(jsonPath("$.items[0].adjustedBy").value("ops-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].businessWeekStart").value("2027-04-12"))
+            .andExpect(jsonPath("$.items[1].adjustedBy").value("ops-c@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[2].businessWeekStart").value("2027-04-05"))
+            .andExpect(jsonPath("$.items[2].adjustedBy").value("ops-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[3].adjustedBy").value("ops-b@arcanaerp.com"));
+
+        mockMvc.perform(get("/api/inventory/{sku}/adjustment-activity/monthly-summary/by-adjusted-by", "arc-9242")
+            .param("adjustedBy", "OPS-B@ARCANAERP.COM")
+            .param("adjustedAtFrom", "2027-04-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-04-30T23:59:59Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].businessMonth").value("2027-04"))
+            .andExpect(jsonPath("$.items[0].adjustedBy").value("ops-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].adjustmentCount").value(2))
+            .andExpect(jsonPath("$.items[0].netQuantityDelta").value(10));
+
+        mockMvc.perform(get("/api/inventory/{sku}/adjustment-activity/monthly-summary/by-adjusted-by", "arc-9242")
+            .param("locationCode", "main")
+            .param("adjustedAtFrom", "2027-04-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-04-30T23:59:59Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].adjustedBy").value("ops-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].netQuantityDelta").value(-3))
+            .andExpect(jsonPath("$.items[1].adjustedBy").value("ops-c@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[1].netQuantityDelta").value(-2));
+
+        mockMvc.perform(get("/api/inventory/{sku}/adjustment-activity/daily-summary/by-adjusted-by", "arc-9242")
+            .param("adjustedAtFrom", "2027-04-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-04-30T23:59:59Z")
+            .param("page", "0")
+            .param("size", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(4))
+            .andExpect(jsonPath("$.items[0].businessDate").value("2027-04-12"))
+            .andExpect(jsonPath("$.items[0].adjustedBy").value("ops-b@arcanaerp.com"))
+            .andExpect(jsonPath("$.hasNext").value(true));
+    }
+
+    @Test
     void transfersInventoryBetweenLocationsWithPairedAdjustmentRecords() throws Exception {
         inventoryItemRepository.save(
             InventoryItem.create(

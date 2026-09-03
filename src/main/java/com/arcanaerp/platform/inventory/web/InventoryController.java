@@ -3,16 +3,19 @@ package com.arcanaerp.platform.inventory.web;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.AdjustInventoryCommand;
+import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivitySummaryView;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
+import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivitySummaryView;
 import com.arcanaerp.platform.inventory.ReverseInventoryTransferCommand;
 import com.arcanaerp.platform.inventory.InventoryTransferView;
 import com.arcanaerp.platform.inventory.TransferInventoryCommand;
+import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivitySummaryView;
 import jakarta.validation.Valid;
@@ -150,6 +153,31 @@ public class InventoryController {
             .map(this::toDailyAdjustmentActivityByLocationSummaryResponse);
     }
 
+    @GetMapping("/{sku}/adjustment-activity/daily-summary/by-adjusted-by")
+    public PageResult<DailyInventoryAdjustmentActivityByAdjustedBySummaryResponse> listDailyAdjustmentActivityByAdjustedBySummaries(
+        @PathVariable String sku,
+        @RequestParam(required = false) String locationCode,
+        @RequestParam(required = false) String adjustedBy,
+        @RequestParam(required = false) String adjustedAtFrom,
+        @RequestParam(required = false) String adjustedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedAdjustedAtFrom = parseOptionalInstant(adjustedAtFrom, "adjustedAtFrom");
+        Instant parsedAdjustedAtTo = parseOptionalInstant(adjustedAtTo, "adjustedAtTo");
+        validateAdjustedAtRange(parsedAdjustedAtFrom, parsedAdjustedAtTo);
+
+        return inventoryAvailability.listDailyAdjustmentActivityByAdjustedBySummaries(
+                sku,
+                normalizeOptionalTransferLocationCode(locationCode, "locationCode"),
+                normalizeOptionalAdjustedBy(adjustedBy),
+                parsedAdjustedAtFrom,
+                parsedAdjustedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toDailyAdjustmentActivityByAdjustedBySummaryResponse);
+    }
+
     @GetMapping("/{sku}/adjustment-activity/weekly-summary")
     public PageResult<WeeklyInventoryAdjustmentActivitySummaryResponse> listWeeklyAdjustmentActivitySummaries(
         @PathVariable String sku,
@@ -200,6 +228,31 @@ public class InventoryController {
             .map(this::toWeeklyAdjustmentActivityByLocationSummaryResponse);
     }
 
+    @GetMapping("/{sku}/adjustment-activity/weekly-summary/by-adjusted-by")
+    public PageResult<WeeklyInventoryAdjustmentActivityByAdjustedBySummaryResponse> listWeeklyAdjustmentActivityByAdjustedBySummaries(
+        @PathVariable String sku,
+        @RequestParam(required = false) String locationCode,
+        @RequestParam(required = false) String adjustedBy,
+        @RequestParam(required = false) String adjustedAtFrom,
+        @RequestParam(required = false) String adjustedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedAdjustedAtFrom = parseOptionalInstant(adjustedAtFrom, "adjustedAtFrom");
+        Instant parsedAdjustedAtTo = parseOptionalInstant(adjustedAtTo, "adjustedAtTo");
+        validateAdjustedAtRange(parsedAdjustedAtFrom, parsedAdjustedAtTo);
+
+        return inventoryAvailability.listWeeklyAdjustmentActivityByAdjustedBySummaries(
+                sku,
+                normalizeOptionalTransferLocationCode(locationCode, "locationCode"),
+                normalizeOptionalAdjustedBy(adjustedBy),
+                parsedAdjustedAtFrom,
+                parsedAdjustedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toWeeklyAdjustmentActivityByAdjustedBySummaryResponse);
+    }
+
     @GetMapping("/{sku}/adjustment-activity/monthly-summary")
     public PageResult<MonthlyInventoryAdjustmentActivitySummaryResponse> listMonthlyAdjustmentActivitySummaries(
         @PathVariable String sku,
@@ -248,6 +301,31 @@ public class InventoryController {
                 PageQuery.of(page, size)
             )
             .map(this::toMonthlyAdjustmentActivityByLocationSummaryResponse);
+    }
+
+    @GetMapping("/{sku}/adjustment-activity/monthly-summary/by-adjusted-by")
+    public PageResult<MonthlyInventoryAdjustmentActivityByAdjustedBySummaryResponse> listMonthlyAdjustmentActivityByAdjustedBySummaries(
+        @PathVariable String sku,
+        @RequestParam(required = false) String locationCode,
+        @RequestParam(required = false) String adjustedBy,
+        @RequestParam(required = false) String adjustedAtFrom,
+        @RequestParam(required = false) String adjustedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedAdjustedAtFrom = parseOptionalInstant(adjustedAtFrom, "adjustedAtFrom");
+        Instant parsedAdjustedAtTo = parseOptionalInstant(adjustedAtTo, "adjustedAtTo");
+        validateAdjustedAtRange(parsedAdjustedAtFrom, parsedAdjustedAtTo);
+
+        return inventoryAvailability.listMonthlyAdjustmentActivityByAdjustedBySummaries(
+                sku,
+                normalizeOptionalTransferLocationCode(locationCode, "locationCode"),
+                normalizeOptionalAdjustedBy(adjustedBy),
+                parsedAdjustedAtFrom,
+                parsedAdjustedAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toMonthlyAdjustmentActivityByAdjustedBySummaryResponse);
     }
 
     @PostMapping("/{sku}/transfers")
@@ -447,6 +525,42 @@ public class InventoryController {
             summary.sku(),
             summary.businessMonth(),
             summary.locationCode(),
+            summary.adjustmentCount(),
+            summary.netQuantityDelta()
+        );
+    }
+
+    private DailyInventoryAdjustmentActivityByAdjustedBySummaryResponse toDailyAdjustmentActivityByAdjustedBySummaryResponse(
+        DailyInventoryAdjustmentActivityByAdjustedBySummaryView summary
+    ) {
+        return new DailyInventoryAdjustmentActivityByAdjustedBySummaryResponse(
+            summary.sku(),
+            summary.businessDate(),
+            summary.adjustedBy(),
+            summary.adjustmentCount(),
+            summary.netQuantityDelta()
+        );
+    }
+
+    private WeeklyInventoryAdjustmentActivityByAdjustedBySummaryResponse toWeeklyAdjustmentActivityByAdjustedBySummaryResponse(
+        WeeklyInventoryAdjustmentActivityByAdjustedBySummaryView summary
+    ) {
+        return new WeeklyInventoryAdjustmentActivityByAdjustedBySummaryResponse(
+            summary.sku(),
+            summary.businessWeekStart(),
+            summary.adjustedBy(),
+            summary.adjustmentCount(),
+            summary.netQuantityDelta()
+        );
+    }
+
+    private MonthlyInventoryAdjustmentActivityByAdjustedBySummaryResponse toMonthlyAdjustmentActivityByAdjustedBySummaryResponse(
+        MonthlyInventoryAdjustmentActivityByAdjustedBySummaryView summary
+    ) {
+        return new MonthlyInventoryAdjustmentActivityByAdjustedBySummaryResponse(
+            summary.sku(),
+            summary.businessMonth(),
+            summary.adjustedBy(),
             summary.adjustmentCount(),
             summary.netQuantityDelta()
         );
