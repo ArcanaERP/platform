@@ -705,6 +705,93 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void readsDailyWeeklyAndMonthlyTransferActivitySummariesByReference() throws Exception {
+        InventoryItem mainItem = inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9244",
+                "main",
+                new BigDecimal("20"),
+                SEED_INSTANT
+            )
+        );
+        InventoryItem eastItem = inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9244",
+                "wh-east",
+                new BigDecimal("5"),
+                SEED_INSTANT
+            )
+        );
+        InventoryItem westItem = inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9244",
+                "wh-west",
+                new BigDecimal("7"),
+                SEED_INSTANT
+            )
+        );
+        seedTransfer(mainItem, eastItem, "20", "17", "5", "8", "3", "Work order issue", "ops-a@arcanaerp.com", "WORK_ORDER", "WO-9244-1", "2027-06-07T01:00:00Z");
+        seedTransfer(eastItem, westItem, "8", "6", "7", "9", "2", "Work order stage", "ops-b@arcanaerp.com", "WORK_ORDER", "WO-9244-1", "2027-06-07T02:00:00Z");
+        seedTransfer(westItem, mainItem, "9", "5", "17", "21", "4", "Rebalance", "ops-c@arcanaerp.com", "REBALANCE", "REB-9244-1", "2027-06-14T03:00:00Z");
+
+        mockMvc.perform(get("/api/inventory/{sku}/transfer-activity/daily-summary/by-reference", "arc-9244")
+            .param("adjustedAtFrom", "2027-06-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-06-30T23:59:59Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessDate").value("2027-06-14"))
+            .andExpect(jsonPath("$.items[0].referenceType").value("REBALANCE"))
+            .andExpect(jsonPath("$.items[0].referenceId").value("REB-9244-1"))
+            .andExpect(jsonPath("$.items[0].transferCount").value(1))
+            .andExpect(jsonPath("$.items[0].totalQuantity").value(4))
+            .andExpect(jsonPath("$.items[1].businessDate").value("2027-06-07"))
+            .andExpect(jsonPath("$.items[1].referenceType").value("WORK_ORDER"))
+            .andExpect(jsonPath("$.items[1].referenceId").value("WO-9244-1"))
+            .andExpect(jsonPath("$.items[1].transferCount").value(2))
+            .andExpect(jsonPath("$.items[1].totalQuantity").value(5));
+
+        mockMvc.perform(get("/api/inventory/{sku}/transfer-activity/weekly-summary/by-reference", "arc-9244")
+            .param("adjustedAtFrom", "2027-06-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-06-30T23:59:59Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessWeekStart").value("2027-06-14"))
+            .andExpect(jsonPath("$.items[1].businessWeekStart").value("2027-06-07"))
+            .andExpect(jsonPath("$.items[1].referenceId").value("WO-9244-1"))
+            .andExpect(jsonPath("$.items[1].transferCount").value(2))
+            .andExpect(jsonPath("$.items[1].totalQuantity").value(5));
+
+        mockMvc.perform(get("/api/inventory/{sku}/transfer-activity/monthly-summary/by-reference", "arc-9244")
+            .param("referenceType", "work_order")
+            .param("referenceId", "WO-9244-1")
+            .param("adjustedAtFrom", "2027-06-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-06-30T23:59:59Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].businessMonth").value("2027-06"))
+            .andExpect(jsonPath("$.items[0].referenceType").value("WORK_ORDER"))
+            .andExpect(jsonPath("$.items[0].referenceId").value("WO-9244-1"))
+            .andExpect(jsonPath("$.items[0].transferCount").value(2))
+            .andExpect(jsonPath("$.items[0].totalQuantity").value(5));
+
+        mockMvc.perform(get("/api/inventory/{sku}/transfer-activity/daily-summary/by-reference", "arc-9244")
+            .param("adjustedAtFrom", "2027-06-01T00:00:00Z")
+            .param("adjustedAtTo", "2027-06-30T23:59:59Z")
+            .param("page", "0")
+            .param("size", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessDate").value("2027-06-14"))
+            .andExpect(jsonPath("$.hasNext").value(true));
+    }
+
+    @Test
     void returnsTransferByTransferId() throws Exception {
         String payload = InventoryManagementWebTestSupport.transferPayload(
             "main",

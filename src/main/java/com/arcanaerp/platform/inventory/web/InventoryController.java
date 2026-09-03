@@ -12,11 +12,14 @@ import com.arcanaerp.platform.inventory.InventoryItemView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivitySummaryView;
+import com.arcanaerp.platform.inventory.DailyInventoryTransferActivityByReferenceSummaryView;
 import com.arcanaerp.platform.inventory.DailyInventoryTransferActivitySummaryView;
+import com.arcanaerp.platform.inventory.MonthlyInventoryTransferActivityByReferenceSummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryTransferActivitySummaryView;
 import com.arcanaerp.platform.inventory.ReverseInventoryTransferCommand;
 import com.arcanaerp.platform.inventory.InventoryTransferView;
 import com.arcanaerp.platform.inventory.TransferInventoryCommand;
+import com.arcanaerp.platform.inventory.WeeklyInventoryTransferActivityByReferenceSummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryTransferActivitySummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivityByLocationSummaryView;
@@ -504,6 +507,80 @@ public class InventoryController {
             .map(this::toWeeklyTransferActivitySummaryResponse);
     }
 
+    @GetMapping("/{sku}/transfer-activity/daily-summary/by-reference")
+    public PageResult<DailyInventoryTransferActivityByReferenceSummaryResponse> listDailyTransferActivityByReferenceSummaries(
+        @PathVariable String sku,
+        @RequestParam(required = false) String sourceLocationCode,
+        @RequestParam(required = false) String destinationLocationCode,
+        @RequestParam(required = false) String adjustedBy,
+        @RequestParam(required = false) String referenceType,
+        @RequestParam(required = false) String referenceId,
+        @RequestParam(required = false) String adjustedAtFrom,
+        @RequestParam(required = false) String adjustedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        TransferActivityQuery query = parseTransferActivityQuery(
+            sourceLocationCode,
+            destinationLocationCode,
+            adjustedBy,
+            referenceType,
+            referenceId,
+            adjustedAtFrom,
+            adjustedAtTo
+        );
+
+        return inventoryAvailability.listDailyTransferActivityByReferenceSummaries(
+                sku,
+                query.sourceLocationCode(),
+                query.destinationLocationCode(),
+                query.adjustedBy(),
+                query.referenceType(),
+                query.referenceId(),
+                query.adjustedAtFrom(),
+                query.adjustedAtTo(),
+                PageQuery.of(page, size)
+            )
+            .map(this::toDailyTransferActivityByReferenceSummaryResponse);
+    }
+
+    @GetMapping("/{sku}/transfer-activity/weekly-summary/by-reference")
+    public PageResult<WeeklyInventoryTransferActivityByReferenceSummaryResponse> listWeeklyTransferActivityByReferenceSummaries(
+        @PathVariable String sku,
+        @RequestParam(required = false) String sourceLocationCode,
+        @RequestParam(required = false) String destinationLocationCode,
+        @RequestParam(required = false) String adjustedBy,
+        @RequestParam(required = false) String referenceType,
+        @RequestParam(required = false) String referenceId,
+        @RequestParam(required = false) String adjustedAtFrom,
+        @RequestParam(required = false) String adjustedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        TransferActivityQuery query = parseTransferActivityQuery(
+            sourceLocationCode,
+            destinationLocationCode,
+            adjustedBy,
+            referenceType,
+            referenceId,
+            adjustedAtFrom,
+            adjustedAtTo
+        );
+
+        return inventoryAvailability.listWeeklyTransferActivityByReferenceSummaries(
+                sku,
+                query.sourceLocationCode(),
+                query.destinationLocationCode(),
+                query.adjustedBy(),
+                query.referenceType(),
+                query.referenceId(),
+                query.adjustedAtFrom(),
+                query.adjustedAtTo(),
+                PageQuery.of(page, size)
+            )
+            .map(this::toWeeklyTransferActivityByReferenceSummaryResponse);
+    }
+
     @GetMapping("/{sku}/transfer-activity/monthly-summary")
     public PageResult<MonthlyInventoryTransferActivitySummaryResponse> listMonthlyTransferActivitySummaries(
         @PathVariable String sku,
@@ -539,6 +616,43 @@ public class InventoryController {
                 PageQuery.of(page, size)
             )
             .map(this::toMonthlyTransferActivitySummaryResponse);
+    }
+
+    @GetMapping("/{sku}/transfer-activity/monthly-summary/by-reference")
+    public PageResult<MonthlyInventoryTransferActivityByReferenceSummaryResponse> listMonthlyTransferActivityByReferenceSummaries(
+        @PathVariable String sku,
+        @RequestParam(required = false) String sourceLocationCode,
+        @RequestParam(required = false) String destinationLocationCode,
+        @RequestParam(required = false) String adjustedBy,
+        @RequestParam(required = false) String referenceType,
+        @RequestParam(required = false) String referenceId,
+        @RequestParam(required = false) String adjustedAtFrom,
+        @RequestParam(required = false) String adjustedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        TransferActivityQuery query = parseTransferActivityQuery(
+            sourceLocationCode,
+            destinationLocationCode,
+            adjustedBy,
+            referenceType,
+            referenceId,
+            adjustedAtFrom,
+            adjustedAtTo
+        );
+
+        return inventoryAvailability.listMonthlyTransferActivityByReferenceSummaries(
+                sku,
+                query.sourceLocationCode(),
+                query.destinationLocationCode(),
+                query.adjustedBy(),
+                query.referenceType(),
+                query.referenceId(),
+                query.adjustedAtFrom(),
+                query.adjustedAtTo(),
+                PageQuery.of(page, size)
+            )
+            .map(this::toMonthlyTransferActivityByReferenceSummaryResponse);
     }
 
     private InventoryAdjustmentResponse toAdjustmentResponse(InventoryAdjustmentView adjustment) {
@@ -717,6 +831,45 @@ public class InventoryController {
             summary.sourceLocationCode(),
             summary.destinationLocationCode(),
             summary.adjustedBy(),
+            summary.transferCount(),
+            summary.totalQuantity()
+        );
+    }
+
+    private DailyInventoryTransferActivityByReferenceSummaryResponse toDailyTransferActivityByReferenceSummaryResponse(
+        DailyInventoryTransferActivityByReferenceSummaryView summary
+    ) {
+        return new DailyInventoryTransferActivityByReferenceSummaryResponse(
+            summary.sku(),
+            summary.businessDate(),
+            summary.referenceType(),
+            summary.referenceId(),
+            summary.transferCount(),
+            summary.totalQuantity()
+        );
+    }
+
+    private WeeklyInventoryTransferActivityByReferenceSummaryResponse toWeeklyTransferActivityByReferenceSummaryResponse(
+        WeeklyInventoryTransferActivityByReferenceSummaryView summary
+    ) {
+        return new WeeklyInventoryTransferActivityByReferenceSummaryResponse(
+            summary.sku(),
+            summary.businessWeekStart(),
+            summary.referenceType(),
+            summary.referenceId(),
+            summary.transferCount(),
+            summary.totalQuantity()
+        );
+    }
+
+    private MonthlyInventoryTransferActivityByReferenceSummaryResponse toMonthlyTransferActivityByReferenceSummaryResponse(
+        MonthlyInventoryTransferActivityByReferenceSummaryView summary
+    ) {
+        return new MonthlyInventoryTransferActivityByReferenceSummaryResponse(
+            summary.sku(),
+            summary.businessMonth(),
+            summary.referenceType(),
+            summary.referenceId(),
             summary.transferCount(),
             summary.totalQuantity()
         );

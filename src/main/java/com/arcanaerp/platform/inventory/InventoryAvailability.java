@@ -43,6 +43,18 @@ public interface InventoryAvailability {
         PageQuery pageQuery
     );
 
+    PageResult<DailyInventoryTransferActivityByReferenceSummaryView> listDailyTransferActivityByReferenceSummaries(
+        String sku,
+        String sourceLocationCode,
+        String destinationLocationCode,
+        String adjustedBy,
+        String referenceType,
+        String referenceId,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<WeeklyInventoryTransferActivitySummaryView> listWeeklyTransferActivitySummaries(
         String sku,
         String sourceLocationCode,
@@ -55,7 +67,31 @@ public interface InventoryAvailability {
         PageQuery pageQuery
     );
 
+    PageResult<WeeklyInventoryTransferActivityByReferenceSummaryView> listWeeklyTransferActivityByReferenceSummaries(
+        String sku,
+        String sourceLocationCode,
+        String destinationLocationCode,
+        String adjustedBy,
+        String referenceType,
+        String referenceId,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<MonthlyInventoryTransferActivitySummaryView> listMonthlyTransferActivitySummaries(
+        String sku,
+        String sourceLocationCode,
+        String destinationLocationCode,
+        String adjustedBy,
+        String referenceType,
+        String referenceId,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<MonthlyInventoryTransferActivityByReferenceSummaryView> listMonthlyTransferActivityByReferenceSummaries(
         String sku,
         String sourceLocationCode,
         String destinationLocationCode,

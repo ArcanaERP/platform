@@ -6,11 +6,13 @@ import com.arcanaerp.platform.inventory.AdjustInventoryCommand;
 import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivitySummaryView;
+import com.arcanaerp.platform.inventory.DailyInventoryTransferActivityByReferenceSummaryView;
 import com.arcanaerp.platform.inventory.DuplicateTransferReversalException;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
 import com.arcanaerp.platform.inventory.DailyInventoryTransferActivitySummaryView;
+import com.arcanaerp.platform.inventory.MonthlyInventoryTransferActivityByReferenceSummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryTransferActivitySummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByLocationSummaryView;
@@ -20,6 +22,7 @@ import com.arcanaerp.platform.inventory.ReversalIdempotencyPayloadConflictExcept
 import com.arcanaerp.platform.inventory.ReversalIdempotencyRaceConflictException;
 import com.arcanaerp.platform.inventory.InventoryTransferView;
 import com.arcanaerp.platform.inventory.TransferInventoryCommand;
+import com.arcanaerp.platform.inventory.WeeklyInventoryTransferActivityByReferenceSummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryTransferActivitySummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivityByLocationSummaryView;
@@ -601,6 +604,65 @@ class InventoryAvailabilityService implements InventoryAvailability {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<DailyInventoryTransferActivityByReferenceSummaryView> listDailyTransferActivityByReferenceSummaries(
+        String sku,
+        String sourceLocationCode,
+        String destinationLocationCode,
+        String adjustedBy,
+        String referenceType,
+        String referenceId,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeTransferActivityByBucketAndReference(
+            sku,
+            sourceLocationCode,
+            destinationLocationCode,
+            adjustedBy,
+            referenceType,
+            referenceId,
+            adjustedAtFrom,
+            adjustedAtTo,
+            pageQuery,
+            transfer -> transfer.getTransferredAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            DailyInventoryTransferActivityByReferenceSummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WeeklyInventoryTransferActivityByReferenceSummaryView> listWeeklyTransferActivityByReferenceSummaries(
+        String sku,
+        String sourceLocationCode,
+        String destinationLocationCode,
+        String adjustedBy,
+        String referenceType,
+        String referenceId,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeTransferActivityByBucketAndReference(
+            sku,
+            sourceLocationCode,
+            destinationLocationCode,
+            adjustedBy,
+            referenceType,
+            referenceId,
+            adjustedAtFrom,
+            adjustedAtTo,
+            pageQuery,
+            transfer -> transfer.getTransferredAt()
+                .atOffset(ZoneOffset.UTC)
+                .toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            WeeklyInventoryTransferActivityByReferenceSummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<MonthlyInventoryTransferActivitySummaryView> listMonthlyTransferActivitySummaries(
         String sku,
         String sourceLocationCode,
@@ -624,6 +686,34 @@ class InventoryAvailabilityService implements InventoryAvailability {
             pageQuery,
             transfer -> YearMonth.from(transfer.getTransferredAt().atOffset(ZoneOffset.UTC)),
             MonthlyInventoryTransferActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyInventoryTransferActivityByReferenceSummaryView> listMonthlyTransferActivityByReferenceSummaries(
+        String sku,
+        String sourceLocationCode,
+        String destinationLocationCode,
+        String adjustedBy,
+        String referenceType,
+        String referenceId,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizeTransferActivityByBucketAndReference(
+            sku,
+            sourceLocationCode,
+            destinationLocationCode,
+            adjustedBy,
+            referenceType,
+            referenceId,
+            adjustedAtFrom,
+            adjustedAtTo,
+            pageQuery,
+            transfer -> YearMonth.from(transfer.getTransferredAt().atOffset(ZoneOffset.UTC)),
+            MonthlyInventoryTransferActivityByReferenceSummaryView::new
         );
     }
 
@@ -950,6 +1040,89 @@ class InventoryAvailabilityService implements InventoryAvailability {
         return paginate(rows, pageQuery);
     }
 
+    private <B extends Comparable<? super B>, T> PageResult<T> summarizeTransferActivityByBucketAndReference(
+        String sku,
+        String sourceLocationCode,
+        String destinationLocationCode,
+        String adjustedBy,
+        String referenceType,
+        String referenceId,
+        Instant adjustedAtFrom,
+        Instant adjustedAtTo,
+        PageQuery pageQuery,
+        TransferBucketExtractor<B> bucketExtractor,
+        TransferBucketReferenceSummaryFactory<B, T> summaryFactory
+    ) {
+        String normalizedSku = normalizeRequired(sku, "sku").toUpperCase();
+        ensureSkuExists(normalizedSku);
+        String normalizedSourceLocationCode = normalizeOptionalLocationCodeFilter(sourceLocationCode, "sourceLocationCode");
+        String normalizedDestinationLocationCode = normalizeOptionalLocationCodeFilter(
+            destinationLocationCode,
+            "destinationLocationCode"
+        );
+        String normalizedAdjustedBy = adjustedBy == null ? null : normalizeRequired(adjustedBy, "adjustedBy").toLowerCase();
+        String normalizedReferenceType = normalizeOptionalReferenceType(referenceType);
+        String normalizedReferenceId = normalizeOptionalReferenceId(referenceId);
+
+        List<InventoryAdjustmentRepository.TransferHistoryProjection> transfers =
+            inventoryAdjustmentRepository.findTransferHistoryRowsFiltered(
+                normalizedSku,
+                normalizedSourceLocationCode,
+                normalizedDestinationLocationCode,
+                normalizedAdjustedBy,
+                normalizedReferenceType,
+                normalizedReferenceId,
+                adjustedAtFrom,
+                adjustedAtTo
+            );
+        Map<TransferBucketReferenceKey<B>, TransferBucketSummary> summaries = new java.util.HashMap<>();
+        for (InventoryAdjustmentRepository.TransferHistoryProjection transfer : transfers) {
+            TransferBucketReferenceKey<B> key = new TransferBucketReferenceKey<>(
+                bucketExtractor.bucket(transfer),
+                transfer.getReferenceType(),
+                transfer.getReferenceId()
+            );
+            TransferBucketSummary summary = summaries.computeIfAbsent(key, ignored -> new TransferBucketSummary());
+            summary.transferCount++;
+            summary.totalQuantity = summary.totalQuantity.add(transfer.getSourceQuantityDelta().abs());
+        }
+        List<T> rows = summaries.entrySet().stream()
+            .sorted((left, right) -> {
+                int bucketComparison = right.getKey().bucket().compareTo(left.getKey().bucket());
+                if (bucketComparison != 0) {
+                    return bucketComparison;
+                }
+                int referenceTypeComparison = compareNullable(left.getKey().referenceType(), right.getKey().referenceType());
+                if (referenceTypeComparison != 0) {
+                    return referenceTypeComparison;
+                }
+                return compareNullable(left.getKey().referenceId(), right.getKey().referenceId());
+            })
+            .map(entry -> summaryFactory.create(
+                normalizedSku,
+                entry.getKey().bucket(),
+                entry.getKey().referenceType(),
+                entry.getKey().referenceId(),
+                entry.getValue().transferCount,
+                entry.getValue().totalQuantity
+            ))
+            .toList();
+        return paginate(rows, pageQuery);
+    }
+
+    private static int compareNullable(String left, String right) {
+        if (left == null && right == null) {
+            return 0;
+        }
+        if (left == null) {
+            return 1;
+        }
+        if (right == null) {
+            return -1;
+        }
+        return left.compareTo(right);
+    }
+
     private <B extends Comparable<? super B>, T> PageResult<T> summarizeAdjustmentActivityByBucketAndLocation(
         String sku,
         String locationCode,
@@ -1104,6 +1277,18 @@ class InventoryAvailabilityService implements InventoryAvailability {
         );
     }
 
+    @FunctionalInterface
+    private interface TransferBucketReferenceSummaryFactory<B, T> {
+        T create(
+            String sku,
+            B bucket,
+            String referenceType,
+            String referenceId,
+            long transferCount,
+            BigDecimal totalQuantity
+        );
+    }
+
     private record AdjustmentBucketLocationKey<B extends Comparable<? super B>>(B bucket, String locationCode) {
     }
 
@@ -1115,6 +1300,13 @@ class InventoryAvailabilityService implements InventoryAvailability {
         String sourceLocationCode,
         String destinationLocationCode,
         String adjustedBy
+    ) {
+    }
+
+    private record TransferBucketReferenceKey<B extends Comparable<? super B>>(
+        B bucket,
+        String referenceType,
+        String referenceId
     ) {
     }
 
