@@ -126,6 +126,23 @@ public class InventoryItem {
         this.updatedAt = adjustedAt;
     }
 
+    void updateMetadata(String unitOfMeasurementCode, String classificationCode, Instant updatedAt) {
+        if (updatedAt == null) {
+            throw new IllegalArgumentException("updatedAt is required");
+        }
+        String normalizedUnitOfMeasurementCode = normalizeRequired(unitOfMeasurementCode, "unitOfMeasurementCode").toUpperCase();
+        String normalizedClassificationCode = normalizeRequired(classificationCode, "classificationCode").toUpperCase();
+        if (
+            this.unitOfMeasurementCode.equals(normalizedUnitOfMeasurementCode)
+                && this.classificationCode.equals(normalizedClassificationCode)
+        ) {
+            throw new IllegalArgumentException("Inventory item metadata is unchanged");
+        }
+        this.unitOfMeasurementCode = normalizedUnitOfMeasurementCode;
+        this.classificationCode = normalizedClassificationCode;
+        this.updatedAt = updatedAt;
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");

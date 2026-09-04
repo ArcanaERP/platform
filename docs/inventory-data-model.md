@@ -90,6 +90,10 @@ erDiagram
 - `GET /api/inventory/locations/{code}`
 - `PATCH /api/inventory/locations/{code}/active`
 - `GET /api/inventory/locations?page=&size=&active=`
+- `POST /api/inventory/items`
+- `GET /api/inventory/items?page=&size=&sku=&locationCode=&unitOfMeasurementCode=&classificationCode=`
+- `GET /api/inventory/items/{sku}/locations/{locationCode}`
+- `PATCH /api/inventory/items/{sku}/locations/{locationCode}/metadata`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
 - `GET /api/inventory/{sku}/adjustments?page=&size=&locationCode=&adjustedBy=&adjustedAtFrom=&adjustedAtTo=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)
@@ -119,6 +123,8 @@ erDiagram
 - inventory location codes are normalized to uppercase at write and lookup boundaries
 - inactive inventory locations remain readable but reject new adjustment and transfer writes
 - inventory item UOM and classification codes default to `EA` and `ON_HAND` when not explicitly supplied
+- inventory item list filters match normalized `sku`, `locationCode`, `unitOfMeasurementCode`, and `classificationCode` values
+- inventory item metadata updates preserve on-hand quantity and reject no-op changes
 - adjustment activity summaries bucket append-only `inventory_adjustments` rows by UTC `adjustedAt`
 - weekly adjustment activity summaries use Monday as the business week start
 - adjustment activity rows include `adjustmentCount` and `netQuantityDelta` for the requested `sku + locationCode`

@@ -303,6 +303,143 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void createsReadsListsAndUpdatesInventoryItems() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/items")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "sku": " arc-9250 ",
+                  "locationCode": " wh-item ",
+                  "onHandQuantity": 14,
+                  "unitOfMeasurementCode": "case",
+                  "classificationCode": "quarantine"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.sku").value("ARC-9250"))
+            .andExpect(jsonPath("$.locationCode").value("WH-ITEM"))
+            .andExpect(jsonPath("$.onHandQuantity").value(14))
+            .andExpect(jsonPath("$.unitOfMeasurementCode").value("CASE"))
+            .andExpect(jsonPath("$.classificationCode").value("QUARANTINE"))
+            .andExpect(jsonPath("$.updatedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/items/{sku}/locations/{locationCode}", "arc-9250", "wh-item"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.sku").value("ARC-9250"))
+            .andExpect(jsonPath("$.locationCode").value("WH-ITEM"))
+            .andExpect(jsonPath("$.onHandQuantity").value(14))
+            .andExpect(jsonPath("$.unitOfMeasurementCode").value("CASE"))
+            .andExpect(jsonPath("$.classificationCode").value("QUARANTINE"));
+
+        mockMvc.perform(get("/api/inventory/items")
+            .param("sku", "ARC-9250")
+            .param("classificationCode", "quarantine")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].sku").value("ARC-9250"))
+            .andExpect(jsonPath("$.items[0].classificationCode").value("QUARANTINE"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/items/{sku}/locations/{locationCode}/metadata",
+            "arc-9250",
+            "wh-item"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "unitOfMeasurementCode": "each",
+                  "classificationCode": "available"
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.sku").value("ARC-9250"))
+            .andExpect(jsonPath("$.locationCode").value("WH-ITEM"))
+            .andExpect(jsonPath("$.onHandQuantity").value(14))
+            .andExpect(jsonPath("$.unitOfMeasurementCode").value("EACH"))
+            .andExpect(jsonPath("$.classificationCode").value("AVAILABLE"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryItemSkuAndLocation() throws Exception {
+        String payload = """
+            {
+              "sku": "arc-9251",
+              "locationCode": "wh-dup",
+              "onHandQuantity": 1
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/items")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/items")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory item already exists for SKU/location: ARC-9251/WH-DUP",
+            "/api/inventory/items"
+        );
+    }
+
+    @Test
+    void rejectsInventoryItemRegistrationAtInactiveLocation() throws Exception {
+        InventoryLocation inactiveLocation = inventoryLocationRepository.save(
+            InventoryLocation.create("wh-inactive-item", "Inactive Item Warehouse", SEED_INSTANT)
+        );
+        inactiveLocation.setActive(false, SEED_INSTANT.plusSeconds(60));
+        inventoryLocationRepository.save(inactiveLocation);
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/items")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "sku": "arc-9252",
+                      "locationCode": "wh-inactive-item",
+                      "onHandQuantity": 1
+                    }
+                    """)),
+            "Inventory location is inactive: WH-INACTIVE-ITEM",
+            "/api/inventory/items"
+        );
+    }
+
+    @Test
+    void rejectsNoOpInventoryItemMetadataUpdate() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9253",
+                "wh-noop",
+                new BigDecimal("5"),
+                "case",
+                "quarantine",
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/items/{sku}/locations/{locationCode}/metadata",
+                "arc-9253",
+                "wh-noop"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "unitOfMeasurementCode": "case",
+                      "classificationCode": "quarantine"
+                    }
+                    """)),
+            "Inventory item metadata is unchanged",
+            "/api/inventory/items/arc-9253/locations/wh-noop/metadata"
+        );
+    }
+
+    @Test
     void rejectsAdjustmentAtInactiveInventoryLocation() throws Exception {
         InventoryLocation inactiveLocation = inventoryLocationRepository.save(
             InventoryLocation.create("wh-inactive", "Inactive Warehouse", SEED_INSTANT)

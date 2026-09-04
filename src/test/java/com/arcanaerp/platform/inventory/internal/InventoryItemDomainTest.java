@@ -54,6 +54,43 @@ class InventoryItemDomainTest {
     }
 
     @Test
+    void updateMetadataNormalizesCodesAndTimestamp() {
+        InventoryItem item = InventoryItem.create(
+            "ARC-9001A",
+            "MAIN",
+            new BigDecimal("5"),
+            "case",
+            "quarantine",
+            Instant.parse("2026-03-01T00:00:00Z")
+        );
+
+        item.updateMetadata(" each ", " available ", Instant.parse("2026-03-01T01:00:00Z"));
+
+        assertThat(item.getUnitOfMeasurementCode()).isEqualTo("EACH");
+        assertThat(item.getClassificationCode()).isEqualTo("AVAILABLE");
+        assertThat(item.getOnHandQuantity()).isEqualByComparingTo("5");
+        assertThat(item.getUpdatedAt()).isEqualTo(Instant.parse("2026-03-01T01:00:00Z"));
+    }
+
+    @Test
+    void updateMetadataRejectsNoOp() {
+        InventoryItem item = InventoryItem.create(
+            "ARC-9001B",
+            "MAIN",
+            new BigDecimal("5"),
+            "case",
+            "quarantine",
+            Instant.parse("2026-03-01T00:00:00Z")
+        );
+
+        assertThatThrownBy(() ->
+            item.updateMetadata("CASE", "QUARANTINE", Instant.parse("2026-03-01T01:00:00Z"))
+        )
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("Inventory item metadata is unchanged");
+    }
+
+    @Test
     void applyAdjustmentUpdatesOnHandAndTimestamp() {
         InventoryItem item = InventoryItem.create(
             "ARC-9002",
