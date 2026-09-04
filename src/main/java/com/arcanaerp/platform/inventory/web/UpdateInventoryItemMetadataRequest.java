@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 
 public record UpdateInventoryItemMetadataRequest(
     @NotBlank String unitOfMeasurementCode,
-    @NotBlank String classificationCode
+    @NotBlank String classificationCode,
+    @NotBlank String changedBy
 ) {
 }

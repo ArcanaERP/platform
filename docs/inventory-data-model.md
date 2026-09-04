@@ -1,6 +1,6 @@
 # Inventory Module Data Model (High-Level)
 
-Updated: 2026-04-25
+Updated: 2026-09-04
 
 ## Entity Diagram
 
@@ -8,6 +8,7 @@ Updated: 2026-04-25
 erDiagram
     INVENTORY_LOCATIONS ||--o{ INVENTORY_ITEMS : stores
     INVENTORY_ITEMS ||--o{ INVENTORY_ADJUSTMENTS : records_movements
+    INVENTORY_ITEMS ||--o{ INVENTORY_ITEM_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ADJUSTMENTS ||--o{ INVENTORY_TRANSFER_REVERSAL_IDEMPOTENCY : replays
 
     INVENTORY_LOCATIONS {
@@ -45,6 +46,19 @@ erDiagram
       INSTANT adjustedAt
     }
 
+    INVENTORY_ITEM_METADATA_CHANGE_AUDITS {
+      UUID id PK
+      UUID inventoryItemId
+      STRING sku
+      STRING locationCode
+      STRING previousUnitOfMeasurementCode
+      STRING currentUnitOfMeasurementCode
+      STRING previousClassificationCode
+      STRING currentClassificationCode
+      STRING changedBy
+      INSTANT changedAt
+    }
+
     INVENTORY_TRANSFER_REVERSAL_IDEMPOTENCY {
       UUID id PK
       UUID transferId
@@ -61,7 +75,9 @@ erDiagram
 - Inventory item metadata carries `unitOfMeasurementCode` and `classificationCode` for legacy inventory-entry parity.
 - `inventory_items.locationCode` aligns with `inventory_locations.code` (code-based location reference).
 - `inventory_adjustments.inventoryItemId` is a logical reference to `inventory_items.id`.
+- `inventory_item_metadata_change_audits.inventoryItemId` is a logical reference to `inventory_items.id`.
 - Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` stores latest per-location state.
+- Inventory item metadata changes are append-only via `inventory_item_metadata_change_audits`.
 - Location transfers write two adjustment rows with a shared `transferId` (source negative delta, destination positive delta).
 - Destination stock rows created by transfers copy the source item's UOM and classification metadata.
 - Transfer rows can optionally carry source-document metadata (`referenceType`, `referenceId`) for parity traceability.
@@ -82,6 +98,8 @@ erDiagram
   - `inventory_adjustments(inventoryItemId, adjustedBy, adjustedAt)`
   - `inventory_adjustments(transferId)`
   - `inventory_adjustments(sku, referenceType, referenceId, adjustedAt)`
+  - `inventory_item_metadata_change_audits(inventoryItemId, changedAt)`
+  - `inventory_item_metadata_change_audits(sku, locationCode, changedAt)`
   - `inventory_transfer_reversal_idempotency(reversalTransferId)`
 
 ## Minimal HTTP Surface
@@ -94,6 +112,7 @@ erDiagram
 - `GET /api/inventory/items?page=&size=&sku=&locationCode=&unitOfMeasurementCode=&classificationCode=`
 - `GET /api/inventory/items/{sku}/locations/{locationCode}`
 - `PATCH /api/inventory/items/{sku}/locations/{locationCode}/metadata`
+- `GET /api/inventory/items/{sku}/locations/{locationCode}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
 - `GET /api/inventory/{sku}/adjustments?page=&size=&locationCode=&adjustedBy=&adjustedAtFrom=&adjustedAtTo=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)
@@ -124,7 +143,8 @@ erDiagram
 - inactive inventory locations remain readable but reject new adjustment and transfer writes
 - inventory item UOM and classification codes default to `EA` and `ON_HAND` when not explicitly supplied
 - inventory item list filters match normalized `sku`, `locationCode`, `unitOfMeasurementCode`, and `classificationCode` values
-- inventory item metadata updates preserve on-hand quantity and reject no-op changes
+- inventory item metadata updates preserve on-hand quantity, require `changedBy`, reject no-op changes, and append audit rows
+- inventory item metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - adjustment activity summaries bucket append-only `inventory_adjustments` rows by UTC `adjustedAt`
 - weekly adjustment activity summaries use Monday as the business week start
 - adjustment activity rows include `adjustmentCount` and `netQuantityDelta` for the requested `sku + locationCode`

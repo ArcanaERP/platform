@@ -56,6 +56,9 @@ class InventoryApiIntegrationTest {
     private InventoryItemRepository inventoryItemRepository;
 
     @Autowired
+    private InventoryItemMetadataChangeAuditRepository metadataChangeAuditRepository;
+
+    @Autowired
     private InventoryAdjustmentRepository inventoryAdjustmentRepository;
 
     @Autowired
@@ -71,6 +74,7 @@ class InventoryApiIntegrationTest {
     void cleanInventoryItems() {
         reset(reversalIdempotencyRepository);
         reversalIdempotencyRepository.deleteAll();
+        metadataChangeAuditRepository.deleteAll();
         inventoryAdjustmentRepository.deleteAll();
         inventoryItemRepository.deleteAll();
         inventoryLocationRepository.deleteAll();
@@ -351,7 +355,8 @@ class InventoryApiIntegrationTest {
             .content("""
                 {
                   "unitOfMeasurementCode": "each",
-                  "classificationCode": "available"
+                  "classificationCode": "available",
+                  "changedBy": " Inventory.Ops@ArcanaERP.com "
                 }
                 """))
             .andExpect(status().isOk())
@@ -360,6 +365,21 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.onHandQuantity").value(14))
             .andExpect(jsonPath("$.unitOfMeasurementCode").value("EACH"))
             .andExpect(jsonPath("$.classificationCode").value("AVAILABLE"));
+
+        mockMvc.perform(get("/api/inventory/items/{sku}/locations/{locationCode}/metadata-history", "arc-9250", "wh-item")
+            .param("changedBy", "inventory.ops@arcanaerp.com")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].sku").value("ARC-9250"))
+            .andExpect(jsonPath("$.items[0].locationCode").value("WH-ITEM"))
+            .andExpect(jsonPath("$.items[0].previousUnitOfMeasurementCode").value("CASE"))
+            .andExpect(jsonPath("$.items[0].currentUnitOfMeasurementCode").value("EACH"))
+            .andExpect(jsonPath("$.items[0].previousClassificationCode").value("QUARANTINE"))
+            .andExpect(jsonPath("$.items[0].currentClassificationCode").value("AVAILABLE"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("inventory.ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
     }
 
     @Test
@@ -431,12 +451,60 @@ class InventoryApiIntegrationTest {
                 .content("""
                     {
                       "unitOfMeasurementCode": "case",
-                      "classificationCode": "quarantine"
+                      "classificationCode": "quarantine",
+                      "changedBy": "inventory.ops@arcanaerp.com"
                     }
                     """)),
             "Inventory item metadata is unchanged",
             "/api/inventory/items/arc-9253/locations/wh-noop/metadata"
         );
+    }
+
+    @Test
+    void filtersInventoryItemMetadataHistoryByChangedAtRange() throws Exception {
+        InventoryItem item = inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9254",
+                "wh-history",
+                new BigDecimal("5"),
+                "case",
+                "quarantine",
+                SEED_INSTANT
+            )
+        );
+        metadataChangeAuditRepository.save(InventoryItemMetadataChangeAudit.create(
+            item.getId(),
+            "arc-9254",
+            "wh-history",
+            "case",
+            "each",
+            "quarantine",
+            "available",
+            "inventory.ops@arcanaerp.com",
+            Instant.parse("2026-03-01T01:00:00Z")
+        ));
+        metadataChangeAuditRepository.save(InventoryItemMetadataChangeAudit.create(
+            item.getId(),
+            "arc-9254",
+            "wh-history",
+            "each",
+            "pallet",
+            "available",
+            "reserved",
+            "planning@arcanaerp.com",
+            Instant.parse("2026-03-02T01:00:00Z")
+        ));
+
+        mockMvc.perform(get("/api/inventory/items/{sku}/locations/{locationCode}/metadata-history", "arc-9254", "wh-history")
+            .param("changedAtFrom", "2026-03-02T00:00:00Z")
+            .param("changedAtTo", "2026-03-02T23:59:59Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].currentUnitOfMeasurementCode").value("PALLET"))
+            .andExpect(jsonPath("$.items[0].currentClassificationCode").value("RESERVED"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("planning@arcanaerp.com"));
     }
 
     @Test

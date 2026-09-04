@@ -4,6 +4,7 @@ import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.InventoryItemDirectory;
+import com.arcanaerp.platform.inventory.InventoryItemMetadataChangeView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
 import com.arcanaerp.platform.inventory.RegisterInventoryItemCommand;
 import com.arcanaerp.platform.inventory.UpdateInventoryItemMetadataCommand;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 class InventoryItemDirectoryService implements InventoryItemDirectory {
 
     private final InventoryItemRepository inventoryItemRepository;
+    private final InventoryItemMetadataChangeAuditRepository metadataChangeAuditRepository;
     private final InventoryLocationRepository inventoryLocationRepository;
     private final Clock clock;
 
@@ -74,8 +76,44 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             throw new IllegalArgumentException("locationCode path variable must match command locationCode");
         }
         InventoryItem item = findItem(normalizedSku, normalizedLocationCode);
-        item.updateMetadata(command.unitOfMeasurementCode(), command.classificationCode(), Instant.now(clock));
+        String previousUnitOfMeasurementCode = item.getUnitOfMeasurementCode();
+        String previousClassificationCode = item.getClassificationCode();
+        Instant changedAt = Instant.now(clock);
+        item.updateMetadata(command.unitOfMeasurementCode(), command.classificationCode(), changedAt);
+        String changedBy = normalizeRequired(command.changedBy(), "changedBy").toLowerCase();
+        metadataChangeAuditRepository.save(InventoryItemMetadataChangeAudit.create(
+            item.getId(),
+            item.getSku(),
+            item.getLocationCode(),
+            previousUnitOfMeasurementCode,
+            item.getUnitOfMeasurementCode(),
+            previousClassificationCode,
+            item.getClassificationCode(),
+            changedBy,
+            changedAt
+        ));
         return toView(inventoryItemRepository.save(item));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<InventoryItemMetadataChangeView> listMetadataHistory(
+        String sku,
+        String locationCode,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        InventoryItem item = findItem(sku, locationCode);
+        Page<InventoryItemMetadataChangeAudit> history = metadataChangeAuditRepository.findHistoryFiltered(
+            item.getId(),
+            normalizeOptionalChangedBy(changedBy),
+            changedAtFrom,
+            changedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
+        );
+        return PageResult.from(history).map(this::toMetadataChangeView);
     }
 
     @Override
@@ -128,6 +166,20 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
         );
     }
 
+    private InventoryItemMetadataChangeView toMetadataChangeView(InventoryItemMetadataChangeAudit audit) {
+        return new InventoryItemMetadataChangeView(
+            audit.getId(),
+            audit.getSku(),
+            audit.getLocationCode(),
+            audit.getPreviousUnitOfMeasurementCode(),
+            audit.getCurrentUnitOfMeasurementCode(),
+            audit.getPreviousClassificationCode(),
+            audit.getCurrentClassificationCode(),
+            audit.getChangedBy(),
+            audit.getChangedAt()
+        );
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");
@@ -141,5 +193,9 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
 
     private static String normalizeOptionalCode(String value, String fieldName) {
         return value == null ? null : normalizeRequired(value, fieldName).toUpperCase();
+    }
+
+    private static String normalizeOptionalChangedBy(String value) {
+        return value == null ? null : normalizeRequired(value, "changedBy").toLowerCase();
     }
 }
