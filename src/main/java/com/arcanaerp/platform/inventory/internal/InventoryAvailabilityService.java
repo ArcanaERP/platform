@@ -78,6 +78,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
             item.getSku(),
             item.getLocationCode(),
             item.getOnHandQuantity(),
+            item.getUnitOfMeasurementCode(),
+            item.getClassificationCode(),
             item.getUpdatedAt()
         );
     }
@@ -157,7 +159,14 @@ class InventoryAvailabilityService implements InventoryAvailability {
         InventoryItem sourceItem = findInventoryItem(normalizedSku, sourceLocationCode);
         Instant adjustedAt = Instant.now(clock);
         InventoryItem destinationItem = inventoryItemRepository.findBySkuAndLocationCode(normalizedSku, destinationLocationCode)
-            .orElseGet(() -> InventoryItem.create(normalizedSku, destinationLocationCode, BigDecimal.ZERO, adjustedAt));
+            .orElseGet(() -> InventoryItem.create(
+                normalizedSku,
+                destinationLocationCode,
+                BigDecimal.ZERO,
+                sourceItem.getUnitOfMeasurementCode(),
+                sourceItem.getClassificationCode(),
+                adjustedAt
+            ));
 
         BigDecimal sourcePreviousOnHand = sourceItem.getOnHandQuantity();
         BigDecimal destinationPreviousOnHand = destinationItem.getOnHandQuantity();

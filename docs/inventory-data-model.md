@@ -24,6 +24,8 @@ erDiagram
       STRING sku
       STRING locationCode
       DECIMAL onHandQuantity
+      STRING unitOfMeasurementCode
+      STRING classificationCode
       INSTANT updatedAt
     }
 
@@ -56,10 +58,12 @@ erDiagram
 ## Relationship Notes
 
 - Inventory on-hand is segmented by `sku + locationCode`.
+- Inventory item metadata carries `unitOfMeasurementCode` and `classificationCode` for legacy inventory-entry parity.
 - `inventory_items.locationCode` aligns with `inventory_locations.code` (code-based location reference).
 - `inventory_adjustments.inventoryItemId` is a logical reference to `inventory_items.id`.
 - Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` stores latest per-location state.
 - Location transfers write two adjustment rows with a shared `transferId` (source negative delta, destination positive delta).
+- Destination stock rows created by transfers copy the source item's UOM and classification metadata.
 - Transfer rows can optionally carry source-document metadata (`referenceType`, `referenceId`) for parity traceability.
 - Transfer reversals are modeled as new transfer pairs where `referenceType = TRANSFER_REVERSAL` and `referenceId = <originalTransferId>`.
 - Reversal idempotency keys are tracked in `inventory_transfer_reversal_idempotency` for replay-safe reversal retries.
@@ -114,6 +118,7 @@ erDiagram
 
 - inventory location codes are normalized to uppercase at write and lookup boundaries
 - inactive inventory locations remain readable but reject new adjustment and transfer writes
+- inventory item UOM and classification codes default to `EA` and `ON_HAND` when not explicitly supplied
 - adjustment activity summaries bucket append-only `inventory_adjustments` rows by UTC `adjustedAt`
 - weekly adjustment activity summaries use Monday as the business week start
 - adjustment activity rows include `adjustmentCount` and `netQuantityDelta` for the requested `sku + locationCode`

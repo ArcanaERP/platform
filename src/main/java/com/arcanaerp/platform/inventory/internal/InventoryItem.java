@@ -26,6 +26,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class InventoryItem {
 
+    private static final String DEFAULT_UNIT_OF_MEASUREMENT_CODE = "EA";
+    private static final String DEFAULT_CLASSIFICATION_CODE = "ON_HAND";
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -39,18 +42,52 @@ public class InventoryItem {
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal onHandQuantity;
 
+    @Column(nullable = false, length = 32)
+    private String unitOfMeasurementCode;
+
+    @Column(nullable = false, length = 64)
+    private String classificationCode;
+
     @Column(nullable = false)
     private Instant updatedAt;
 
-    private InventoryItem(UUID id, String sku, String locationCode, BigDecimal onHandQuantity, Instant updatedAt) {
+    private InventoryItem(
+        UUID id,
+        String sku,
+        String locationCode,
+        BigDecimal onHandQuantity,
+        String unitOfMeasurementCode,
+        String classificationCode,
+        Instant updatedAt
+    ) {
         this.id = id;
         this.sku = sku;
         this.locationCode = locationCode;
         this.onHandQuantity = onHandQuantity;
+        this.unitOfMeasurementCode = unitOfMeasurementCode;
+        this.classificationCode = classificationCode;
         this.updatedAt = updatedAt;
     }
 
     static InventoryItem create(String sku, String locationCode, BigDecimal onHandQuantity, Instant updatedAt) {
+        return create(
+            sku,
+            locationCode,
+            onHandQuantity,
+            DEFAULT_UNIT_OF_MEASUREMENT_CODE,
+            DEFAULT_CLASSIFICATION_CODE,
+            updatedAt
+        );
+    }
+
+    static InventoryItem create(
+        String sku,
+        String locationCode,
+        BigDecimal onHandQuantity,
+        String unitOfMeasurementCode,
+        String classificationCode,
+        Instant updatedAt
+    ) {
         if (onHandQuantity == null || onHandQuantity.signum() < 0) {
             throw new IllegalArgumentException("onHandQuantity must be zero or greater");
         }
@@ -63,6 +100,8 @@ public class InventoryItem {
             normalizeRequired(sku, "sku").toUpperCase(),
             normalizeRequired(locationCode, "locationCode").toUpperCase(),
             onHandQuantity,
+            normalizeRequired(unitOfMeasurementCode, "unitOfMeasurementCode").toUpperCase(),
+            normalizeRequired(classificationCode, "classificationCode").toUpperCase(),
             updatedAt
         );
     }

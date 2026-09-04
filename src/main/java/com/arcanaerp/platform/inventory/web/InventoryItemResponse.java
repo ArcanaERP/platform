@@ -9,6 +9,8 @@ public record InventoryItemResponse(
     String sku,
     String locationCode,
     BigDecimal onHandQuantity,
+    String unitOfMeasurementCode,
+    String classificationCode,
     Instant updatedAt
 ) {
 }

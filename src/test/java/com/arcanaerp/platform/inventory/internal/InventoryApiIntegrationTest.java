@@ -92,6 +92,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.sku").value("ARC-9200"))
             .andExpect(jsonPath("$.locationCode").value("MAIN"))
             .andExpect(jsonPath("$.onHandQuantity").value(25))
+            .andExpect(jsonPath("$.unitOfMeasurementCode").value("EA"))
+            .andExpect(jsonPath("$.classificationCode").value("ON_HAND"))
             .andExpect(jsonPath("$.updatedAt").value("2026-03-01T00:00:00Z"));
     }
 
@@ -112,6 +114,29 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.sku").value("ARC-9201"))
             .andExpect(jsonPath("$.locationCode").value("WH-WEST"))
             .andExpect(jsonPath("$.onHandQuantity").value(7));
+    }
+
+    @Test
+    void returnsInventoryItemClassificationAndUnitOfMeasurementMetadata() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9201a",
+                "wh-west",
+                new BigDecimal("12"),
+                "case",
+                "quarantine",
+                SEED_INSTANT
+            )
+        );
+
+        mockMvc.perform(get("/api/inventory/{sku}", "arc-9201a")
+            .param("locationCode", "wh-west"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.sku").value("ARC-9201A"))
+            .andExpect(jsonPath("$.locationCode").value("WH-WEST"))
+            .andExpect(jsonPath("$.onHandQuantity").value(12))
+            .andExpect(jsonPath("$.unitOfMeasurementCode").value("CASE"))
+            .andExpect(jsonPath("$.classificationCode").value("QUARANTINE"));
     }
 
     @Test
@@ -777,9 +802,46 @@ class InventoryApiIntegrationTest {
             .param("locationCode", "wh-north"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.locationCode").value("WH-NORTH"))
-            .andExpect(jsonPath("$.onHandQuantity").value(2));
+            .andExpect(jsonPath("$.onHandQuantity").value(2))
+            .andExpect(jsonPath("$.unitOfMeasurementCode").value("EA"))
+            .andExpect(jsonPath("$.classificationCode").value("ON_HAND"));
 
         assertThat(inventoryLocationRepository.findByCode("WH-NORTH")).isPresent();
+    }
+
+    @Test
+    void transferCreatedDestinationStockCopiesSourceMetadata() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9208a",
+                "main",
+                new BigDecimal("9"),
+                "pallet",
+                "available",
+                SEED_INSTANT
+            )
+        );
+
+        String payload = InventoryManagementWebTestSupport.transferPayload(
+            "main",
+            "wh-south",
+            "2",
+            "Initial stocking transfer",
+            DEFAULT_ACTOR
+        );
+
+        InventoryManagementWebTestSupport.transferInventory(mockMvc, "arc-9208a", payload)
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.sourceOnHandQuantity").value(7))
+            .andExpect(jsonPath("$.destinationOnHandQuantity").value(2));
+
+        mockMvc.perform(get("/api/inventory/{sku}", "arc-9208a")
+            .param("locationCode", "wh-south"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.locationCode").value("WH-SOUTH"))
+            .andExpect(jsonPath("$.onHandQuantity").value(2))
+            .andExpect(jsonPath("$.unitOfMeasurementCode").value("PALLET"))
+            .andExpect(jsonPath("$.classificationCode").value("AVAILABLE"));
     }
 
     @Test

@@ -20,6 +20,23 @@ class InventoryItemDomainTest {
 
         assertThat(item.getSku()).isEqualTo("ARC-9000");
         assertThat(item.getLocationCode()).isEqualTo("WH-WEST");
+        assertThat(item.getUnitOfMeasurementCode()).isEqualTo("EA");
+        assertThat(item.getClassificationCode()).isEqualTo("ON_HAND");
+    }
+
+    @Test
+    void createNormalizesClassificationAndUnitOfMeasurementMetadata() {
+        InventoryItem item = InventoryItem.create(
+            "arc-9000a",
+            "wh-west",
+            new BigDecimal("25"),
+            " case ",
+            " quarantine ",
+            Instant.parse("2026-03-01T00:00:00Z")
+        );
+
+        assertThat(item.getUnitOfMeasurementCode()).isEqualTo("CASE");
+        assertThat(item.getClassificationCode()).isEqualTo("QUARANTINE");
     }
 
     @Test

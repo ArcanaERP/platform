@@ -60,6 +60,8 @@ public class InventoryController {
             item.sku(),
             item.locationCode(),
             item.onHandQuantity(),
+            item.unitOfMeasurementCode(),
+            item.classificationCode(),
             item.updatedAt()
         );
     }
