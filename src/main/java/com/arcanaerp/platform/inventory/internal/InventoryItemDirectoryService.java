@@ -3,6 +3,7 @@ package com.arcanaerp.platform.inventory.internal;
 import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.core.uom.UnitOfMeasurementDirectory;
 import com.arcanaerp.platform.inventory.InventoryItemDirectory;
 import com.arcanaerp.platform.inventory.InventoryItemMetadataChangeView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
@@ -26,6 +27,7 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
     private final InventoryItemRepository inventoryItemRepository;
     private final InventoryItemMetadataChangeAuditRepository metadataChangeAuditRepository;
     private final InventoryLocationRepository inventoryLocationRepository;
+    private final UnitOfMeasurementDirectory unitOfMeasurementDirectory;
     private final Clock clock;
 
     @Override
@@ -43,12 +45,14 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
         if (inventoryItemRepository.findBySkuAndLocationCode(sku, locationCode).isPresent()) {
             throw new ConflictException("Inventory item already exists for SKU/location: " + sku + "/" + locationCode);
         }
+        String unitOfMeasurementCode = normalizeOptionalCode(command.unitOfMeasurementCode(), "unitOfMeasurementCode", "EA");
+        ensureUnitOfMeasurementExists(unitOfMeasurementCode);
 
         return toView(inventoryItemRepository.save(InventoryItem.create(
             sku,
             locationCode,
             onHandQuantity,
-            normalizeOptionalCode(command.unitOfMeasurementCode(), "unitOfMeasurementCode", "EA"),
+            unitOfMeasurementCode,
             normalizeOptionalCode(command.classificationCode(), "classificationCode", "ON_HAND"),
             Instant.now(clock)
         )));
@@ -79,6 +83,7 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
         String previousUnitOfMeasurementCode = item.getUnitOfMeasurementCode();
         String previousClassificationCode = item.getClassificationCode();
         Instant changedAt = Instant.now(clock);
+        ensureUnitOfMeasurementExists(command.unitOfMeasurementCode());
         item.updateMetadata(command.unitOfMeasurementCode(), command.classificationCode(), changedAt);
         String changedBy = normalizeRequired(command.changedBy(), "changedBy").toLowerCase();
         metadataChangeAuditRepository.save(InventoryItemMetadataChangeAudit.create(
@@ -151,6 +156,13 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             ));
         if (!location.isActive()) {
             throw new IllegalArgumentException("Inventory location is inactive: " + locationCode);
+        }
+    }
+
+    private void ensureUnitOfMeasurementExists(String unitOfMeasurementCode) {
+        String normalizedUnitOfMeasurementCode = normalizeRequired(unitOfMeasurementCode, "unitOfMeasurementCode").toUpperCase();
+        if (!unitOfMeasurementDirectory.unitOfMeasurementExists(normalizedUnitOfMeasurementCode)) {
+            throw new IllegalArgumentException("Unit of measurement not found: " + normalizedUnitOfMeasurementCode);
         }
     }
 

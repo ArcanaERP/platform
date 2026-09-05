@@ -8,6 +8,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.arcanaerp.platform.core.api.ConflictException;
+import com.arcanaerp.platform.core.uom.RegisterUnitOfMeasurementCommand;
+import com.arcanaerp.platform.core.uom.UnitOfMeasurementDirectory;
 import com.arcanaerp.platform.testsupport.web.InventoryManagementWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.InventoryTransferReversalHistoryWebTestSupport;
 import java.math.BigDecimal;
@@ -70,6 +73,9 @@ class InventoryApiIntegrationTest {
     @Autowired
     private InventoryLocationRepository inventoryLocationRepository;
 
+    @Autowired
+    private UnitOfMeasurementDirectory unitOfMeasurementDirectory;
+
     @BeforeEach
     void cleanInventoryItems() {
         reset(reversalIdempotencyRepository);
@@ -78,6 +84,10 @@ class InventoryApiIntegrationTest {
         inventoryAdjustmentRepository.deleteAll();
         inventoryItemRepository.deleteAll();
         inventoryLocationRepository.deleteAll();
+        ensureUnitOfMeasurement("EA", "Each");
+        ensureUnitOfMeasurement("CASE", "Case");
+        ensureUnitOfMeasurement("EACH", "Each alternate");
+        ensureUnitOfMeasurement("PALLET", "Pallet");
     }
 
     @Test
@@ -429,6 +439,24 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void rejectsInventoryItemRegistrationWithUnknownUnitOfMeasurement() throws Exception {
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/items")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "sku": "arc-9252a",
+                      "locationCode": "wh-uom",
+                      "onHandQuantity": 1,
+                      "unitOfMeasurementCode": "crate"
+                    }
+                    """)),
+            "Unit of measurement not found: CRATE",
+            "/api/inventory/items"
+        );
+    }
+
+    @Test
     void rejectsNoOpInventoryItemMetadataUpdate() throws Exception {
         inventoryItemRepository.save(
             InventoryItem.create(
@@ -457,6 +485,38 @@ class InventoryApiIntegrationTest {
                     """)),
             "Inventory item metadata is unchanged",
             "/api/inventory/items/arc-9253/locations/wh-noop/metadata"
+        );
+    }
+
+    @Test
+    void rejectsInventoryItemMetadataUpdateWithUnknownUnitOfMeasurement() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9253a",
+                "wh-uom-update",
+                new BigDecimal("5"),
+                "case",
+                "quarantine",
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/items/{sku}/locations/{locationCode}/metadata",
+                "arc-9253a",
+                "wh-uom-update"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "unitOfMeasurementCode": "crate",
+                      "classificationCode": "available",
+                      "changedBy": "inventory.ops@arcanaerp.com"
+                    }
+                    """)),
+            "Unit of measurement not found: CRATE",
+            "/api/inventory/items/arc-9253a/locations/wh-uom-update/metadata"
         );
     }
 
@@ -2347,6 +2407,16 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.error").value("Bad Request"))
             .andExpect(jsonPath("$.message").value(message))
             .andExpect(jsonPath("$.path").value(path));
+    }
+
+    private void ensureUnitOfMeasurement(String code, String description) {
+        try {
+            unitOfMeasurementDirectory.registerUnitOfMeasurement(
+                new RegisterUnitOfMeasurementCommand(code, description, "inventory", null)
+            );
+        } catch (ConflictException ignored) {
+            // Shared Spring contexts can keep reference data from earlier tests.
+        }
     }
 
     private void expectSingleReversalHistory(UUID originalTransferId) throws Exception {

@@ -42,6 +42,13 @@ class UnitOfMeasurementDirectoryService implements UnitOfMeasurementDirectory {
 
     @Override
     @Transactional(readOnly = true)
+    public boolean unitOfMeasurementExists(String code) {
+        String normalizedCode = normalizeRequired(code, "code").toUpperCase();
+        return unitOfMeasurementRepository.findByCode(normalizedCode).isPresent();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<UnitOfMeasurementView> listUnitsOfMeasurement(PageQuery pageQuery, String queryFilter, String domain) {
         String normalizedQueryFilter = normalizeOptional(queryFilter, false);
         String normalizedDomain = normalizeOptional(domain, true);

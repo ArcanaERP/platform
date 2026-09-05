@@ -316,6 +316,7 @@ Agreements:
 
 Inventory:
 
+- Inventory item UOM codes are validated against `POST /api/core/units-of-measurement` reference data.
 - `POST /api/inventory/locations`
 - `GET /api/inventory/locations/{code}`
 - `PATCH /api/inventory/locations/{code}/active`

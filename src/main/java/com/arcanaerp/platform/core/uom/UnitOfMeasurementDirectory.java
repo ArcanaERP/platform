@@ -7,5 +7,7 @@ public interface UnitOfMeasurementDirectory {
 
     UnitOfMeasurementView registerUnitOfMeasurement(RegisterUnitOfMeasurementCommand command);
 
+    boolean unitOfMeasurementExists(String code);
+
     PageResult<UnitOfMeasurementView> listUnitsOfMeasurement(PageQuery pageQuery, String queryFilter, String domain);
 }

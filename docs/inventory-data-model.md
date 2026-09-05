@@ -73,6 +73,7 @@ erDiagram
 
 - Inventory on-hand is segmented by `sku + locationCode`.
 - Inventory item metadata carries `unitOfMeasurementCode` and `classificationCode` for legacy inventory-entry parity.
+- Inventory item `unitOfMeasurementCode` values are validated against the core UOM catalog at item registration and metadata update boundaries.
 - `inventory_items.locationCode` aligns with `inventory_locations.code` (code-based location reference).
 - `inventory_adjustments.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_item_metadata_change_audits.inventoryItemId` is a logical reference to `inventory_items.id`.
@@ -142,6 +143,7 @@ erDiagram
 - inventory location codes are normalized to uppercase at write and lookup boundaries
 - inactive inventory locations remain readable but reject new adjustment and transfer writes
 - inventory item UOM and classification codes default to `EA` and `ON_HAND` when not explicitly supplied
+- supplied and default inventory item UOM codes must exist in the core unit-of-measurement catalog
 - inventory item list filters match normalized `sku`, `locationCode`, `unitOfMeasurementCode`, and `classificationCode` values
 - inventory item metadata updates preserve on-hand quantity, require `changedBy`, reject no-op changes, and append audit rows
 - inventory item metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges

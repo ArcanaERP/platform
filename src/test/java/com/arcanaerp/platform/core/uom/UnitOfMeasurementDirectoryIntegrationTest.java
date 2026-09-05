@@ -31,6 +31,16 @@ class UnitOfMeasurementDirectoryIntegrationTest {
     }
 
     @Test
+    void checksUnitExistenceByNormalizedCode() {
+        unitOfMeasurementDirectory.registerUnitOfMeasurement(
+            new RegisterUnitOfMeasurementCommand("lb", "Pound", "weight", null)
+        );
+
+        assertThat(unitOfMeasurementDirectory.unitOfMeasurementExists(" lb ")).isTrue();
+        assertThat(unitOfMeasurementDirectory.unitOfMeasurementExists("missing")).isFalse();
+    }
+
+    @Test
     void rejectsDuplicateCodes() {
         unitOfMeasurementDirectory.registerUnitOfMeasurement(
             new RegisterUnitOfMeasurementCommand("g", "Gram", "weight", null)
