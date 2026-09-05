@@ -5,6 +5,7 @@ import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.InventoryLocationDirectory;
 import com.arcanaerp.platform.inventory.InventoryLocationMetadataChangeView;
+import com.arcanaerp.platform.inventory.InventoryLocationTypeDirectory;
 import com.arcanaerp.platform.inventory.InventoryLocationView;
 import com.arcanaerp.platform.inventory.RegisterInventoryLocationCommand;
 import com.arcanaerp.platform.inventory.UpdateInventoryLocationActiveCommand;
@@ -25,6 +26,7 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
 
     private final InventoryLocationRepository inventoryLocationRepository;
     private final InventoryLocationMetadataChangeAuditRepository metadataChangeAuditRepository;
+    private final InventoryLocationTypeDirectory inventoryLocationTypeDirectory;
     private final Clock clock;
 
     @Override
@@ -37,6 +39,7 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
         if (inventoryLocationRepository.findByCode(code).isPresent()) {
             throw new ConflictException("Inventory location already exists for code: " + code);
         }
+        ensureLocationTypeExists(command.facilityTypeCode());
 
         return toView(inventoryLocationRepository.save(InventoryLocation.create(
             code,
@@ -90,6 +93,7 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
         }
         InventoryLocation location = inventoryLocationRepository.findByCode(normalizedCode)
             .orElseThrow(() -> new NoSuchElementException("Inventory location not found for code: " + normalizedCode));
+        ensureLocationTypeExists(command.facilityTypeCode());
         InventoryLocationMetadataSnapshot previous = InventoryLocationMetadataSnapshot.from(location);
         Instant changedAt = Instant.now(clock);
         location.updateMetadata(
@@ -210,5 +214,22 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
 
     private static String normalizeOptionalChangedBy(String value) {
         return value == null ? null : normalizeRequired(value, "changedBy").toLowerCase();
+    }
+
+    private void ensureLocationTypeExists(String facilityTypeCode) {
+        String normalizedFacilityTypeCode = normalizeOptionalUpper(facilityTypeCode);
+        if (normalizedFacilityTypeCode != null && !inventoryLocationTypeDirectory.locationTypeExists(normalizedFacilityTypeCode)) {
+            throw new IllegalArgumentException("Inventory location type not found: " + normalizedFacilityTypeCode);
+        }
+    }
+
+    private static String normalizeOptionalUpper(String value) {
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
+            throw new IllegalArgumentException("facilityTypeCode is required");
+        }
+        return value.trim().toUpperCase();
     }
 }

@@ -77,6 +77,9 @@ class InventoryApiIntegrationTest {
     private InventoryLocationMetadataChangeAuditRepository locationMetadataChangeAuditRepository;
 
     @Autowired
+    private InventoryLocationTypeRepository inventoryLocationTypeRepository;
+
+    @Autowired
     private UnitOfMeasurementDirectory unitOfMeasurementDirectory;
 
     @BeforeEach
@@ -88,6 +91,9 @@ class InventoryApiIntegrationTest {
         inventoryItemRepository.deleteAll();
         locationMetadataChangeAuditRepository.deleteAll();
         inventoryLocationRepository.deleteAll();
+        inventoryLocationTypeRepository.deleteAll();
+        seedLocationType("WAREHOUSE", "Warehouse");
+        seedLocationType("STORE", "Store");
         ensureUnitOfMeasurement("EA", "Each");
         ensureUnitOfMeasurement("CASE", "Case");
         ensureUnitOfMeasurement("EACH", "Each alternate");
@@ -178,6 +184,59 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsInventoryLocationTypes() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/location-types")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " cross_dock ",
+                  "description": " Cross-dock facility "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.code").value("CROSS_DOCK"))
+            .andExpect(jsonPath("$.description").value("Cross-dock facility"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/location-types/{code}", "cross_dock"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("CROSS_DOCK"))
+            .andExpect(jsonPath("$.description").value("Cross-dock facility"));
+
+        mockMvc.perform(get("/api/inventory/location-types")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].code").value("CROSS_DOCK"))
+            .andExpect(jsonPath("$.items[1].code").value("STORE"))
+            .andExpect(jsonPath("$.items[2].code").value("WAREHOUSE"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryLocationTypeCode() throws Exception {
+        String payload = """
+            {
+              "code": "cross_dock",
+              "description": "Cross-dock facility"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/location-types")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/location-types")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory location type already exists for code: CROSS_DOCK",
+            "/api/inventory/location-types"
+        );
+    }
+
+    @Test
     void createsReadsAndListsInventoryLocations() throws Exception {
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/locations")
             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
@@ -263,6 +322,23 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void rejectsInventoryLocationRegistrationWithUnknownFacilityType() throws Exception {
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/locations")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "wh-unknown-type",
+                      "name": "Unknown Type Warehouse",
+                      "facilityTypeCode": "yard"
+                    }
+                    """)),
+            "Inventory location type not found: YARD",
+            "/api/inventory/locations"
+        );
+    }
+
+    @Test
     void returnsNotFoundForUnknownInventoryLocation() throws Exception {
         expectInventoryLocationNotFound(
             mockMvc.perform(get("/api/inventory/locations/{code}", "wh-missing")),
@@ -330,6 +406,36 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.items[0].currentContactEmail").value("east.receiving@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].changedBy").value("facilities.ops@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
+    }
+
+    @Test
+    void rejectsInventoryLocationMetadataUpdateWithUnknownFacilityType() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/locations")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": "wh-unknown-type-update",
+                  "name": "Unknown Type Update Warehouse"
+                }
+                """))
+            .andExpect(status().isCreated());
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/locations/{code}/metadata",
+                "wh-unknown-type-update"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "Unknown Type Update Warehouse",
+                      "facilityTypeCode": "yard",
+                      "changedBy": "facilities.ops@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory location type not found: YARD",
+            "/api/inventory/locations/wh-unknown-type-update/metadata"
+        );
     }
 
     @Test
@@ -2613,6 +2719,12 @@ class InventoryApiIntegrationTest {
         } catch (ConflictException ignored) {
             // Shared Spring contexts can keep reference data from earlier tests.
         }
+    }
+
+    private void seedLocationType(String code, String description) {
+        inventoryLocationTypeRepository.save(
+            InventoryLocationType.create(code, description, SEED_INSTANT)
+        );
     }
 
     private void expectSingleReversalHistory(UUID originalTransferId) throws Exception {

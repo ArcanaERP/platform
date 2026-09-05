@@ -317,6 +317,10 @@ Agreements:
 Inventory:
 
 - Inventory item UOM codes are validated against `POST /api/core/units-of-measurement` reference data.
+- Inventory location `facilityTypeCode` values are validated against `POST /api/inventory/location-types` reference data.
+- `POST /api/inventory/location-types`
+- `GET /api/inventory/location-types/{code}`
+- `GET /api/inventory/location-types?page=&size=`
 - `POST /api/inventory/locations`
 - `GET /api/inventory/locations/{code}`
 - `PATCH /api/inventory/locations/{code}/metadata`

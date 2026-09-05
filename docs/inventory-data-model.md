@@ -6,11 +6,19 @@ Updated: 2026-09-04
 
 ```mermaid
 erDiagram
+    INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_LOCATIONS : classifies
     INVENTORY_LOCATIONS ||--o{ INVENTORY_ITEMS : stores
     INVENTORY_LOCATIONS ||--o{ INVENTORY_LOCATION_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_ADJUSTMENTS : records_movements
     INVENTORY_ITEMS ||--o{ INVENTORY_ITEM_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ADJUSTMENTS ||--o{ INVENTORY_TRANSFER_REVERSAL_IDEMPOTENCY : replays
+
+    INVENTORY_LOCATION_TYPES {
+      UUID id PK
+      STRING code UK
+      STRING description
+      INSTANT createdAt
+    }
 
     INVENTORY_LOCATIONS {
       UUID id PK
@@ -111,6 +119,7 @@ erDiagram
 
 - Inventory on-hand is segmented by `sku + locationCode`.
 - Inventory locations carry optional facility type, address, and contact metadata for facility-model parity.
+- Inventory location `facilityTypeCode` values are optional, but supplied codes must exist in `inventory_location_types`.
 - Inventory location metadata changes are append-only via `inventory_location_metadata_change_audits`.
 - Inventory item metadata carries `unitOfMeasurementCode` and `classificationCode` for legacy inventory-entry parity.
 - Inventory item `unitOfMeasurementCode` values are validated against the core UOM catalog at item registration and metadata update boundaries.
@@ -131,6 +140,7 @@ erDiagram
 ## Constraint Notes
 
 - Unique constraints:
+  - `inventory_location_types(code)`
   - `inventory_locations(code)`
   - `inventory_items(sku, locationCode)`
   - `inventory_transfer_reversal_idempotency(transferId, idempotencyKey)`
@@ -147,6 +157,9 @@ erDiagram
 
 ## Minimal HTTP Surface
 
+- `POST /api/inventory/location-types`
+- `GET /api/inventory/location-types/{code}`
+- `GET /api/inventory/location-types?page=&size=`
 - `POST /api/inventory/locations`
 - `GET /api/inventory/locations/{code}`
 - `PATCH /api/inventory/locations/{code}/metadata`
@@ -186,6 +199,7 @@ erDiagram
 
 - inventory location codes are normalized to uppercase at write and lookup boundaries
 - inventory location facility type, region, and country codes are normalized to uppercase; contact email is normalized to lowercase
+- inventory location facility type codes must exist in the inventory location type catalog when supplied
 - inventory location metadata updates require `changedBy`, reject no-op changes, and append audit rows
 - inventory location metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inactive inventory locations remain readable but reject new adjustment and transfer writes
