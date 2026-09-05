@@ -180,13 +180,31 @@ class InventoryApiIntegrationTest {
             .content("""
                 {
                   "code": " wh-central ",
-                  "name": " Central Warehouse "
+                  "name": " Central Warehouse ",
+                  "facilityTypeCode": " warehouse ",
+                  "addressLine1": " 100 Main Dock ",
+                  "addressLine2": " Suite 2 ",
+                  "city": " Salem ",
+                  "regionCode": " or ",
+                  "postalCode": "97301",
+                  "countryCode": " us ",
+                  "contactName": " Receiving Desk ",
+                  "contactEmail": " Receiving@ArcanaERP.com "
                 }
                 """))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").isNotEmpty())
             .andExpect(jsonPath("$.code").value("WH-CENTRAL"))
             .andExpect(jsonPath("$.name").value("Central Warehouse"))
+            .andExpect(jsonPath("$.facilityTypeCode").value("WAREHOUSE"))
+            .andExpect(jsonPath("$.addressLine1").value("100 Main Dock"))
+            .andExpect(jsonPath("$.addressLine2").value("Suite 2"))
+            .andExpect(jsonPath("$.city").value("Salem"))
+            .andExpect(jsonPath("$.regionCode").value("OR"))
+            .andExpect(jsonPath("$.postalCode").value("97301"))
+            .andExpect(jsonPath("$.countryCode").value("US"))
+            .andExpect(jsonPath("$.contactName").value("Receiving Desk"))
+            .andExpect(jsonPath("$.contactEmail").value("receiving@arcanaerp.com"))
             .andExpect(jsonPath("$.active").value(true))
             .andExpect(jsonPath("$.createdAt").isNotEmpty())
             .andExpect(jsonPath("$.updatedAt").isNotEmpty());
@@ -195,6 +213,9 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.code").value("WH-CENTRAL"))
             .andExpect(jsonPath("$.name").value("Central Warehouse"))
+            .andExpect(jsonPath("$.facilityTypeCode").value("WAREHOUSE"))
+            .andExpect(jsonPath("$.countryCode").value("US"))
+            .andExpect(jsonPath("$.contactEmail").value("receiving@arcanaerp.com"))
             .andExpect(jsonPath("$.active").value(true));
 
         mockMvc.perform(get("/api/inventory/locations")
@@ -203,7 +224,8 @@ class InventoryApiIntegrationTest {
             .param("size", "10"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
-            .andExpect(jsonPath("$.items[0].code").value("WH-CENTRAL"));
+            .andExpect(jsonPath("$.items[0].code").value("WH-CENTRAL"))
+            .andExpect(jsonPath("$.items[0].facilityTypeCode").value("WAREHOUSE"));
 
         mockMvc.perform(get("/api/inventory/locations")
             .param("active", "false")
@@ -243,6 +265,51 @@ class InventoryApiIntegrationTest {
             "WH-MISSING",
             "/api/inventory/locations/wh-missing"
         );
+    }
+
+    @Test
+    void updatesInventoryLocationMetadataWithoutChangingActiveState() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/locations")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": "wh-metadata",
+                  "name": "Metadata Warehouse"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.active").value(true));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/locations/{code}/metadata",
+            "wh-metadata"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "name": "Metadata Warehouse East",
+                  "facilityTypeCode": "store",
+                  "addressLine1": "500 East Dock",
+                  "city": "Portland",
+                  "regionCode": "or",
+                  "postalCode": "97201",
+                  "countryCode": "us",
+                  "contactName": "East Receiving",
+                  "contactEmail": "East.Receiving@ArcanaERP.com"
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("WH-METADATA"))
+            .andExpect(jsonPath("$.name").value("Metadata Warehouse East"))
+            .andExpect(jsonPath("$.facilityTypeCode").value("STORE"))
+            .andExpect(jsonPath("$.addressLine1").value("500 East Dock"))
+            .andExpect(jsonPath("$.city").value("Portland"))
+            .andExpect(jsonPath("$.regionCode").value("OR"))
+            .andExpect(jsonPath("$.postalCode").value("97201"))
+            .andExpect(jsonPath("$.countryCode").value("US"))
+            .andExpect(jsonPath("$.contactName").value("East Receiving"))
+            .andExpect(jsonPath("$.contactEmail").value("east.receiving@arcanaerp.com"))
+            .andExpect(jsonPath("$.active").value(true));
     }
 
     @Test
@@ -313,6 +380,36 @@ class InventoryApiIntegrationTest {
                     """)),
             "Inventory location active flag is already true",
             "/api/inventory/locations/wh-noop/active"
+        );
+    }
+
+    @Test
+    void rejectsNoOpInventoryLocationMetadataChange() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/locations")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": "wh-metadata-noop",
+                  "name": "No-op Metadata Warehouse",
+                  "facilityTypeCode": "warehouse"
+                }
+                """))
+            .andExpect(status().isCreated());
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/locations/{code}/metadata",
+                "wh-metadata-noop"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "No-op Metadata Warehouse",
+                      "facilityTypeCode": "warehouse"
+                    }
+                    """)),
+            "Inventory location metadata is unchanged",
+            "/api/inventory/locations/wh-metadata-noop/metadata"
         );
     }
 

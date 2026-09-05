@@ -6,6 +6,7 @@ import com.arcanaerp.platform.inventory.InventoryLocationDirectory;
 import com.arcanaerp.platform.inventory.InventoryLocationView;
 import com.arcanaerp.platform.inventory.RegisterInventoryLocationCommand;
 import com.arcanaerp.platform.inventory.UpdateInventoryLocationActiveCommand;
+import com.arcanaerp.platform.inventory.UpdateInventoryLocationMetadataCommand;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -30,7 +31,19 @@ public class InventoryLocationController {
     @ResponseStatus(HttpStatus.CREATED)
     public InventoryLocationResponse createLocation(@Valid @RequestBody CreateInventoryLocationRequest request) {
         InventoryLocationView location = inventoryLocationDirectory.registerLocation(
-            new RegisterInventoryLocationCommand(request.code(), request.name())
+            new RegisterInventoryLocationCommand(
+                request.code(),
+                request.name(),
+                request.facilityTypeCode(),
+                request.addressLine1(),
+                request.addressLine2(),
+                request.city(),
+                request.regionCode(),
+                request.postalCode(),
+                request.countryCode(),
+                request.contactName(),
+                request.contactEmail()
+            )
         );
         return toResponse(location);
     }
@@ -51,6 +64,29 @@ public class InventoryLocationController {
         ));
     }
 
+    @PatchMapping("/{code}/metadata")
+    public InventoryLocationResponse updateLocationMetadata(
+        @PathVariable String code,
+        @Valid @RequestBody UpdateInventoryLocationMetadataRequest request
+    ) {
+        return toResponse(inventoryLocationDirectory.updateLocationMetadata(
+            code,
+            new UpdateInventoryLocationMetadataCommand(
+                code,
+                request.name(),
+                request.facilityTypeCode(),
+                request.addressLine1(),
+                request.addressLine2(),
+                request.city(),
+                request.regionCode(),
+                request.postalCode(),
+                request.countryCode(),
+                request.contactName(),
+                request.contactEmail()
+            )
+        ));
+    }
+
     @GetMapping
     public PageResult<InventoryLocationResponse> listLocations(
         @RequestParam(required = false) Boolean active,
@@ -65,6 +101,15 @@ public class InventoryLocationController {
             location.id(),
             location.code(),
             location.name(),
+            location.facilityTypeCode(),
+            location.addressLine1(),
+            location.addressLine2(),
+            location.city(),
+            location.regionCode(),
+            location.postalCode(),
+            location.countryCode(),
+            location.contactName(),
+            location.contactEmail(),
             location.active(),
             location.createdAt(),
             location.updatedAt()

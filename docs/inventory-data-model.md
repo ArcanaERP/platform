@@ -15,6 +15,15 @@ erDiagram
       UUID id PK
       STRING code UK
       STRING name
+      STRING facilityTypeCode
+      STRING addressLine1
+      STRING addressLine2
+      STRING city
+      STRING regionCode
+      STRING postalCode
+      STRING countryCode
+      STRING contactName
+      STRING contactEmail
       BOOLEAN active
       INSTANT createdAt
       INSTANT updatedAt
@@ -72,6 +81,7 @@ erDiagram
 ## Relationship Notes
 
 - Inventory on-hand is segmented by `sku + locationCode`.
+- Inventory locations carry optional facility type, address, and contact metadata for facility-model parity.
 - Inventory item metadata carries `unitOfMeasurementCode` and `classificationCode` for legacy inventory-entry parity.
 - Inventory item `unitOfMeasurementCode` values are validated against the core UOM catalog at item registration and metadata update boundaries.
 - `inventory_items.locationCode` aligns with `inventory_locations.code` (code-based location reference).
@@ -107,6 +117,7 @@ erDiagram
 
 - `POST /api/inventory/locations`
 - `GET /api/inventory/locations/{code}`
+- `PATCH /api/inventory/locations/{code}/metadata`
 - `PATCH /api/inventory/locations/{code}/active`
 - `GET /api/inventory/locations?page=&size=&active=`
 - `POST /api/inventory/items`
@@ -141,6 +152,7 @@ erDiagram
 ## Query Notes
 
 - inventory location codes are normalized to uppercase at write and lookup boundaries
+- inventory location facility type, region, and country codes are normalized to uppercase; contact email is normalized to lowercase
 - inactive inventory locations remain readable but reject new adjustment and transfer writes
 - inventory item UOM and classification codes default to `EA` and `ON_HAND` when not explicitly supplied
 - supplied and default inventory item UOM codes must exist in the core unit-of-measurement catalog

@@ -11,5 +11,7 @@ public interface InventoryLocationDirectory {
 
     InventoryLocationView updateLocationActive(String code, UpdateInventoryLocationActiveCommand command);
 
+    InventoryLocationView updateLocationMetadata(String code, UpdateInventoryLocationMetadataCommand command);
+
     PageResult<InventoryLocationView> listLocations(Boolean active, PageQuery pageQuery);
 }

@@ -7,6 +7,7 @@ import com.arcanaerp.platform.inventory.InventoryLocationDirectory;
 import com.arcanaerp.platform.inventory.InventoryLocationView;
 import com.arcanaerp.platform.inventory.RegisterInventoryLocationCommand;
 import com.arcanaerp.platform.inventory.UpdateInventoryLocationActiveCommand;
+import com.arcanaerp.platform.inventory.UpdateInventoryLocationMetadataCommand;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.NoSuchElementException;
@@ -35,7 +36,20 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
             throw new ConflictException("Inventory location already exists for code: " + code);
         }
 
-        return toView(inventoryLocationRepository.save(InventoryLocation.create(code, name, Instant.now(clock))));
+        return toView(inventoryLocationRepository.save(InventoryLocation.create(
+            code,
+            name,
+            command.facilityTypeCode(),
+            command.addressLine1(),
+            command.addressLine2(),
+            command.city(),
+            command.regionCode(),
+            command.postalCode(),
+            command.countryCode(),
+            command.contactName(),
+            command.contactEmail(),
+            Instant.now(clock)
+        )));
     }
 
     @Override
@@ -63,6 +77,34 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
     }
 
     @Override
+    public InventoryLocationView updateLocationMetadata(String code, UpdateInventoryLocationMetadataCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        String normalizedCode = normalizeRequired(code, "code").toUpperCase();
+        String commandCode = normalizeRequired(command.code(), "code").toUpperCase();
+        if (!normalizedCode.equals(commandCode)) {
+            throw new IllegalArgumentException("code path variable must match command code");
+        }
+        InventoryLocation location = inventoryLocationRepository.findByCode(normalizedCode)
+            .orElseThrow(() -> new NoSuchElementException("Inventory location not found for code: " + normalizedCode));
+        location.updateMetadata(
+            command.name(),
+            command.facilityTypeCode(),
+            command.addressLine1(),
+            command.addressLine2(),
+            command.city(),
+            command.regionCode(),
+            command.postalCode(),
+            command.countryCode(),
+            command.contactName(),
+            command.contactEmail(),
+            Instant.now(clock)
+        );
+        return toView(inventoryLocationRepository.save(location));
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public PageResult<InventoryLocationView> listLocations(Boolean active, PageQuery pageQuery) {
         Sort sort = Sort.by(Sort.Direction.ASC, "code");
@@ -77,6 +119,15 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
             location.getId(),
             location.getCode(),
             location.getName(),
+            location.getFacilityTypeCode(),
+            location.getAddressLine1(),
+            location.getAddressLine2(),
+            location.getCity(),
+            location.getRegionCode(),
+            location.getPostalCode(),
+            location.getCountryCode(),
+            location.getContactName(),
+            location.getContactEmail(),
             location.isActive(),
             location.getCreatedAt(),
             location.getUpdatedAt()

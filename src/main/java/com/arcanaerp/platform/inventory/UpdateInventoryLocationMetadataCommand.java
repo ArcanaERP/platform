@@ -1,6 +1,6 @@
 package com.arcanaerp.platform.inventory;
 
-public record RegisterInventoryLocationCommand(
+public record UpdateInventoryLocationMetadataCommand(
     String code,
     String name,
     String facilityTypeCode,

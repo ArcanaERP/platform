@@ -1,8 +1,9 @@
-package com.arcanaerp.platform.inventory;
+package com.arcanaerp.platform.inventory.web;
 
-public record RegisterInventoryLocationCommand(
-    String code,
-    String name,
+import jakarta.validation.constraints.NotBlank;
+
+public record UpdateInventoryLocationMetadataRequest(
+    @NotBlank String name,
     String facilityTypeCode,
     String addressLine1,
     String addressLine2,
