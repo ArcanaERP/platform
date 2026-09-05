@@ -7,6 +7,7 @@ Updated: 2026-09-04
 ```mermaid
 erDiagram
     INVENTORY_LOCATIONS ||--o{ INVENTORY_ITEMS : stores
+    INVENTORY_LOCATIONS ||--o{ INVENTORY_LOCATION_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_ADJUSTMENTS : records_movements
     INVENTORY_ITEMS ||--o{ INVENTORY_ITEM_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ADJUSTMENTS ||--o{ INVENTORY_TRANSFER_REVERSAL_IDEMPOTENCY : replays
@@ -37,6 +38,34 @@ erDiagram
       STRING unitOfMeasurementCode
       STRING classificationCode
       INSTANT updatedAt
+    }
+
+    INVENTORY_LOCATION_METADATA_CHANGE_AUDITS {
+      UUID id PK
+      UUID inventoryLocationId
+      STRING locationCode
+      STRING previousName
+      STRING currentName
+      STRING previousFacilityTypeCode
+      STRING currentFacilityTypeCode
+      STRING previousAddressLine1
+      STRING currentAddressLine1
+      STRING previousAddressLine2
+      STRING currentAddressLine2
+      STRING previousCity
+      STRING currentCity
+      STRING previousRegionCode
+      STRING currentRegionCode
+      STRING previousPostalCode
+      STRING currentPostalCode
+      STRING previousCountryCode
+      STRING currentCountryCode
+      STRING previousContactName
+      STRING currentContactName
+      STRING previousContactEmail
+      STRING currentContactEmail
+      STRING changedBy
+      INSTANT changedAt
     }
 
     INVENTORY_ADJUSTMENTS {
@@ -82,6 +111,7 @@ erDiagram
 
 - Inventory on-hand is segmented by `sku + locationCode`.
 - Inventory locations carry optional facility type, address, and contact metadata for facility-model parity.
+- Inventory location metadata changes are append-only via `inventory_location_metadata_change_audits`.
 - Inventory item metadata carries `unitOfMeasurementCode` and `classificationCode` for legacy inventory-entry parity.
 - Inventory item `unitOfMeasurementCode` values are validated against the core UOM catalog at item registration and metadata update boundaries.
 - `inventory_items.locationCode` aligns with `inventory_locations.code` (code-based location reference).
@@ -109,6 +139,8 @@ erDiagram
   - `inventory_adjustments(inventoryItemId, adjustedBy, adjustedAt)`
   - `inventory_adjustments(transferId)`
   - `inventory_adjustments(sku, referenceType, referenceId, adjustedAt)`
+  - `inventory_location_metadata_change_audits(inventoryLocationId, changedAt)`
+  - `inventory_location_metadata_change_audits(locationCode, changedAt)`
   - `inventory_item_metadata_change_audits(inventoryItemId, changedAt)`
   - `inventory_item_metadata_change_audits(sku, locationCode, changedAt)`
   - `inventory_transfer_reversal_idempotency(reversalTransferId)`
@@ -118,6 +150,7 @@ erDiagram
 - `POST /api/inventory/locations`
 - `GET /api/inventory/locations/{code}`
 - `PATCH /api/inventory/locations/{code}/metadata`
+- `GET /api/inventory/locations/{code}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `PATCH /api/inventory/locations/{code}/active`
 - `GET /api/inventory/locations?page=&size=&active=`
 - `POST /api/inventory/items`
@@ -153,6 +186,8 @@ erDiagram
 
 - inventory location codes are normalized to uppercase at write and lookup boundaries
 - inventory location facility type, region, and country codes are normalized to uppercase; contact email is normalized to lowercase
+- inventory location metadata updates require `changedBy`, reject no-op changes, and append audit rows
+- inventory location metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inactive inventory locations remain readable but reject new adjustment and transfer writes
 - inventory item UOM and classification codes default to `EA` and `ON_HAND` when not explicitly supplied
 - supplied and default inventory item UOM codes must exist in the core unit-of-measurement catalog

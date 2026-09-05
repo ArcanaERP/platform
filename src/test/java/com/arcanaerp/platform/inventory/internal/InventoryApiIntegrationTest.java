@@ -74,6 +74,9 @@ class InventoryApiIntegrationTest {
     private InventoryLocationRepository inventoryLocationRepository;
 
     @Autowired
+    private InventoryLocationMetadataChangeAuditRepository locationMetadataChangeAuditRepository;
+
+    @Autowired
     private UnitOfMeasurementDirectory unitOfMeasurementDirectory;
 
     @BeforeEach
@@ -83,6 +86,7 @@ class InventoryApiIntegrationTest {
         metadataChangeAuditRepository.deleteAll();
         inventoryAdjustmentRepository.deleteAll();
         inventoryItemRepository.deleteAll();
+        locationMetadataChangeAuditRepository.deleteAll();
         inventoryLocationRepository.deleteAll();
         ensureUnitOfMeasurement("EA", "Each");
         ensureUnitOfMeasurement("CASE", "Case");
@@ -295,7 +299,8 @@ class InventoryApiIntegrationTest {
                   "postalCode": "97201",
                   "countryCode": "us",
                   "contactName": "East Receiving",
-                  "contactEmail": "East.Receiving@ArcanaERP.com"
+                  "contactEmail": "East.Receiving@ArcanaERP.com",
+                  "changedBy": " Facilities.Ops@ArcanaERP.com "
                 }
                 """))
             .andExpect(status().isOk())
@@ -310,6 +315,21 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.contactName").value("East Receiving"))
             .andExpect(jsonPath("$.contactEmail").value("east.receiving@arcanaerp.com"))
             .andExpect(jsonPath("$.active").value(true));
+
+        mockMvc.perform(get("/api/inventory/locations/{code}/metadata-history", "wh-metadata")
+            .param("changedBy", "facilities.ops@arcanaerp.com")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].locationCode").value("WH-METADATA"))
+            .andExpect(jsonPath("$.items[0].previousName").value("Metadata Warehouse"))
+            .andExpect(jsonPath("$.items[0].currentName").value("Metadata Warehouse East"))
+            .andExpect(jsonPath("$.items[0].currentFacilityTypeCode").value("STORE"))
+            .andExpect(jsonPath("$.items[0].currentCountryCode").value("US"))
+            .andExpect(jsonPath("$.items[0].currentContactEmail").value("east.receiving@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("facilities.ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
     }
 
     @Test
@@ -405,12 +425,91 @@ class InventoryApiIntegrationTest {
                 .content("""
                     {
                       "name": "No-op Metadata Warehouse",
-                      "facilityTypeCode": "warehouse"
+                      "facilityTypeCode": "warehouse",
+                      "changedBy": "facilities.ops@arcanaerp.com"
                     }
                     """)),
             "Inventory location metadata is unchanged",
             "/api/inventory/locations/wh-metadata-noop/metadata"
         );
+    }
+
+    @Test
+    void filtersInventoryLocationMetadataHistoryByChangedAtRange() throws Exception {
+        InventoryLocation location = inventoryLocationRepository.save(
+            InventoryLocation.create("wh-location-history", "Location History", SEED_INSTANT)
+        );
+        locationMetadataChangeAuditRepository.save(InventoryLocationMetadataChangeAudit.create(
+            location.getId(),
+            "wh-location-history",
+            new InventoryLocationMetadataSnapshot(
+                "Location History",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            ),
+            new InventoryLocationMetadataSnapshot(
+                "Location History East",
+                "warehouse",
+                "100 East Dock",
+                null,
+                "Salem",
+                "or",
+                "97301",
+                "us",
+                "Receiving",
+                "receiving@arcanaerp.com"
+            ),
+            "facilities.ops@arcanaerp.com",
+            Instant.parse("2026-03-01T01:00:00Z")
+        ));
+        locationMetadataChangeAuditRepository.save(InventoryLocationMetadataChangeAudit.create(
+            location.getId(),
+            "wh-location-history",
+            new InventoryLocationMetadataSnapshot(
+                "Location History East",
+                "warehouse",
+                "100 East Dock",
+                null,
+                "Salem",
+                "or",
+                "97301",
+                "us",
+                "Receiving",
+                "receiving@arcanaerp.com"
+            ),
+            new InventoryLocationMetadataSnapshot(
+                "Location History West",
+                "store",
+                "200 West Dock",
+                null,
+                "Portland",
+                "or",
+                "97201",
+                "us",
+                "West Receiving",
+                "west.receiving@arcanaerp.com"
+            ),
+            "planning@arcanaerp.com",
+            Instant.parse("2026-03-02T01:00:00Z")
+        ));
+
+        mockMvc.perform(get("/api/inventory/locations/{code}/metadata-history", "wh-location-history")
+            .param("changedAtFrom", "2026-03-02T00:00:00Z")
+            .param("changedAtTo", "2026-03-02T23:59:59Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].currentName").value("Location History West"))
+            .andExpect(jsonPath("$.items[0].currentFacilityTypeCode").value("STORE"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("planning@arcanaerp.com"));
     }
 
     @Test

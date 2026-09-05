@@ -3,11 +3,14 @@ package com.arcanaerp.platform.inventory.web;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.InventoryLocationDirectory;
+import com.arcanaerp.platform.inventory.InventoryLocationMetadataChangeView;
 import com.arcanaerp.platform.inventory.InventoryLocationView;
 import com.arcanaerp.platform.inventory.RegisterInventoryLocationCommand;
 import com.arcanaerp.platform.inventory.UpdateInventoryLocationActiveCommand;
 import com.arcanaerp.platform.inventory.UpdateInventoryLocationMetadataCommand;
 import jakarta.validation.Valid;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -82,9 +85,31 @@ public class InventoryLocationController {
                 request.postalCode(),
                 request.countryCode(),
                 request.contactName(),
-                request.contactEmail()
+                request.contactEmail(),
+                request.changedBy()
             )
         ));
+    }
+
+    @GetMapping("/{code}/metadata-history")
+    public PageResult<InventoryLocationMetadataChangeResponse> listMetadataHistory(
+        @PathVariable String code,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return inventoryLocationDirectory.listMetadataHistory(
+            code,
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toMetadataChangeResponse);
     }
 
     @GetMapping
@@ -114,5 +139,64 @@ public class InventoryLocationController {
             location.createdAt(),
             location.updatedAt()
         );
+    }
+
+    private InventoryLocationMetadataChangeResponse toMetadataChangeResponse(InventoryLocationMetadataChangeView change) {
+        return new InventoryLocationMetadataChangeResponse(
+            change.id(),
+            change.locationCode(),
+            change.previousName(),
+            change.currentName(),
+            change.previousFacilityTypeCode(),
+            change.currentFacilityTypeCode(),
+            change.previousAddressLine1(),
+            change.currentAddressLine1(),
+            change.previousAddressLine2(),
+            change.currentAddressLine2(),
+            change.previousCity(),
+            change.currentCity(),
+            change.previousRegionCode(),
+            change.currentRegionCode(),
+            change.previousPostalCode(),
+            change.currentPostalCode(),
+            change.previousCountryCode(),
+            change.currentCountryCode(),
+            change.previousContactName(),
+            change.currentContactName(),
+            change.previousContactEmail(),
+            change.currentContactEmail(),
+            change.changedBy(),
+            change.changedAt()
+        );
+    }
+
+    private static String normalizeOptionalChangedBy(String changedBy) {
+        if (changedBy == null) {
+            return null;
+        }
+        if (changedBy.isBlank()) {
+            throw new IllegalArgumentException("changedBy query parameter must not be blank");
+        }
+        return changedBy.trim().toLowerCase();
+    }
+
+    private static Instant parseOptionalInstant(String value, String parameterName) {
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
+            throw new IllegalArgumentException(parameterName + " query parameter must not be blank");
+        }
+        try {
+            return Instant.parse(value.trim());
+        } catch (DateTimeParseException exception) {
+            throw new IllegalArgumentException(parameterName + " query parameter must be a valid ISO-8601 instant");
+        }
+    }
+
+    private static void validateChangedAtRange(Instant changedAtFrom, Instant changedAtTo) {
+        if (changedAtFrom != null && changedAtTo != null && changedAtFrom.isAfter(changedAtTo)) {
+            throw new IllegalArgumentException("changedAtFrom must be before or equal to changedAtTo");
+        }
     }
 }

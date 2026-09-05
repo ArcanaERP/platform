@@ -4,6 +4,7 @@ import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.InventoryLocationDirectory;
+import com.arcanaerp.platform.inventory.InventoryLocationMetadataChangeView;
 import com.arcanaerp.platform.inventory.InventoryLocationView;
 import com.arcanaerp.platform.inventory.RegisterInventoryLocationCommand;
 import com.arcanaerp.platform.inventory.UpdateInventoryLocationActiveCommand;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 class InventoryLocationDirectoryService implements InventoryLocationDirectory {
 
     private final InventoryLocationRepository inventoryLocationRepository;
+    private final InventoryLocationMetadataChangeAuditRepository metadataChangeAuditRepository;
     private final Clock clock;
 
     @Override
@@ -88,6 +90,8 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
         }
         InventoryLocation location = inventoryLocationRepository.findByCode(normalizedCode)
             .orElseThrow(() -> new NoSuchElementException("Inventory location not found for code: " + normalizedCode));
+        InventoryLocationMetadataSnapshot previous = InventoryLocationMetadataSnapshot.from(location);
+        Instant changedAt = Instant.now(clock);
         location.updateMetadata(
             command.name(),
             command.facilityTypeCode(),
@@ -99,9 +103,37 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
             command.countryCode(),
             command.contactName(),
             command.contactEmail(),
-            Instant.now(clock)
+            changedAt
         );
+        metadataChangeAuditRepository.save(InventoryLocationMetadataChangeAudit.create(
+            location.getId(),
+            location.getCode(),
+            previous,
+            InventoryLocationMetadataSnapshot.from(location),
+            command.changedBy(),
+            changedAt
+        ));
         return toView(inventoryLocationRepository.save(location));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<InventoryLocationMetadataChangeView> listMetadataHistory(
+        String code,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        InventoryLocation location = findLocation(code);
+        Page<InventoryLocationMetadataChangeAudit> history = metadataChangeAuditRepository.findHistoryFiltered(
+            location.getId(),
+            normalizeOptionalChangedBy(changedBy),
+            changedAtFrom,
+            changedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
+        );
+        return PageResult.from(history).map(this::toMetadataChangeView);
     }
 
     @Override
@@ -112,6 +144,12 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
             ? inventoryLocationRepository.findAll(pageQuery.toPageable(sort))
             : inventoryLocationRepository.findByActive(active, pageQuery.toPageable(sort));
         return PageResult.from(locations).map(this::toView);
+    }
+
+    private InventoryLocation findLocation(String code) {
+        String normalizedCode = normalizeRequired(code, "code").toUpperCase();
+        return inventoryLocationRepository.findByCode(normalizedCode)
+            .orElseThrow(() -> new NoSuchElementException("Inventory location not found for code: " + normalizedCode));
     }
 
     private InventoryLocationView toView(InventoryLocation location) {
@@ -134,10 +172,43 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
         );
     }
 
+    private InventoryLocationMetadataChangeView toMetadataChangeView(InventoryLocationMetadataChangeAudit audit) {
+        return new InventoryLocationMetadataChangeView(
+            audit.getId(),
+            audit.getLocationCode(),
+            audit.getPreviousName(),
+            audit.getCurrentName(),
+            audit.getPreviousFacilityTypeCode(),
+            audit.getCurrentFacilityTypeCode(),
+            audit.getPreviousAddressLine1(),
+            audit.getCurrentAddressLine1(),
+            audit.getPreviousAddressLine2(),
+            audit.getCurrentAddressLine2(),
+            audit.getPreviousCity(),
+            audit.getCurrentCity(),
+            audit.getPreviousRegionCode(),
+            audit.getCurrentRegionCode(),
+            audit.getPreviousPostalCode(),
+            audit.getCurrentPostalCode(),
+            audit.getPreviousCountryCode(),
+            audit.getCurrentCountryCode(),
+            audit.getPreviousContactName(),
+            audit.getCurrentContactName(),
+            audit.getPreviousContactEmail(),
+            audit.getCurrentContactEmail(),
+            audit.getChangedBy(),
+            audit.getChangedAt()
+        );
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private static String normalizeOptionalChangedBy(String value) {
+        return value == null ? null : normalizeRequired(value, "changedBy").toLowerCase();
     }
 }
