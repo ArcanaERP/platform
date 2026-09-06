@@ -627,6 +627,8 @@ class InventoryApiIntegrationTest {
                   "sku": " arc-9250 ",
                   "locationCode": " wh-item ",
                   "onHandQuantity": 14,
+                  "availableQuantity": 12,
+                  "soldQuantity": 2,
                   "unitOfMeasurementCode": "case",
                   "classificationCode": "quarantine",
                   "productInstanceCode": " pi-100 "
@@ -637,6 +639,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.sku").value("ARC-9250"))
             .andExpect(jsonPath("$.locationCode").value("WH-ITEM"))
             .andExpect(jsonPath("$.onHandQuantity").value(14))
+            .andExpect(jsonPath("$.availableQuantity").value(12))
+            .andExpect(jsonPath("$.soldQuantity").value(2))
             .andExpect(jsonPath("$.unitOfMeasurementCode").value("CASE"))
             .andExpect(jsonPath("$.classificationCode").value("QUARANTINE"))
             .andExpect(jsonPath("$.productInstanceCode").value("PI-100"))
@@ -647,6 +651,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.sku").value("ARC-9250"))
             .andExpect(jsonPath("$.locationCode").value("WH-ITEM"))
             .andExpect(jsonPath("$.onHandQuantity").value(14))
+            .andExpect(jsonPath("$.availableQuantity").value(12))
+            .andExpect(jsonPath("$.soldQuantity").value(2))
             .andExpect(jsonPath("$.unitOfMeasurementCode").value("CASE"))
             .andExpect(jsonPath("$.classificationCode").value("QUARANTINE"))
             .andExpect(jsonPath("$.productInstanceCode").value("PI-100"));
@@ -660,6 +666,8 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].sku").value("ARC-9250"))
+            .andExpect(jsonPath("$.items[0].availableQuantity").value(12))
+            .andExpect(jsonPath("$.items[0].soldQuantity").value(2))
             .andExpect(jsonPath("$.items[0].classificationCode").value("QUARANTINE"))
             .andExpect(jsonPath("$.items[0].productInstanceCode").value("PI-100"));
 
@@ -681,6 +689,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.sku").value("ARC-9250"))
             .andExpect(jsonPath("$.locationCode").value("WH-ITEM"))
             .andExpect(jsonPath("$.onHandQuantity").value(14))
+            .andExpect(jsonPath("$.availableQuantity").value(12))
+            .andExpect(jsonPath("$.soldQuantity").value(2))
             .andExpect(jsonPath("$.unitOfMeasurementCode").value("EACH"))
             .andExpect(jsonPath("$.classificationCode").value("AVAILABLE"))
             .andExpect(jsonPath("$.productInstanceCode").value("PI-101"));
@@ -763,6 +773,24 @@ class InventoryApiIntegrationTest {
                     }
                     """)),
             "Unit of measurement not found: CRATE",
+            "/api/inventory/items"
+        );
+    }
+
+    @Test
+    void rejectsInventoryItemRegistrationWhenAvailableQuantityExceedsOnHandQuantity() throws Exception {
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/items")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "sku": "arc-9252b",
+                      "locationCode": "wh-availability",
+                      "onHandQuantity": 1,
+                      "availableQuantity": 2
+                    }
+                    """)),
+            "availableQuantity must not exceed onHandQuantity",
             "/api/inventory/items"
         );
     }

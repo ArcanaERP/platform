@@ -36,6 +36,8 @@ public class InventoryItemController {
             request.sku(),
             request.locationCode(),
             request.onHandQuantity(),
+            request.availableQuantity(),
+            request.soldQuantity(),
             request.unitOfMeasurementCode(),
             request.classificationCode(),
             request.productInstanceCode()
@@ -120,6 +122,8 @@ public class InventoryItemController {
             item.sku(),
             item.locationCode(),
             item.onHandQuantity(),
+            item.availableQuantity(),
+            item.soldQuantity(),
             item.unitOfMeasurementCode(),
             item.classificationCode(),
             item.productInstanceCode(),

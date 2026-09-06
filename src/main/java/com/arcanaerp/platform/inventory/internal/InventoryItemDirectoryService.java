@@ -41,6 +41,15 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
         if (onHandQuantity == null || onHandQuantity.signum() < 0) {
             throw new IllegalArgumentException("onHandQuantity must be zero or greater");
         }
+        BigDecimal availableQuantity = normalizeOptionalQuantity(
+            command.availableQuantity(),
+            "availableQuantity",
+            onHandQuantity
+        );
+        BigDecimal soldQuantity = normalizeOptionalQuantity(command.soldQuantity(), "soldQuantity", BigDecimal.ZERO);
+        if (availableQuantity.compareTo(onHandQuantity) > 0) {
+            throw new IllegalArgumentException("availableQuantity must not exceed onHandQuantity");
+        }
         ensureLocationActive(locationCode);
         if (inventoryItemRepository.findBySkuAndLocationCode(sku, locationCode).isPresent()) {
             throw new ConflictException("Inventory item already exists for SKU/location: " + sku + "/" + locationCode);
@@ -52,6 +61,8 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             sku,
             locationCode,
             onHandQuantity,
+            availableQuantity,
+            soldQuantity,
             unitOfMeasurementCode,
             normalizeOptionalCode(command.classificationCode(), "classificationCode", "ON_HAND"),
             normalizeOptionalCode(command.productInstanceCode(), "productInstanceCode"),
@@ -183,6 +194,8 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             item.getSku(),
             item.getLocationCode(),
             item.getOnHandQuantity(),
+            item.getAvailableQuantity(),
+            item.getSoldQuantity(),
             item.getUnitOfMeasurementCode(),
             item.getClassificationCode(),
             item.getProductInstanceCode(),
@@ -223,5 +236,13 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
 
     private static String normalizeOptionalChangedBy(String value) {
         return value == null ? null : normalizeRequired(value, "changedBy").toLowerCase();
+    }
+
+    private static BigDecimal normalizeOptionalQuantity(BigDecimal value, String fieldName, BigDecimal defaultValue) {
+        BigDecimal quantity = value == null ? defaultValue : value;
+        if (quantity == null || quantity.signum() < 0) {
+            throw new IllegalArgumentException(fieldName + " must be zero or greater");
+        }
+        return quantity;
     }
 }

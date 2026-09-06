@@ -43,6 +43,8 @@ erDiagram
       STRING sku
       STRING locationCode
       DECIMAL onHandQuantity
+      DECIMAL availableQuantity
+      DECIMAL soldQuantity
       STRING unitOfMeasurementCode
       STRING classificationCode
       STRING productInstanceCode
@@ -120,19 +122,20 @@ erDiagram
 
 ## Relationship Notes
 
-- Inventory on-hand is segmented by `sku + locationCode`.
+- Inventory on-hand, available, and sold counters are segmented by `sku + locationCode`.
 - Inventory locations carry optional facility type, address, and contact metadata for facility-model parity.
 - Inventory location `facilityTypeCode` values are optional, but supplied codes must exist in `inventory_location_types`.
 - Inventory location metadata changes are append-only via `inventory_location_metadata_change_audits`.
+- Inventory item state carries `onHandQuantity`, `availableQuantity`, and `soldQuantity` for legacy inventory-entry parity with `number_in_stock`, `number_available`, and `number_sold`.
 - Inventory item metadata carries `unitOfMeasurementCode`, `classificationCode`, and optional `productInstanceCode` for legacy inventory-entry parity.
 - Inventory item `unitOfMeasurementCode` values are validated against the core UOM catalog at item registration and metadata update boundaries.
 - `inventory_items.locationCode` aligns with `inventory_locations.code` (code-based location reference).
 - `inventory_adjustments.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_item_metadata_change_audits.inventoryItemId` is a logical reference to `inventory_items.id`.
-- Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` stores latest per-location state.
+- Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` and `inventory_items.availableQuantity` store latest per-location state.
 - Inventory item metadata changes are append-only via `inventory_item_metadata_change_audits`.
 - Location transfers write two adjustment rows with a shared `transferId` (source negative delta, destination positive delta).
-- Destination stock rows created by transfers copy the source item's UOM and classification metadata.
+- Destination stock rows created by transfers copy the source item's UOM, classification, and product-instance metadata.
 - Transfer rows can optionally carry source-document metadata (`referenceType`, `referenceId`) for parity traceability.
 - Transfer reversals are modeled as new transfer pairs where `referenceType = TRANSFER_REVERSAL` and `referenceId = <originalTransferId>`.
 - Reversal idempotency keys are tracked in `inventory_transfer_reversal_idempotency` for replay-safe reversal retries.
@@ -207,6 +210,7 @@ erDiagram
 - inventory location metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inactive inventory locations remain readable but reject new adjustment and transfer writes
 - inventory item UOM and classification codes default to `EA` and `ON_HAND` when not explicitly supplied
+- inventory item available quantity defaults to on-hand quantity, sold quantity defaults to zero, and available quantity cannot exceed on-hand quantity
 - inventory item product instance codes are optional and normalized to uppercase when supplied
 - supplied and default inventory item UOM codes must exist in the core unit-of-measurement catalog
 - inventory item list filters match normalized `sku`, `locationCode`, `unitOfMeasurementCode`, `classificationCode`, and `productInstanceCode` values

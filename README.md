@@ -317,6 +317,7 @@ Agreements:
 Inventory:
 
 - Inventory item UOM codes are validated against `POST /api/core/units-of-measurement` reference data.
+- Inventory item registration accepts optional `availableQuantity` and `soldQuantity`; available defaults to on-hand, sold defaults to zero.
 - Inventory location `facilityTypeCode` values are validated against `POST /api/inventory/location-types` reference data.
 - `POST /api/inventory/location-types`
 - `GET /api/inventory/location-types/{code}`

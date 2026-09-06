@@ -60,6 +60,8 @@ public class InventoryController {
             item.sku(),
             item.locationCode(),
             item.onHandQuantity(),
+            item.availableQuantity(),
+            item.soldQuantity(),
             item.unitOfMeasurementCode(),
             item.classificationCode(),
             item.productInstanceCode(),

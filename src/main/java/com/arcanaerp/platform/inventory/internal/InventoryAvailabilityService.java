@@ -78,6 +78,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
             item.getSku(),
             item.getLocationCode(),
             item.getOnHandQuantity(),
+            item.getAvailableQuantity(),
+            item.getSoldQuantity(),
             item.getUnitOfMeasurementCode(),
             item.getClassificationCode(),
             item.getProductInstanceCode(),

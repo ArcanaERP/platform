@@ -42,6 +42,12 @@ public class InventoryItem {
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal onHandQuantity;
 
+    @Column(nullable = false, precision = 19, scale = 4)
+    private BigDecimal availableQuantity;
+
+    @Column(nullable = false, precision = 19, scale = 4)
+    private BigDecimal soldQuantity;
+
     @Column(nullable = false, length = 32)
     private String unitOfMeasurementCode;
 
@@ -59,6 +65,8 @@ public class InventoryItem {
         String sku,
         String locationCode,
         BigDecimal onHandQuantity,
+        BigDecimal availableQuantity,
+        BigDecimal soldQuantity,
         String unitOfMeasurementCode,
         String classificationCode,
         String productInstanceCode,
@@ -68,6 +76,8 @@ public class InventoryItem {
         this.sku = sku;
         this.locationCode = locationCode;
         this.onHandQuantity = onHandQuantity;
+        this.availableQuantity = availableQuantity;
+        this.soldQuantity = soldQuantity;
         this.unitOfMeasurementCode = unitOfMeasurementCode;
         this.classificationCode = classificationCode;
         this.productInstanceCode = productInstanceCode;
@@ -79,6 +89,8 @@ public class InventoryItem {
             sku,
             locationCode,
             onHandQuantity,
+            onHandQuantity,
+            BigDecimal.ZERO,
             DEFAULT_UNIT_OF_MEASUREMENT_CODE,
             DEFAULT_CLASSIFICATION_CODE,
             null,
@@ -98,6 +110,8 @@ public class InventoryItem {
             sku,
             locationCode,
             onHandQuantity,
+            onHandQuantity,
+            BigDecimal.ZERO,
             unitOfMeasurementCode,
             classificationCode,
             null,
@@ -114,8 +128,41 @@ public class InventoryItem {
         String productInstanceCode,
         Instant updatedAt
     ) {
+        return create(
+            sku,
+            locationCode,
+            onHandQuantity,
+            onHandQuantity,
+            BigDecimal.ZERO,
+            unitOfMeasurementCode,
+            classificationCode,
+            productInstanceCode,
+            updatedAt
+        );
+    }
+
+    static InventoryItem create(
+        String sku,
+        String locationCode,
+        BigDecimal onHandQuantity,
+        BigDecimal availableQuantity,
+        BigDecimal soldQuantity,
+        String unitOfMeasurementCode,
+        String classificationCode,
+        String productInstanceCode,
+        Instant updatedAt
+    ) {
         if (onHandQuantity == null || onHandQuantity.signum() < 0) {
             throw new IllegalArgumentException("onHandQuantity must be zero or greater");
+        }
+        if (availableQuantity == null || availableQuantity.signum() < 0) {
+            throw new IllegalArgumentException("availableQuantity must be zero or greater");
+        }
+        if (soldQuantity == null || soldQuantity.signum() < 0) {
+            throw new IllegalArgumentException("soldQuantity must be zero or greater");
+        }
+        if (availableQuantity.compareTo(onHandQuantity) > 0) {
+            throw new IllegalArgumentException("availableQuantity must not exceed onHandQuantity");
         }
         if (updatedAt == null) {
             throw new IllegalArgumentException("updatedAt is required");
@@ -126,6 +173,8 @@ public class InventoryItem {
             normalizeRequired(sku, "sku").toUpperCase(),
             normalizeRequired(locationCode, "locationCode").toUpperCase(),
             onHandQuantity,
+            availableQuantity,
+            soldQuantity,
             normalizeRequired(unitOfMeasurementCode, "unitOfMeasurementCode").toUpperCase(),
             normalizeRequired(classificationCode, "classificationCode").toUpperCase(),
             normalizeOptionalUpper(productInstanceCode),
@@ -145,11 +194,16 @@ public class InventoryItem {
         }
 
         BigDecimal nextOnHand = onHandQuantity.add(quantityDelta);
+        BigDecimal nextAvailable = availableQuantity.add(quantityDelta);
         if (nextOnHand.signum() < 0) {
             throw new IllegalArgumentException("onHandQuantity cannot become negative");
         }
+        if (nextAvailable.signum() < 0) {
+            throw new IllegalArgumentException("availableQuantity cannot become negative");
+        }
 
         this.onHandQuantity = nextOnHand;
+        this.availableQuantity = nextAvailable;
         this.updatedAt = adjustedAt;
     }
 

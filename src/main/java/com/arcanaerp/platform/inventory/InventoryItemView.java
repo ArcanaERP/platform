@@ -9,6 +9,8 @@ public record InventoryItemView(
     String sku,
     String locationCode,
     BigDecimal onHandQuantity,
+    BigDecimal availableQuantity,
+    BigDecimal soldQuantity,
     String unitOfMeasurementCode,
     String classificationCode,
     String productInstanceCode,
