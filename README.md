@@ -329,6 +329,9 @@ Inventory:
 - `POST /api/inventory/entry-role-types`
 - `GET /api/inventory/entry-role-types/{code}`
 - `GET /api/inventory/entry-role-types?page=&size=`
+- `POST /api/inventory/entry-relationships`
+- `GET /api/inventory/entry-relationships/{id}`
+- `GET /api/inventory/entry-relationships?page=&size=&relationshipTypeCode=&fromSku=&fromLocationCode=&toSku=&toLocationCode=&statusCode=`
 - `POST /api/inventory/locations`
 - `GET /api/inventory/locations/{code}`
 - `PATCH /api/inventory/locations/{code}/metadata`

@@ -7,8 +7,10 @@ Updated: 2026-09-04
 ```mermaid
 erDiagram
     INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_LOCATIONS : classifies
-    INVENTORY_ENTRY_RELATIONSHIP_TYPES ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : classifies_future
-    INVENTORY_ENTRY_ROLE_TYPES ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : roles_future
+    INVENTORY_ENTRY_RELATIONSHIP_TYPES ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : classifies
+    INVENTORY_ENTRY_ROLE_TYPES ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : roles
+    INVENTORY_ITEMS ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : from_item
+    INVENTORY_ITEMS ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : to_item
     INVENTORY_LOCATIONS ||--o{ INVENTORY_ITEMS : stores
     INVENTORY_LOCATIONS ||--o{ INVENTORY_LOCATION_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_ADJUSTMENTS : records_movements
@@ -36,6 +38,22 @@ erDiagram
       STRING code UK
       STRING description
       STRING comments
+      INSTANT createdAt
+    }
+
+    INVENTORY_ENTRY_RELATIONSHIPS {
+      UUID id PK
+      STRING relationshipTypeCode
+      UUID fromInventoryItemId
+      STRING fromSku
+      STRING fromLocationCode
+      UUID toInventoryItemId
+      STRING toSku
+      STRING toLocationCode
+      STRING fromRoleTypeCode
+      STRING toRoleTypeCode
+      STRING description
+      STRING statusCode
       INSTANT createdAt
     }
 
@@ -158,7 +176,8 @@ erDiagram
 ## Relationship Notes
 
 - Inventory on-hand, available, and sold counters are segmented by `sku + locationCode`.
-- Inventory entry relationship and role types are reference data for future entry relationship records.
+- Inventory entry relationship and role types are reference data for entry relationship records.
+- Inventory entry relationships link two existing inventory items and preserve normalized item keys for filtering.
 - Inventory locations carry optional facility type, address, and contact metadata for facility-model parity.
 - Inventory location `facilityTypeCode` values are optional, but supplied codes must exist in `inventory_location_types`.
 - Inventory location metadata changes are append-only via `inventory_location_metadata_change_audits`.
@@ -168,6 +187,7 @@ erDiagram
 - `inventory_items.locationCode` aligns with `inventory_locations.code` (code-based location reference).
 - `inventory_adjustments.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_item_metadata_change_audits.inventoryItemId` is a logical reference to `inventory_items.id`.
+- `inventory_entry_relationships.fromInventoryItemId` and `toInventoryItemId` are logical references to `inventory_items.id`.
 - Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` and `inventory_items.availableQuantity` store latest per-location state.
 - Inventory item availability changes are append-only via `inventory_item_availability_change_audits`.
 - Inventory item metadata changes are append-only via `inventory_item_metadata_change_audits`.
@@ -200,6 +220,9 @@ erDiagram
   - `inventory_item_metadata_change_audits(sku, locationCode, changedAt)`
   - `inventory_item_availability_change_audits(inventoryItemId, changedAt)`
   - `inventory_item_availability_change_audits(sku, locationCode, changedAt)`
+  - `inventory_entry_relationships(relationshipTypeCode)`
+  - `inventory_entry_relationships(fromSku, fromLocationCode)`
+  - `inventory_entry_relationships(toSku, toLocationCode)`
   - `inventory_transfer_reversal_idempotency(reversalTransferId)`
 
 ## Minimal HTTP Surface
@@ -213,6 +236,9 @@ erDiagram
 - `POST /api/inventory/entry-role-types`
 - `GET /api/inventory/entry-role-types/{code}`
 - `GET /api/inventory/entry-role-types?page=&size=`
+- `POST /api/inventory/entry-relationships`
+- `GET /api/inventory/entry-relationships/{id}`
+- `GET /api/inventory/entry-relationships?page=&size=&relationshipTypeCode=&fromSku=&fromLocationCode=&toSku=&toLocationCode=&statusCode=`
 - `POST /api/inventory/locations`
 - `GET /api/inventory/locations/{code}`
 - `PATCH /api/inventory/locations/{code}/metadata`
@@ -254,6 +280,8 @@ erDiagram
 
 - inventory location codes are normalized to uppercase at write and lookup boundaries
 - inventory entry relationship and role type codes are normalized to uppercase at write and lookup boundaries
+- inventory entry relationship writes validate relationship type, role types, from item, and to item before persisting
+- inventory entry relationship list filters match normalized relationship type, item keys, and status code values
 - inventory location facility type, region, and country codes are normalized to uppercase; contact email is normalized to lowercase
 - inventory location facility type codes must exist in the inventory location type catalog when supplied
 - inventory location metadata updates require `changedBy`, reject no-op changes, and append audit rows

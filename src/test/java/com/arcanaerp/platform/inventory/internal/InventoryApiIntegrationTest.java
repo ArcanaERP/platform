@@ -89,12 +89,16 @@ class InventoryApiIntegrationTest {
     private InventoryEntryRoleTypeRepository inventoryEntryRoleTypeRepository;
 
     @Autowired
+    private InventoryEntryRelationshipRepository inventoryEntryRelationshipRepository;
+
+    @Autowired
     private UnitOfMeasurementDirectory unitOfMeasurementDirectory;
 
     @BeforeEach
     void cleanInventoryItems() {
         reset(reversalIdempotencyRepository);
         reversalIdempotencyRepository.deleteAll();
+        inventoryEntryRelationshipRepository.deleteAll();
         availabilityChangeAuditRepository.deleteAll();
         metadataChangeAuditRepository.deleteAll();
         inventoryAdjustmentRepository.deleteAll();
@@ -363,6 +367,130 @@ class InventoryApiIntegrationTest {
                 .content(payload)),
             "Inventory entry role type already exists for code: SOURCE_ENTRY",
             "/api/inventory/entry-role-types"
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryEntryRelationships() throws Exception {
+        seedInventoryEntryRelationshipReferenceData();
+        inventoryItemRepository.save(InventoryItem.create(
+            "arc-kit-100",
+            "wh-kit",
+            new BigDecimal("3"),
+            SEED_INSTANT
+        ));
+        inventoryItemRepository.save(InventoryItem.create(
+            "arc-component-100",
+            "wh-kit",
+            new BigDecimal("12"),
+            SEED_INSTANT
+        ));
+
+        String relationshipId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/entry-relationships"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "relationshipTypeCode": " component_of ",
+                  "fromSku": " arc-component-100 ",
+                  "fromLocationCode": " wh-kit ",
+                  "toSku": " arc-kit-100 ",
+                  "toLocationCode": " wh-kit ",
+                  "fromRoleTypeCode": " component ",
+                  "toRoleTypeCode": " assembly ",
+                  "description": " Component participates in kit ",
+                  "statusCode": " active "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.relationshipTypeCode").value("COMPONENT_OF"))
+            .andExpect(jsonPath("$.fromSku").value("ARC-COMPONENT-100"))
+            .andExpect(jsonPath("$.fromLocationCode").value("WH-KIT"))
+            .andExpect(jsonPath("$.toSku").value("ARC-KIT-100"))
+            .andExpect(jsonPath("$.toLocationCode").value("WH-KIT"))
+            .andExpect(jsonPath("$.fromRoleTypeCode").value("COMPONENT"))
+            .andExpect(jsonPath("$.toRoleTypeCode").value("ASSEMBLY"))
+            .andExpect(jsonPath("$.description").value("Component participates in kit"))
+            .andExpect(jsonPath("$.statusCode").value("ACTIVE"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(get("/api/inventory/entry-relationships/{id}", relationshipId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.relationshipTypeCode").value("COMPONENT_OF"))
+            .andExpect(jsonPath("$.fromSku").value("ARC-COMPONENT-100"))
+            .andExpect(jsonPath("$.toSku").value("ARC-KIT-100"));
+
+        mockMvc.perform(get("/api/inventory/entry-relationships")
+            .param("relationshipTypeCode", "component_of")
+            .param("fromSku", "arc-component-100")
+            .param("statusCode", "active")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].relationshipTypeCode").value("COMPONENT_OF"))
+            .andExpect(jsonPath("$.items[0].fromSku").value("ARC-COMPONENT-100"));
+    }
+
+    @Test
+    void rejectsInventoryEntryRelationshipWithUnknownRelationshipType() throws Exception {
+        seedInventoryEntryRoleType("component", "Component");
+        seedInventoryEntryRoleType("assembly", "Assembly");
+        inventoryItemRepository.save(InventoryItem.create("arc-kit-101", "wh-kit", new BigDecimal("3"), SEED_INSTANT));
+        inventoryItemRepository.save(InventoryItem.create("arc-component-101", "wh-kit", new BigDecimal("12"), SEED_INSTANT));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/entry-relationships"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "relationshipTypeCode": "missing_type",
+                      "fromSku": "arc-component-101",
+                      "fromLocationCode": "wh-kit",
+                      "toSku": "arc-kit-101",
+                      "toLocationCode": "wh-kit",
+                      "fromRoleTypeCode": "component",
+                      "toRoleTypeCode": "assembly",
+                      "description": "Missing type"
+                    }
+                    """)),
+            "Inventory entry relationship type not found: MISSING_TYPE",
+            "/api/inventory/entry-relationships"
+        );
+    }
+
+    @Test
+    void rejectsInventoryEntryRelationshipToSameItem() throws Exception {
+        seedInventoryEntryRelationshipReferenceData();
+        inventoryItemRepository.save(InventoryItem.create("arc-kit-102", "wh-kit", new BigDecimal("3"), SEED_INSTANT));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/entry-relationships"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "relationshipTypeCode": "component_of",
+                      "fromSku": "arc-kit-102",
+                      "fromLocationCode": "wh-kit",
+                      "toSku": "arc-kit-102",
+                      "toLocationCode": "wh-kit",
+                      "fromRoleTypeCode": "component",
+                      "toRoleTypeCode": "assembly",
+                      "description": "Self link"
+                    }
+                    """)),
+            "from and to inventory items must be different",
+            "/api/inventory/entry-relationships"
         );
     }
 
@@ -3061,6 +3189,20 @@ class InventoryApiIntegrationTest {
     private void seedLocationType(String code, String description) {
         inventoryLocationTypeRepository.save(
             InventoryLocationType.create(code, description, SEED_INSTANT)
+        );
+    }
+
+    private void seedInventoryEntryRelationshipReferenceData() {
+        inventoryEntryRelationshipTypeRepository.save(
+            InventoryEntryRelationshipType.create("component_of", "Component of", null, SEED_INSTANT)
+        );
+        seedInventoryEntryRoleType("component", "Component");
+        seedInventoryEntryRoleType("assembly", "Assembly");
+    }
+
+    private void seedInventoryEntryRoleType(String code, String description) {
+        inventoryEntryRoleTypeRepository.save(
+            InventoryEntryRoleType.create(code, description, null, SEED_INSTANT)
         );
     }
 
