@@ -12,6 +12,8 @@ public interface InventoryItemDirectory {
 
     InventoryItemView updateItemMetadata(String sku, String locationCode, UpdateInventoryItemMetadataCommand command);
 
+    InventoryItemView updateItemAvailability(String sku, String locationCode, UpdateInventoryItemAvailabilityCommand command);
+
     PageResult<InventoryItemMetadataChangeView> listMetadataHistory(
         String sku,
         String locationCode,

@@ -174,4 +174,67 @@ class InventoryItemDomainTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("availableQuantity cannot become negative");
     }
+
+    @Test
+    void applyAvailabilityChangeUpdatesAvailableSoldAndTimestamp() {
+        InventoryItem item = InventoryItem.create(
+            "ARC-9005",
+            "MAIN",
+            new BigDecimal("10"),
+            new BigDecimal("8"),
+            new BigDecimal("1"),
+            "EA",
+            "ON_HAND",
+            null,
+            Instant.parse("2026-03-01T00:00:00Z")
+        );
+
+        item.applyAvailabilityChange(
+            new BigDecimal("-3"),
+            new BigDecimal("2"),
+            Instant.parse("2026-03-01T02:00:00Z")
+        );
+
+        assertThat(item.getOnHandQuantity()).isEqualByComparingTo("10");
+        assertThat(item.getAvailableQuantity()).isEqualByComparingTo("5");
+        assertThat(item.getSoldQuantity()).isEqualByComparingTo("3");
+        assertThat(item.getUpdatedAt()).isEqualTo(Instant.parse("2026-03-01T02:00:00Z"));
+    }
+
+    @Test
+    void applyAvailabilityChangeRejectsNoOp() {
+        InventoryItem item = InventoryItem.create(
+            "ARC-9006",
+            "MAIN",
+            new BigDecimal("10"),
+            Instant.parse("2026-03-01T00:00:00Z")
+        );
+
+        assertThatThrownBy(() ->
+            item.applyAvailabilityChange(BigDecimal.ZERO, BigDecimal.ZERO, Instant.parse("2026-03-01T02:00:00Z"))
+        )
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("Inventory item availability is unchanged");
+    }
+
+    @Test
+    void applyAvailabilityChangeRejectsAvailableQuantityAboveOnHandQuantity() {
+        InventoryItem item = InventoryItem.create(
+            "ARC-9007",
+            "MAIN",
+            new BigDecimal("10"),
+            new BigDecimal("9"),
+            BigDecimal.ZERO,
+            "EA",
+            "ON_HAND",
+            null,
+            Instant.parse("2026-03-01T00:00:00Z")
+        );
+
+        assertThatThrownBy(() ->
+            item.applyAvailabilityChange(new BigDecimal("2"), BigDecimal.ZERO, Instant.parse("2026-03-01T02:00:00Z"))
+        )
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("availableQuantity must not exceed onHandQuantity");
+    }
 }

@@ -207,6 +207,41 @@ public class InventoryItem {
         this.updatedAt = adjustedAt;
     }
 
+    void applyAvailabilityChange(
+        BigDecimal availableQuantityDelta,
+        BigDecimal soldQuantityDelta,
+        Instant changedAt
+    ) {
+        if (availableQuantityDelta == null) {
+            throw new IllegalArgumentException("availableQuantityDelta is required");
+        }
+        if (soldQuantityDelta == null) {
+            throw new IllegalArgumentException("soldQuantityDelta is required");
+        }
+        if (availableQuantityDelta.signum() == 0 && soldQuantityDelta.signum() == 0) {
+            throw new IllegalArgumentException("Inventory item availability is unchanged");
+        }
+        if (changedAt == null) {
+            throw new IllegalArgumentException("changedAt is required");
+        }
+
+        BigDecimal nextAvailable = availableQuantity.add(availableQuantityDelta);
+        BigDecimal nextSold = soldQuantity.add(soldQuantityDelta);
+        if (nextAvailable.signum() < 0) {
+            throw new IllegalArgumentException("availableQuantity cannot become negative");
+        }
+        if (nextSold.signum() < 0) {
+            throw new IllegalArgumentException("soldQuantity cannot become negative");
+        }
+        if (nextAvailable.compareTo(onHandQuantity) > 0) {
+            throw new IllegalArgumentException("availableQuantity must not exceed onHandQuantity");
+        }
+
+        this.availableQuantity = nextAvailable;
+        this.soldQuantity = nextSold;
+        this.updatedAt = changedAt;
+    }
+
     void updateMetadata(
         String unitOfMeasurementCode,
         String classificationCode,

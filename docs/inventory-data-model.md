@@ -175,6 +175,7 @@ erDiagram
 - `POST /api/inventory/items`
 - `GET /api/inventory/items?page=&size=&sku=&locationCode=&unitOfMeasurementCode=&classificationCode=&productInstanceCode=`
 - `GET /api/inventory/items/{sku}/locations/{locationCode}`
+- `PATCH /api/inventory/items/{sku}/locations/{locationCode}/availability`
 - `PATCH /api/inventory/items/{sku}/locations/{locationCode}/metadata`
 - `GET /api/inventory/items/{sku}/locations/{locationCode}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
@@ -211,6 +212,7 @@ erDiagram
 - inactive inventory locations remain readable but reject new adjustment and transfer writes
 - inventory item UOM and classification codes default to `EA` and `ON_HAND` when not explicitly supplied
 - inventory item available quantity defaults to on-hand quantity, sold quantity defaults to zero, and available quantity cannot exceed on-hand quantity
+- inventory item availability updates mutate available and sold quantities without changing physical on-hand quantity
 - inventory item product instance codes are optional and normalized to uppercase when supplied
 - supplied and default inventory item UOM codes must exist in the core unit-of-measurement catalog
 - inventory item list filters match normalized `sku`, `locationCode`, `unitOfMeasurementCode`, `classificationCode`, and `productInstanceCode` values

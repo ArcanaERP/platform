@@ -8,6 +8,7 @@ import com.arcanaerp.platform.inventory.InventoryItemDirectory;
 import com.arcanaerp.platform.inventory.InventoryItemMetadataChangeView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
 import com.arcanaerp.platform.inventory.RegisterInventoryItemCommand;
+import com.arcanaerp.platform.inventory.UpdateInventoryItemAvailabilityCommand;
 import com.arcanaerp.platform.inventory.UpdateInventoryItemMetadataCommand;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -117,6 +118,37 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             changedBy,
             changedAt
         ));
+        return toView(inventoryItemRepository.save(item));
+    }
+
+    @Override
+    public InventoryItemView updateItemAvailability(
+        String sku,
+        String locationCode,
+        UpdateInventoryItemAvailabilityCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        String normalizedSku = normalizeRequired(sku, "sku").toUpperCase();
+        String normalizedLocationCode = normalizeRequired(locationCode, "locationCode").toUpperCase();
+        String commandSku = normalizeRequired(command.sku(), "sku").toUpperCase();
+        String commandLocationCode = normalizeRequired(command.locationCode(), "locationCode").toUpperCase();
+        if (!normalizedSku.equals(commandSku)) {
+            throw new IllegalArgumentException("sku path variable must match command sku");
+        }
+        if (!normalizedLocationCode.equals(commandLocationCode)) {
+            throw new IllegalArgumentException("locationCode path variable must match command locationCode");
+        }
+
+        normalizeRequired(command.reason(), "reason");
+        normalizeRequired(command.changedBy(), "changedBy").toLowerCase();
+        InventoryItem item = findItem(normalizedSku, normalizedLocationCode);
+        item.applyAvailabilityChange(
+            command.availableQuantityDelta(),
+            command.soldQuantityDelta(),
+            Instant.now(clock)
+        );
         return toView(inventoryItemRepository.save(item));
     }
 

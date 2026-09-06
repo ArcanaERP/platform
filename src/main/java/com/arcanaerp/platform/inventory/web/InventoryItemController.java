@@ -6,6 +6,7 @@ import com.arcanaerp.platform.inventory.InventoryItemDirectory;
 import com.arcanaerp.platform.inventory.InventoryItemMetadataChangeView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
 import com.arcanaerp.platform.inventory.RegisterInventoryItemCommand;
+import com.arcanaerp.platform.inventory.UpdateInventoryItemAvailabilityCommand;
 import com.arcanaerp.platform.inventory.UpdateInventoryItemMetadataCommand;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -68,6 +69,26 @@ public class InventoryItemController {
                 request.unitOfMeasurementCode(),
                 request.classificationCode(),
                 request.productInstanceCode(),
+                request.changedBy()
+            )
+        ));
+    }
+
+    @PatchMapping("/{sku}/locations/{locationCode}/availability")
+    public InventoryItemResponse updateItemAvailability(
+        @PathVariable String sku,
+        @PathVariable String locationCode,
+        @Valid @RequestBody UpdateInventoryItemAvailabilityRequest request
+    ) {
+        return toResponse(inventoryItemDirectory.updateItemAvailability(
+            sku,
+            locationCode,
+            new UpdateInventoryItemAvailabilityCommand(
+                sku,
+                locationCode,
+                request.availableQuantityDelta(),
+                request.soldQuantityDelta(),
+                request.reason(),
                 request.changedBy()
             )
         ));

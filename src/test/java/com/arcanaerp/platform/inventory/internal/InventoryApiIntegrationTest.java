@@ -695,6 +695,30 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.classificationCode").value("AVAILABLE"))
             .andExpect(jsonPath("$.productInstanceCode").value("PI-101"));
 
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/items/{sku}/locations/{locationCode}/availability",
+            "arc-9250",
+            "wh-item"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "availableQuantityDelta": -3,
+                  "soldQuantityDelta": 3,
+                  "reason": "Sales allocation posted",
+                  "changedBy": " Inventory.Ops@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.sku").value("ARC-9250"))
+            .andExpect(jsonPath("$.locationCode").value("WH-ITEM"))
+            .andExpect(jsonPath("$.onHandQuantity").value(14))
+            .andExpect(jsonPath("$.availableQuantity").value(9))
+            .andExpect(jsonPath("$.soldQuantity").value(5))
+            .andExpect(jsonPath("$.unitOfMeasurementCode").value("EACH"))
+            .andExpect(jsonPath("$.classificationCode").value("AVAILABLE"))
+            .andExpect(jsonPath("$.productInstanceCode").value("PI-101"));
+
         mockMvc.perform(get("/api/inventory/items/{sku}/locations/{locationCode}/metadata-history", "arc-9250", "wh-item")
             .param("changedBy", "inventory.ops@arcanaerp.com")
             .param("page", "0")
@@ -711,6 +735,68 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.items[0].currentProductInstanceCode").value("PI-101"))
             .andExpect(jsonPath("$.items[0].changedBy").value("inventory.ops@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
+    }
+
+    @Test
+    void rejectsNoOpInventoryItemAvailabilityUpdate() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9250a",
+                "wh-availability-noop",
+                new BigDecimal("5"),
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/items/{sku}/locations/{locationCode}/availability",
+                "arc-9250a",
+                "wh-availability-noop"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "availableQuantityDelta": 0,
+                      "soldQuantityDelta": 0,
+                      "reason": "No change",
+                      "changedBy": "inventory.ops@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory item availability is unchanged",
+            "/api/inventory/items/arc-9250a/locations/wh-availability-noop/availability"
+        );
+    }
+
+    @Test
+    void rejectsInventoryItemAvailabilityUpdateWhenAvailableQuantityWouldBecomeNegative() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9250b",
+                "wh-availability-negative",
+                new BigDecimal("5"),
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/items/{sku}/locations/{locationCode}/availability",
+                "arc-9250b",
+                "wh-availability-negative"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "availableQuantityDelta": -6,
+                      "soldQuantityDelta": 1,
+                      "reason": "Oversold allocation",
+                      "changedBy": "inventory.ops@arcanaerp.com"
+                    }
+                    """)),
+            "availableQuantity cannot become negative",
+            "/api/inventory/items/arc-9250b/locations/wh-availability-negative/availability"
+        );
     }
 
     @Test
