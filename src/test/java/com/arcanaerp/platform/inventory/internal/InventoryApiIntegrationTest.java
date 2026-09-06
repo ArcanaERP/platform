@@ -83,6 +83,12 @@ class InventoryApiIntegrationTest {
     private InventoryLocationTypeRepository inventoryLocationTypeRepository;
 
     @Autowired
+    private InventoryEntryRelationshipTypeRepository inventoryEntryRelationshipTypeRepository;
+
+    @Autowired
+    private InventoryEntryRoleTypeRepository inventoryEntryRoleTypeRepository;
+
+    @Autowired
     private UnitOfMeasurementDirectory unitOfMeasurementDirectory;
 
     @BeforeEach
@@ -96,6 +102,8 @@ class InventoryApiIntegrationTest {
         locationMetadataChangeAuditRepository.deleteAll();
         inventoryLocationRepository.deleteAll();
         inventoryLocationTypeRepository.deleteAll();
+        inventoryEntryRelationshipTypeRepository.deleteAll();
+        inventoryEntryRoleTypeRepository.deleteAll();
         seedLocationType("WAREHOUSE", "Warehouse");
         seedLocationType("STORE", "Store");
         ensureUnitOfMeasurement("EA", "Each");
@@ -237,6 +245,124 @@ class InventoryApiIntegrationTest {
                 .content(payload)),
             "Inventory location type already exists for code: CROSS_DOCK",
             "/api/inventory/location-types"
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryEntryRelationshipTypes() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/entry-relationship-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " component_of ",
+                  "description": " Component of kit ",
+                  "comments": " Used for kit composition "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.code").value("COMPONENT_OF"))
+            .andExpect(jsonPath("$.description").value("Component of kit"))
+            .andExpect(jsonPath("$.comments").value("Used for kit composition"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/entry-relationship-types/{code}", "component_of"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("COMPONENT_OF"))
+            .andExpect(jsonPath("$.description").value("Component of kit"));
+
+        mockMvc.perform(get("/api/inventory/entry-relationship-types")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].code").value("COMPONENT_OF"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryEntryRelationshipTypeCode() throws Exception {
+        String payload = """
+            {
+              "code": "component_of",
+              "description": "Component of kit"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/entry-relationship-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/entry-relationship-types"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory entry relationship type already exists for code: COMPONENT_OF",
+            "/api/inventory/entry-relationship-types"
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryEntryRoleTypes() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/entry-role-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " source_entry ",
+                  "description": " Source inventory entry ",
+                  "comments": " Relationship origin role "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.code").value("SOURCE_ENTRY"))
+            .andExpect(jsonPath("$.description").value("Source inventory entry"))
+            .andExpect(jsonPath("$.comments").value("Relationship origin role"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/entry-role-types/{code}", "source_entry"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("SOURCE_ENTRY"))
+            .andExpect(jsonPath("$.description").value("Source inventory entry"));
+
+        mockMvc.perform(get("/api/inventory/entry-role-types")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].code").value("SOURCE_ENTRY"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryEntryRoleTypeCode() throws Exception {
+        String payload = """
+            {
+              "code": "source_entry",
+              "description": "Source inventory entry"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/entry-role-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/entry-role-types"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory entry role type already exists for code: SOURCE_ENTRY",
+            "/api/inventory/entry-role-types"
         );
     }
 
