@@ -95,6 +95,9 @@ class InventoryApiIntegrationTest {
     private InventoryEntryRelationshipStatusChangeAuditRepository inventoryEntryRelationshipStatusChangeAuditRepository;
 
     @Autowired
+    private InventoryProductInstanceAssignmentRepository inventoryProductInstanceAssignmentRepository;
+
+    @Autowired
     private UnitOfMeasurementDirectory unitOfMeasurementDirectory;
 
     @BeforeEach
@@ -103,6 +106,7 @@ class InventoryApiIntegrationTest {
         reversalIdempotencyRepository.deleteAll();
         inventoryEntryRelationshipStatusChangeAuditRepository.deleteAll();
         inventoryEntryRelationshipRepository.deleteAll();
+        inventoryProductInstanceAssignmentRepository.deleteAll();
         availabilityChangeAuditRepository.deleteAll();
         metadataChangeAuditRepository.deleteAll();
         inventoryAdjustmentRepository.deleteAll();
@@ -560,6 +564,115 @@ class InventoryApiIntegrationTest {
                     """)),
             "from and to inventory items must be different",
             "/api/inventory/entry-relationships"
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryProductInstanceAssignments() throws Exception {
+        inventoryItemRepository.save(InventoryItem.create(
+            "arc-serialized-100",
+            "wh-serial",
+            new BigDecimal("2"),
+            SEED_INSTANT
+        ));
+
+        String assignmentId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/product-instance-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "sku": " arc-serialized-100 ",
+                  "locationCode": " wh-serial ",
+                  "productInstanceCode": " pi-serial-100 ",
+                  "assignedBy": " Inventory.Manager "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.inventoryItemId").isNotEmpty())
+            .andExpect(jsonPath("$.sku").value("ARC-SERIALIZED-100"))
+            .andExpect(jsonPath("$.locationCode").value("WH-SERIAL"))
+            .andExpect(jsonPath("$.productInstanceCode").value("PI-SERIAL-100"))
+            .andExpect(jsonPath("$.assignedBy").value("inventory.manager"))
+            .andExpect(jsonPath("$.assignedAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(get("/api/inventory/product-instance-assignments/{id}", assignmentId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(assignmentId))
+            .andExpect(jsonPath("$.productInstanceCode").value("PI-SERIAL-100"));
+
+        mockMvc.perform(get("/api/inventory/product-instance-assignments")
+            .param("sku", "arc-serialized-100")
+            .param("locationCode", "wh-serial")
+            .param("productInstanceCode", "pi-serial-100")
+            .param("assignedBy", "inventory.manager")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(assignmentId))
+            .andExpect(jsonPath("$.items[0].sku").value("ARC-SERIALIZED-100"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryProductInstanceAssignment() throws Exception {
+        inventoryItemRepository.save(InventoryItem.create(
+            "arc-serialized-101",
+            "wh-serial",
+            new BigDecimal("2"),
+            SEED_INSTANT
+        ));
+        String payload = """
+            {
+              "sku": "arc-serialized-101",
+              "locationCode": "wh-serial",
+              "productInstanceCode": "pi-serial-101",
+              "assignedBy": "inventory.manager"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/product-instance-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/product-instance-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory product instance assignment already exists for SKU: "
+                + "ARC-SERIALIZED-101 at location: WH-SERIAL and product instance: PI-SERIAL-101",
+            "/api/inventory/product-instance-assignments"
+        );
+    }
+
+    @Test
+    void rejectsInventoryProductInstanceAssignmentForUnknownItem() throws Exception {
+        expectInventoryItemNotFound(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/product-instance-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "sku": "missing-sku",
+                      "locationCode": "missing-location",
+                      "productInstanceCode": "pi-missing",
+                      "assignedBy": "inventory.manager"
+                    }
+                    """)),
+            "missing-sku",
+            "missing-location",
+            "/api/inventory/product-instance-assignments"
         );
     }
 

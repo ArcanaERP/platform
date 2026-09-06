@@ -12,6 +12,7 @@ erDiagram
     INVENTORY_ITEMS ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : from_item
     INVENTORY_ITEMS ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : to_item
     INVENTORY_ENTRY_RELATIONSHIPS ||--o{ INVENTORY_ENTRY_RELATIONSHIP_STATUS_CHANGE_AUDITS : records_status_changes
+    INVENTORY_ITEMS ||--o{ INVENTORY_PRODUCT_INSTANCE_ASSIGNMENTS : assigns_product_instances
     INVENTORY_LOCATIONS ||--o{ INVENTORY_ITEMS : stores
     INVENTORY_LOCATIONS ||--o{ INVENTORY_LOCATION_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_ADJUSTMENTS : records_movements
@@ -67,6 +68,16 @@ erDiagram
       STRING reason
       STRING changedBy
       INSTANT changedAt
+    }
+
+    INVENTORY_PRODUCT_INSTANCE_ASSIGNMENTS {
+      UUID id PK
+      UUID inventoryItemId
+      STRING sku
+      STRING locationCode
+      STRING productInstanceCode
+      STRING assignedBy
+      INSTANT assignedAt
     }
 
     INVENTORY_LOCATIONS {
@@ -191,6 +202,7 @@ erDiagram
 - Inventory entry relationship and role types are reference data for entry relationship records.
 - Inventory entry relationships link two existing inventory items and preserve normalized item keys for filtering.
 - Inventory entry relationship status changes are append-only via `inventory_entry_relationship_status_change_audits`.
+- Inventory product-instance assignments are explicit cross-reference rows from inventory items to product instance codes.
 - Inventory locations carry optional facility type, address, and contact metadata for facility-model parity.
 - Inventory location `facilityTypeCode` values are optional, but supplied codes must exist in `inventory_location_types`.
 - Inventory location metadata changes are append-only via `inventory_location_metadata_change_audits`.
@@ -202,6 +214,7 @@ erDiagram
 - `inventory_item_metadata_change_audits.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_entry_relationships.fromInventoryItemId` and `toInventoryItemId` are logical references to `inventory_items.id`.
 - `inventory_entry_relationship_status_change_audits.relationshipId` is a logical reference to `inventory_entry_relationships.id`.
+- `inventory_product_instance_assignments.inventoryItemId` is a logical reference to `inventory_items.id`.
 - Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` and `inventory_items.availableQuantity` store latest per-location state.
 - Inventory item availability changes are append-only via `inventory_item_availability_change_audits`.
 - Inventory item metadata changes are append-only via `inventory_item_metadata_change_audits`.
@@ -220,6 +233,7 @@ erDiagram
   - `inventory_location_types(code)`
   - `inventory_entry_relationship_types(code)`
   - `inventory_entry_role_types(code)`
+  - `inventory_product_instance_assignments(inventoryItemId, productInstanceCode)`
   - `inventory_locations(code)`
   - `inventory_items(sku, locationCode)`
   - `inventory_transfer_reversal_idempotency(transferId, idempotencyKey)`
@@ -239,6 +253,9 @@ erDiagram
   - `inventory_entry_relationships(toSku, toLocationCode)`
   - `inventory_entry_relationship_status_change_audits(relationshipId, changedAt)`
   - `inventory_entry_relationship_status_change_audits(changedBy, changedAt)`
+  - `inventory_product_instance_assignments(productInstanceCode)`
+  - `inventory_product_instance_assignments(sku, locationCode)`
+  - `inventory_product_instance_assignments(assignedBy, assignedAt)`
   - `inventory_transfer_reversal_idempotency(reversalTransferId)`
 
 ## Minimal HTTP Surface
@@ -257,6 +274,9 @@ erDiagram
 - `PATCH /api/inventory/entry-relationships/{id}/status`
 - `GET /api/inventory/entry-relationships/{id}/status-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/entry-relationships?page=&size=&relationshipTypeCode=&fromSku=&fromLocationCode=&toSku=&toLocationCode=&statusCode=`
+- `POST /api/inventory/product-instance-assignments`
+- `GET /api/inventory/product-instance-assignments/{id}`
+- `GET /api/inventory/product-instance-assignments?page=&size=&sku=&locationCode=&productInstanceCode=&assignedBy=`
 - `POST /api/inventory/locations`
 - `GET /api/inventory/locations/{code}`
 - `PATCH /api/inventory/locations/{code}/metadata`
@@ -300,6 +320,8 @@ erDiagram
 - inventory entry relationship and role type codes are normalized to uppercase at write and lookup boundaries
 - inventory entry relationship writes validate relationship type, role types, from item, and to item before persisting
 - inventory entry relationship list filters match normalized relationship type, item keys, and status code values
+- inventory product-instance assignment writes validate the inventory item and reject duplicate item/product-instance pairs
+- inventory product-instance assignment list filters match normalized item keys, product instance code, and assignedBy values
 - inventory location facility type, region, and country codes are normalized to uppercase; contact email is normalized to lowercase
 - inventory location facility type codes must exist in the inventory location type catalog when supplied
 - inventory location metadata updates require `changedBy`, reject no-op changes, and append audit rows
