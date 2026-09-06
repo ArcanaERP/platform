@@ -3,8 +3,10 @@ package com.arcanaerp.platform.inventory.internal;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.InventoryEntryRelationshipDirectory;
+import com.arcanaerp.platform.inventory.InventoryEntryRelationshipStatusChangeView;
 import com.arcanaerp.platform.inventory.InventoryEntryRelationshipView;
 import com.arcanaerp.platform.inventory.RegisterInventoryEntryRelationshipCommand;
+import com.arcanaerp.platform.inventory.UpdateInventoryEntryRelationshipStatusCommand;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.NoSuchElementException;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 class InventoryEntryRelationshipDirectoryService implements InventoryEntryRelationshipDirectory {
 
     private final InventoryEntryRelationshipRepository relationshipRepository;
+    private final InventoryEntryRelationshipStatusChangeAuditRepository statusChangeAuditRepository;
     private final InventoryEntryRelationshipTypeRepository relationshipTypeRepository;
     private final InventoryEntryRoleTypeRepository roleTypeRepository;
     private final InventoryItemRepository inventoryItemRepository;
@@ -58,8 +61,59 @@ class InventoryEntryRelationshipDirectoryService implements InventoryEntryRelati
         if (id == null) {
             throw new IllegalArgumentException("id is required");
         }
-        return toView(relationshipRepository.findById(id)
-            .orElseThrow(() -> new NoSuchElementException("Inventory entry relationship not found for id: " + id)));
+        return toView(findRelationship(id));
+    }
+
+    @Override
+    public InventoryEntryRelationshipView updateRelationshipStatus(
+        UUID id,
+        UpdateInventoryEntryRelationshipStatusCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        if (command.id() == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        if (!id.equals(command.id())) {
+            throw new IllegalArgumentException("id path variable must match command id");
+        }
+        InventoryEntryRelationship relationship = findRelationship(id);
+        String previousStatusCode = relationship.getStatusCode();
+        Instant changedAt = Instant.now(clock);
+        relationship.updateStatus(command.statusCode(), changedAt);
+        statusChangeAuditRepository.save(InventoryEntryRelationshipStatusChangeAudit.create(
+            relationship.getId(),
+            previousStatusCode,
+            relationship.getStatusCode(),
+            command.reason(),
+            command.changedBy(),
+            changedAt
+        ));
+        return toView(relationshipRepository.save(relationship));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<InventoryEntryRelationshipStatusChangeView> listStatusHistory(
+        UUID id,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        InventoryEntryRelationship relationship = findRelationship(id);
+        Page<InventoryEntryRelationshipStatusChangeAudit> history = statusChangeAuditRepository.findHistoryFiltered(
+            relationship.getId(),
+            normalizeOptionalChangedBy(changedBy),
+            changedAtFrom,
+            changedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
+        );
+        return PageResult.from(history).map(this::toStatusChangeView);
     }
 
     @Override
@@ -118,8 +172,31 @@ class InventoryEntryRelationshipDirectoryService implements InventoryEntryRelati
             relationship.getToRoleTypeCode(),
             relationship.getDescription(),
             relationship.getStatusCode(),
-            relationship.getCreatedAt()
+            relationship.getCreatedAt(),
+            relationship.getUpdatedAt()
         );
+    }
+
+    private InventoryEntryRelationshipStatusChangeView toStatusChangeView(
+        InventoryEntryRelationshipStatusChangeAudit audit
+    ) {
+        return new InventoryEntryRelationshipStatusChangeView(
+            audit.getId(),
+            audit.getRelationshipId(),
+            audit.getPreviousStatusCode(),
+            audit.getCurrentStatusCode(),
+            audit.getReason(),
+            audit.getChangedBy(),
+            audit.getChangedAt()
+        );
+    }
+
+    private InventoryEntryRelationship findRelationship(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return relationshipRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Inventory entry relationship not found for id: " + id));
     }
 
     private static String normalizeRequired(String value, String fieldName) {
@@ -131,5 +208,9 @@ class InventoryEntryRelationshipDirectoryService implements InventoryEntryRelati
 
     private static String normalizeOptionalCode(String value, String fieldName) {
         return value == null ? null : normalizeRequired(value, fieldName).toUpperCase();
+    }
+
+    private static String normalizeOptionalChangedBy(String value) {
+        return value == null ? null : normalizeRequired(value, "changedBy").toLowerCase();
     }
 }

@@ -68,6 +68,9 @@ class InventoryEntryRelationship {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(nullable = false)
+    private Instant updatedAt;
+
     static InventoryEntryRelationship create(
         String relationshipTypeCode,
         InventoryItem fromItem,
@@ -104,7 +107,20 @@ class InventoryEntryRelationship {
         relationship.description = normalizeRequired(description, "description");
         relationship.statusCode = normalizeOptionalCode(statusCode, DEFAULT_STATUS_CODE);
         relationship.createdAt = createdAt;
+        relationship.updatedAt = createdAt;
         return relationship;
+    }
+
+    void updateStatus(String statusCode, Instant updatedAt) {
+        if (updatedAt == null) {
+            throw new IllegalArgumentException("updatedAt is required");
+        }
+        String normalizedStatusCode = normalizeRequired(statusCode, "statusCode").toUpperCase();
+        if (this.statusCode.equals(normalizedStatusCode)) {
+            throw new IllegalArgumentException("Inventory entry relationship status is already " + normalizedStatusCode);
+        }
+        this.statusCode = normalizedStatusCode;
+        this.updatedAt = updatedAt;
     }
 
     private static String normalizeRequired(String value, String fieldName) {

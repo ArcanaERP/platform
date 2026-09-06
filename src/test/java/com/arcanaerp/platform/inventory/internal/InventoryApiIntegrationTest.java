@@ -92,12 +92,16 @@ class InventoryApiIntegrationTest {
     private InventoryEntryRelationshipRepository inventoryEntryRelationshipRepository;
 
     @Autowired
+    private InventoryEntryRelationshipStatusChangeAuditRepository inventoryEntryRelationshipStatusChangeAuditRepository;
+
+    @Autowired
     private UnitOfMeasurementDirectory unitOfMeasurementDirectory;
 
     @BeforeEach
     void cleanInventoryItems() {
         reset(reversalIdempotencyRepository);
         reversalIdempotencyRepository.deleteAll();
+        inventoryEntryRelationshipStatusChangeAuditRepository.deleteAll();
         inventoryEntryRelationshipRepository.deleteAll();
         availabilityChangeAuditRepository.deleteAll();
         metadataChangeAuditRepository.deleteAll();
@@ -436,6 +440,71 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].relationshipTypeCode").value("COMPONENT_OF"))
             .andExpect(jsonPath("$.items[0].fromSku").value("ARC-COMPONENT-100"));
+    }
+
+    @Test
+    void updatesInventoryEntryRelationshipStatusAndListsHistory() throws Exception {
+        String relationshipId = registerComponentRelationship(
+            "arc-kit-110",
+            "arc-component-110",
+            "wh-kit"
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/entry-relationships/{id}/status",
+            relationshipId
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "statusCode": " inactive ",
+                  "reason": " Component relationship retired ",
+                  "changedBy": " Inventory.Manager "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(relationshipId))
+            .andExpect(jsonPath("$.statusCode").value("INACTIVE"))
+            .andExpect(jsonPath("$.updatedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/entry-relationships/{id}/status-history", relationshipId)
+            .param("changedBy", "inventory.manager")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].relationshipId").value(relationshipId))
+            .andExpect(jsonPath("$.items[0].previousStatusCode").value("ACTIVE"))
+            .andExpect(jsonPath("$.items[0].currentStatusCode").value("INACTIVE"))
+            .andExpect(jsonPath("$.items[0].reason").value("Component relationship retired"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("inventory.manager"))
+            .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
+    }
+
+    @Test
+    void rejectsNoOpInventoryEntryRelationshipStatusUpdate() throws Exception {
+        String relationshipId = registerComponentRelationship(
+            "arc-kit-111",
+            "arc-component-111",
+            "wh-kit"
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/entry-relationships/{id}/status",
+                relationshipId
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "statusCode": " active ",
+                      "reason": " No change ",
+                      "changedBy": "inventory.manager"
+                    }
+                    """)),
+            "Inventory entry relationship status is already ACTIVE",
+            "/api/inventory/entry-relationships/" + relationshipId + "/status"
+        );
     }
 
     @Test
@@ -3204,6 +3273,34 @@ class InventoryApiIntegrationTest {
         inventoryEntryRoleTypeRepository.save(
             InventoryEntryRoleType.create(code, description, null, SEED_INSTANT)
         );
+    }
+
+    private String registerComponentRelationship(String toSku, String fromSku, String locationCode) throws Exception {
+        seedInventoryEntryRelationshipReferenceData();
+        inventoryItemRepository.save(InventoryItem.create(toSku, locationCode, new BigDecimal("3"), SEED_INSTANT));
+        inventoryItemRepository.save(InventoryItem.create(fromSku, locationCode, new BigDecimal("12"), SEED_INSTANT));
+
+        return mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/entry-relationships"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "relationshipTypeCode": "component_of",
+                  "fromSku": "%s",
+                  "fromLocationCode": "%s",
+                  "toSku": "%s",
+                  "toLocationCode": "%s",
+                  "fromRoleTypeCode": "component",
+                  "toRoleTypeCode": "assembly",
+                  "description": "Component participates in kit"
+                }
+                """.formatted(fromSku, locationCode, toSku, locationCode)))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
     }
 
     private void expectSingleReversalHistory(UUID originalTransferId) throws Exception {

@@ -11,6 +11,7 @@ erDiagram
     INVENTORY_ENTRY_ROLE_TYPES ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : roles
     INVENTORY_ITEMS ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : from_item
     INVENTORY_ITEMS ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : to_item
+    INVENTORY_ENTRY_RELATIONSHIPS ||--o{ INVENTORY_ENTRY_RELATIONSHIP_STATUS_CHANGE_AUDITS : records_status_changes
     INVENTORY_LOCATIONS ||--o{ INVENTORY_ITEMS : stores
     INVENTORY_LOCATIONS ||--o{ INVENTORY_LOCATION_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_ADJUSTMENTS : records_movements
@@ -55,6 +56,17 @@ erDiagram
       STRING description
       STRING statusCode
       INSTANT createdAt
+      INSTANT updatedAt
+    }
+
+    INVENTORY_ENTRY_RELATIONSHIP_STATUS_CHANGE_AUDITS {
+      UUID id PK
+      UUID relationshipId
+      STRING previousStatusCode
+      STRING currentStatusCode
+      STRING reason
+      STRING changedBy
+      INSTANT changedAt
     }
 
     INVENTORY_LOCATIONS {
@@ -178,6 +190,7 @@ erDiagram
 - Inventory on-hand, available, and sold counters are segmented by `sku + locationCode`.
 - Inventory entry relationship and role types are reference data for entry relationship records.
 - Inventory entry relationships link two existing inventory items and preserve normalized item keys for filtering.
+- Inventory entry relationship status changes are append-only via `inventory_entry_relationship_status_change_audits`.
 - Inventory locations carry optional facility type, address, and contact metadata for facility-model parity.
 - Inventory location `facilityTypeCode` values are optional, but supplied codes must exist in `inventory_location_types`.
 - Inventory location metadata changes are append-only via `inventory_location_metadata_change_audits`.
@@ -188,6 +201,7 @@ erDiagram
 - `inventory_adjustments.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_item_metadata_change_audits.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_entry_relationships.fromInventoryItemId` and `toInventoryItemId` are logical references to `inventory_items.id`.
+- `inventory_entry_relationship_status_change_audits.relationshipId` is a logical reference to `inventory_entry_relationships.id`.
 - Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` and `inventory_items.availableQuantity` store latest per-location state.
 - Inventory item availability changes are append-only via `inventory_item_availability_change_audits`.
 - Inventory item metadata changes are append-only via `inventory_item_metadata_change_audits`.
@@ -223,6 +237,8 @@ erDiagram
   - `inventory_entry_relationships(relationshipTypeCode)`
   - `inventory_entry_relationships(fromSku, fromLocationCode)`
   - `inventory_entry_relationships(toSku, toLocationCode)`
+  - `inventory_entry_relationship_status_change_audits(relationshipId, changedAt)`
+  - `inventory_entry_relationship_status_change_audits(changedBy, changedAt)`
   - `inventory_transfer_reversal_idempotency(reversalTransferId)`
 
 ## Minimal HTTP Surface
@@ -238,6 +254,8 @@ erDiagram
 - `GET /api/inventory/entry-role-types?page=&size=`
 - `POST /api/inventory/entry-relationships`
 - `GET /api/inventory/entry-relationships/{id}`
+- `PATCH /api/inventory/entry-relationships/{id}/status`
+- `GET /api/inventory/entry-relationships/{id}/status-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/entry-relationships?page=&size=&relationshipTypeCode=&fromSku=&fromLocationCode=&toSku=&toLocationCode=&statusCode=`
 - `POST /api/inventory/locations`
 - `GET /api/inventory/locations/{code}`

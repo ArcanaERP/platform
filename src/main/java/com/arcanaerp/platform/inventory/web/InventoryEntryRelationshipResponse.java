@@ -14,6 +14,7 @@ public record InventoryEntryRelationshipResponse(
     String toRoleTypeCode,
     String description,
     String statusCode,
-    Instant createdAt
+    Instant createdAt,
+    Instant updatedAt
 ) {
 }
