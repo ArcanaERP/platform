@@ -24,6 +24,7 @@ interface InventoryProductInstanceAssignmentRepository
           and (:locationCode is null or assignment.locationCode = :locationCode)
           and (:productInstanceCode is null or assignment.productInstanceCode = :productInstanceCode)
           and (:assignedBy is null or assignment.assignedBy = :assignedBy)
+          and (:active is null or assignment.active = :active)
         """
     )
     Page<InventoryProductInstanceAssignment> findAssignmentsFiltered(
@@ -31,6 +32,7 @@ interface InventoryProductInstanceAssignmentRepository
         @Param("locationCode") String locationCode,
         @Param("productInstanceCode") String productInstanceCode,
         @Param("assignedBy") String assignedBy,
+        @Param("active") Boolean active,
         Pageable pageable
     );
 }

@@ -10,6 +10,10 @@ public record InventoryProductInstanceAssignmentView(
     String locationCode,
     String productInstanceCode,
     String assignedBy,
-    Instant assignedAt
+    Instant assignedAt,
+    boolean active,
+    String releaseReason,
+    String releasedBy,
+    Instant releasedAt
 ) {
 }

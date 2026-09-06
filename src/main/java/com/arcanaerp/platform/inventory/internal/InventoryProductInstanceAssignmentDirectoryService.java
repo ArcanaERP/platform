@@ -4,7 +4,9 @@ import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.InventoryProductInstanceAssignmentDirectory;
+import com.arcanaerp.platform.inventory.InventoryProductInstanceAssignmentReleaseView;
 import com.arcanaerp.platform.inventory.InventoryProductInstanceAssignmentView;
+import com.arcanaerp.platform.inventory.ReleaseInventoryProductInstanceAssignmentCommand;
 import com.arcanaerp.platform.inventory.RegisterInventoryProductInstanceAssignmentCommand;
 import java.time.Clock;
 import java.time.Instant;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 class InventoryProductInstanceAssignmentDirectoryService implements InventoryProductInstanceAssignmentDirectory {
 
     private final InventoryProductInstanceAssignmentRepository assignmentRepository;
+    private final InventoryProductInstanceAssignmentReleaseAuditRepository releaseAuditRepository;
     private final InventoryItemRepository inventoryItemRepository;
     private final Clock clock;
 
@@ -55,13 +58,53 @@ class InventoryProductInstanceAssignmentDirectoryService implements InventoryPro
     @Override
     @Transactional(readOnly = true)
     public InventoryProductInstanceAssignmentView assignmentById(UUID id) {
-        if (id == null) {
+        return toView(findAssignment(id));
+    }
+
+    @Override
+    public InventoryProductInstanceAssignmentView releaseAssignment(
+        UUID id,
+        ReleaseInventoryProductInstanceAssignmentCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        if (id == null || command.id() == null) {
             throw new IllegalArgumentException("id is required");
         }
-        return toView(assignmentRepository.findById(id)
-            .orElseThrow(() -> new NoSuchElementException(
-                "Inventory product instance assignment not found for id: " + id
-            )));
+        if (!id.equals(command.id())) {
+            throw new IllegalArgumentException("id path variable must match command id");
+        }
+        InventoryProductInstanceAssignment assignment = findAssignment(id);
+        Instant releasedAt = Instant.now(clock);
+        assignment.release(command.reason(), command.releasedBy(), releasedAt);
+        releaseAuditRepository.save(InventoryProductInstanceAssignmentReleaseAudit.create(
+            assignment,
+            command.reason(),
+            command.releasedBy(),
+            releasedAt
+        ));
+        return toView(assignmentRepository.save(assignment));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<InventoryProductInstanceAssignmentReleaseView> listReleaseHistory(
+        UUID id,
+        String releasedBy,
+        Instant releasedAtFrom,
+        Instant releasedAtTo,
+        PageQuery pageQuery
+    ) {
+        InventoryProductInstanceAssignment assignment = findAssignment(id);
+        Page<InventoryProductInstanceAssignmentReleaseAudit> history = releaseAuditRepository.findHistoryFiltered(
+            assignment.getId(),
+            normalizeOptionalLower(releasedBy, "releasedBy"),
+            releasedAtFrom,
+            releasedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "releasedAt"))
+        );
+        return PageResult.from(history).map(this::toReleaseView);
     }
 
     @Override
@@ -71,6 +114,7 @@ class InventoryProductInstanceAssignmentDirectoryService implements InventoryPro
         String locationCode,
         String productInstanceCode,
         String assignedBy,
+        Boolean active,
         PageQuery pageQuery
     ) {
         Page<InventoryProductInstanceAssignment> assignments = assignmentRepository.findAssignmentsFiltered(
@@ -78,6 +122,7 @@ class InventoryProductInstanceAssignmentDirectoryService implements InventoryPro
             normalizeOptionalUpper(locationCode, "locationCode"),
             normalizeOptionalUpper(productInstanceCode, "productInstanceCode"),
             normalizeOptionalLower(assignedBy, "assignedBy"),
+            active,
             pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "productInstanceCode").and(Sort.by("sku")))
         );
         return PageResult.from(assignments).map(this::toView);
@@ -100,8 +145,38 @@ class InventoryProductInstanceAssignmentDirectoryService implements InventoryPro
             assignment.getLocationCode(),
             assignment.getProductInstanceCode(),
             assignment.getAssignedBy(),
-            assignment.getAssignedAt()
+            assignment.getAssignedAt(),
+            assignment.isActive(),
+            assignment.getReleaseReason(),
+            assignment.getReleasedBy(),
+            assignment.getReleasedAt()
         );
+    }
+
+    private InventoryProductInstanceAssignmentReleaseView toReleaseView(
+        InventoryProductInstanceAssignmentReleaseAudit audit
+    ) {
+        return new InventoryProductInstanceAssignmentReleaseView(
+            audit.getId(),
+            audit.getAssignmentId(),
+            audit.getInventoryItemId(),
+            audit.getSku(),
+            audit.getLocationCode(),
+            audit.getProductInstanceCode(),
+            audit.getReason(),
+            audit.getReleasedBy(),
+            audit.getReleasedAt()
+        );
+    }
+
+    private InventoryProductInstanceAssignment findAssignment(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return assignmentRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Inventory product instance assignment not found for id: " + id
+            ));
     }
 
     private static String normalizeRequired(String value, String fieldName) {

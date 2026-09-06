@@ -1,18 +1,16 @@
-package com.arcanaerp.platform.inventory.web;
+package com.arcanaerp.platform.inventory;
 
 import java.time.Instant;
 import java.util.UUID;
 
-public record InventoryProductInstanceAssignmentResponse(
+public record InventoryProductInstanceAssignmentReleaseView(
     UUID id,
+    UUID assignmentId,
     UUID inventoryItemId,
     String sku,
     String locationCode,
     String productInstanceCode,
-    String assignedBy,
-    Instant assignedAt,
-    boolean active,
-    String releaseReason,
+    String reason,
     String releasedBy,
     Instant releasedAt
 ) {

@@ -53,6 +53,17 @@ class InventoryProductInstanceAssignment {
     @Column(nullable = false, updatable = false)
     private Instant assignedAt;
 
+    @Column(nullable = false)
+    private boolean active;
+
+    @Column(length = 256)
+    private String releaseReason;
+
+    @Column(length = 128)
+    private String releasedBy;
+
+    private Instant releasedAt;
+
     static InventoryProductInstanceAssignment create(
         InventoryItem item,
         String productInstanceCode,
@@ -73,7 +84,21 @@ class InventoryProductInstanceAssignment {
         assignment.productInstanceCode = normalizeRequired(productInstanceCode, "productInstanceCode").toUpperCase();
         assignment.assignedBy = normalizeRequired(assignedBy, "assignedBy").toLowerCase();
         assignment.assignedAt = assignedAt;
+        assignment.active = true;
         return assignment;
+    }
+
+    void release(String reason, String releasedBy, Instant releasedAt) {
+        if (releasedAt == null) {
+            throw new IllegalArgumentException("releasedAt is required");
+        }
+        if (!active) {
+            throw new IllegalArgumentException("Inventory product instance assignment is already released");
+        }
+        active = false;
+        releaseReason = normalizeRequired(reason, "reason");
+        this.releasedBy = normalizeRequired(releasedBy, "releasedBy").toLowerCase();
+        this.releasedAt = releasedAt;
     }
 
     private static String normalizeRequired(String value, String fieldName) {

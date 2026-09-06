@@ -337,7 +337,9 @@ Inventory:
 - `GET /api/inventory/entry-relationships?page=&size=&relationshipTypeCode=&fromSku=&fromLocationCode=&toSku=&toLocationCode=&statusCode=`
 - `POST /api/inventory/product-instance-assignments`
 - `GET /api/inventory/product-instance-assignments/{id}`
-- `GET /api/inventory/product-instance-assignments?page=&size=&sku=&locationCode=&productInstanceCode=&assignedBy=`
+- `PATCH /api/inventory/product-instance-assignments/{id}/release`
+- `GET /api/inventory/product-instance-assignments/{id}/release-history?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
+- `GET /api/inventory/product-instance-assignments?page=&size=&sku=&locationCode=&productInstanceCode=&assignedBy=&active=`
 - `POST /api/inventory/locations`
 - `GET /api/inventory/locations/{code}`
 - `PATCH /api/inventory/locations/{code}/metadata`

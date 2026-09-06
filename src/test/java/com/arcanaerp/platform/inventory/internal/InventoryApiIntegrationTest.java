@@ -98,6 +98,9 @@ class InventoryApiIntegrationTest {
     private InventoryProductInstanceAssignmentRepository inventoryProductInstanceAssignmentRepository;
 
     @Autowired
+    private InventoryProductInstanceAssignmentReleaseAuditRepository inventoryProductInstanceAssignmentReleaseAuditRepository;
+
+    @Autowired
     private UnitOfMeasurementDirectory unitOfMeasurementDirectory;
 
     @BeforeEach
@@ -106,6 +109,7 @@ class InventoryApiIntegrationTest {
         reversalIdempotencyRepository.deleteAll();
         inventoryEntryRelationshipStatusChangeAuditRepository.deleteAll();
         inventoryEntryRelationshipRepository.deleteAll();
+        inventoryProductInstanceAssignmentReleaseAuditRepository.deleteAll();
         inventoryProductInstanceAssignmentRepository.deleteAll();
         availabilityChangeAuditRepository.deleteAll();
         metadataChangeAuditRepository.deleteAll();
@@ -596,6 +600,10 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.productInstanceCode").value("PI-SERIAL-100"))
             .andExpect(jsonPath("$.assignedBy").value("inventory.manager"))
             .andExpect(jsonPath("$.assignedAt").isNotEmpty())
+            .andExpect(jsonPath("$.active").value(true))
+            .andExpect(jsonPath("$.releaseReason").doesNotExist())
+            .andExpect(jsonPath("$.releasedBy").doesNotExist())
+            .andExpect(jsonPath("$.releasedAt").doesNotExist())
             .andReturn()
             .getResponse()
             .getContentAsString()
@@ -611,12 +619,100 @@ class InventoryApiIntegrationTest {
             .param("locationCode", "wh-serial")
             .param("productInstanceCode", "pi-serial-100")
             .param("assignedBy", "inventory.manager")
+            .param("active", "true")
             .param("page", "0")
             .param("size", "10"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].id").value(assignmentId))
             .andExpect(jsonPath("$.items[0].sku").value("ARC-SERIALIZED-100"));
+    }
+
+    @Test
+    void releasesInventoryProductInstanceAssignmentAndListsReleaseHistory() throws Exception {
+        String assignmentId = registerProductInstanceAssignment(
+            "arc-serialized-110",
+            "wh-serial",
+            "pi-serial-110",
+            "inventory.manager"
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/product-instance-assignments/{id}/release",
+            assignmentId
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "reason": " Unit consumed ",
+                  "releasedBy": " Inventory.Manager "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(assignmentId))
+            .andExpect(jsonPath("$.active").value(false))
+            .andExpect(jsonPath("$.releaseReason").value("Unit consumed"))
+            .andExpect(jsonPath("$.releasedBy").value("inventory.manager"))
+            .andExpect(jsonPath("$.releasedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/product-instance-assignments/{id}/release-history", assignmentId)
+            .param("releasedBy", "inventory.manager")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].assignmentId").value(assignmentId))
+            .andExpect(jsonPath("$.items[0].sku").value("ARC-SERIALIZED-110"))
+            .andExpect(jsonPath("$.items[0].locationCode").value("WH-SERIAL"))
+            .andExpect(jsonPath("$.items[0].productInstanceCode").value("PI-SERIAL-110"))
+            .andExpect(jsonPath("$.items[0].reason").value("Unit consumed"))
+            .andExpect(jsonPath("$.items[0].releasedBy").value("inventory.manager"))
+            .andExpect(jsonPath("$.items[0].releasedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/product-instance-assignments")
+            .param("productInstanceCode", "pi-serial-110")
+            .param("active", "false")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(assignmentId))
+            .andExpect(jsonPath("$.items[0].active").value(false));
+    }
+
+    @Test
+    void rejectsReleaseOfAlreadyReleasedInventoryProductInstanceAssignment() throws Exception {
+        String assignmentId = registerProductInstanceAssignment(
+            "arc-serialized-111",
+            "wh-serial",
+            "pi-serial-111",
+            "inventory.manager"
+        );
+        String payload = """
+            {
+              "reason": "Unit consumed",
+              "releasedBy": "inventory.manager"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/product-instance-assignments/{id}/release",
+            assignmentId
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isOk());
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/product-instance-assignments/{id}/release",
+                assignmentId
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory product instance assignment is already released",
+            "/api/inventory/product-instance-assignments/" + assignmentId + "/release"
+        );
     }
 
     @Test
@@ -3409,6 +3505,33 @@ class InventoryApiIntegrationTest {
                   "description": "Component participates in kit"
                 }
                 """.formatted(fromSku, locationCode, toSku, locationCode)))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+    }
+
+    private String registerProductInstanceAssignment(
+        String sku,
+        String locationCode,
+        String productInstanceCode,
+        String assignedBy
+    ) throws Exception {
+        inventoryItemRepository.save(InventoryItem.create(sku, locationCode, new BigDecimal("2"), SEED_INSTANT));
+
+        return mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/product-instance-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "sku": "%s",
+                  "locationCode": "%s",
+                  "productInstanceCode": "%s",
+                  "assignedBy": "%s"
+                }
+                """.formatted(sku, locationCode, productInstanceCode, assignedBy)))
             .andExpect(status().isCreated())
             .andReturn()
             .getResponse()

@@ -13,6 +13,7 @@ erDiagram
     INVENTORY_ITEMS ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : to_item
     INVENTORY_ENTRY_RELATIONSHIPS ||--o{ INVENTORY_ENTRY_RELATIONSHIP_STATUS_CHANGE_AUDITS : records_status_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_PRODUCT_INSTANCE_ASSIGNMENTS : assigns_product_instances
+    INVENTORY_PRODUCT_INSTANCE_ASSIGNMENTS ||--o{ INVENTORY_PRODUCT_INSTANCE_ASSIGNMENT_RELEASE_AUDITS : records_releases
     INVENTORY_LOCATIONS ||--o{ INVENTORY_ITEMS : stores
     INVENTORY_LOCATIONS ||--o{ INVENTORY_LOCATION_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_ADJUSTMENTS : records_movements
@@ -78,6 +79,22 @@ erDiagram
       STRING productInstanceCode
       STRING assignedBy
       INSTANT assignedAt
+      BOOLEAN active
+      STRING releaseReason
+      STRING releasedBy
+      INSTANT releasedAt
+    }
+
+    INVENTORY_PRODUCT_INSTANCE_ASSIGNMENT_RELEASE_AUDITS {
+      UUID id PK
+      UUID assignmentId
+      UUID inventoryItemId
+      STRING sku
+      STRING locationCode
+      STRING productInstanceCode
+      STRING reason
+      STRING releasedBy
+      INSTANT releasedAt
     }
 
     INVENTORY_LOCATIONS {
@@ -203,6 +220,7 @@ erDiagram
 - Inventory entry relationships link two existing inventory items and preserve normalized item keys for filtering.
 - Inventory entry relationship status changes are append-only via `inventory_entry_relationship_status_change_audits`.
 - Inventory product-instance assignments are explicit cross-reference rows from inventory items to product instance codes.
+- Inventory product-instance assignment releases are append-only via `inventory_product_instance_assignment_release_audits`.
 - Inventory locations carry optional facility type, address, and contact metadata for facility-model parity.
 - Inventory location `facilityTypeCode` values are optional, but supplied codes must exist in `inventory_location_types`.
 - Inventory location metadata changes are append-only via `inventory_location_metadata_change_audits`.
@@ -215,6 +233,7 @@ erDiagram
 - `inventory_entry_relationships.fromInventoryItemId` and `toInventoryItemId` are logical references to `inventory_items.id`.
 - `inventory_entry_relationship_status_change_audits.relationshipId` is a logical reference to `inventory_entry_relationships.id`.
 - `inventory_product_instance_assignments.inventoryItemId` is a logical reference to `inventory_items.id`.
+- `inventory_product_instance_assignment_release_audits.assignmentId` is a logical reference to `inventory_product_instance_assignments.id`.
 - Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` and `inventory_items.availableQuantity` store latest per-location state.
 - Inventory item availability changes are append-only via `inventory_item_availability_change_audits`.
 - Inventory item metadata changes are append-only via `inventory_item_metadata_change_audits`.
@@ -256,6 +275,9 @@ erDiagram
   - `inventory_product_instance_assignments(productInstanceCode)`
   - `inventory_product_instance_assignments(sku, locationCode)`
   - `inventory_product_instance_assignments(assignedBy, assignedAt)`
+  - `inventory_product_instance_assignment_release_audits(assignmentId, releasedAt)`
+  - `inventory_product_instance_assignment_release_audits(productInstanceCode, releasedAt)`
+  - `inventory_product_instance_assignment_release_audits(releasedBy, releasedAt)`
   - `inventory_transfer_reversal_idempotency(reversalTransferId)`
 
 ## Minimal HTTP Surface
@@ -276,7 +298,9 @@ erDiagram
 - `GET /api/inventory/entry-relationships?page=&size=&relationshipTypeCode=&fromSku=&fromLocationCode=&toSku=&toLocationCode=&statusCode=`
 - `POST /api/inventory/product-instance-assignments`
 - `GET /api/inventory/product-instance-assignments/{id}`
-- `GET /api/inventory/product-instance-assignments?page=&size=&sku=&locationCode=&productInstanceCode=&assignedBy=`
+- `PATCH /api/inventory/product-instance-assignments/{id}/release`
+- `GET /api/inventory/product-instance-assignments/{id}/release-history?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
+- `GET /api/inventory/product-instance-assignments?page=&size=&sku=&locationCode=&productInstanceCode=&assignedBy=&active=`
 - `POST /api/inventory/locations`
 - `GET /api/inventory/locations/{code}`
 - `PATCH /api/inventory/locations/{code}/metadata`
@@ -321,7 +345,8 @@ erDiagram
 - inventory entry relationship writes validate relationship type, role types, from item, and to item before persisting
 - inventory entry relationship list filters match normalized relationship type, item keys, and status code values
 - inventory product-instance assignment writes validate the inventory item and reject duplicate item/product-instance pairs
-- inventory product-instance assignment list filters match normalized item keys, product instance code, and assignedBy values
+- inventory product-instance assignment releases mark the assignment inactive and append release audit rows
+- inventory product-instance assignment list filters match normalized item keys, product instance code, assignedBy values, and active state
 - inventory location facility type, region, and country codes are normalized to uppercase; contact email is normalized to lowercase
 - inventory location facility type codes must exist in the inventory location type catalog when supplied
 - inventory location metadata updates require `changedBy`, reject no-op changes, and append audit rows
