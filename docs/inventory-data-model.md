@@ -10,6 +10,7 @@ erDiagram
     INVENTORY_LOCATIONS ||--o{ INVENTORY_ITEMS : stores
     INVENTORY_LOCATIONS ||--o{ INVENTORY_LOCATION_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_ADJUSTMENTS : records_movements
+    INVENTORY_ITEMS ||--o{ INVENTORY_ITEM_AVAILABILITY_CHANGE_AUDITS : records_availability_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_ITEM_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ADJUSTMENTS ||--o{ INVENTORY_TRANSFER_REVERSAL_IDEMPOTENCY : replays
 
@@ -110,6 +111,22 @@ erDiagram
       INSTANT changedAt
     }
 
+    INVENTORY_ITEM_AVAILABILITY_CHANGE_AUDITS {
+      UUID id PK
+      UUID inventoryItemId
+      STRING sku
+      STRING locationCode
+      DECIMAL previousAvailableQuantity
+      DECIMAL currentAvailableQuantity
+      DECIMAL availableQuantityDelta
+      DECIMAL previousSoldQuantity
+      DECIMAL currentSoldQuantity
+      DECIMAL soldQuantityDelta
+      STRING reason
+      STRING changedBy
+      INSTANT changedAt
+    }
+
     INVENTORY_TRANSFER_REVERSAL_IDEMPOTENCY {
       UUID id PK
       UUID transferId
@@ -133,6 +150,7 @@ erDiagram
 - `inventory_adjustments.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_item_metadata_change_audits.inventoryItemId` is a logical reference to `inventory_items.id`.
 - Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` and `inventory_items.availableQuantity` store latest per-location state.
+- Inventory item availability changes are append-only via `inventory_item_availability_change_audits`.
 - Inventory item metadata changes are append-only via `inventory_item_metadata_change_audits`.
 - Location transfers write two adjustment rows with a shared `transferId` (source negative delta, destination positive delta).
 - Destination stock rows created by transfers copy the source item's UOM, classification, and product-instance metadata.
@@ -159,6 +177,8 @@ erDiagram
   - `inventory_location_metadata_change_audits(locationCode, changedAt)`
   - `inventory_item_metadata_change_audits(inventoryItemId, changedAt)`
   - `inventory_item_metadata_change_audits(sku, locationCode, changedAt)`
+  - `inventory_item_availability_change_audits(inventoryItemId, changedAt)`
+  - `inventory_item_availability_change_audits(sku, locationCode, changedAt)`
   - `inventory_transfer_reversal_idempotency(reversalTransferId)`
 
 ## Minimal HTTP Surface
@@ -176,6 +196,7 @@ erDiagram
 - `GET /api/inventory/items?page=&size=&sku=&locationCode=&unitOfMeasurementCode=&classificationCode=&productInstanceCode=`
 - `GET /api/inventory/items/{sku}/locations/{locationCode}`
 - `PATCH /api/inventory/items/{sku}/locations/{locationCode}/availability`
+- `GET /api/inventory/items/{sku}/locations/{locationCode}/availability-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `PATCH /api/inventory/items/{sku}/locations/{locationCode}/metadata`
 - `GET /api/inventory/items/{sku}/locations/{locationCode}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
@@ -213,6 +234,7 @@ erDiagram
 - inventory item UOM and classification codes default to `EA` and `ON_HAND` when not explicitly supplied
 - inventory item available quantity defaults to on-hand quantity, sold quantity defaults to zero, and available quantity cannot exceed on-hand quantity
 - inventory item availability updates mutate available and sold quantities without changing physical on-hand quantity
+- inventory item availability history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inventory item product instance codes are optional and normalized to uppercase when supplied
 - supplied and default inventory item UOM codes must exist in the core unit-of-measurement catalog
 - inventory item list filters match normalized `sku`, `locationCode`, `unitOfMeasurementCode`, `classificationCode`, and `productInstanceCode` values

@@ -62,6 +62,9 @@ class InventoryApiIntegrationTest {
     private InventoryItemMetadataChangeAuditRepository metadataChangeAuditRepository;
 
     @Autowired
+    private InventoryItemAvailabilityChangeAuditRepository availabilityChangeAuditRepository;
+
+    @Autowired
     private InventoryAdjustmentRepository inventoryAdjustmentRepository;
 
     @Autowired
@@ -86,6 +89,7 @@ class InventoryApiIntegrationTest {
     void cleanInventoryItems() {
         reset(reversalIdempotencyRepository);
         reversalIdempotencyRepository.deleteAll();
+        availabilityChangeAuditRepository.deleteAll();
         metadataChangeAuditRepository.deleteAll();
         inventoryAdjustmentRepository.deleteAll();
         inventoryItemRepository.deleteAll();
@@ -719,6 +723,24 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.classificationCode").value("AVAILABLE"))
             .andExpect(jsonPath("$.productInstanceCode").value("PI-101"));
 
+        mockMvc.perform(get("/api/inventory/items/{sku}/locations/{locationCode}/availability-history", "arc-9250", "wh-item")
+            .param("changedBy", "inventory.ops@arcanaerp.com")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].sku").value("ARC-9250"))
+            .andExpect(jsonPath("$.items[0].locationCode").value("WH-ITEM"))
+            .andExpect(jsonPath("$.items[0].previousAvailableQuantity").value(12))
+            .andExpect(jsonPath("$.items[0].currentAvailableQuantity").value(9))
+            .andExpect(jsonPath("$.items[0].availableQuantityDelta").value(-3))
+            .andExpect(jsonPath("$.items[0].previousSoldQuantity").value(2))
+            .andExpect(jsonPath("$.items[0].currentSoldQuantity").value(5))
+            .andExpect(jsonPath("$.items[0].soldQuantityDelta").value(3))
+            .andExpect(jsonPath("$.items[0].reason").value("Sales allocation posted"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("inventory.ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
+
         mockMvc.perform(get("/api/inventory/items/{sku}/locations/{locationCode}/metadata-history", "arc-9250", "wh-item")
             .param("changedBy", "inventory.ops@arcanaerp.com")
             .param("page", "0")
@@ -879,6 +901,67 @@ class InventoryApiIntegrationTest {
             "availableQuantity must not exceed onHandQuantity",
             "/api/inventory/items"
         );
+    }
+
+    @Test
+    void filtersInventoryItemAvailabilityHistoryByChangedAtRange() throws Exception {
+        InventoryItem item = inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9252c",
+                "wh-availability-history",
+                new BigDecimal("10"),
+                new BigDecimal("8"),
+                BigDecimal.ZERO,
+                "EA",
+                "ON_HAND",
+                null,
+                SEED_INSTANT
+            )
+        );
+        availabilityChangeAuditRepository.save(InventoryItemAvailabilityChangeAudit.create(
+            item.getId(),
+            "arc-9252c",
+            "wh-availability-history",
+            new BigDecimal("8"),
+            new BigDecimal("6"),
+            new BigDecimal("-2"),
+            BigDecimal.ZERO,
+            new BigDecimal("2"),
+            new BigDecimal("2"),
+            "First allocation",
+            "inventory.ops@arcanaerp.com",
+            Instant.parse("2026-03-01T01:00:00Z")
+        ));
+        availabilityChangeAuditRepository.save(InventoryItemAvailabilityChangeAudit.create(
+            item.getId(),
+            "arc-9252c",
+            "wh-availability-history",
+            new BigDecimal("6"),
+            new BigDecimal("4"),
+            new BigDecimal("-2"),
+            new BigDecimal("2"),
+            new BigDecimal("4"),
+            new BigDecimal("2"),
+            "Second allocation",
+            "planning@arcanaerp.com",
+            Instant.parse("2026-03-02T01:00:00Z")
+        ));
+
+        mockMvc.perform(get(
+            "/api/inventory/items/{sku}/locations/{locationCode}/availability-history",
+            "arc-9252c",
+            "wh-availability-history"
+        )
+            .param("changedAtFrom", "2026-03-02T00:00:00Z")
+            .param("changedAtTo", "2026-03-02T23:59:59Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].currentAvailableQuantity").value(4))
+            .andExpect(jsonPath("$.items[0].currentSoldQuantity").value(4))
+            .andExpect(jsonPath("$.items[0].reason").value("Second allocation"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("planning@arcanaerp.com"));
     }
 
     @Test

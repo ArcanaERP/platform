@@ -14,6 +14,15 @@ public interface InventoryItemDirectory {
 
     InventoryItemView updateItemAvailability(String sku, String locationCode, UpdateInventoryItemAvailabilityCommand command);
 
+    PageResult<InventoryItemAvailabilityChangeView> listAvailabilityHistory(
+        String sku,
+        String locationCode,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<InventoryItemMetadataChangeView> listMetadataHistory(
         String sku,
         String locationCode,

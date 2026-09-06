@@ -332,6 +332,7 @@ Inventory:
 - `GET /api/inventory/items?page=&size=&sku=&locationCode=&unitOfMeasurementCode=&classificationCode=&productInstanceCode=`
 - `GET /api/inventory/items/{sku}/locations/{locationCode}`
 - `PATCH /api/inventory/items/{sku}/locations/{locationCode}/availability`
+- `GET /api/inventory/items/{sku}/locations/{locationCode}/availability-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `PATCH /api/inventory/items/{sku}/locations/{locationCode}/metadata`
 - `GET /api/inventory/items/{sku}/locations/{locationCode}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)

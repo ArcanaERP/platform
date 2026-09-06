@@ -5,6 +5,7 @@ import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.core.uom.UnitOfMeasurementDirectory;
 import com.arcanaerp.platform.inventory.InventoryItemDirectory;
+import com.arcanaerp.platform.inventory.InventoryItemAvailabilityChangeView;
 import com.arcanaerp.platform.inventory.InventoryItemMetadataChangeView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
 import com.arcanaerp.platform.inventory.RegisterInventoryItemCommand;
@@ -27,6 +28,7 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
 
     private final InventoryItemRepository inventoryItemRepository;
     private final InventoryItemMetadataChangeAuditRepository metadataChangeAuditRepository;
+    private final InventoryItemAvailabilityChangeAuditRepository availabilityChangeAuditRepository;
     private final InventoryLocationRepository inventoryLocationRepository;
     private final UnitOfMeasurementDirectory unitOfMeasurementDirectory;
     private final Clock clock;
@@ -141,15 +143,53 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             throw new IllegalArgumentException("locationCode path variable must match command locationCode");
         }
 
-        normalizeRequired(command.reason(), "reason");
-        normalizeRequired(command.changedBy(), "changedBy").toLowerCase();
+        String reason = normalizeRequired(command.reason(), "reason");
+        String changedBy = normalizeRequired(command.changedBy(), "changedBy").toLowerCase();
         InventoryItem item = findItem(normalizedSku, normalizedLocationCode);
+        BigDecimal previousAvailableQuantity = item.getAvailableQuantity();
+        BigDecimal previousSoldQuantity = item.getSoldQuantity();
+        Instant changedAt = Instant.now(clock);
         item.applyAvailabilityChange(
             command.availableQuantityDelta(),
             command.soldQuantityDelta(),
-            Instant.now(clock)
+            changedAt
         );
+        availabilityChangeAuditRepository.save(InventoryItemAvailabilityChangeAudit.create(
+            item.getId(),
+            item.getSku(),
+            item.getLocationCode(),
+            previousAvailableQuantity,
+            item.getAvailableQuantity(),
+            command.availableQuantityDelta(),
+            previousSoldQuantity,
+            item.getSoldQuantity(),
+            command.soldQuantityDelta(),
+            reason,
+            changedBy,
+            changedAt
+        ));
         return toView(inventoryItemRepository.save(item));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<InventoryItemAvailabilityChangeView> listAvailabilityHistory(
+        String sku,
+        String locationCode,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        InventoryItem item = findItem(sku, locationCode);
+        Page<InventoryItemAvailabilityChangeAudit> history = availabilityChangeAuditRepository.findHistoryFiltered(
+            item.getId(),
+            normalizeOptionalChangedBy(changedBy),
+            changedAtFrom,
+            changedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
+        );
+        return PageResult.from(history).map(this::toAvailabilityChangeView);
     }
 
     @Override
@@ -232,6 +272,23 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             item.getClassificationCode(),
             item.getProductInstanceCode(),
             item.getUpdatedAt()
+        );
+    }
+
+    private InventoryItemAvailabilityChangeView toAvailabilityChangeView(InventoryItemAvailabilityChangeAudit audit) {
+        return new InventoryItemAvailabilityChangeView(
+            audit.getId(),
+            audit.getSku(),
+            audit.getLocationCode(),
+            audit.getPreviousAvailableQuantity(),
+            audit.getCurrentAvailableQuantity(),
+            audit.getAvailableQuantityDelta(),
+            audit.getPreviousSoldQuantity(),
+            audit.getCurrentSoldQuantity(),
+            audit.getSoldQuantityDelta(),
+            audit.getReason(),
+            audit.getChangedBy(),
+            audit.getChangedAt()
         );
     }
 

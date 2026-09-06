@@ -3,6 +3,7 @@ package com.arcanaerp.platform.inventory.web;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.InventoryItemDirectory;
+import com.arcanaerp.platform.inventory.InventoryItemAvailabilityChangeView;
 import com.arcanaerp.platform.inventory.InventoryItemMetadataChangeView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
 import com.arcanaerp.platform.inventory.RegisterInventoryItemCommand;
@@ -94,6 +95,29 @@ public class InventoryItemController {
         ));
     }
 
+    @GetMapping("/{sku}/locations/{locationCode}/availability-history")
+    public PageResult<InventoryItemAvailabilityChangeResponse> listAvailabilityHistory(
+        @PathVariable String sku,
+        @PathVariable String locationCode,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return inventoryItemDirectory.listAvailabilityHistory(
+            sku,
+            locationCode,
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toAvailabilityChangeResponse);
+    }
+
     @GetMapping("/{sku}/locations/{locationCode}/metadata-history")
     public PageResult<InventoryItemMetadataChangeResponse> listMetadataHistory(
         @PathVariable String sku,
@@ -149,6 +173,23 @@ public class InventoryItemController {
             item.classificationCode(),
             item.productInstanceCode(),
             item.updatedAt()
+        );
+    }
+
+    private InventoryItemAvailabilityChangeResponse toAvailabilityChangeResponse(InventoryItemAvailabilityChangeView change) {
+        return new InventoryItemAvailabilityChangeResponse(
+            change.id(),
+            change.sku(),
+            change.locationCode(),
+            change.previousAvailableQuantity(),
+            change.currentAvailableQuantity(),
+            change.availableQuantityDelta(),
+            change.previousSoldQuantity(),
+            change.currentSoldQuantity(),
+            change.soldQuantityDelta(),
+            change.reason(),
+            change.changedBy(),
+            change.changedAt()
         );
     }
 
