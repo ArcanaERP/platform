@@ -26,6 +26,7 @@ public interface InventoryItemDirectory {
         String locationCode,
         String unitOfMeasurementCode,
         String classificationCode,
+        String productInstanceCode,
         PageQuery pageQuery
     );
 }

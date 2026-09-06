@@ -32,11 +32,13 @@ class InventoryItemDomainTest {
             new BigDecimal("25"),
             " case ",
             " quarantine ",
+            " pi-100 ",
             Instant.parse("2026-03-01T00:00:00Z")
         );
 
         assertThat(item.getUnitOfMeasurementCode()).isEqualTo("CASE");
         assertThat(item.getClassificationCode()).isEqualTo("QUARANTINE");
+        assertThat(item.getProductInstanceCode()).isEqualTo("PI-100");
     }
 
     @Test
@@ -64,10 +66,11 @@ class InventoryItemDomainTest {
             Instant.parse("2026-03-01T00:00:00Z")
         );
 
-        item.updateMetadata(" each ", " available ", Instant.parse("2026-03-01T01:00:00Z"));
+        item.updateMetadata(" each ", " available ", " pi-101 ", Instant.parse("2026-03-01T01:00:00Z"));
 
         assertThat(item.getUnitOfMeasurementCode()).isEqualTo("EACH");
         assertThat(item.getClassificationCode()).isEqualTo("AVAILABLE");
+        assertThat(item.getProductInstanceCode()).isEqualTo("PI-101");
         assertThat(item.getOnHandQuantity()).isEqualByComparingTo("5");
         assertThat(item.getUpdatedAt()).isEqualTo(Instant.parse("2026-03-01T01:00:00Z"));
     }
@@ -84,7 +87,7 @@ class InventoryItemDomainTest {
         );
 
         assertThatThrownBy(() ->
-            item.updateMetadata("CASE", "QUARANTINE", Instant.parse("2026-03-01T01:00:00Z"))
+            item.updateMetadata("CASE", "QUARANTINE", null, Instant.parse("2026-03-01T01:00:00Z"))
         )
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("Inventory item metadata is unchanged");

@@ -7,6 +7,7 @@ public record RegisterInventoryItemCommand(
     String locationCode,
     BigDecimal onHandQuantity,
     String unitOfMeasurementCode,
-    String classificationCode
+    String classificationCode,
+    String productInstanceCode
 ) {
 }

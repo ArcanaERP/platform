@@ -54,6 +54,7 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             onHandQuantity,
             unitOfMeasurementCode,
             normalizeOptionalCode(command.classificationCode(), "classificationCode", "ON_HAND"),
+            normalizeOptionalCode(command.productInstanceCode(), "productInstanceCode"),
             Instant.now(clock)
         )));
     }
@@ -82,9 +83,15 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
         InventoryItem item = findItem(normalizedSku, normalizedLocationCode);
         String previousUnitOfMeasurementCode = item.getUnitOfMeasurementCode();
         String previousClassificationCode = item.getClassificationCode();
+        String previousProductInstanceCode = item.getProductInstanceCode();
         Instant changedAt = Instant.now(clock);
         ensureUnitOfMeasurementExists(command.unitOfMeasurementCode());
-        item.updateMetadata(command.unitOfMeasurementCode(), command.classificationCode(), changedAt);
+        item.updateMetadata(
+            command.unitOfMeasurementCode(),
+            command.classificationCode(),
+            command.productInstanceCode(),
+            changedAt
+        );
         String changedBy = normalizeRequired(command.changedBy(), "changedBy").toLowerCase();
         metadataChangeAuditRepository.save(InventoryItemMetadataChangeAudit.create(
             item.getId(),
@@ -94,6 +101,8 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             item.getUnitOfMeasurementCode(),
             previousClassificationCode,
             item.getClassificationCode(),
+            previousProductInstanceCode,
+            item.getProductInstanceCode(),
             changedBy,
             changedAt
         ));
@@ -128,6 +137,7 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
         String locationCode,
         String unitOfMeasurementCode,
         String classificationCode,
+        String productInstanceCode,
         PageQuery pageQuery
     ) {
         Page<InventoryItem> items = inventoryItemRepository.findItemsFiltered(
@@ -135,6 +145,7 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             normalizeOptionalCode(locationCode, "locationCode"),
             normalizeOptionalCode(unitOfMeasurementCode, "unitOfMeasurementCode"),
             normalizeOptionalCode(classificationCode, "classificationCode"),
+            normalizeOptionalCode(productInstanceCode, "productInstanceCode"),
             pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "sku").and(Sort.by(Sort.Direction.ASC, "locationCode")))
         );
         return PageResult.from(items).map(this::toView);
@@ -174,6 +185,7 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             item.getOnHandQuantity(),
             item.getUnitOfMeasurementCode(),
             item.getClassificationCode(),
+            item.getProductInstanceCode(),
             item.getUpdatedAt()
         );
     }
@@ -187,6 +199,8 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             audit.getCurrentUnitOfMeasurementCode(),
             audit.getPreviousClassificationCode(),
             audit.getCurrentClassificationCode(),
+            audit.getPreviousProductInstanceCode(),
+            audit.getCurrentProductInstanceCode(),
             audit.getChangedBy(),
             audit.getChangedAt()
         );

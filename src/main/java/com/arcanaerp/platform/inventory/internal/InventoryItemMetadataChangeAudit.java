@@ -50,6 +50,12 @@ class InventoryItemMetadataChangeAudit {
     @Column(nullable = false, length = 64)
     private String currentClassificationCode;
 
+    @Column(length = 128)
+    private String previousProductInstanceCode;
+
+    @Column(length = 128)
+    private String currentProductInstanceCode;
+
     @Column(nullable = false, length = 128)
     private String changedBy;
 
@@ -65,6 +71,8 @@ class InventoryItemMetadataChangeAudit {
         String currentUnitOfMeasurementCode,
         String previousClassificationCode,
         String currentClassificationCode,
+        String previousProductInstanceCode,
+        String currentProductInstanceCode,
         String changedBy,
         Instant changedAt
     ) {
@@ -76,6 +84,8 @@ class InventoryItemMetadataChangeAudit {
         this.currentUnitOfMeasurementCode = currentUnitOfMeasurementCode;
         this.previousClassificationCode = previousClassificationCode;
         this.currentClassificationCode = currentClassificationCode;
+        this.previousProductInstanceCode = previousProductInstanceCode;
+        this.currentProductInstanceCode = currentProductInstanceCode;
         this.changedBy = changedBy;
         this.changedAt = changedAt;
     }
@@ -88,6 +98,8 @@ class InventoryItemMetadataChangeAudit {
         String currentUnitOfMeasurementCode,
         String previousClassificationCode,
         String currentClassificationCode,
+        String previousProductInstanceCode,
+        String currentProductInstanceCode,
         String changedBy,
         Instant changedAt
     ) {
@@ -106,6 +118,8 @@ class InventoryItemMetadataChangeAudit {
             normalizeRequired(currentUnitOfMeasurementCode, "currentUnitOfMeasurementCode").toUpperCase(),
             normalizeRequired(previousClassificationCode, "previousClassificationCode").toUpperCase(),
             normalizeRequired(currentClassificationCode, "currentClassificationCode").toUpperCase(),
+            normalizeOptionalUpper(previousProductInstanceCode),
+            normalizeOptionalUpper(currentProductInstanceCode),
             normalizeRequired(changedBy, "changedBy").toLowerCase(),
             changedAt
         );
@@ -116,5 +130,12 @@ class InventoryItemMetadataChangeAudit {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private static String normalizeOptionalUpper(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim().toUpperCase();
     }
 }

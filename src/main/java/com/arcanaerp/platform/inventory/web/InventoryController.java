@@ -62,6 +62,7 @@ public class InventoryController {
             item.onHandQuantity(),
             item.unitOfMeasurementCode(),
             item.classificationCode(),
+            item.productInstanceCode(),
             item.updatedAt()
         );
     }

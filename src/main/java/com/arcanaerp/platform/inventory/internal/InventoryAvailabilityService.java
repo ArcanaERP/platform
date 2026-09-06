@@ -80,6 +80,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
             item.getOnHandQuantity(),
             item.getUnitOfMeasurementCode(),
             item.getClassificationCode(),
+            item.getProductInstanceCode(),
             item.getUpdatedAt()
         );
     }
@@ -165,6 +166,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
                 BigDecimal.ZERO,
                 sourceItem.getUnitOfMeasurementCode(),
                 sourceItem.getClassificationCode(),
+                sourceItem.getProductInstanceCode(),
                 adjustedAt
             ));
 

@@ -45,6 +45,7 @@ erDiagram
       DECIMAL onHandQuantity
       STRING unitOfMeasurementCode
       STRING classificationCode
+      STRING productInstanceCode
       INSTANT updatedAt
     }
 
@@ -101,6 +102,8 @@ erDiagram
       STRING currentUnitOfMeasurementCode
       STRING previousClassificationCode
       STRING currentClassificationCode
+      STRING previousProductInstanceCode
+      STRING currentProductInstanceCode
       STRING changedBy
       INSTANT changedAt
     }
@@ -121,7 +124,7 @@ erDiagram
 - Inventory locations carry optional facility type, address, and contact metadata for facility-model parity.
 - Inventory location `facilityTypeCode` values are optional, but supplied codes must exist in `inventory_location_types`.
 - Inventory location metadata changes are append-only via `inventory_location_metadata_change_audits`.
-- Inventory item metadata carries `unitOfMeasurementCode` and `classificationCode` for legacy inventory-entry parity.
+- Inventory item metadata carries `unitOfMeasurementCode`, `classificationCode`, and optional `productInstanceCode` for legacy inventory-entry parity.
 - Inventory item `unitOfMeasurementCode` values are validated against the core UOM catalog at item registration and metadata update boundaries.
 - `inventory_items.locationCode` aligns with `inventory_locations.code` (code-based location reference).
 - `inventory_adjustments.inventoryItemId` is a logical reference to `inventory_items.id`.
@@ -167,7 +170,7 @@ erDiagram
 - `PATCH /api/inventory/locations/{code}/active`
 - `GET /api/inventory/locations?page=&size=&active=`
 - `POST /api/inventory/items`
-- `GET /api/inventory/items?page=&size=&sku=&locationCode=&unitOfMeasurementCode=&classificationCode=`
+- `GET /api/inventory/items?page=&size=&sku=&locationCode=&unitOfMeasurementCode=&classificationCode=&productInstanceCode=`
 - `GET /api/inventory/items/{sku}/locations/{locationCode}`
 - `PATCH /api/inventory/items/{sku}/locations/{locationCode}/metadata`
 - `GET /api/inventory/items/{sku}/locations/{locationCode}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
@@ -204,8 +207,9 @@ erDiagram
 - inventory location metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inactive inventory locations remain readable but reject new adjustment and transfer writes
 - inventory item UOM and classification codes default to `EA` and `ON_HAND` when not explicitly supplied
+- inventory item product instance codes are optional and normalized to uppercase when supplied
 - supplied and default inventory item UOM codes must exist in the core unit-of-measurement catalog
-- inventory item list filters match normalized `sku`, `locationCode`, `unitOfMeasurementCode`, and `classificationCode` values
+- inventory item list filters match normalized `sku`, `locationCode`, `unitOfMeasurementCode`, `classificationCode`, and `productInstanceCode` values
 - inventory item metadata updates preserve on-hand quantity, require `changedBy`, reject no-op changes, and append audit rows
 - inventory item metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - adjustment activity summaries bucket append-only `inventory_adjustments` rows by UTC `adjustedAt`

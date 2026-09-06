@@ -10,6 +10,7 @@ public record CreateInventoryItemRequest(
     @NotBlank String locationCode,
     @NotNull @PositiveOrZero BigDecimal onHandQuantity,
     String unitOfMeasurementCode,
-    String classificationCode
+    String classificationCode,
+    String productInstanceCode
 ) {
 }

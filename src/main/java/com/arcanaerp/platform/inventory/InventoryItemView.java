@@ -11,6 +11,7 @@ public record InventoryItemView(
     BigDecimal onHandQuantity,
     String unitOfMeasurementCode,
     String classificationCode,
+    String productInstanceCode,
     Instant updatedAt
 ) {
 }

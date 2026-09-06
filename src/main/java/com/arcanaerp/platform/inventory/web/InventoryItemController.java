@@ -37,7 +37,8 @@ public class InventoryItemController {
             request.locationCode(),
             request.onHandQuantity(),
             request.unitOfMeasurementCode(),
-            request.classificationCode()
+            request.classificationCode(),
+            request.productInstanceCode()
         ));
         return toResponse(item);
     }
@@ -64,6 +65,7 @@ public class InventoryItemController {
                 locationCode,
                 request.unitOfMeasurementCode(),
                 request.classificationCode(),
+                request.productInstanceCode(),
                 request.changedBy()
             )
         ));
@@ -98,6 +100,7 @@ public class InventoryItemController {
         @RequestParam(required = false) String locationCode,
         @RequestParam(required = false) String unitOfMeasurementCode,
         @RequestParam(required = false) String classificationCode,
+        @RequestParam(required = false) String productInstanceCode,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
@@ -106,6 +109,7 @@ public class InventoryItemController {
             locationCode,
             unitOfMeasurementCode,
             classificationCode,
+            productInstanceCode,
             PageQuery.of(page, size)
         ).map(this::toResponse);
     }
@@ -118,6 +122,7 @@ public class InventoryItemController {
             item.onHandQuantity(),
             item.unitOfMeasurementCode(),
             item.classificationCode(),
+            item.productInstanceCode(),
             item.updatedAt()
         );
     }
@@ -131,6 +136,8 @@ public class InventoryItemController {
             change.currentUnitOfMeasurementCode(),
             change.previousClassificationCode(),
             change.currentClassificationCode(),
+            change.previousProductInstanceCode(),
+            change.currentProductInstanceCode(),
             change.changedBy(),
             change.changedAt()
         );

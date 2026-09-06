@@ -48,6 +48,9 @@ public class InventoryItem {
     @Column(nullable = false, length = 64)
     private String classificationCode;
 
+    @Column(length = 128)
+    private String productInstanceCode;
+
     @Column(nullable = false)
     private Instant updatedAt;
 
@@ -58,6 +61,7 @@ public class InventoryItem {
         BigDecimal onHandQuantity,
         String unitOfMeasurementCode,
         String classificationCode,
+        String productInstanceCode,
         Instant updatedAt
     ) {
         this.id = id;
@@ -66,6 +70,7 @@ public class InventoryItem {
         this.onHandQuantity = onHandQuantity;
         this.unitOfMeasurementCode = unitOfMeasurementCode;
         this.classificationCode = classificationCode;
+        this.productInstanceCode = productInstanceCode;
         this.updatedAt = updatedAt;
     }
 
@@ -76,6 +81,7 @@ public class InventoryItem {
             onHandQuantity,
             DEFAULT_UNIT_OF_MEASUREMENT_CODE,
             DEFAULT_CLASSIFICATION_CODE,
+            null,
             updatedAt
         );
     }
@@ -86,6 +92,26 @@ public class InventoryItem {
         BigDecimal onHandQuantity,
         String unitOfMeasurementCode,
         String classificationCode,
+        Instant updatedAt
+    ) {
+        return create(
+            sku,
+            locationCode,
+            onHandQuantity,
+            unitOfMeasurementCode,
+            classificationCode,
+            null,
+            updatedAt
+        );
+    }
+
+    static InventoryItem create(
+        String sku,
+        String locationCode,
+        BigDecimal onHandQuantity,
+        String unitOfMeasurementCode,
+        String classificationCode,
+        String productInstanceCode,
         Instant updatedAt
     ) {
         if (onHandQuantity == null || onHandQuantity.signum() < 0) {
@@ -102,6 +128,7 @@ public class InventoryItem {
             onHandQuantity,
             normalizeRequired(unitOfMeasurementCode, "unitOfMeasurementCode").toUpperCase(),
             normalizeRequired(classificationCode, "classificationCode").toUpperCase(),
+            normalizeOptionalUpper(productInstanceCode),
             updatedAt
         );
     }
@@ -126,20 +153,28 @@ public class InventoryItem {
         this.updatedAt = adjustedAt;
     }
 
-    void updateMetadata(String unitOfMeasurementCode, String classificationCode, Instant updatedAt) {
+    void updateMetadata(
+        String unitOfMeasurementCode,
+        String classificationCode,
+        String productInstanceCode,
+        Instant updatedAt
+    ) {
         if (updatedAt == null) {
             throw new IllegalArgumentException("updatedAt is required");
         }
         String normalizedUnitOfMeasurementCode = normalizeRequired(unitOfMeasurementCode, "unitOfMeasurementCode").toUpperCase();
         String normalizedClassificationCode = normalizeRequired(classificationCode, "classificationCode").toUpperCase();
+        String normalizedProductInstanceCode = normalizeOptionalUpper(productInstanceCode);
         if (
             this.unitOfMeasurementCode.equals(normalizedUnitOfMeasurementCode)
                 && this.classificationCode.equals(normalizedClassificationCode)
+                && equalsNullable(this.productInstanceCode, normalizedProductInstanceCode)
         ) {
             throw new IllegalArgumentException("Inventory item metadata is unchanged");
         }
         this.unitOfMeasurementCode = normalizedUnitOfMeasurementCode;
         this.classificationCode = normalizedClassificationCode;
+        this.productInstanceCode = normalizedProductInstanceCode;
         this.updatedAt = updatedAt;
     }
 
@@ -148,5 +183,16 @@ public class InventoryItem {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private static String normalizeOptionalUpper(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim().toUpperCase();
+    }
+
+    private static boolean equalsNullable(String left, String right) {
+        return left == null ? right == null : left.equals(right);
     }
 }

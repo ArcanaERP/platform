@@ -11,6 +11,8 @@ public record InventoryItemMetadataChangeView(
     String currentUnitOfMeasurementCode,
     String previousClassificationCode,
     String currentClassificationCode,
+    String previousProductInstanceCode,
+    String currentProductInstanceCode,
     String changedBy,
     Instant changedAt
 ) {
