@@ -321,6 +321,7 @@ Inventory:
 - Inventory items support optional external reference and source-system metadata for legacy inventory-entry traceability.
 - Inventory item `sourceSystemCode + externalReference` pairs are unique when both values are supplied.
 - Inventory items support optional owner metadata through `ownerTenantCode`, `ownerUserId`, and `ownerRoleCode`; supplied owner triples are validated against identity users and roles.
+- Inventory facilities provide a first-class facility catalog for pickup/dropoff traceability.
 - Inventory location `facilityTypeCode` values are validated against `POST /api/inventory/location-types` reference data.
 - Inventory entry relationship and role types are reference data for entry relationship records.
 - Inventory entry relationships support optional `fromDate` and `thruDate` validity windows.
@@ -364,6 +365,9 @@ Inventory:
 - `PATCH /api/inventory/items/{sku}/locations/{locationCode}/metadata`
 - `GET /api/inventory/items/{sku}/locations/{locationCode}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/items/{sku}/locations/{locationCode}/owner-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
+- `POST /api/inventory/facilities`
+- `GET /api/inventory/facilities/{code}`
+- `GET /api/inventory/facilities?page=&size=&active=&query=`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/pickup-dropoffs`

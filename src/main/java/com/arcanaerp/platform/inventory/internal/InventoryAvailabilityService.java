@@ -72,6 +72,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
     private final InventoryTransferReversalIdempotencyRepository reversalIdempotencyRepository;
     private final InventoryReversalIdempotencyProperties reversalIdempotencyProperties;
     private final InventoryLocationRepository inventoryLocationRepository;
+    private final InventoryFacilityRepository inventoryFacilityRepository;
     private final Clock clock;
 
     @Override
@@ -266,7 +267,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
         validateReferencePair(referenceType, referenceId);
 
         ensureLocationExists(normalizedLocationCode);
-        ensureOptionalFacilityLocationExists(facilityCode);
+        ensureOptionalFacilityExists(facilityCode);
         InventoryItem item = findInventoryItem(normalizedSku, normalizedLocationCode);
 
         BigDecimal previousOnHand = item.getOnHandQuantity();
@@ -1845,14 +1846,14 @@ class InventoryAvailabilityService implements InventoryAvailability {
         }
     }
 
-    private void ensureOptionalFacilityLocationExists(String facilityCode) {
+    private void ensureOptionalFacilityExists(String facilityCode) {
         if (facilityCode == null) {
             return;
         }
-        InventoryLocation location = inventoryLocationRepository.findByCode(facilityCode)
-            .orElseThrow(() -> new NoSuchElementException("Inventory location not found for code: " + facilityCode));
-        if (!location.isActive()) {
-            throw new IllegalArgumentException("Inventory location is inactive: " + facilityCode);
+        InventoryFacility facility = inventoryFacilityRepository.findByCode(facilityCode)
+            .orElseThrow(() -> new NoSuchElementException("Inventory facility not found for code: " + facilityCode));
+        if (!facility.isActive()) {
+            throw new IllegalArgumentException("Inventory facility is inactive: " + facilityCode);
         }
     }
 }

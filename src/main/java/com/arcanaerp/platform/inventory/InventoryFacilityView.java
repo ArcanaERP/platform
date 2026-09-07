@@ -1,0 +1,22 @@
+package com.arcanaerp.platform.inventory;
+
+import java.time.Instant;
+import java.util.UUID;
+
+public record InventoryFacilityView(
+    UUID id,
+    String code,
+    String name,
+    String addressLine1,
+    String addressLine2,
+    String city,
+    String regionCode,
+    String postalCode,
+    String countryCode,
+    String contactName,
+    String contactEmail,
+    boolean active,
+    Instant createdAt,
+    Instant updatedAt
+) {
+}

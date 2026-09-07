@@ -86,6 +86,9 @@ class InventoryApiIntegrationTest {
     private InventoryLocationRepository inventoryLocationRepository;
 
     @Autowired
+    private InventoryFacilityRepository inventoryFacilityRepository;
+
+    @Autowired
     private InventoryLocationMetadataChangeAuditRepository locationMetadataChangeAuditRepository;
 
     @Autowired
@@ -137,6 +140,7 @@ class InventoryApiIntegrationTest {
         pickupDropoffTransactionRepository.deleteAll();
         inventoryAdjustmentRepository.deleteAll();
         inventoryItemRepository.deleteAll();
+        inventoryFacilityRepository.deleteAll();
         locationMetadataChangeAuditRepository.deleteAll();
         inventoryLocationRepository.deleteAll();
         inventoryLocationTypeRepository.deleteAll();
@@ -1070,6 +1074,56 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(0))
             .andExpect(jsonPath("$.items").isEmpty());
+    }
+
+    @Test
+    void createsReadsAndListsInventoryFacilities() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/facilities")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " dc-west ",
+                  "name": " West Distribution Center ",
+                  "addressLine1": " 200 Distribution Way ",
+                  "addressLine2": " Building 4 ",
+                  "city": " Reno ",
+                  "regionCode": " nv ",
+                  "postalCode": "89501",
+                  "countryCode": " us ",
+                  "contactName": " Facility Desk ",
+                  "contactEmail": " Facility@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.code").value("DC-WEST"))
+            .andExpect(jsonPath("$.name").value("West Distribution Center"))
+            .andExpect(jsonPath("$.addressLine1").value("200 Distribution Way"))
+            .andExpect(jsonPath("$.addressLine2").value("Building 4"))
+            .andExpect(jsonPath("$.city").value("Reno"))
+            .andExpect(jsonPath("$.regionCode").value("NV"))
+            .andExpect(jsonPath("$.postalCode").value("89501"))
+            .andExpect(jsonPath("$.countryCode").value("US"))
+            .andExpect(jsonPath("$.contactName").value("Facility Desk"))
+            .andExpect(jsonPath("$.contactEmail").value("facility@arcanaerp.com"))
+            .andExpect(jsonPath("$.active").value(true))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andExpect(jsonPath("$.updatedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/facilities/{code}", "dc-west"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("DC-WEST"))
+            .andExpect(jsonPath("$.name").value("West Distribution Center"))
+            .andExpect(jsonPath("$.countryCode").value("US"));
+
+        mockMvc.perform(get("/api/inventory/facilities")
+            .param("active", "true")
+            .param("query", "West")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].code").value("DC-WEST"));
     }
 
     @Test
@@ -2517,7 +2571,19 @@ class InventoryApiIntegrationTest {
                 SEED_INSTANT
             )
         );
-        inventoryLocationRepository.save(InventoryLocation.create("fulfill-west", "Fulfillment West", SEED_INSTANT));
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "fulfill-west",
+            "Fulfillment West",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9250")
             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
@@ -2600,7 +2666,19 @@ class InventoryApiIntegrationTest {
                 SEED_INSTANT
             )
         );
-        inventoryLocationRepository.save(InventoryLocation.create("dock-west", "Dock West", SEED_INSTANT));
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "dock-west",
+            "Dock West",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9251")
             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
@@ -2675,7 +2753,19 @@ class InventoryApiIntegrationTest {
                 SEED_INSTANT
             )
         );
-        inventoryLocationRepository.save(InventoryLocation.create("dock-east", "Dock East", SEED_INSTANT));
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "dock-east",
+            "Dock East",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9251a")
             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
@@ -2862,7 +2952,7 @@ class InventoryApiIntegrationTest {
             "/api/inventory/arc-9252/pickup-dropoffs"
         );
 
-        expectInventoryLocationNotFound(
+        expectInventoryFacilityNotFound(
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9252")
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                 .content("""
@@ -4266,6 +4356,15 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
             .andExpect(jsonPath("$.message").value("Inventory location not found for code: " + code))
+            .andExpect(jsonPath("$.path").value(path));
+    }
+
+    private void expectInventoryFacilityNotFound(ResultActions result, String code, String path) throws Exception {
+        result
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Inventory facility not found for code: " + code))
             .andExpect(jsonPath("$.path").value(path));
     }
 
