@@ -89,6 +89,9 @@ class InventoryApiIntegrationTest {
     private InventoryFacilityRepository inventoryFacilityRepository;
 
     @Autowired
+    private InventoryFixedAssetRepository inventoryFixedAssetRepository;
+
+    @Autowired
     private InventoryLocationMetadataChangeAuditRepository locationMetadataChangeAuditRepository;
 
     @Autowired
@@ -140,6 +143,7 @@ class InventoryApiIntegrationTest {
         pickupDropoffTransactionRepository.deleteAll();
         inventoryAdjustmentRepository.deleteAll();
         inventoryItemRepository.deleteAll();
+        inventoryFixedAssetRepository.deleteAll();
         inventoryFacilityRepository.deleteAll();
         locationMetadataChangeAuditRepository.deleteAll();
         inventoryLocationRepository.deleteAll();
@@ -1124,6 +1128,48 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].code").value("DC-WEST"));
+    }
+
+    @Test
+    void createsReadsAndListsInventoryFixedAssets() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/fixed-assets")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " truck-99 ",
+                  "description": " Delivery Truck 99 ",
+                  "fixedAssetTypeCode": " vehicle ",
+                  "comments": " Refrigerated box truck ",
+                  "externalIdentifier": "FA-0099",
+                  "externalIdSource": " legacy "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.code").value("TRUCK-99"))
+            .andExpect(jsonPath("$.description").value("Delivery Truck 99"))
+            .andExpect(jsonPath("$.fixedAssetTypeCode").value("VEHICLE"))
+            .andExpect(jsonPath("$.comments").value("Refrigerated box truck"))
+            .andExpect(jsonPath("$.externalIdentifier").value("FA-0099"))
+            .andExpect(jsonPath("$.externalIdSource").value("LEGACY"))
+            .andExpect(jsonPath("$.active").value(true))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andExpect(jsonPath("$.updatedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/fixed-assets/{code}", "truck-99"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("TRUCK-99"))
+            .andExpect(jsonPath("$.description").value("Delivery Truck 99"))
+            .andExpect(jsonPath("$.fixedAssetTypeCode").value("VEHICLE"));
+
+        mockMvc.perform(get("/api/inventory/fixed-assets")
+            .param("active", "true")
+            .param("query", "Delivery")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].code").value("TRUCK-99"));
     }
 
     @Test
@@ -2584,6 +2630,15 @@ class InventoryApiIntegrationTest {
             null,
             SEED_INSTANT
         ));
+        inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
+            "truck-7",
+            "Truck 7",
+            "vehicle",
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9250")
             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
@@ -2679,6 +2734,15 @@ class InventoryApiIntegrationTest {
             null,
             SEED_INSTANT
         ));
+        inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
+            "forklift-11",
+            "Forklift 11",
+            "equipment",
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9251")
             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
@@ -2761,6 +2825,15 @@ class InventoryApiIntegrationTest {
             null,
             null,
             null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
+            "trailer-12",
+            "Trailer 12",
+            "trailer",
             null,
             null,
             null,
@@ -2966,6 +3039,23 @@ class InventoryApiIntegrationTest {
                     }
                     """)),
             "MISSING-FACILITY",
+            "/api/inventory/arc-9252/pickup-dropoffs"
+        );
+
+        expectInventoryFixedAssetNotFound(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9252")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "locationCode": "main",
+                      "transactionTypeCode": "pickup",
+                      "quantity": 1,
+                      "reason": "Unknown fixed asset",
+                      "handledBy": "ops@arcanaerp.com",
+                      "fixedAssetCode": "missing-asset"
+                    }
+                    """)),
+            "MISSING-ASSET",
             "/api/inventory/arc-9252/pickup-dropoffs"
         );
     }
@@ -4365,6 +4455,15 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.status").value(404))
             .andExpect(jsonPath("$.error").value("Not Found"))
             .andExpect(jsonPath("$.message").value("Inventory facility not found for code: " + code))
+            .andExpect(jsonPath("$.path").value(path));
+    }
+
+    private void expectInventoryFixedAssetNotFound(ResultActions result, String code, String path) throws Exception {
+        result
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Inventory fixed asset not found for code: " + code))
             .andExpect(jsonPath("$.path").value(path));
     }
 

@@ -13,6 +13,7 @@ erDiagram
     INVENTORY_ITEMS ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : to_item
     INVENTORY_ENTRY_RELATIONSHIPS ||--o{ INVENTORY_ENTRY_RELATIONSHIP_STATUS_CHANGE_AUDITS : records_status_changes
     INVENTORY_FACILITIES ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : traces_facility
+    INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : traces_asset
     INVENTORY_ITEMS ||--o{ INVENTORY_PRODUCT_INSTANCE_ASSIGNMENTS : assigns_product_instances
     INVENTORY_PRODUCT_INSTANCE_ASSIGNMENTS ||--o{ INVENTORY_PRODUCT_INSTANCE_ASSIGNMENT_RELEASE_AUDITS : records_releases
     INVENTORY_ITEMS ||--o{ INVENTORY_ITEM_LOCATION_ASSIGNMENTS : assigns_locations
@@ -92,6 +93,19 @@ erDiagram
       STRING countryCode
       STRING contactName
       STRING contactEmail
+      BOOLEAN active
+      INSTANT createdAt
+      INSTANT updatedAt
+    }
+
+    INVENTORY_FIXED_ASSETS {
+      UUID id PK
+      STRING code UK
+      STRING description
+      STRING fixedAssetTypeCode
+      STRING comments
+      STRING externalIdentifier
+      STRING externalIdSource
       BOOLEAN active
       INSTANT createdAt
       INSTANT updatedAt
@@ -317,6 +331,7 @@ erDiagram
 - Inventory entry relationships support optional `fromDate` and `thruDate` validity windows.
 - Inventory entry relationship status changes are append-only via `inventory_entry_relationship_status_change_audits`.
 - Inventory facilities are a first-class catalog for legacy facility traceability; facility codes normalize to uppercase.
+- Inventory fixed assets are a first-class catalog for legacy fixed-asset traceability; fixed asset codes and type codes normalize to uppercase.
 - Inventory product-instance assignments are explicit cross-reference rows from inventory items to product instance codes.
 - Inventory product-instance assignment releases are append-only via `inventory_product_instance_assignment_release_audits`.
 - Inventory item-location assignments track valid-from/valid-thru placement history without mutating the stock row key.
@@ -343,7 +358,7 @@ erDiagram
 - `inventory_item_location_assignment_end_audits.assignmentId` is a logical reference to `inventory_item_location_assignments.id`.
 - Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` and `inventory_items.availableQuantity` store latest per-location state.
 - Pickup/dropoff transactions are append-only via `inventory_pickup_dropoff_transactions`; `PICKUP` decreases on-hand stock and `DROPOFF` increases on-hand stock through a linked adjustment row.
-- Pickup/dropoff transactions can carry optional `fixedAssetCode` and `facilityCode` values for legacy fixed-asset/facility traceability; `facilityCode` must match an active inventory facility.
+- Pickup/dropoff transactions can carry optional `fixedAssetCode` and `facilityCode` values for legacy fixed-asset/facility traceability; `fixedAssetCode` must match an active inventory fixed asset and `facilityCode` must match an active inventory facility.
 - Inventory item availability changes are append-only via `inventory_item_availability_change_audits`.
 - Inventory item metadata changes are append-only via `inventory_item_metadata_change_audits`.
 - Inventory item owner changes are append-only via `inventory_item_owner_change_audits`.
@@ -363,6 +378,7 @@ erDiagram
   - `inventory_entry_relationship_types(code)`
   - `inventory_entry_role_types(code)`
   - `inventory_facilities(code)`
+  - `inventory_fixed_assets(code)`
   - `inventory_product_instance_assignments(inventoryItemId, productInstanceCode)`
   - `inventory_locations(code)`
   - `inventory_items(sku, locationCode)`
@@ -370,6 +386,7 @@ erDiagram
   - `inventory_transfer_reversal_idempotency(transferId, idempotencyKey)`
 - Indexes:
   - `inventory_facilities(active, code)`
+  - `inventory_fixed_assets(active, code)`
   - `inventory_adjustments(inventoryItemId, adjustedAt)`
   - `inventory_adjustments(inventoryItemId, adjustedBy, adjustedAt)`
   - `inventory_adjustments(transferId)`
@@ -453,6 +470,9 @@ erDiagram
 - `POST /api/inventory/facilities`
 - `GET /api/inventory/facilities/{code}`
 - `GET /api/inventory/facilities?page=&size=&active=&query=`
+- `POST /api/inventory/fixed-assets`
+- `GET /api/inventory/fixed-assets/{code}`
+- `GET /api/inventory/fixed-assets?page=&size=&active=&query=`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
 - `GET /api/inventory/{sku}/adjustments?page=&size=&locationCode=&adjustedBy=&adjustedAtFrom=&adjustedAtTo=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)

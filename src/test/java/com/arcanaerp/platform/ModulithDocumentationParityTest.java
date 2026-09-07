@@ -47,6 +47,9 @@ class ModulithDocumentationParityTest {
     private static final Path INVENTORY_FACILITY_CONTROLLER = Path.of(
         "src/main/java/com/arcanaerp/platform/inventory/web/InventoryFacilityController.java"
     );
+    private static final Path INVENTORY_FIXED_ASSET_CONTROLLER = Path.of(
+        "src/main/java/com/arcanaerp/platform/inventory/web/InventoryFixedAssetController.java"
+    );
     private static final Path INVENTORY_LOCATION_TYPE_CONTROLLER = Path.of(
         "src/main/java/com/arcanaerp/platform/inventory/web/InventoryLocationTypeController.java"
     );
@@ -123,6 +126,7 @@ class ModulithDocumentationParityTest {
             INVENTORY_DATA_MODEL,
             INVENTORY_CONTROLLER,
             INVENTORY_FACILITY_CONTROLLER,
+            INVENTORY_FIXED_ASSET_CONTROLLER,
             INVENTORY_LOCATION_CONTROLLER,
             INVENTORY_LOCATION_TYPE_CONTROLLER,
             INVENTORY_ITEM_CONTROLLER,

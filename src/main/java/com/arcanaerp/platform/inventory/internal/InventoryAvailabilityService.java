@@ -73,6 +73,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
     private final InventoryReversalIdempotencyProperties reversalIdempotencyProperties;
     private final InventoryLocationRepository inventoryLocationRepository;
     private final InventoryFacilityRepository inventoryFacilityRepository;
+    private final InventoryFixedAssetRepository inventoryFixedAssetRepository;
     private final Clock clock;
 
     @Override
@@ -267,6 +268,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
         validateReferencePair(referenceType, referenceId);
 
         ensureLocationExists(normalizedLocationCode);
+        ensureOptionalFixedAssetExists(fixedAssetCode);
         ensureOptionalFacilityExists(facilityCode);
         InventoryItem item = findInventoryItem(normalizedSku, normalizedLocationCode);
 
@@ -1854,6 +1856,17 @@ class InventoryAvailabilityService implements InventoryAvailability {
             .orElseThrow(() -> new NoSuchElementException("Inventory facility not found for code: " + facilityCode));
         if (!facility.isActive()) {
             throw new IllegalArgumentException("Inventory facility is inactive: " + facilityCode);
+        }
+    }
+
+    private void ensureOptionalFixedAssetExists(String fixedAssetCode) {
+        if (fixedAssetCode == null) {
+            return;
+        }
+        InventoryFixedAsset fixedAsset = inventoryFixedAssetRepository.findByCode(fixedAssetCode)
+            .orElseThrow(() -> new NoSuchElementException("Inventory fixed asset not found for code: " + fixedAssetCode));
+        if (!fixedAsset.isActive()) {
+            throw new IllegalArgumentException("Inventory fixed asset is inactive: " + fixedAssetCode);
         }
     }
 }
