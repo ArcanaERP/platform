@@ -319,6 +319,7 @@ Inventory:
 - Inventory item UOM codes are validated against `POST /api/core/units-of-measurement` reference data.
 - Inventory item registration accepts optional `availableQuantity` and `soldQuantity`; available defaults to on-hand, sold defaults to zero.
 - Inventory items support optional external reference and source-system metadata for legacy inventory-entry traceability.
+- Inventory item `sourceSystemCode + externalReference` pairs are unique when both values are supplied.
 - Inventory items support optional owner metadata through `ownerTenantCode`, `ownerUserId`, and `ownerRoleCode`; supplied owner triples are validated against identity users and roles.
 - Inventory location `facilityTypeCode` values are validated against `POST /api/inventory/location-types` reference data.
 - Inventory entry relationship and role types are reference data for entry relationship records.

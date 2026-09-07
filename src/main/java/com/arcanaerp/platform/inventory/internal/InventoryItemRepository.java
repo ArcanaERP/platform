@@ -12,6 +12,8 @@ interface InventoryItemRepository extends JpaRepository<InventoryItem, UUID> {
 
     Optional<InventoryItem> findBySkuAndLocationCode(String sku, String locationCode);
 
+    Optional<InventoryItem> findBySourceSystemCodeAndExternalReference(String sourceSystemCode, String externalReference);
+
     boolean existsBySku(String sku);
 
     @Query(

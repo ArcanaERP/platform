@@ -18,10 +18,16 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
     name = "inventory_items",
-    uniqueConstraints = @UniqueConstraint(
-        name = "uk_inventory_items_sku_location",
-        columnNames = {"sku", "locationCode"}
-    ),
+    uniqueConstraints = {
+        @UniqueConstraint(
+            name = "uk_inventory_items_sku_location",
+            columnNames = {"sku", "locationCode"}
+        ),
+        @UniqueConstraint(
+            name = "uk_inventory_items_source_external_ref",
+            columnNames = {"sourceSystemCode", "externalReference"}
+        )
+    },
     indexes = {
         @Index(name = "idx_inventory_items_external_reference", columnList = "externalReference"),
         @Index(name = "idx_inventory_items_source_system", columnList = "sourceSystemCode"),
@@ -153,6 +159,33 @@ public class InventoryItem {
             null,
             null,
             null,
+            null,
+            null,
+            null,
+            updatedAt
+        );
+    }
+
+    static InventoryItem create(
+        String sku,
+        String locationCode,
+        BigDecimal onHandQuantity,
+        String unitOfMeasurementCode,
+        String classificationCode,
+        String productInstanceCode,
+        String externalReference,
+        String sourceSystemCode,
+        Instant updatedAt
+    ) {
+        return create(
+            sku,
+            locationCode,
+            onHandQuantity,
+            unitOfMeasurementCode,
+            classificationCode,
+            productInstanceCode,
+            externalReference,
+            sourceSystemCode,
             null,
             null,
             null,

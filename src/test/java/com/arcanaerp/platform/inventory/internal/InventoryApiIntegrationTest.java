@@ -1677,6 +1677,39 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void rejectsDuplicateInventoryItemExternalReferenceWithinSourceSystem() throws Exception {
+        String payload = """
+            {
+              "sku": "arc-9251a",
+              "locationCode": "wh-ext-ref-a",
+              "onHandQuantity": 1,
+              "externalReference": "legacy-entry-9251",
+              "sourceSystemCode": "legacy_inv"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/items")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/items")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "sku": "arc-9251b",
+                      "locationCode": "wh-ext-ref-b",
+                      "onHandQuantity": 1,
+                      "externalReference": "legacy-entry-9251",
+                      "sourceSystemCode": "legacy_inv"
+                    }
+                    """)),
+            "Inventory item external reference already exists for source system: LEGACY_INV/legacy-entry-9251",
+            "/api/inventory/items"
+        );
+    }
+
+    @Test
     void rejectsInventoryItemRegistrationAtInactiveLocation() throws Exception {
         InventoryLocation inactiveLocation = inventoryLocationRepository.save(
             InventoryLocation.create("wh-inactive-item", "Inactive Item Warehouse", SEED_INSTANT)
@@ -1875,6 +1908,53 @@ class InventoryApiIntegrationTest {
                     """)),
             "Unit of measurement not found: CRATE",
             "/api/inventory/items/arc-9253a/locations/wh-uom-update/metadata"
+        );
+    }
+
+    @Test
+    void rejectsInventoryItemMetadataUpdateWithDuplicateExternalReferenceWithinSourceSystem() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9253b",
+                "wh-ext-update-a",
+                new BigDecimal("5"),
+                "case",
+                "quarantine",
+                null,
+                "legacy-entry-9253",
+                "legacy_inv",
+                SEED_INSTANT
+            )
+        );
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9253c",
+                "wh-ext-update-b",
+                new BigDecimal("5"),
+                "case",
+                "quarantine",
+                SEED_INSTANT
+            )
+        );
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/items/{sku}/locations/{locationCode}/metadata",
+                "arc-9253c",
+                "wh-ext-update-b"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "unitOfMeasurementCode": "case",
+                      "classificationCode": "available",
+                      "externalReference": "legacy-entry-9253",
+                      "sourceSystemCode": "legacy_inv",
+                      "changedBy": "inventory.ops@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory item external reference already exists for source system: LEGACY_INV/legacy-entry-9253",
+            "/api/inventory/items/arc-9253c/locations/wh-ext-update-b/metadata"
         );
     }
 

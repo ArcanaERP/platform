@@ -65,6 +65,9 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
         }
         String unitOfMeasurementCode = normalizeOptionalCode(command.unitOfMeasurementCode(), "unitOfMeasurementCode", "EA");
         ensureUnitOfMeasurementExists(unitOfMeasurementCode);
+        String externalReference = normalizeOptionalExternalReference(command.externalReference());
+        String sourceSystemCode = normalizeOptionalCode(command.sourceSystemCode(), "sourceSystemCode");
+        ensureExternalReferenceAvailable(sourceSystemCode, externalReference, null);
         OwnerAssignment ownerAssignment = resolveOwnerAssignment(
             command.ownerTenantCode(),
             command.ownerUserId(),
@@ -80,8 +83,8 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             unitOfMeasurementCode,
             normalizeOptionalCode(command.classificationCode(), "classificationCode", "ON_HAND"),
             normalizeOptionalCode(command.productInstanceCode(), "productInstanceCode"),
-            normalizeOptionalExternalReference(command.externalReference()),
-            normalizeOptionalCode(command.sourceSystemCode(), "sourceSystemCode"),
+            externalReference,
+            sourceSystemCode,
             ownerAssignment.ownerTenantCode(),
             ownerAssignment.ownerUserId(),
             ownerAssignment.ownerRoleCode(),
@@ -121,6 +124,9 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
         String previousOwnerRoleCode = item.getOwnerRoleCode();
         Instant changedAt = Instant.now(clock);
         ensureUnitOfMeasurementExists(command.unitOfMeasurementCode());
+        String externalReference = normalizeOptionalExternalReference(command.externalReference());
+        String sourceSystemCode = normalizeOptionalCode(command.sourceSystemCode(), "sourceSystemCode");
+        ensureExternalReferenceAvailable(sourceSystemCode, externalReference, item.getId());
         OwnerAssignment ownerAssignment = resolveOwnerAssignment(
             command.ownerTenantCode(),
             command.ownerUserId(),
@@ -130,8 +136,8 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             command.unitOfMeasurementCode(),
             command.classificationCode(),
             command.productInstanceCode(),
-            command.externalReference(),
-            command.sourceSystemCode(),
+            externalReference,
+            sourceSystemCode,
             ownerAssignment.ownerTenantCode(),
             ownerAssignment.ownerUserId(),
             ownerAssignment.ownerRoleCode(),
@@ -391,6 +397,22 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
 
     private static String normalizeOptionalExternalReference(String value) {
         return value == null ? null : normalizeRequired(value, "externalReference");
+    }
+
+    private void ensureExternalReferenceAvailable(String sourceSystemCode, String externalReference, UUID currentItemId) {
+        if (sourceSystemCode == null || externalReference == null) {
+            return;
+        }
+        inventoryItemRepository.findBySourceSystemCodeAndExternalReference(sourceSystemCode, externalReference)
+            .filter(item -> currentItemId == null || !item.getId().equals(currentItemId))
+            .ifPresent(item -> {
+                throw new ConflictException(
+                    "Inventory item external reference already exists for source system: "
+                        + sourceSystemCode
+                        + "/"
+                        + externalReference
+                );
+            });
     }
 
     private OwnerAssignment resolveOwnerAssignment(String ownerTenantCode, String ownerUserId, String ownerRoleCode) {

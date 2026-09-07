@@ -270,6 +270,7 @@ erDiagram
 - Inventory item state carries `onHandQuantity`, `availableQuantity`, and `soldQuantity` for legacy inventory-entry parity with `number_in_stock`, `number_available`, and `number_sold`.
 - Inventory item metadata carries `unitOfMeasurementCode`, `classificationCode`, optional `productInstanceCode`, optional `externalReference`, optional `sourceSystemCode`, and optional owner fields for legacy inventory-entry parity.
 - Inventory item `unitOfMeasurementCode` values are validated against the core UOM catalog at item registration and metadata update boundaries.
+- Inventory item `sourceSystemCode + externalReference` pairs are unique when both values are supplied.
 - `inventory_items.locationCode` aligns with `inventory_locations.code` (code-based location reference).
 - `inventory_adjustments.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_item_metadata_change_audits.inventoryItemId` is a logical reference to `inventory_items.id`.
@@ -301,6 +302,7 @@ erDiagram
   - `inventory_product_instance_assignments(inventoryItemId, productInstanceCode)`
   - `inventory_locations(code)`
   - `inventory_items(sku, locationCode)`
+  - `inventory_items(sourceSystemCode, externalReference)`
   - `inventory_transfer_reversal_idempotency(transferId, idempotencyKey)`
 - Indexes:
   - `inventory_adjustments(inventoryItemId, adjustedAt)`
@@ -423,6 +425,7 @@ erDiagram
 - inventory item product instance codes are optional and normalized to uppercase when supplied
 - inventory item external references are optional and trimmed when supplied
 - inventory item source system codes are optional and normalized to uppercase when supplied
+- inventory item writes reject duplicate `sourceSystemCode + externalReference` pairs when both values are supplied
 - inventory item owner metadata is optional, but `ownerTenantCode`, `ownerUserId`, and `ownerRoleCode` must be supplied together
 - inventory item owner metadata validates that the owner user exists, is active, belongs to `ownerTenantCode`, and has `ownerRoleCode`
 - supplied and default inventory item UOM codes must exist in the core unit-of-measurement catalog
