@@ -22,6 +22,7 @@ erDiagram
     INVENTORY_ITEMS ||--o{ INVENTORY_ADJUSTMENTS : records_movements
     INVENTORY_ITEMS ||--o{ INVENTORY_ITEM_AVAILABILITY_CHANGE_AUDITS : records_availability_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_ITEM_METADATA_CHANGE_AUDITS : records_metadata_changes
+    INVENTORY_ITEMS ||--o{ INVENTORY_ITEM_OWNER_CHANGE_AUDITS : records_owner_changes
     INVENTORY_ADJUSTMENTS ||--o{ INVENTORY_TRANSFER_REVERSAL_IDEMPOTENCY : replays
 
     INVENTORY_LOCATION_TYPES {
@@ -227,6 +228,21 @@ erDiagram
       INSTANT changedAt
     }
 
+    INVENTORY_ITEM_OWNER_CHANGE_AUDITS {
+      UUID id PK
+      UUID inventoryItemId
+      STRING sku
+      STRING locationCode
+      STRING previousOwnerTenantCode
+      STRING currentOwnerTenantCode
+      UUID previousOwnerUserId
+      UUID currentOwnerUserId
+      STRING previousOwnerRoleCode
+      STRING currentOwnerRoleCode
+      STRING changedBy
+      INSTANT changedAt
+    }
+
     INVENTORY_ITEM_AVAILABILITY_CHANGE_AUDITS {
       UUID id PK
       UUID inventoryItemId
@@ -274,6 +290,7 @@ erDiagram
 - `inventory_items.locationCode` aligns with `inventory_locations.code` (code-based location reference).
 - `inventory_adjustments.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_item_metadata_change_audits.inventoryItemId` is a logical reference to `inventory_items.id`.
+- `inventory_item_owner_change_audits.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_entry_relationships.fromInventoryItemId` and `toInventoryItemId` are logical references to `inventory_items.id`.
 - `inventory_entry_relationship_status_change_audits.relationshipId` is a logical reference to `inventory_entry_relationships.id`.
 - `inventory_product_instance_assignments.inventoryItemId` is a logical reference to `inventory_items.id`.
@@ -284,6 +301,7 @@ erDiagram
 - Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` and `inventory_items.availableQuantity` store latest per-location state.
 - Inventory item availability changes are append-only via `inventory_item_availability_change_audits`.
 - Inventory item metadata changes are append-only via `inventory_item_metadata_change_audits`.
+- Inventory item owner changes are append-only via `inventory_item_owner_change_audits`.
 - Location transfers write two adjustment rows with a shared `transferId` (source negative delta, destination positive delta).
 - Destination stock rows created by transfers copy the source item's UOM, classification, and product-instance metadata.
 - Transfer rows can optionally carry source-document metadata (`referenceType`, `referenceId`) for parity traceability.
@@ -313,6 +331,8 @@ erDiagram
   - `inventory_location_metadata_change_audits(locationCode, changedAt)`
   - `inventory_item_metadata_change_audits(inventoryItemId, changedAt)`
   - `inventory_item_metadata_change_audits(sku, locationCode, changedAt)`
+  - `inventory_item_owner_change_audits(inventoryItemId, changedAt)`
+  - `inventory_item_owner_change_audits(sku, locationCode, changedAt)`
   - `inventory_item_availability_change_audits(inventoryItemId, changedAt)`
   - `inventory_item_availability_change_audits(sku, locationCode, changedAt)`
   - `inventory_entry_relationships(relationshipTypeCode)`
@@ -376,6 +396,7 @@ erDiagram
 - `GET /api/inventory/items/{sku}/locations/{locationCode}/availability-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `PATCH /api/inventory/items/{sku}/locations/{locationCode}/metadata`
 - `GET /api/inventory/items/{sku}/locations/{locationCode}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/inventory/items/{sku}/locations/{locationCode}/owner-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
 - `GET /api/inventory/{sku}/adjustments?page=&size=&locationCode=&adjustedBy=&adjustedAtFrom=&adjustedAtTo=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)
@@ -432,6 +453,7 @@ erDiagram
 - inventory item list filters match normalized `sku`, `locationCode`, `unitOfMeasurementCode`, `classificationCode`, `productInstanceCode`, `externalReference`, `sourceSystemCode`, `ownerTenantCode`, `ownerUserId`, and `ownerRoleCode` values
 - inventory item metadata updates preserve on-hand quantity, require `changedBy`, reject no-op changes, and append audit rows
 - inventory item metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
+- inventory item owner history records only changes to owner tenant, owner user, or owner role and filters by lowercase `changedBy` plus inclusive UTC `changedAt` ranges
 - adjustment activity summaries bucket append-only `inventory_adjustments` rows by UTC `adjustedAt`
 - weekly adjustment activity summaries use Monday as the business week start
 - adjustment activity rows include `adjustmentCount` and `netQuantityDelta` for the requested `sku + locationCode`

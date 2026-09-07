@@ -10,6 +10,7 @@ import com.arcanaerp.platform.identity.UserView;
 import com.arcanaerp.platform.inventory.InventoryItemDirectory;
 import com.arcanaerp.platform.inventory.InventoryItemAvailabilityChangeView;
 import com.arcanaerp.platform.inventory.InventoryItemMetadataChangeView;
+import com.arcanaerp.platform.inventory.InventoryItemOwnerChangeView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
 import com.arcanaerp.platform.inventory.RegisterInventoryItemCommand;
 import com.arcanaerp.platform.inventory.UpdateInventoryItemAvailabilityCommand;
@@ -32,6 +33,7 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
 
     private final InventoryItemRepository inventoryItemRepository;
     private final InventoryItemMetadataChangeAuditRepository metadataChangeAuditRepository;
+    private final InventoryItemOwnerChangeAuditRepository ownerChangeAuditRepository;
     private final InventoryItemAvailabilityChangeAuditRepository availabilityChangeAuditRepository;
     private final InventoryLocationRepository inventoryLocationRepository;
     private final UnitOfMeasurementDirectory unitOfMeasurementDirectory;
@@ -144,6 +146,21 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             changedAt
         );
         String changedBy = normalizeRequired(command.changedBy(), "changedBy").toLowerCase();
+        if (ownerChanged(previousOwnerTenantCode, item.getOwnerTenantCode(), previousOwnerUserId, item.getOwnerUserId(), previousOwnerRoleCode, item.getOwnerRoleCode())) {
+            ownerChangeAuditRepository.save(InventoryItemOwnerChangeAudit.create(
+                item.getId(),
+                item.getSku(),
+                item.getLocationCode(),
+                previousOwnerTenantCode,
+                item.getOwnerTenantCode(),
+                previousOwnerUserId,
+                item.getOwnerUserId(),
+                previousOwnerRoleCode,
+                item.getOwnerRoleCode(),
+                changedBy,
+                changedAt
+            ));
+        }
         metadataChangeAuditRepository.save(InventoryItemMetadataChangeAudit.create(
             item.getId(),
             item.getSku(),
@@ -258,6 +275,27 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
         );
         return PageResult.from(history).map(this::toMetadataChangeView);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<InventoryItemOwnerChangeView> listOwnerHistory(
+        String sku,
+        String locationCode,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        InventoryItem item = findItem(sku, locationCode);
+        Page<InventoryItemOwnerChangeAudit> history = ownerChangeAuditRepository.findHistoryFiltered(
+            item.getId(),
+            normalizeOptionalChangedBy(changedBy),
+            changedAtFrom,
+            changedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
+        );
+        return PageResult.from(history).map(this::toOwnerChangeView);
     }
 
     @Override
@@ -380,6 +418,22 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
         );
     }
 
+    private InventoryItemOwnerChangeView toOwnerChangeView(InventoryItemOwnerChangeAudit audit) {
+        return new InventoryItemOwnerChangeView(
+            audit.getId(),
+            audit.getSku(),
+            audit.getLocationCode(),
+            audit.getPreviousOwnerTenantCode(),
+            audit.getCurrentOwnerTenantCode(),
+            audit.getPreviousOwnerUserId(),
+            audit.getCurrentOwnerUserId(),
+            audit.getPreviousOwnerRoleCode(),
+            audit.getCurrentOwnerRoleCode(),
+            audit.getChangedBy(),
+            audit.getChangedAt()
+        );
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");
@@ -454,6 +508,23 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException(fieldName + " must be a valid UUID", exception);
         }
+    }
+
+    private static boolean ownerChanged(
+        String previousOwnerTenantCode,
+        String currentOwnerTenantCode,
+        UUID previousOwnerUserId,
+        UUID currentOwnerUserId,
+        String previousOwnerRoleCode,
+        String currentOwnerRoleCode
+    ) {
+        return !equalsNullable(previousOwnerTenantCode, currentOwnerTenantCode)
+            || !equalsNullable(previousOwnerUserId, currentOwnerUserId)
+            || !equalsNullable(previousOwnerRoleCode, currentOwnerRoleCode);
+    }
+
+    private static boolean equalsNullable(Object left, Object right) {
+        return left == null ? right == null : left.equals(right);
     }
 
     private static String normalizeOptionalChangedBy(String value) {

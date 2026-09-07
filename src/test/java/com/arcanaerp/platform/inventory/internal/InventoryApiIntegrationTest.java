@@ -65,6 +65,9 @@ class InventoryApiIntegrationTest {
     private InventoryItemMetadataChangeAuditRepository metadataChangeAuditRepository;
 
     @Autowired
+    private InventoryItemOwnerChangeAuditRepository ownerChangeAuditRepository;
+
+    @Autowired
     private InventoryItemAvailabilityChangeAuditRepository availabilityChangeAuditRepository;
 
     @Autowired
@@ -126,6 +129,7 @@ class InventoryApiIntegrationTest {
         inventoryItemLocationAssignmentEndAuditRepository.deleteAll();
         inventoryItemLocationAssignmentRepository.deleteAll();
         availabilityChangeAuditRepository.deleteAll();
+        ownerChangeAuditRepository.deleteAll();
         metadataChangeAuditRepository.deleteAll();
         inventoryAdjustmentRepository.deleteAll();
         inventoryItemRepository.deleteAll();
@@ -1581,6 +1585,23 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.items[0].currentExternalReference").value("legacy-entry-101"))
             .andExpect(jsonPath("$.items[0].previousSourceSystemCode").value("LEGACY_INV"))
             .andExpect(jsonPath("$.items[0].currentSourceSystemCode").value("WAREHOUSE_MIGRATION"))
+            .andExpect(jsonPath("$.items[0].previousOwnerTenantCode").value("INVENTORYOWN01"))
+            .andExpect(jsonPath("$.items[0].currentOwnerTenantCode").value("INVENTORYOWN01"))
+            .andExpect(jsonPath("$.items[0].previousOwnerUserId").value(owner.id().toString()))
+            .andExpect(jsonPath("$.items[0].currentOwnerUserId").value(nextOwner.id().toString()))
+            .andExpect(jsonPath("$.items[0].previousOwnerRoleCode").value("KEEPER"))
+            .andExpect(jsonPath("$.items[0].currentOwnerRoleCode").value("MANAGER"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("inventory.ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/items/{sku}/locations/{locationCode}/owner-history", "arc-9250", "wh-item")
+            .param("changedBy", "inventory.ops@arcanaerp.com")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].sku").value("ARC-9250"))
+            .andExpect(jsonPath("$.items[0].locationCode").value("WH-ITEM"))
             .andExpect(jsonPath("$.items[0].previousOwnerTenantCode").value("INVENTORYOWN01"))
             .andExpect(jsonPath("$.items[0].currentOwnerTenantCode").value("INVENTORYOWN01"))
             .andExpect(jsonPath("$.items[0].previousOwnerUserId").value(owner.id().toString()))

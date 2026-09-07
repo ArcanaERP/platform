@@ -32,6 +32,15 @@ public interface InventoryItemDirectory {
         PageQuery pageQuery
     );
 
+    PageResult<InventoryItemOwnerChangeView> listOwnerHistory(
+        String sku,
+        String locationCode,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<InventoryItemView> listItems(
         String sku,
         String locationCode,

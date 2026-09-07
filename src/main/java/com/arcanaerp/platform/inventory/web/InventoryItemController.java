@@ -5,6 +5,7 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.InventoryItemDirectory;
 import com.arcanaerp.platform.inventory.InventoryItemAvailabilityChangeView;
 import com.arcanaerp.platform.inventory.InventoryItemMetadataChangeView;
+import com.arcanaerp.platform.inventory.InventoryItemOwnerChangeView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
 import com.arcanaerp.platform.inventory.RegisterInventoryItemCommand;
 import com.arcanaerp.platform.inventory.UpdateInventoryItemAvailabilityCommand;
@@ -151,6 +152,29 @@ public class InventoryItemController {
         ).map(this::toMetadataChangeResponse);
     }
 
+    @GetMapping("/{sku}/locations/{locationCode}/owner-history")
+    public PageResult<InventoryItemOwnerChangeResponse> listOwnerHistory(
+        @PathVariable String sku,
+        @PathVariable String locationCode,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return inventoryItemDirectory.listOwnerHistory(
+            sku,
+            locationCode,
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toOwnerChangeResponse);
+    }
+
     @GetMapping
     public PageResult<InventoryItemResponse> listItems(
         @RequestParam(required = false) String sku,
@@ -233,6 +257,22 @@ public class InventoryItemController {
             change.currentExternalReference(),
             change.previousSourceSystemCode(),
             change.currentSourceSystemCode(),
+            change.previousOwnerTenantCode(),
+            change.currentOwnerTenantCode(),
+            change.previousOwnerUserId(),
+            change.currentOwnerUserId(),
+            change.previousOwnerRoleCode(),
+            change.currentOwnerRoleCode(),
+            change.changedBy(),
+            change.changedAt()
+        );
+    }
+
+    private InventoryItemOwnerChangeResponse toOwnerChangeResponse(InventoryItemOwnerChangeView change) {
+        return new InventoryItemOwnerChangeResponse(
+            change.id(),
+            change.sku(),
+            change.locationCode(),
             change.previousOwnerTenantCode(),
             change.currentOwnerTenantCode(),
             change.previousOwnerUserId(),
