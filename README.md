@@ -323,6 +323,7 @@ Inventory:
 - Inventory items support optional owner metadata through `ownerTenantCode`, `ownerUserId`, and `ownerRoleCode`; supplied owner triples are validated against identity users and roles.
 - Inventory facilities provide a first-class facility catalog for pickup/dropoff traceability.
 - Inventory fixed assets provide a first-class asset catalog for pickup/dropoff traceability.
+- Inventory fixed asset `fixedAssetTypeCode` values are validated against `POST /api/inventory/fixed-asset-types` reference data.
 - Inventory location `facilityTypeCode` values are validated against `POST /api/inventory/location-types` reference data.
 - Inventory entry relationship and role types are reference data for entry relationship records.
 - Inventory entry relationships support optional `fromDate` and `thruDate` validity windows.
@@ -331,6 +332,9 @@ Inventory:
 - `POST /api/inventory/location-types`
 - `GET /api/inventory/location-types/{code}`
 - `GET /api/inventory/location-types?page=&size=`
+- `POST /api/inventory/fixed-asset-types`
+- `GET /api/inventory/fixed-asset-types/{code}`
+- `GET /api/inventory/fixed-asset-types?page=&size=`
 - `POST /api/inventory/entry-relationship-types`
 - `GET /api/inventory/entry-relationship-types/{code}`
 - `GET /api/inventory/entry-relationship-types?page=&size=`

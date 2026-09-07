@@ -92,6 +92,9 @@ class InventoryApiIntegrationTest {
     private InventoryFixedAssetRepository inventoryFixedAssetRepository;
 
     @Autowired
+    private InventoryFixedAssetTypeRepository inventoryFixedAssetTypeRepository;
+
+    @Autowired
     private InventoryLocationMetadataChangeAuditRepository locationMetadataChangeAuditRepository;
 
     @Autowired
@@ -144,6 +147,7 @@ class InventoryApiIntegrationTest {
         inventoryAdjustmentRepository.deleteAll();
         inventoryItemRepository.deleteAll();
         inventoryFixedAssetRepository.deleteAll();
+        inventoryFixedAssetTypeRepository.deleteAll();
         inventoryFacilityRepository.deleteAll();
         locationMetadataChangeAuditRepository.deleteAll();
         inventoryLocationRepository.deleteAll();
@@ -152,6 +156,7 @@ class InventoryApiIntegrationTest {
         inventoryEntryRoleTypeRepository.deleteAll();
         seedLocationType("WAREHOUSE", "Warehouse");
         seedLocationType("STORE", "Store");
+        seedFixedAssetType("VEHICLE", "Vehicle");
         ensureUnitOfMeasurement("EA", "Each");
         ensureUnitOfMeasurement("CASE", "Case");
         ensureUnitOfMeasurement("EACH", "Each alternate");
@@ -291,6 +296,58 @@ class InventoryApiIntegrationTest {
                 .content(payload)),
             "Inventory location type already exists for code: CROSS_DOCK",
             "/api/inventory/location-types"
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryFixedAssetTypes() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/fixed-asset-types")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " forklift ",
+                  "description": " Forklift "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.code").value("FORKLIFT"))
+            .andExpect(jsonPath("$.description").value("Forklift"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/fixed-asset-types/{code}", "forklift"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("FORKLIFT"))
+            .andExpect(jsonPath("$.description").value("Forklift"));
+
+        mockMvc.perform(get("/api/inventory/fixed-asset-types")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].code").value("FORKLIFT"))
+            .andExpect(jsonPath("$.items[1].code").value("VEHICLE"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryFixedAssetTypeCode() throws Exception {
+        String payload = """
+            {
+              "code": "forklift",
+              "description": "Forklift"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/fixed-asset-types")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/fixed-asset-types")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory fixed asset type already exists for code: FORKLIFT",
+            "/api/inventory/fixed-asset-types"
         );
     }
 
@@ -1170,6 +1227,23 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].code").value("TRUCK-99"));
+    }
+
+    @Test
+    void rejectsUnknownInventoryFixedAssetTypeCode() throws Exception {
+        expectInventoryFixedAssetTypeNotFound(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/fixed-assets")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": " truck-100 ",
+                      "description": " Delivery Truck 100 ",
+                      "fixedAssetTypeCode": " trailer "
+                    }
+                    """)),
+            "TRAILER",
+            "/api/inventory/fixed-assets"
+        );
     }
 
     @Test
@@ -4467,6 +4541,15 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.path").value(path));
     }
 
+    private void expectInventoryFixedAssetTypeNotFound(ResultActions result, String code, String path) throws Exception {
+        result
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Inventory fixed asset type not found for code: " + code))
+            .andExpect(jsonPath("$.path").value(path));
+    }
+
     private void expectBadRequest(ResultActions result, String message, String path) throws Exception {
         result
             .andExpect(status().isBadRequest())
@@ -4489,6 +4572,12 @@ class InventoryApiIntegrationTest {
     private void seedLocationType(String code, String description) {
         inventoryLocationTypeRepository.save(
             InventoryLocationType.create(code, description, SEED_INSTANT)
+        );
+    }
+
+    private void seedFixedAssetType(String code, String description) {
+        inventoryFixedAssetTypeRepository.save(
+            InventoryFixedAssetType.create(code, description, SEED_INSTANT)
         );
     }
 

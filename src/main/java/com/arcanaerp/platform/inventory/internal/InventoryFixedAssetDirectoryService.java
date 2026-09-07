@@ -4,6 +4,7 @@ import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.InventoryFixedAssetDirectory;
+import com.arcanaerp.platform.inventory.InventoryFixedAssetTypeDirectory;
 import com.arcanaerp.platform.inventory.InventoryFixedAssetView;
 import com.arcanaerp.platform.inventory.RegisterInventoryFixedAssetCommand;
 import java.time.Clock;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 class InventoryFixedAssetDirectoryService implements InventoryFixedAssetDirectory {
 
     private final InventoryFixedAssetRepository inventoryFixedAssetRepository;
+    private final InventoryFixedAssetTypeDirectory inventoryFixedAssetTypeDirectory;
     private final Clock clock;
 
     @Override
@@ -28,13 +30,15 @@ class InventoryFixedAssetDirectoryService implements InventoryFixedAssetDirector
             throw new IllegalArgumentException("command is required");
         }
         String code = normalizeRequired(command.code(), "code").toUpperCase();
+        String fixedAssetTypeCode = normalizeOptionalUpper(command.fixedAssetTypeCode());
         if (inventoryFixedAssetRepository.findByCode(code).isPresent()) {
             throw new ConflictException("Inventory fixed asset already exists for code: " + code);
         }
+        ensureOptionalFixedAssetTypeExists(fixedAssetTypeCode);
         return toView(inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
             code,
             command.description(),
-            command.fixedAssetTypeCode(),
+            fixedAssetTypeCode,
             command.comments(),
             command.externalIdentifier(),
             command.externalIdSource(),
@@ -90,5 +94,21 @@ class InventoryFixedAssetDirectoryService implements InventoryFixedAssetDirector
             throw new IllegalArgumentException("query is required");
         }
         return query.trim().toUpperCase();
+    }
+
+    private void ensureOptionalFixedAssetTypeExists(String fixedAssetTypeCode) {
+        if (fixedAssetTypeCode == null) {
+            return;
+        }
+        if (!inventoryFixedAssetTypeDirectory.fixedAssetTypeExists(fixedAssetTypeCode)) {
+            throw new NoSuchElementException("Inventory fixed asset type not found for code: " + fixedAssetTypeCode);
+        }
+    }
+
+    private static String normalizeOptionalUpper(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim().toUpperCase();
     }
 }

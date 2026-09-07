@@ -7,6 +7,7 @@ Updated: 2026-09-06
 ```mermaid
 erDiagram
     INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_LOCATIONS : classifies
+    INVENTORY_FIXED_ASSET_TYPES ||--o{ INVENTORY_FIXED_ASSETS : classifies
     INVENTORY_ENTRY_RELATIONSHIP_TYPES ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : classifies
     INVENTORY_ENTRY_ROLE_TYPES ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : roles
     INVENTORY_ITEMS ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : from_item
@@ -30,6 +31,13 @@ erDiagram
     INVENTORY_ADJUSTMENTS ||--o{ INVENTORY_TRANSFER_REVERSAL_IDEMPOTENCY : replays
 
     INVENTORY_LOCATION_TYPES {
+      UUID id PK
+      STRING code UK
+      STRING description
+      INSTANT createdAt
+    }
+
+    INVENTORY_FIXED_ASSET_TYPES {
       UUID id PK
       STRING code UK
       STRING description
@@ -332,6 +340,7 @@ erDiagram
 - Inventory entry relationship status changes are append-only via `inventory_entry_relationship_status_change_audits`.
 - Inventory facilities are a first-class catalog for legacy facility traceability; facility codes normalize to uppercase.
 - Inventory fixed assets are a first-class catalog for legacy fixed-asset traceability; fixed asset codes and type codes normalize to uppercase.
+- Inventory fixed asset `fixedAssetTypeCode` values are optional, but supplied codes must exist in `inventory_fixed_asset_types`.
 - Inventory product-instance assignments are explicit cross-reference rows from inventory items to product instance codes.
 - Inventory product-instance assignment releases are append-only via `inventory_product_instance_assignment_release_audits`.
 - Inventory item-location assignments track valid-from/valid-thru placement history without mutating the stock row key.
@@ -375,6 +384,7 @@ erDiagram
 
 - Unique constraints:
   - `inventory_location_types(code)`
+  - `inventory_fixed_asset_types(code)`
   - `inventory_entry_relationship_types(code)`
   - `inventory_entry_role_types(code)`
   - `inventory_facilities(code)`
@@ -432,6 +442,9 @@ erDiagram
 - `POST /api/inventory/location-types`
 - `GET /api/inventory/location-types/{code}`
 - `GET /api/inventory/location-types?page=&size=`
+- `POST /api/inventory/fixed-asset-types`
+- `GET /api/inventory/fixed-asset-types/{code}`
+- `GET /api/inventory/fixed-asset-types?page=&size=`
 - `POST /api/inventory/entry-relationship-types`
 - `GET /api/inventory/entry-relationship-types/{code}`
 - `GET /api/inventory/entry-relationship-types?page=&size=`
