@@ -14,6 +14,8 @@ public record InventoryEntryRelationshipView(
     String toRoleTypeCode,
     String description,
     String statusCode,
+    Instant fromDate,
+    Instant thruDate,
     Instant createdAt,
     Instant updatedAt
 ) {

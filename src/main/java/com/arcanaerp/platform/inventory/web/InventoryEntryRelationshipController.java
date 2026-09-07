@@ -44,7 +44,9 @@ public class InventoryEntryRelationshipController {
             request.fromRoleTypeCode(),
             request.toRoleTypeCode(),
             request.description(),
-            request.statusCode()
+            request.statusCode(),
+            parseOptionalInstant(request.fromDate(), "fromDate"),
+            parseOptionalInstant(request.thruDate(), "thruDate")
         )));
     }
 
@@ -98,9 +100,19 @@ public class InventoryEntryRelationshipController {
         @RequestParam(required = false) String toSku,
         @RequestParam(required = false) String toLocationCode,
         @RequestParam(required = false) String statusCode,
+        @RequestParam(required = false) String fromDateFrom,
+        @RequestParam(required = false) String fromDateTo,
+        @RequestParam(required = false) String thruDateFrom,
+        @RequestParam(required = false) String thruDateTo,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
+        Instant parsedFromDateFrom = parseOptionalInstant(fromDateFrom, "fromDateFrom");
+        Instant parsedFromDateTo = parseOptionalInstant(fromDateTo, "fromDateTo");
+        Instant parsedThruDateFrom = parseOptionalInstant(thruDateFrom, "thruDateFrom");
+        Instant parsedThruDateTo = parseOptionalInstant(thruDateTo, "thruDateTo");
+        validateInstantRange(parsedFromDateFrom, parsedFromDateTo, "fromDateFrom", "fromDateTo");
+        validateInstantRange(parsedThruDateFrom, parsedThruDateTo, "thruDateFrom", "thruDateTo");
         return relationshipDirectory.listRelationships(
             relationshipTypeCode,
             fromSku,
@@ -108,6 +120,10 @@ public class InventoryEntryRelationshipController {
             toSku,
             toLocationCode,
             statusCode,
+            parsedFromDateFrom,
+            parsedFromDateTo,
+            parsedThruDateFrom,
+            parsedThruDateTo,
             PageQuery.of(page, size)
         ).map(this::toResponse);
     }
@@ -124,6 +140,8 @@ public class InventoryEntryRelationshipController {
             relationship.toRoleTypeCode(),
             relationship.description(),
             relationship.statusCode(),
+            relationship.fromDate(),
+            relationship.thruDate(),
             relationship.createdAt(),
             relationship.updatedAt()
         );
@@ -170,6 +188,17 @@ public class InventoryEntryRelationshipController {
     private static void validateChangedAtRange(Instant changedAtFrom, Instant changedAtTo) {
         if (changedAtFrom != null && changedAtTo != null && changedAtFrom.isAfter(changedAtTo)) {
             throw new IllegalArgumentException("changedAtFrom must be before or equal to changedAtTo");
+        }
+    }
+
+    private static void validateInstantRange(
+        Instant start,
+        Instant end,
+        String startParameter,
+        String endParameter
+    ) {
+        if (start != null && end != null && start.isAfter(end)) {
+            throw new IllegalArgumentException(startParameter + " must be before or equal to " + endParameter);
         }
     }
 }

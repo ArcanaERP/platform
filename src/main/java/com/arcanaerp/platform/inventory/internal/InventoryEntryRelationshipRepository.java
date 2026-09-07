@@ -1,5 +1,6 @@
 package com.arcanaerp.platform.inventory.internal;
 
+import java.time.Instant;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +20,10 @@ interface InventoryEntryRelationshipRepository extends JpaRepository<InventoryEn
           and (:toSku is null or relationship.toSku = :toSku)
           and (:toLocationCode is null or relationship.toLocationCode = :toLocationCode)
           and (:statusCode is null or relationship.statusCode = :statusCode)
+          and (:fromDateFrom is null or relationship.fromDate >= :fromDateFrom)
+          and (:fromDateTo is null or relationship.fromDate <= :fromDateTo)
+          and (:thruDateFrom is null or relationship.thruDate >= :thruDateFrom)
+          and (:thruDateTo is null or relationship.thruDate <= :thruDateTo)
         """
     )
     Page<InventoryEntryRelationship> findRelationshipsFiltered(
@@ -28,6 +33,10 @@ interface InventoryEntryRelationshipRepository extends JpaRepository<InventoryEn
         @Param("toSku") String toSku,
         @Param("toLocationCode") String toLocationCode,
         @Param("statusCode") String statusCode,
+        @Param("fromDateFrom") Instant fromDateFrom,
+        @Param("fromDateTo") Instant fromDateTo,
+        @Param("thruDateFrom") Instant thruDateFrom,
+        @Param("thruDateTo") Instant thruDateTo,
         Pageable pageable
     );
 }

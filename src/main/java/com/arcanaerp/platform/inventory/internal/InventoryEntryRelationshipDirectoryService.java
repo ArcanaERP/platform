@@ -51,6 +51,8 @@ class InventoryEntryRelationshipDirectoryService implements InventoryEntryRelati
             toRoleTypeCode,
             command.description(),
             command.statusCode(),
+            command.fromDate(),
+            command.thruDate(),
             Instant.now(clock)
         )));
     }
@@ -125,6 +127,10 @@ class InventoryEntryRelationshipDirectoryService implements InventoryEntryRelati
         String toSku,
         String toLocationCode,
         String statusCode,
+        Instant fromDateFrom,
+        Instant fromDateTo,
+        Instant thruDateFrom,
+        Instant thruDateTo,
         PageQuery pageQuery
     ) {
         Page<InventoryEntryRelationship> relationships = relationshipRepository.findRelationshipsFiltered(
@@ -134,6 +140,10 @@ class InventoryEntryRelationshipDirectoryService implements InventoryEntryRelati
             normalizeOptionalCode(toSku, "toSku"),
             normalizeOptionalCode(toLocationCode, "toLocationCode"),
             normalizeOptionalCode(statusCode, "statusCode"),
+            fromDateFrom,
+            fromDateTo,
+            thruDateFrom,
+            thruDateTo,
             pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "relationshipTypeCode").and(Sort.by("fromSku")))
         );
         return PageResult.from(relationships).map(this::toView);
@@ -172,6 +182,8 @@ class InventoryEntryRelationshipDirectoryService implements InventoryEntryRelati
             relationship.getToRoleTypeCode(),
             relationship.getDescription(),
             relationship.getStatusCode(),
+            relationship.getFromDate(),
+            relationship.getThruDate(),
             relationship.getCreatedAt(),
             relationship.getUpdatedAt()
         );

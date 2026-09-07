@@ -31,6 +31,10 @@ public interface InventoryEntryRelationshipDirectory {
         String toSku,
         String toLocationCode,
         String statusCode,
+        Instant fromDateFrom,
+        Instant fromDateTo,
+        Instant thruDateFrom,
+        Instant thruDateTo,
         PageQuery pageQuery
     );
 }

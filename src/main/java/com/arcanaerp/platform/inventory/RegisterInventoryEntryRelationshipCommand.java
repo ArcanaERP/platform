@@ -1,5 +1,7 @@
 package com.arcanaerp.platform.inventory;
 
+import java.time.Instant;
+
 public record RegisterInventoryEntryRelationshipCommand(
     String relationshipTypeCode,
     String fromSku,
@@ -9,6 +11,8 @@ public record RegisterInventoryEntryRelationshipCommand(
     String fromRoleTypeCode,
     String toRoleTypeCode,
     String description,
-    String statusCode
+    String statusCode,
+    Instant fromDate,
+    Instant thruDate
 ) {
 }

@@ -11,6 +11,8 @@ public record CreateInventoryEntryRelationshipRequest(
     @NotBlank String fromRoleTypeCode,
     @NotBlank String toRoleTypeCode,
     @NotBlank String description,
-    String statusCode
+    String statusCode,
+    String fromDate,
+    String thruDate
 ) {
 }

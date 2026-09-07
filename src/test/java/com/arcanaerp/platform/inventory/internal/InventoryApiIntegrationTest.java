@@ -420,7 +420,9 @@ class InventoryApiIntegrationTest {
                   "fromRoleTypeCode": " component ",
                   "toRoleTypeCode": " assembly ",
                   "description": " Component participates in kit ",
-                  "statusCode": " active "
+                  "statusCode": " active ",
+                  "fromDate": "2026-03-02T00:00:00Z",
+                  "thruDate": "2026-03-31T00:00:00Z"
                 }
                 """))
             .andExpect(status().isCreated())
@@ -434,6 +436,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.toRoleTypeCode").value("ASSEMBLY"))
             .andExpect(jsonPath("$.description").value("Component participates in kit"))
             .andExpect(jsonPath("$.statusCode").value("ACTIVE"))
+            .andExpect(jsonPath("$.fromDate").value("2026-03-02T00:00:00Z"))
+            .andExpect(jsonPath("$.thruDate").value("2026-03-31T00:00:00Z"))
             .andExpect(jsonPath("$.createdAt").isNotEmpty())
             .andReturn()
             .getResponse()
@@ -444,12 +448,18 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.relationshipTypeCode").value("COMPONENT_OF"))
             .andExpect(jsonPath("$.fromSku").value("ARC-COMPONENT-100"))
-            .andExpect(jsonPath("$.toSku").value("ARC-KIT-100"));
+            .andExpect(jsonPath("$.toSku").value("ARC-KIT-100"))
+            .andExpect(jsonPath("$.fromDate").value("2026-03-02T00:00:00Z"))
+            .andExpect(jsonPath("$.thruDate").value("2026-03-31T00:00:00Z"));
 
         mockMvc.perform(get("/api/inventory/entry-relationships")
             .param("relationshipTypeCode", "component_of")
             .param("fromSku", "arc-component-100")
             .param("statusCode", "active")
+            .param("fromDateFrom", "2026-03-01T00:00:00Z")
+            .param("fromDateTo", "2026-03-03T00:00:00Z")
+            .param("thruDateFrom", "2026-03-30T00:00:00Z")
+            .param("thruDateTo", "2026-04-01T00:00:00Z")
             .param("page", "0")
             .param("size", "10"))
             .andExpect(status().isOk())
@@ -575,6 +585,41 @@ class InventoryApiIntegrationTest {
                     }
                     """)),
             "from and to inventory items must be different",
+            "/api/inventory/entry-relationships"
+        );
+    }
+
+    @Test
+    void rejectsInventoryEntryRelationshipWithInvalidDateWindow() throws Exception {
+        seedInventoryEntryRelationshipReferenceData();
+        inventoryItemRepository.save(InventoryItem.create("arc-kit-103", "wh-kit", new BigDecimal("3"), SEED_INSTANT));
+        inventoryItemRepository.save(InventoryItem.create(
+            "arc-component-103",
+            "wh-kit",
+            new BigDecimal("12"),
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/entry-relationships"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "relationshipTypeCode": "component_of",
+                      "fromSku": "arc-component-103",
+                      "fromLocationCode": "wh-kit",
+                      "toSku": "arc-kit-103",
+                      "toLocationCode": "wh-kit",
+                      "fromRoleTypeCode": "component",
+                      "toRoleTypeCode": "assembly",
+                      "description": "Invalid window",
+                      "fromDate": "2026-03-31T00:00:00Z",
+                      "thruDate": "2026-03-02T00:00:00Z"
+                    }
+                    """)),
+            "thruDate must be after or equal to fromDate",
             "/api/inventory/entry-relationships"
         );
     }

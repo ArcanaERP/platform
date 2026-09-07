@@ -60,6 +60,8 @@ erDiagram
       STRING toRoleTypeCode
       STRING description
       STRING statusCode
+      INSTANT fromDate
+      INSTANT thruDate
       INSTANT createdAt
       INSTANT updatedAt
     }
@@ -251,6 +253,7 @@ erDiagram
 - Inventory on-hand, available, and sold counters are segmented by `sku + locationCode`.
 - Inventory entry relationship and role types are reference data for entry relationship records.
 - Inventory entry relationships link two existing inventory items and preserve normalized item keys for filtering.
+- Inventory entry relationships support optional `fromDate` and `thruDate` validity windows.
 - Inventory entry relationship status changes are append-only via `inventory_entry_relationship_status_change_audits`.
 - Inventory product-instance assignments are explicit cross-reference rows from inventory items to product instance codes.
 - Inventory product-instance assignment releases are append-only via `inventory_product_instance_assignment_release_audits`.
@@ -308,6 +311,8 @@ erDiagram
   - `inventory_entry_relationships(relationshipTypeCode)`
   - `inventory_entry_relationships(fromSku, fromLocationCode)`
   - `inventory_entry_relationships(toSku, toLocationCode)`
+  - `inventory_entry_relationships(fromDate)`
+  - `inventory_entry_relationships(thruDate)`
   - `inventory_entry_relationship_status_change_audits(relationshipId, changedAt)`
   - `inventory_entry_relationship_status_change_audits(changedBy, changedAt)`
   - `inventory_product_instance_assignments(productInstanceCode)`
@@ -340,7 +345,7 @@ erDiagram
 - `GET /api/inventory/entry-relationships/{id}`
 - `PATCH /api/inventory/entry-relationships/{id}/status`
 - `GET /api/inventory/entry-relationships/{id}/status-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
-- `GET /api/inventory/entry-relationships?page=&size=&relationshipTypeCode=&fromSku=&fromLocationCode=&toSku=&toLocationCode=&statusCode=`
+- `GET /api/inventory/entry-relationships?page=&size=&relationshipTypeCode=&fromSku=&fromLocationCode=&toSku=&toLocationCode=&statusCode=&fromDateFrom=&fromDateTo=&thruDateFrom=&thruDateTo=`
 - `POST /api/inventory/product-instance-assignments`
 - `GET /api/inventory/product-instance-assignments/{id}`
 - `PATCH /api/inventory/product-instance-assignments/{id}/release`
@@ -393,7 +398,8 @@ erDiagram
 - inventory location codes are normalized to uppercase at write and lookup boundaries
 - inventory entry relationship and role type codes are normalized to uppercase at write and lookup boundaries
 - inventory entry relationship writes validate relationship type, role types, from item, and to item before persisting
-- inventory entry relationship list filters match normalized relationship type, item keys, and status code values
+- inventory entry relationship writes reject `thruDate` values before `fromDate`
+- inventory entry relationship list filters match normalized relationship type, item keys, status code, and validity-window values
 - inventory product-instance assignment writes validate the inventory item and reject duplicate item/product-instance pairs
 - inventory product-instance assignment releases mark the assignment inactive and append release audit rows
 - inventory product-instance assignment list filters match normalized item keys, product instance code, assignedBy values, and active state

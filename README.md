@@ -320,6 +320,7 @@ Inventory:
 - Inventory item registration accepts optional `availableQuantity` and `soldQuantity`; available defaults to on-hand, sold defaults to zero.
 - Inventory location `facilityTypeCode` values are validated against `POST /api/inventory/location-types` reference data.
 - Inventory entry relationship and role types are reference data for entry relationship records.
+- Inventory entry relationships support optional `fromDate` and `thruDate` validity windows.
 - Product-instance assignment records link inventory items to product instance codes for legacy cross-reference parity.
 - Item-location assignment records track valid-from/valid-thru placement history for inventory items.
 - `POST /api/inventory/location-types`
@@ -335,7 +336,7 @@ Inventory:
 - `GET /api/inventory/entry-relationships/{id}`
 - `PATCH /api/inventory/entry-relationships/{id}/status`
 - `GET /api/inventory/entry-relationships/{id}/status-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
-- `GET /api/inventory/entry-relationships?page=&size=&relationshipTypeCode=&fromSku=&fromLocationCode=&toSku=&toLocationCode=&statusCode=`
+- `GET /api/inventory/entry-relationships?page=&size=&relationshipTypeCode=&fromSku=&fromLocationCode=&toSku=&toLocationCode=&statusCode=&fromDateFrom=&fromDateTo=&thruDateFrom=&thruDateTo=`
 - `POST /api/inventory/product-instance-assignments`
 - `GET /api/inventory/product-instance-assignments/{id}`
 - `PATCH /api/inventory/product-instance-assignments/{id}/release`

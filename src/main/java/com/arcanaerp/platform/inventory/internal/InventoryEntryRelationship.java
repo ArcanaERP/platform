@@ -19,7 +19,9 @@ import lombok.NoArgsConstructor;
     indexes = {
         @Index(name = "idx_inventory_entry_relationships_type", columnList = "relationshipTypeCode"),
         @Index(name = "idx_inventory_entry_relationships_from", columnList = "fromSku,fromLocationCode"),
-        @Index(name = "idx_inventory_entry_relationships_to", columnList = "toSku,toLocationCode")
+        @Index(name = "idx_inventory_entry_relationships_to", columnList = "toSku,toLocationCode"),
+        @Index(name = "idx_inventory_entry_relationships_from_date", columnList = "fromDate"),
+        @Index(name = "idx_inventory_entry_relationships_thru_date", columnList = "thruDate")
     }
 )
 @Getter
@@ -65,6 +67,10 @@ class InventoryEntryRelationship {
     @Column(nullable = false, length = 64)
     private String statusCode;
 
+    private Instant fromDate;
+
+    private Instant thruDate;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -79,6 +85,8 @@ class InventoryEntryRelationship {
         String toRoleTypeCode,
         String description,
         String statusCode,
+        Instant fromDate,
+        Instant thruDate,
         Instant createdAt
     ) {
         if (fromItem == null) {
@@ -93,6 +101,7 @@ class InventoryEntryRelationship {
         if (createdAt == null) {
             throw new IllegalArgumentException("createdAt is required");
         }
+        validateDateWindow(fromDate, thruDate);
 
         InventoryEntryRelationship relationship = new InventoryEntryRelationship();
         relationship.relationshipTypeCode = normalizeRequired(relationshipTypeCode, "relationshipTypeCode").toUpperCase();
@@ -106,6 +115,8 @@ class InventoryEntryRelationship {
         relationship.toRoleTypeCode = normalizeRequired(toRoleTypeCode, "toRoleTypeCode").toUpperCase();
         relationship.description = normalizeRequired(description, "description");
         relationship.statusCode = normalizeOptionalCode(statusCode, DEFAULT_STATUS_CODE);
+        relationship.fromDate = fromDate;
+        relationship.thruDate = thruDate;
         relationship.createdAt = createdAt;
         relationship.updatedAt = createdAt;
         return relationship;
@@ -135,5 +146,11 @@ class InventoryEntryRelationship {
             return defaultValue;
         }
         return value.trim().toUpperCase();
+    }
+
+    private static void validateDateWindow(Instant fromDate, Instant thruDate) {
+        if (fromDate != null && thruDate != null && thruDate.isBefore(fromDate)) {
+            throw new IllegalArgumentException("thruDate must be after or equal to fromDate");
+        }
     }
 }
