@@ -15,6 +15,9 @@ public record CreateInventoryItemRequest(
     String classificationCode,
     String productInstanceCode,
     String externalReference,
-    String sourceSystemCode
+    String sourceSystemCode,
+    String ownerTenantCode,
+    String ownerUserId,
+    String ownerRoleCode
 ) {
 }

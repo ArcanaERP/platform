@@ -44,7 +44,10 @@ public class InventoryItemController {
             request.classificationCode(),
             request.productInstanceCode(),
             request.externalReference(),
-            request.sourceSystemCode()
+            request.sourceSystemCode(),
+            request.ownerTenantCode(),
+            request.ownerUserId(),
+            request.ownerRoleCode()
         ));
         return toResponse(item);
     }
@@ -74,6 +77,9 @@ public class InventoryItemController {
                 request.productInstanceCode(),
                 request.externalReference(),
                 request.sourceSystemCode(),
+                request.ownerTenantCode(),
+                request.ownerUserId(),
+                request.ownerRoleCode(),
                 request.changedBy()
             )
         ));
@@ -154,6 +160,9 @@ public class InventoryItemController {
         @RequestParam(required = false) String productInstanceCode,
         @RequestParam(required = false) String externalReference,
         @RequestParam(required = false) String sourceSystemCode,
+        @RequestParam(required = false) String ownerTenantCode,
+        @RequestParam(required = false) String ownerUserId,
+        @RequestParam(required = false) String ownerRoleCode,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
@@ -165,6 +174,9 @@ public class InventoryItemController {
             productInstanceCode,
             externalReference,
             sourceSystemCode,
+            ownerTenantCode,
+            ownerUserId,
+            ownerRoleCode,
             PageQuery.of(page, size)
         ).map(this::toResponse);
     }
@@ -182,6 +194,9 @@ public class InventoryItemController {
             item.productInstanceCode(),
             item.externalReference(),
             item.sourceSystemCode(),
+            item.ownerUserId(),
+            item.ownerTenantCode(),
+            item.ownerRoleCode(),
             item.updatedAt()
         );
     }
@@ -218,6 +233,12 @@ public class InventoryItemController {
             change.currentExternalReference(),
             change.previousSourceSystemCode(),
             change.currentSourceSystemCode(),
+            change.previousOwnerTenantCode(),
+            change.currentOwnerTenantCode(),
+            change.previousOwnerUserId(),
+            change.currentOwnerUserId(),
+            change.previousOwnerRoleCode(),
+            change.currentOwnerRoleCode(),
             change.changedBy(),
             change.changedAt()
         );

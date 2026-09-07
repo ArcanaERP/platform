@@ -16,6 +16,9 @@ public record InventoryItemView(
     String productInstanceCode,
     String externalReference,
     String sourceSystemCode,
+    String ownerTenantCode,
+    UUID ownerUserId,
+    String ownerRoleCode,
     Instant updatedAt
 ) {
 }

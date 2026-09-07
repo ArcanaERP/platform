@@ -16,6 +16,9 @@ public record InventoryItemResponse(
     String productInstanceCode,
     String externalReference,
     String sourceSystemCode,
+    UUID ownerUserId,
+    String ownerTenantCode,
+    String ownerRoleCode,
     Instant updatedAt
 ) {
 }

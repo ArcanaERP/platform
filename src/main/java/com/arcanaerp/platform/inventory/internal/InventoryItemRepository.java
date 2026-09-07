@@ -25,6 +25,9 @@ interface InventoryItemRepository extends JpaRepository<InventoryItem, UUID> {
           and (:productInstanceCode is null or item.productInstanceCode = :productInstanceCode)
           and (:externalReference is null or item.externalReference = :externalReference)
           and (:sourceSystemCode is null or item.sourceSystemCode = :sourceSystemCode)
+          and (:ownerTenantCode is null or item.ownerTenantCode = :ownerTenantCode)
+          and (:ownerUserId is null or item.ownerUserId = :ownerUserId)
+          and (:ownerRoleCode is null or item.ownerRoleCode = :ownerRoleCode)
         """
     )
     Page<InventoryItem> findItemsFiltered(
@@ -35,6 +38,9 @@ interface InventoryItemRepository extends JpaRepository<InventoryItem, UUID> {
         @Param("productInstanceCode") String productInstanceCode,
         @Param("externalReference") String externalReference,
         @Param("sourceSystemCode") String sourceSystemCode,
+        @Param("ownerTenantCode") String ownerTenantCode,
+        @Param("ownerUserId") UUID ownerUserId,
+        @Param("ownerRoleCode") String ownerRoleCode,
         Pageable pageable
     );
 }

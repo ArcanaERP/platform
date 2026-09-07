@@ -85,6 +85,9 @@ class InventoryAvailabilityService implements InventoryAvailability {
             item.getProductInstanceCode(),
             item.getExternalReference(),
             item.getSourceSystemCode(),
+            item.getOwnerTenantCode(),
+            item.getOwnerUserId(),
+            item.getOwnerRoleCode(),
             item.getUpdatedAt()
         );
     }
@@ -173,6 +176,9 @@ class InventoryAvailabilityService implements InventoryAvailability {
                 sourceItem.getProductInstanceCode(),
                 sourceItem.getExternalReference(),
                 sourceItem.getSourceSystemCode(),
+                sourceItem.getOwnerTenantCode(),
+                sourceItem.getOwnerUserId(),
+                sourceItem.getOwnerRoleCode(),
                 adjustedAt
             ));
 

@@ -24,7 +24,9 @@ import lombok.NoArgsConstructor;
     ),
     indexes = {
         @Index(name = "idx_inventory_items_external_reference", columnList = "externalReference"),
-        @Index(name = "idx_inventory_items_source_system", columnList = "sourceSystemCode")
+        @Index(name = "idx_inventory_items_source_system", columnList = "sourceSystemCode"),
+        @Index(name = "idx_inventory_items_owner_user", columnList = "ownerUserId"),
+        @Index(name = "idx_inventory_items_owner_tenant_role", columnList = "ownerTenantCode,ownerRoleCode")
     }
 )
 @Getter
@@ -68,6 +70,14 @@ public class InventoryItem {
     @Column(length = 64)
     private String sourceSystemCode;
 
+    @Column(length = 64)
+    private String ownerTenantCode;
+
+    private UUID ownerUserId;
+
+    @Column(length = 64)
+    private String ownerRoleCode;
+
     @Column(nullable = false)
     private Instant updatedAt;
 
@@ -83,6 +93,9 @@ public class InventoryItem {
         String productInstanceCode,
         String externalReference,
         String sourceSystemCode,
+        String ownerTenantCode,
+        UUID ownerUserId,
+        String ownerRoleCode,
         Instant updatedAt
     ) {
         this.id = id;
@@ -96,6 +109,9 @@ public class InventoryItem {
         this.productInstanceCode = productInstanceCode;
         this.externalReference = externalReference;
         this.sourceSystemCode = sourceSystemCode;
+        this.ownerTenantCode = ownerTenantCode;
+        this.ownerUserId = ownerUserId;
+        this.ownerRoleCode = ownerRoleCode;
         this.updatedAt = updatedAt;
     }
 
@@ -108,6 +124,11 @@ public class InventoryItem {
             BigDecimal.ZERO,
             DEFAULT_UNIT_OF_MEASUREMENT_CODE,
             DEFAULT_CLASSIFICATION_CODE,
+            null,
+            null,
+            null,
+            null,
+            null,
             null,
             updatedAt
         );
@@ -129,6 +150,9 @@ public class InventoryItem {
             BigDecimal.ZERO,
             unitOfMeasurementCode,
             classificationCode,
+            null,
+            null,
+            null,
             null,
             null,
             null,
@@ -145,6 +169,9 @@ public class InventoryItem {
         String productInstanceCode,
         String externalReference,
         String sourceSystemCode,
+        String ownerTenantCode,
+        UUID ownerUserId,
+        String ownerRoleCode,
         Instant updatedAt
     ) {
         return create(
@@ -158,6 +185,9 @@ public class InventoryItem {
             productInstanceCode,
             externalReference,
             sourceSystemCode,
+            ownerTenantCode,
+            ownerUserId,
+            ownerRoleCode,
             updatedAt
         );
     }
@@ -180,6 +210,9 @@ public class InventoryItem {
             unitOfMeasurementCode,
             classificationCode,
             productInstanceCode,
+            null,
+            null,
+            null,
             null,
             null,
             updatedAt
@@ -208,6 +241,9 @@ public class InventoryItem {
             productInstanceCode,
             null,
             null,
+            null,
+            null,
+            null,
             updatedAt
         );
     }
@@ -223,6 +259,40 @@ public class InventoryItem {
         String productInstanceCode,
         String externalReference,
         String sourceSystemCode,
+        Instant updatedAt
+    ) {
+        return create(
+            sku,
+            locationCode,
+            onHandQuantity,
+            availableQuantity,
+            soldQuantity,
+            unitOfMeasurementCode,
+            classificationCode,
+            productInstanceCode,
+            externalReference,
+            sourceSystemCode,
+            null,
+            null,
+            null,
+            updatedAt
+        );
+    }
+
+    static InventoryItem create(
+        String sku,
+        String locationCode,
+        BigDecimal onHandQuantity,
+        BigDecimal availableQuantity,
+        BigDecimal soldQuantity,
+        String unitOfMeasurementCode,
+        String classificationCode,
+        String productInstanceCode,
+        String externalReference,
+        String sourceSystemCode,
+        String ownerTenantCode,
+        UUID ownerUserId,
+        String ownerRoleCode,
         Instant updatedAt
     ) {
         if (onHandQuantity == null || onHandQuantity.signum() < 0) {
@@ -253,6 +323,9 @@ public class InventoryItem {
             normalizeOptionalUpper(productInstanceCode),
             normalizeOptional(externalReference),
             normalizeOptionalUpper(sourceSystemCode),
+            normalizeOptionalUpper(ownerTenantCode),
+            ownerUserId,
+            normalizeOptionalUpper(ownerRoleCode),
             updatedAt
         );
     }
@@ -323,7 +396,7 @@ public class InventoryItem {
         String productInstanceCode,
         Instant updatedAt
     ) {
-        updateMetadata(unitOfMeasurementCode, classificationCode, productInstanceCode, null, null, updatedAt);
+        updateMetadata(unitOfMeasurementCode, classificationCode, productInstanceCode, null, null, null, null, null, updatedAt);
     }
 
     void updateMetadata(
@@ -334,6 +407,30 @@ public class InventoryItem {
         String sourceSystemCode,
         Instant updatedAt
     ) {
+        updateMetadata(
+            unitOfMeasurementCode,
+            classificationCode,
+            productInstanceCode,
+            externalReference,
+            sourceSystemCode,
+            null,
+            null,
+            null,
+            updatedAt
+        );
+    }
+
+    void updateMetadata(
+        String unitOfMeasurementCode,
+        String classificationCode,
+        String productInstanceCode,
+        String externalReference,
+        String sourceSystemCode,
+        String ownerTenantCode,
+        UUID ownerUserId,
+        String ownerRoleCode,
+        Instant updatedAt
+    ) {
         if (updatedAt == null) {
             throw new IllegalArgumentException("updatedAt is required");
         }
@@ -342,12 +439,17 @@ public class InventoryItem {
         String normalizedProductInstanceCode = normalizeOptionalUpper(productInstanceCode);
         String normalizedExternalReference = normalizeOptional(externalReference);
         String normalizedSourceSystemCode = normalizeOptionalUpper(sourceSystemCode);
+        String normalizedOwnerTenantCode = normalizeOptionalUpper(ownerTenantCode);
+        String normalizedOwnerRoleCode = normalizeOptionalUpper(ownerRoleCode);
         if (
             this.unitOfMeasurementCode.equals(normalizedUnitOfMeasurementCode)
                 && this.classificationCode.equals(normalizedClassificationCode)
                 && equalsNullable(this.productInstanceCode, normalizedProductInstanceCode)
                 && equalsNullable(this.externalReference, normalizedExternalReference)
                 && equalsNullable(this.sourceSystemCode, normalizedSourceSystemCode)
+                && equalsNullable(this.ownerTenantCode, normalizedOwnerTenantCode)
+                && equalsNullable(this.ownerUserId, ownerUserId)
+                && equalsNullable(this.ownerRoleCode, normalizedOwnerRoleCode)
         ) {
             throw new IllegalArgumentException("Inventory item metadata is unchanged");
         }
@@ -356,6 +458,9 @@ public class InventoryItem {
         this.productInstanceCode = normalizedProductInstanceCode;
         this.externalReference = normalizedExternalReference;
         this.sourceSystemCode = normalizedSourceSystemCode;
+        this.ownerTenantCode = normalizedOwnerTenantCode;
+        this.ownerUserId = ownerUserId;
+        this.ownerRoleCode = normalizedOwnerRoleCode;
         this.updatedAt = updatedAt;
     }
 
@@ -380,7 +485,7 @@ public class InventoryItem {
         return value.trim();
     }
 
-    private static boolean equalsNullable(String left, String right) {
+    private static boolean equalsNullable(Object left, Object right) {
         return left == null ? right == null : left.equals(right);
     }
 }

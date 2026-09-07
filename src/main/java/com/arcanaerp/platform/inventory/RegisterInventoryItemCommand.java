@@ -12,6 +12,9 @@ public record RegisterInventoryItemCommand(
     String classificationCode,
     String productInstanceCode,
     String externalReference,
-    String sourceSystemCode
+    String sourceSystemCode,
+    String ownerTenantCode,
+    String ownerUserId,
+    String ownerRoleCode
 ) {
 }

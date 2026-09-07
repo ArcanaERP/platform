@@ -4,6 +4,9 @@ import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.core.uom.UnitOfMeasurementDirectory;
+import com.arcanaerp.platform.identity.RoleDirectory;
+import com.arcanaerp.platform.identity.UserDirectory;
+import com.arcanaerp.platform.identity.UserView;
 import com.arcanaerp.platform.inventory.InventoryItemDirectory;
 import com.arcanaerp.platform.inventory.InventoryItemAvailabilityChangeView;
 import com.arcanaerp.platform.inventory.InventoryItemMetadataChangeView;
@@ -15,6 +18,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.NoSuchElementException;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
@@ -31,6 +35,8 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
     private final InventoryItemAvailabilityChangeAuditRepository availabilityChangeAuditRepository;
     private final InventoryLocationRepository inventoryLocationRepository;
     private final UnitOfMeasurementDirectory unitOfMeasurementDirectory;
+    private final UserDirectory userDirectory;
+    private final RoleDirectory roleDirectory;
     private final Clock clock;
 
     @Override
@@ -59,6 +65,11 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
         }
         String unitOfMeasurementCode = normalizeOptionalCode(command.unitOfMeasurementCode(), "unitOfMeasurementCode", "EA");
         ensureUnitOfMeasurementExists(unitOfMeasurementCode);
+        OwnerAssignment ownerAssignment = resolveOwnerAssignment(
+            command.ownerTenantCode(),
+            command.ownerUserId(),
+            command.ownerRoleCode()
+        );
 
         return toView(inventoryItemRepository.save(InventoryItem.create(
             sku,
@@ -71,6 +82,9 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             normalizeOptionalCode(command.productInstanceCode(), "productInstanceCode"),
             normalizeOptionalExternalReference(command.externalReference()),
             normalizeOptionalCode(command.sourceSystemCode(), "sourceSystemCode"),
+            ownerAssignment.ownerTenantCode(),
+            ownerAssignment.ownerUserId(),
+            ownerAssignment.ownerRoleCode(),
             Instant.now(clock)
         )));
     }
@@ -102,14 +116,25 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
         String previousProductInstanceCode = item.getProductInstanceCode();
         String previousExternalReference = item.getExternalReference();
         String previousSourceSystemCode = item.getSourceSystemCode();
+        String previousOwnerTenantCode = item.getOwnerTenantCode();
+        UUID previousOwnerUserId = item.getOwnerUserId();
+        String previousOwnerRoleCode = item.getOwnerRoleCode();
         Instant changedAt = Instant.now(clock);
         ensureUnitOfMeasurementExists(command.unitOfMeasurementCode());
+        OwnerAssignment ownerAssignment = resolveOwnerAssignment(
+            command.ownerTenantCode(),
+            command.ownerUserId(),
+            command.ownerRoleCode()
+        );
         item.updateMetadata(
             command.unitOfMeasurementCode(),
             command.classificationCode(),
             command.productInstanceCode(),
             command.externalReference(),
             command.sourceSystemCode(),
+            ownerAssignment.ownerTenantCode(),
+            ownerAssignment.ownerUserId(),
+            ownerAssignment.ownerRoleCode(),
             changedAt
         );
         String changedBy = normalizeRequired(command.changedBy(), "changedBy").toLowerCase();
@@ -127,6 +152,12 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             item.getExternalReference(),
             previousSourceSystemCode,
             item.getSourceSystemCode(),
+            previousOwnerTenantCode,
+            item.getOwnerTenantCode(),
+            previousOwnerUserId,
+            item.getOwnerUserId(),
+            previousOwnerRoleCode,
+            item.getOwnerRoleCode(),
             changedBy,
             changedAt
         ));
@@ -233,6 +264,9 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
         String productInstanceCode,
         String externalReference,
         String sourceSystemCode,
+        String ownerTenantCode,
+        String ownerUserId,
+        String ownerRoleCode,
         PageQuery pageQuery
     ) {
         Page<InventoryItem> items = inventoryItemRepository.findItemsFiltered(
@@ -243,6 +277,9 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             normalizeOptionalCode(productInstanceCode, "productInstanceCode"),
             normalizeOptionalExternalReference(externalReference),
             normalizeOptionalCode(sourceSystemCode, "sourceSystemCode"),
+            normalizeOptionalCode(ownerTenantCode, "ownerTenantCode"),
+            parseOptionalUuid(ownerUserId, "ownerUserId"),
+            normalizeOptionalCode(ownerRoleCode, "ownerRoleCode"),
             pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "sku").and(Sort.by(Sort.Direction.ASC, "locationCode")))
         );
         return PageResult.from(items).map(this::toView);
@@ -287,6 +324,9 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             item.getProductInstanceCode(),
             item.getExternalReference(),
             item.getSourceSystemCode(),
+            item.getOwnerTenantCode(),
+            item.getOwnerUserId(),
+            item.getOwnerRoleCode(),
             item.getUpdatedAt()
         );
     }
@@ -323,6 +363,12 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             audit.getCurrentExternalReference(),
             audit.getPreviousSourceSystemCode(),
             audit.getCurrentSourceSystemCode(),
+            audit.getPreviousOwnerTenantCode(),
+            audit.getCurrentOwnerTenantCode(),
+            audit.getPreviousOwnerUserId(),
+            audit.getCurrentOwnerUserId(),
+            audit.getPreviousOwnerRoleCode(),
+            audit.getCurrentOwnerRoleCode(),
             audit.getChangedBy(),
             audit.getChangedAt()
         );
@@ -347,6 +393,47 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
         return value == null ? null : normalizeRequired(value, "externalReference");
     }
 
+    private OwnerAssignment resolveOwnerAssignment(String ownerTenantCode, String ownerUserId, String ownerRoleCode) {
+        boolean hasTenant = ownerTenantCode != null && !ownerTenantCode.isBlank();
+        boolean hasUser = ownerUserId != null && !ownerUserId.isBlank();
+        boolean hasRole = ownerRoleCode != null && !ownerRoleCode.isBlank();
+        if (!hasTenant && !hasUser && !hasRole) {
+            return new OwnerAssignment(null, null, null);
+        }
+        if (!hasTenant || !hasUser || !hasRole) {
+            throw new IllegalArgumentException("ownerTenantCode, ownerUserId, and ownerRoleCode must be supplied together");
+        }
+
+        String normalizedTenantCode = normalizeRequired(ownerTenantCode, "ownerTenantCode").toUpperCase();
+        UUID normalizedUserId = parseRequiredUuid(ownerUserId, "ownerUserId");
+        String normalizedRoleCode = normalizeRequired(ownerRoleCode, "ownerRoleCode").toUpperCase();
+        roleDirectory.roleByCode(normalizedTenantCode, normalizedRoleCode);
+        UserView user = userDirectory.userById(normalizedUserId.toString());
+        if (!normalizedTenantCode.equals(user.tenantCode())) {
+            throw new IllegalArgumentException("ownerUserId does not belong to ownerTenantCode");
+        }
+        if (!normalizedRoleCode.equals(user.roleCode())) {
+            throw new IllegalArgumentException("ownerUserId does not have ownerRoleCode");
+        }
+        if (!user.active()) {
+            throw new IllegalArgumentException("Owner user is inactive: " + normalizedUserId);
+        }
+        return new OwnerAssignment(normalizedTenantCode, normalizedUserId, normalizedRoleCode);
+    }
+
+    private static UUID parseOptionalUuid(String value, String fieldName) {
+        return value == null ? null : parseRequiredUuid(value, fieldName);
+    }
+
+    private static UUID parseRequiredUuid(String value, String fieldName) {
+        String normalized = normalizeRequired(value, fieldName);
+        try {
+            return UUID.fromString(normalized);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException(fieldName + " must be a valid UUID", exception);
+        }
+    }
+
     private static String normalizeOptionalChangedBy(String value) {
         return value == null ? null : normalizeRequired(value, "changedBy").toLowerCase();
     }
@@ -357,5 +444,8 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             throw new IllegalArgumentException(fieldName + " must be zero or greater");
         }
         return quantity;
+    }
+
+    private record OwnerAssignment(String ownerTenantCode, UUID ownerUserId, String ownerRoleCode) {
     }
 }

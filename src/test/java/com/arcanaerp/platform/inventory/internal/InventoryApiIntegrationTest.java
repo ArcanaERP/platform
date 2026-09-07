@@ -11,6 +11,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.uom.RegisterUnitOfMeasurementCommand;
 import com.arcanaerp.platform.core.uom.UnitOfMeasurementDirectory;
+import com.arcanaerp.platform.identity.RegisterUserCommand;
+import com.arcanaerp.platform.identity.UserDirectory;
+import com.arcanaerp.platform.identity.UserView;
 import com.arcanaerp.platform.testsupport.web.InventoryManagementWebTestSupport;
 import com.arcanaerp.platform.testsupport.web.InventoryTransferReversalHistoryWebTestSupport;
 import java.math.BigDecimal;
@@ -108,6 +111,9 @@ class InventoryApiIntegrationTest {
 
     @Autowired
     private UnitOfMeasurementDirectory unitOfMeasurementDirectory;
+
+    @Autowired
+    private UserDirectory userDirectory;
 
     @BeforeEach
     void cleanInventoryItems() {
@@ -1379,6 +1385,27 @@ class InventoryApiIntegrationTest {
 
     @Test
     void createsReadsListsAndUpdatesInventoryItems() throws Exception {
+        UserView owner = userDirectory.registerUser(
+            new RegisterUserCommand(
+                "inventoryown01",
+                "Inventory Owner 01",
+                "keeper",
+                "Keeper",
+                "owner01@inventory.example",
+                "Owner 01"
+            )
+        );
+        UserView nextOwner = userDirectory.registerUser(
+            new RegisterUserCommand(
+                "inventoryown01",
+                "Inventory Owner 01",
+                "manager",
+                "Manager",
+                "manager01@inventory.example",
+                "Manager 01"
+            )
+        );
+
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/items")
             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
             .content("""
@@ -1392,9 +1419,12 @@ class InventoryApiIntegrationTest {
                   "classificationCode": "quarantine",
                   "productInstanceCode": " pi-100 ",
                   "externalReference": " legacy-entry-100 ",
-                  "sourceSystemCode": " legacy_inv "
+                  "sourceSystemCode": " legacy_inv ",
+                  "ownerTenantCode": " inventoryown01 ",
+                  "ownerUserId": "%s",
+                  "ownerRoleCode": " keeper "
                 }
-                """))
+                """.formatted(owner.id())))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").isNotEmpty())
             .andExpect(jsonPath("$.sku").value("ARC-9250"))
@@ -1407,6 +1437,9 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.productInstanceCode").value("PI-100"))
             .andExpect(jsonPath("$.externalReference").value("legacy-entry-100"))
             .andExpect(jsonPath("$.sourceSystemCode").value("LEGACY_INV"))
+            .andExpect(jsonPath("$.ownerTenantCode").value("INVENTORYOWN01"))
+            .andExpect(jsonPath("$.ownerUserId").value(owner.id().toString()))
+            .andExpect(jsonPath("$.ownerRoleCode").value("KEEPER"))
             .andExpect(jsonPath("$.updatedAt").isNotEmpty());
 
         mockMvc.perform(get("/api/inventory/items/{sku}/locations/{locationCode}", "arc-9250", "wh-item"))
@@ -1420,7 +1453,10 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.classificationCode").value("QUARANTINE"))
             .andExpect(jsonPath("$.productInstanceCode").value("PI-100"))
             .andExpect(jsonPath("$.externalReference").value("legacy-entry-100"))
-            .andExpect(jsonPath("$.sourceSystemCode").value("LEGACY_INV"));
+            .andExpect(jsonPath("$.sourceSystemCode").value("LEGACY_INV"))
+            .andExpect(jsonPath("$.ownerTenantCode").value("INVENTORYOWN01"))
+            .andExpect(jsonPath("$.ownerUserId").value(owner.id().toString()))
+            .andExpect(jsonPath("$.ownerRoleCode").value("KEEPER"));
 
         mockMvc.perform(get("/api/inventory/items")
             .param("sku", "ARC-9250")
@@ -1428,6 +1464,9 @@ class InventoryApiIntegrationTest {
             .param("productInstanceCode", "pi-100")
             .param("externalReference", "legacy-entry-100")
             .param("sourceSystemCode", "legacy_inv")
+            .param("ownerTenantCode", "inventoryown01")
+            .param("ownerUserId", owner.id().toString())
+            .param("ownerRoleCode", "keeper")
             .param("page", "0")
             .param("size", "10"))
             .andExpect(status().isOk())
@@ -1438,7 +1477,10 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.items[0].classificationCode").value("QUARANTINE"))
             .andExpect(jsonPath("$.items[0].productInstanceCode").value("PI-100"))
             .andExpect(jsonPath("$.items[0].externalReference").value("legacy-entry-100"))
-            .andExpect(jsonPath("$.items[0].sourceSystemCode").value("LEGACY_INV"));
+            .andExpect(jsonPath("$.items[0].sourceSystemCode").value("LEGACY_INV"))
+            .andExpect(jsonPath("$.items[0].ownerTenantCode").value("INVENTORYOWN01"))
+            .andExpect(jsonPath("$.items[0].ownerUserId").value(owner.id().toString()))
+            .andExpect(jsonPath("$.items[0].ownerRoleCode").value("KEEPER"));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
             "/api/inventory/items/{sku}/locations/{locationCode}/metadata",
@@ -1453,9 +1495,12 @@ class InventoryApiIntegrationTest {
                   "productInstanceCode": "pi-101",
                   "externalReference": " legacy-entry-101 ",
                   "sourceSystemCode": " warehouse_migration ",
+                  "ownerTenantCode": " inventoryown01 ",
+                  "ownerUserId": "%s",
+                  "ownerRoleCode": " manager ",
                   "changedBy": " Inventory.Ops@ArcanaERP.com "
                 }
-                """))
+                """.formatted(nextOwner.id())))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.sku").value("ARC-9250"))
             .andExpect(jsonPath("$.locationCode").value("WH-ITEM"))
@@ -1466,7 +1511,10 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.classificationCode").value("AVAILABLE"))
             .andExpect(jsonPath("$.productInstanceCode").value("PI-101"))
             .andExpect(jsonPath("$.externalReference").value("legacy-entry-101"))
-            .andExpect(jsonPath("$.sourceSystemCode").value("WAREHOUSE_MIGRATION"));
+            .andExpect(jsonPath("$.sourceSystemCode").value("WAREHOUSE_MIGRATION"))
+            .andExpect(jsonPath("$.ownerTenantCode").value("INVENTORYOWN01"))
+            .andExpect(jsonPath("$.ownerUserId").value(nextOwner.id().toString()))
+            .andExpect(jsonPath("$.ownerRoleCode").value("MANAGER"));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
             "/api/inventory/items/{sku}/locations/{locationCode}/availability",
@@ -1492,7 +1540,10 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.classificationCode").value("AVAILABLE"))
             .andExpect(jsonPath("$.productInstanceCode").value("PI-101"))
             .andExpect(jsonPath("$.externalReference").value("legacy-entry-101"))
-            .andExpect(jsonPath("$.sourceSystemCode").value("WAREHOUSE_MIGRATION"));
+            .andExpect(jsonPath("$.sourceSystemCode").value("WAREHOUSE_MIGRATION"))
+            .andExpect(jsonPath("$.ownerTenantCode").value("INVENTORYOWN01"))
+            .andExpect(jsonPath("$.ownerUserId").value(nextOwner.id().toString()))
+            .andExpect(jsonPath("$.ownerRoleCode").value("MANAGER"));
 
         mockMvc.perform(get("/api/inventory/items/{sku}/locations/{locationCode}/availability-history", "arc-9250", "wh-item")
             .param("changedBy", "inventory.ops@arcanaerp.com")
@@ -1530,6 +1581,12 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.items[0].currentExternalReference").value("legacy-entry-101"))
             .andExpect(jsonPath("$.items[0].previousSourceSystemCode").value("LEGACY_INV"))
             .andExpect(jsonPath("$.items[0].currentSourceSystemCode").value("WAREHOUSE_MIGRATION"))
+            .andExpect(jsonPath("$.items[0].previousOwnerTenantCode").value("INVENTORYOWN01"))
+            .andExpect(jsonPath("$.items[0].currentOwnerTenantCode").value("INVENTORYOWN01"))
+            .andExpect(jsonPath("$.items[0].previousOwnerUserId").value(owner.id().toString()))
+            .andExpect(jsonPath("$.items[0].currentOwnerUserId").value(nextOwner.id().toString()))
+            .andExpect(jsonPath("$.items[0].previousOwnerRoleCode").value("KEEPER"))
+            .andExpect(jsonPath("$.items[0].currentOwnerRoleCode").value("MANAGER"))
             .andExpect(jsonPath("$.items[0].changedBy").value("inventory.ops@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
     }
@@ -1674,6 +1731,24 @@ class InventoryApiIntegrationTest {
                     }
                     """)),
             "availableQuantity must not exceed onHandQuantity",
+            "/api/inventory/items"
+        );
+    }
+
+    @Test
+    void rejectsInventoryItemRegistrationWithIncompleteOwnerMetadata() throws Exception {
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/items")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "sku": "arc-9252d",
+                      "locationCode": "wh-owner",
+                      "onHandQuantity": 1,
+                      "ownerTenantCode": "inventoryown02"
+                    }
+                    """)),
+            "ownerTenantCode, ownerUserId, and ownerRoleCode must be supplied together",
             "/api/inventory/items"
         );
     }

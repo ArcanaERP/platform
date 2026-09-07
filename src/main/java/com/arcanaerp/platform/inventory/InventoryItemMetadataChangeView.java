@@ -17,6 +17,12 @@ public record InventoryItemMetadataChangeView(
     String currentExternalReference,
     String previousSourceSystemCode,
     String currentSourceSystemCode,
+    String previousOwnerTenantCode,
+    String currentOwnerTenantCode,
+    UUID previousOwnerUserId,
+    UUID currentOwnerUserId,
+    String previousOwnerRoleCode,
+    String currentOwnerRoleCode,
     String changedBy,
     Instant changedAt
 ) {

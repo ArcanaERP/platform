@@ -67,6 +67,9 @@ public class InventoryController {
             item.productInstanceCode(),
             item.externalReference(),
             item.sourceSystemCode(),
+            item.ownerUserId(),
+            item.ownerTenantCode(),
+            item.ownerRoleCode(),
             item.updatedAt()
         );
     }

@@ -8,6 +8,9 @@ public record UpdateInventoryItemMetadataRequest(
     String productInstanceCode,
     String externalReference,
     String sourceSystemCode,
+    String ownerTenantCode,
+    String ownerUserId,
+    String ownerRoleCode,
     @NotBlank String changedBy
 ) {
 }

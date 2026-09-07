@@ -68,6 +68,22 @@ class InventoryItemMetadataChangeAudit {
     @Column(length = 64)
     private String currentSourceSystemCode;
 
+    @Column(length = 64)
+    private String previousOwnerTenantCode;
+
+    @Column(length = 64)
+    private String currentOwnerTenantCode;
+
+    private UUID previousOwnerUserId;
+
+    private UUID currentOwnerUserId;
+
+    @Column(length = 64)
+    private String previousOwnerRoleCode;
+
+    @Column(length = 64)
+    private String currentOwnerRoleCode;
+
     @Column(nullable = false, length = 128)
     private String changedBy;
 
@@ -89,6 +105,12 @@ class InventoryItemMetadataChangeAudit {
         String currentExternalReference,
         String previousSourceSystemCode,
         String currentSourceSystemCode,
+        String previousOwnerTenantCode,
+        String currentOwnerTenantCode,
+        UUID previousOwnerUserId,
+        UUID currentOwnerUserId,
+        String previousOwnerRoleCode,
+        String currentOwnerRoleCode,
         String changedBy,
         Instant changedAt
     ) {
@@ -106,6 +128,12 @@ class InventoryItemMetadataChangeAudit {
         this.currentExternalReference = currentExternalReference;
         this.previousSourceSystemCode = previousSourceSystemCode;
         this.currentSourceSystemCode = currentSourceSystemCode;
+        this.previousOwnerTenantCode = previousOwnerTenantCode;
+        this.currentOwnerTenantCode = currentOwnerTenantCode;
+        this.previousOwnerUserId = previousOwnerUserId;
+        this.currentOwnerUserId = currentOwnerUserId;
+        this.previousOwnerRoleCode = previousOwnerRoleCode;
+        this.currentOwnerRoleCode = currentOwnerRoleCode;
         this.changedBy = changedBy;
         this.changedAt = changedAt;
     }
@@ -137,6 +165,12 @@ class InventoryItemMetadataChangeAudit {
             null,
             null,
             null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
             changedBy,
             changedAt
         );
@@ -156,6 +190,12 @@ class InventoryItemMetadataChangeAudit {
         String currentExternalReference,
         String previousSourceSystemCode,
         String currentSourceSystemCode,
+        String previousOwnerTenantCode,
+        String currentOwnerTenantCode,
+        UUID previousOwnerUserId,
+        UUID currentOwnerUserId,
+        String previousOwnerRoleCode,
+        String currentOwnerRoleCode,
         String changedBy,
         Instant changedAt
     ) {
@@ -180,6 +220,12 @@ class InventoryItemMetadataChangeAudit {
             normalizeOptional(currentExternalReference),
             normalizeOptionalUpper(previousSourceSystemCode),
             normalizeOptionalUpper(currentSourceSystemCode),
+            normalizeOptionalUpper(previousOwnerTenantCode),
+            normalizeOptionalUpper(currentOwnerTenantCode),
+            previousOwnerUserId,
+            currentOwnerUserId,
+            normalizeOptionalUpper(previousOwnerRoleCode),
+            normalizeOptionalUpper(currentOwnerRoleCode),
             normalizeRequired(changedBy, "changedBy").toLowerCase(),
             changedAt
         );

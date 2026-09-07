@@ -40,6 +40,9 @@ public interface InventoryItemDirectory {
         String productInstanceCode,
         String externalReference,
         String sourceSystemCode,
+        String ownerTenantCode,
+        String ownerUserId,
+        String ownerRoleCode,
         PageQuery pageQuery
     );
 }
