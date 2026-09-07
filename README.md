@@ -324,6 +324,7 @@ Inventory:
 - Inventory facilities provide a first-class facility catalog for pickup/dropoff traceability.
 - Inventory fixed assets provide a first-class asset catalog for pickup/dropoff traceability.
 - Inventory fixed asset active and metadata changes are audit-trailed with actor attribution.
+- Inventory fixed asset party-role assignments track which parties serve asset-specific roles.
 - Inventory fixed asset `fixedAssetTypeCode` values are validated against `POST /api/inventory/fixed-asset-types` reference data.
 - Inventory location `facilityTypeCode` values are validated against `POST /api/inventory/location-types` reference data.
 - Inventory entry relationship and role types are reference data for entry relationship records.
@@ -381,6 +382,9 @@ Inventory:
 - `PATCH /api/inventory/fixed-assets/{code}/metadata`
 - `GET /api/inventory/fixed-assets/{code}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/fixed-assets?page=&size=&active=&query=`
+- `POST /api/inventory/fixed-asset-party-role-assignments`
+- `GET /api/inventory/fixed-asset-party-role-assignments/{id}`
+- `GET /api/inventory/fixed-asset-party-role-assignments?page=&size=&fixedAssetCode=&partyCode=&roleTypeCode=&assignedBy=`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/pickup-dropoffs`

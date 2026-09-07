@@ -101,6 +101,9 @@ class InventoryApiIntegrationTest {
     private InventoryFixedAssetMetadataChangeAuditRepository fixedAssetMetadataChangeAuditRepository;
 
     @Autowired
+    private InventoryFixedAssetPartyRoleAssignmentRepository fixedAssetPartyRoleAssignmentRepository;
+
+    @Autowired
     private InventoryLocationMetadataChangeAuditRepository locationMetadataChangeAuditRepository;
 
     @Autowired
@@ -154,6 +157,7 @@ class InventoryApiIntegrationTest {
         inventoryItemRepository.deleteAll();
         fixedAssetActiveChangeAuditRepository.deleteAll();
         fixedAssetMetadataChangeAuditRepository.deleteAll();
+        fixedAssetPartyRoleAssignmentRepository.deleteAll();
         inventoryFixedAssetRepository.deleteAll();
         inventoryFixedAssetTypeRepository.deleteAll();
         inventoryFacilityRepository.deleteAll();
@@ -1458,6 +1462,165 @@ class InventoryApiIntegrationTest {
                     """)),
             "TRAILER",
             "/api/inventory/fixed-assets/truck-105/metadata"
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryFixedAssetPartyRoleAssignments() throws Exception {
+        inventoryFixedAssetRepository.save(
+            InventoryFixedAsset.create(
+                "truck-106",
+                "Delivery Truck 106",
+                "vehicle",
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        String response = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-party-role-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fixedAssetCode": " truck-106 ",
+                  "partyCode": " west-carrier ",
+                  "roleTypeCode": " operator ",
+                  "comments": " Primary carrier operator ",
+                  "fromDate": "2026-04-01T00:00:00Z",
+                  "thruDate": "2026-12-31T23:59:59Z",
+                  "assignedBy": " Fleet.Manager@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.inventoryFixedAssetId").isNotEmpty())
+            .andExpect(jsonPath("$.fixedAssetCode").value("TRUCK-106"))
+            .andExpect(jsonPath("$.partyCode").value("WEST-CARRIER"))
+            .andExpect(jsonPath("$.roleTypeCode").value("OPERATOR"))
+            .andExpect(jsonPath("$.comments").value("Primary carrier operator"))
+            .andExpect(jsonPath("$.fromDate").value("2026-04-01T00:00:00Z"))
+            .andExpect(jsonPath("$.thruDate").value("2026-12-31T23:59:59Z"))
+            .andExpect(jsonPath("$.assignedBy").value("fleet.manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.assignedAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+        String assignmentId = response.replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(get("/api/inventory/fixed-asset-party-role-assignments/{id}", assignmentId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.fixedAssetCode").value("TRUCK-106"))
+            .andExpect(jsonPath("$.partyCode").value("WEST-CARRIER"))
+            .andExpect(jsonPath("$.roleTypeCode").value("OPERATOR"));
+
+        mockMvc.perform(get("/api/inventory/fixed-asset-party-role-assignments")
+            .param("fixedAssetCode", "truck-106")
+            .param("partyCode", "west-carrier")
+            .param("roleTypeCode", "operator")
+            .param("assignedBy", "fleet.manager@arcanaerp.com")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].fixedAssetCode").value("TRUCK-106"))
+            .andExpect(jsonPath("$.items[0].partyCode").value("WEST-CARRIER"))
+            .andExpect(jsonPath("$.items[0].roleTypeCode").value("OPERATOR"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryFixedAssetPartyRoleAssignment() throws Exception {
+        inventoryFixedAssetRepository.save(
+            InventoryFixedAsset.create(
+                "truck-107",
+                "Delivery Truck 107",
+                "vehicle",
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+        String payload = """
+            {
+              "fixedAssetCode": "truck-107",
+              "partyCode": "west-carrier",
+              "roleTypeCode": "operator",
+              "assignedBy": "fleet.manager@arcanaerp.com"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-party-role-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/fixed-asset-party-role-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory fixed asset party role assignment already exists for fixed asset: TRUCK-107, party: WEST-CARRIER, role type: OPERATOR",
+            "/api/inventory/fixed-asset-party-role-assignments"
+        );
+    }
+
+    @Test
+    void rejectsUnknownFixedAssetForPartyRoleAssignment() throws Exception {
+        expectInventoryFixedAssetNotFound(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/fixed-asset-party-role-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fixedAssetCode": "missing-truck",
+                      "partyCode": "west-carrier",
+                      "roleTypeCode": "operator",
+                      "assignedBy": "fleet.manager@arcanaerp.com"
+                    }
+                    """)),
+            "MISSING-TRUCK",
+            "/api/inventory/fixed-asset-party-role-assignments"
+        );
+    }
+
+    @Test
+    void rejectsInvalidFixedAssetPartyRoleAssignmentDateWindow() throws Exception {
+        inventoryFixedAssetRepository.save(
+            InventoryFixedAsset.create(
+                "truck-108",
+                "Delivery Truck 108",
+                "vehicle",
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/fixed-asset-party-role-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fixedAssetCode": "truck-108",
+                      "partyCode": "west-carrier",
+                      "roleTypeCode": "operator",
+                      "fromDate": "2026-12-31T23:59:59Z",
+                      "thruDate": "2026-04-01T00:00:00Z",
+                      "assignedBy": "fleet.manager@arcanaerp.com"
+                    }
+                    """)),
+            "fromDate must be before or equal to thruDate",
+            "/api/inventory/fixed-asset-party-role-assignments"
         );
     }
 
