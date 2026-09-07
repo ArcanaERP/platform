@@ -4,12 +4,17 @@ import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.InventoryFacilityDirectory;
+import com.arcanaerp.platform.inventory.InventoryFacilityActiveChangeView;
+import com.arcanaerp.platform.inventory.InventoryFacilityMetadataChangeView;
 import com.arcanaerp.platform.inventory.InventoryFacilityView;
 import com.arcanaerp.platform.inventory.RegisterInventoryFacilityCommand;
+import com.arcanaerp.platform.inventory.UpdateInventoryFacilityActiveCommand;
+import com.arcanaerp.platform.inventory.UpdateInventoryFacilityMetadataCommand;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.NoSuchElementException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
 
     private final InventoryFacilityRepository inventoryFacilityRepository;
+    private final InventoryFacilityActiveChangeAuditRepository activeChangeAuditRepository;
+    private final InventoryFacilityMetadataChangeAuditRepository metadataChangeAuditRepository;
     private final Clock clock;
 
     @Override
@@ -55,6 +62,107 @@ class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
     }
 
     @Override
+    public InventoryFacilityView updateFacilityActive(String code, UpdateInventoryFacilityActiveCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        String normalizedCode = normalizeRequired(code, "code").toUpperCase();
+        String commandCode = normalizeRequired(command.code(), "code").toUpperCase();
+        if (!normalizedCode.equals(commandCode)) {
+            throw new IllegalArgumentException("code path variable must match command code");
+        }
+        InventoryFacility facility = findFacility(normalizedCode);
+        boolean previousActive = facility.isActive();
+        Instant changedAt = Instant.now(clock);
+        facility.setActive(command.active(), changedAt);
+        activeChangeAuditRepository.save(InventoryFacilityActiveChangeAudit.create(
+            facility.getId(),
+            facility.getCode(),
+            previousActive,
+            facility.isActive(),
+            command.changedBy(),
+            changedAt
+        ));
+        return toView(inventoryFacilityRepository.save(facility));
+    }
+
+    @Override
+    public InventoryFacilityView updateFacilityMetadata(String code, UpdateInventoryFacilityMetadataCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        String normalizedCode = normalizeRequired(code, "code").toUpperCase();
+        String commandCode = normalizeRequired(command.code(), "code").toUpperCase();
+        if (!normalizedCode.equals(commandCode)) {
+            throw new IllegalArgumentException("code path variable must match command code");
+        }
+        InventoryFacility facility = findFacility(normalizedCode);
+        InventoryFacilityMetadataSnapshot previous = InventoryFacilityMetadataSnapshot.from(facility);
+        Instant changedAt = Instant.now(clock);
+        facility.updateMetadata(
+            command.name(),
+            command.addressLine1(),
+            command.addressLine2(),
+            command.city(),
+            command.regionCode(),
+            command.postalCode(),
+            command.countryCode(),
+            command.contactName(),
+            command.contactEmail(),
+            changedAt
+        );
+        metadataChangeAuditRepository.save(InventoryFacilityMetadataChangeAudit.create(
+            facility.getId(),
+            facility.getCode(),
+            previous,
+            InventoryFacilityMetadataSnapshot.from(facility),
+            command.changedBy(),
+            changedAt
+        ));
+        return toView(inventoryFacilityRepository.save(facility));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<InventoryFacilityActiveChangeView> listActiveHistory(
+        String code,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        InventoryFacility facility = findFacility(code);
+        Page<InventoryFacilityActiveChangeAudit> history = activeChangeAuditRepository.findHistoryFiltered(
+            facility.getId(),
+            normalizeOptionalChangedBy(changedBy),
+            changedAtFrom,
+            changedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
+        );
+        return PageResult.from(history).map(this::toActiveChangeView);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<InventoryFacilityMetadataChangeView> listMetadataHistory(
+        String code,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        InventoryFacility facility = findFacility(code);
+        Page<InventoryFacilityMetadataChangeAudit> history = metadataChangeAuditRepository.findHistoryFiltered(
+            facility.getId(),
+            normalizeOptionalChangedBy(changedBy),
+            changedAtFrom,
+            changedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
+        );
+        return PageResult.from(history).map(this::toMetadataChangeView);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public PageResult<InventoryFacilityView> listFacilities(Boolean active, String query, PageQuery pageQuery) {
         return PageResult.from(inventoryFacilityRepository.findFiltered(
@@ -62,6 +170,12 @@ class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
             normalizeOptionalQuery(query),
             pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "code"))
         )).map(this::toView);
+    }
+
+    private InventoryFacility findFacility(String code) {
+        String normalizedCode = normalizeRequired(code, "code").toUpperCase();
+        return inventoryFacilityRepository.findByCode(normalizedCode)
+            .orElseThrow(() -> new NoSuchElementException("Inventory facility not found for code: " + normalizedCode));
     }
 
     private InventoryFacilityView toView(InventoryFacility facility) {
@@ -83,6 +197,44 @@ class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
         );
     }
 
+    private InventoryFacilityActiveChangeView toActiveChangeView(InventoryFacilityActiveChangeAudit audit) {
+        return new InventoryFacilityActiveChangeView(
+            audit.getId(),
+            audit.getFacilityCode(),
+            audit.isPreviousActive(),
+            audit.isCurrentActive(),
+            audit.getChangedBy(),
+            audit.getChangedAt()
+        );
+    }
+
+    private InventoryFacilityMetadataChangeView toMetadataChangeView(InventoryFacilityMetadataChangeAudit audit) {
+        return new InventoryFacilityMetadataChangeView(
+            audit.getId(),
+            audit.getFacilityCode(),
+            audit.getPreviousName(),
+            audit.getCurrentName(),
+            audit.getPreviousAddressLine1(),
+            audit.getCurrentAddressLine1(),
+            audit.getPreviousAddressLine2(),
+            audit.getCurrentAddressLine2(),
+            audit.getPreviousCity(),
+            audit.getCurrentCity(),
+            audit.getPreviousRegionCode(),
+            audit.getCurrentRegionCode(),
+            audit.getPreviousPostalCode(),
+            audit.getCurrentPostalCode(),
+            audit.getPreviousCountryCode(),
+            audit.getCurrentCountryCode(),
+            audit.getPreviousContactName(),
+            audit.getCurrentContactName(),
+            audit.getPreviousContactEmail(),
+            audit.getCurrentContactEmail(),
+            audit.getChangedBy(),
+            audit.getChangedAt()
+        );
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");
@@ -98,5 +250,9 @@ class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
             throw new IllegalArgumentException("query is required");
         }
         return query.trim().toUpperCase();
+    }
+
+    private static String normalizeOptionalChangedBy(String value) {
+        return value == null ? null : normalizeRequired(value, "changedBy").toLowerCase();
     }
 }

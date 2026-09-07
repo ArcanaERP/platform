@@ -14,6 +14,8 @@ erDiagram
     INVENTORY_ITEMS ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : to_item
     INVENTORY_ENTRY_RELATIONSHIPS ||--o{ INVENTORY_ENTRY_RELATIONSHIP_STATUS_CHANGE_AUDITS : records_status_changes
     INVENTORY_FACILITIES ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : traces_facility
+    INVENTORY_FACILITIES ||--o{ INVENTORY_FACILITY_ACTIVE_CHANGE_AUDITS : records_active_changes
+    INVENTORY_FACILITIES ||--o{ INVENTORY_FACILITY_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : traces_asset
     INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_FIXED_ASSET_ACTIVE_CHANGE_AUDITS : records_active_changes
     INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_FIXED_ASSET_METADATA_CHANGE_AUDITS : records_metadata_changes
@@ -107,6 +109,42 @@ erDiagram
       BOOLEAN active
       INSTANT createdAt
       INSTANT updatedAt
+    }
+
+    INVENTORY_FACILITY_ACTIVE_CHANGE_AUDITS {
+      UUID id PK
+      UUID inventoryFacilityId
+      STRING facilityCode
+      BOOLEAN previousActive
+      BOOLEAN currentActive
+      STRING changedBy
+      INSTANT changedAt
+    }
+
+    INVENTORY_FACILITY_METADATA_CHANGE_AUDITS {
+      UUID id PK
+      UUID inventoryFacilityId
+      STRING facilityCode
+      STRING previousName
+      STRING currentName
+      STRING previousAddressLine1
+      STRING currentAddressLine1
+      STRING previousAddressLine2
+      STRING currentAddressLine2
+      STRING previousCity
+      STRING currentCity
+      STRING previousRegionCode
+      STRING currentRegionCode
+      STRING previousPostalCode
+      STRING currentPostalCode
+      STRING previousCountryCode
+      STRING currentCountryCode
+      STRING previousContactName
+      STRING currentContactName
+      STRING previousContactEmail
+      STRING currentContactEmail
+      STRING changedBy
+      INSTANT changedAt
     }
 
     INVENTORY_FIXED_ASSETS {
@@ -383,6 +421,8 @@ erDiagram
 - Inventory entry relationships support optional `fromDate` and `thruDate` validity windows.
 - Inventory entry relationship status changes are append-only via `inventory_entry_relationship_status_change_audits`.
 - Inventory facilities are a first-class catalog for legacy facility traceability; facility codes normalize to uppercase.
+- Inventory facility active changes are append-only via `inventory_facility_active_change_audits`.
+- Inventory facility metadata changes are append-only via `inventory_facility_metadata_change_audits`.
 - Inventory fixed assets are a first-class catalog for legacy fixed-asset traceability; fixed asset codes and type codes normalize to uppercase.
 - Inventory fixed asset `fixedAssetTypeCode` values are optional, but supplied codes must exist in `inventory_fixed_asset_types`.
 - Inventory fixed asset active changes are append-only via `inventory_fixed_asset_active_change_audits`.
@@ -404,6 +444,8 @@ erDiagram
 - `inventory_adjustments.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_pickup_dropoff_transactions.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_pickup_dropoff_transactions.inventoryAdjustmentId` is a logical reference to `inventory_adjustments.id`.
+- `inventory_facility_active_change_audits.inventoryFacilityId` is a logical reference to `inventory_facilities.id`.
+- `inventory_facility_metadata_change_audits.inventoryFacilityId` is a logical reference to `inventory_facilities.id`.
 - `inventory_fixed_asset_active_change_audits.inventoryFixedAssetId` is a logical reference to `inventory_fixed_assets.id`.
 - `inventory_fixed_asset_metadata_change_audits.inventoryFixedAssetId` is a logical reference to `inventory_fixed_assets.id`.
 - `inventory_fixed_asset_party_role_assignments.inventoryFixedAssetId` is a logical reference to `inventory_fixed_assets.id`.
@@ -448,6 +490,10 @@ erDiagram
   - `inventory_transfer_reversal_idempotency(transferId, idempotencyKey)`
 - Indexes:
   - `inventory_facilities(active, code)`
+  - `inventory_facility_active_change_audits(inventoryFacilityId, changedAt)`
+  - `inventory_facility_active_change_audits(facilityCode, changedAt)`
+  - `inventory_facility_metadata_change_audits(inventoryFacilityId, changedAt)`
+  - `inventory_facility_metadata_change_audits(facilityCode, changedAt)`
   - `inventory_fixed_assets(active, code)`
   - `inventory_fixed_asset_active_change_audits(inventoryFixedAssetId, changedAt)`
   - `inventory_fixed_asset_active_change_audits(fixedAssetCode, changedAt)`
@@ -541,6 +587,10 @@ erDiagram
 - `GET /api/inventory/items/{sku}/locations/{locationCode}/owner-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `POST /api/inventory/facilities`
 - `GET /api/inventory/facilities/{code}`
+- `PATCH /api/inventory/facilities/{code}/active`
+- `GET /api/inventory/facilities/{code}/active-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
+- `PATCH /api/inventory/facilities/{code}/metadata`
+- `GET /api/inventory/facilities/{code}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/facilities?page=&size=&active=&query=`
 - `POST /api/inventory/fixed-assets`
 - `GET /api/inventory/fixed-assets/{code}`

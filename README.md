@@ -322,6 +322,7 @@ Inventory:
 - Inventory item `sourceSystemCode + externalReference` pairs are unique when both values are supplied.
 - Inventory items support optional owner metadata through `ownerTenantCode`, `ownerUserId`, and `ownerRoleCode`; supplied owner triples are validated against identity users and roles.
 - Inventory facilities provide a first-class facility catalog for pickup/dropoff traceability.
+- Inventory facility active and metadata changes are audit-trailed with actor attribution.
 - Inventory fixed assets provide a first-class asset catalog for pickup/dropoff traceability.
 - Inventory fixed asset active and metadata changes are audit-trailed with actor attribution.
 - Inventory fixed asset party-role assignments track which parties serve asset-specific roles.
@@ -374,6 +375,10 @@ Inventory:
 - `GET /api/inventory/items/{sku}/locations/{locationCode}/owner-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `POST /api/inventory/facilities`
 - `GET /api/inventory/facilities/{code}`
+- `PATCH /api/inventory/facilities/{code}/active`
+- `GET /api/inventory/facilities/{code}/active-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
+- `PATCH /api/inventory/facilities/{code}/metadata`
+- `GET /api/inventory/facilities/{code}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/facilities?page=&size=&active=&query=`
 - `POST /api/inventory/fixed-assets`
 - `GET /api/inventory/fixed-assets/{code}`

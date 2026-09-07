@@ -89,6 +89,12 @@ class InventoryApiIntegrationTest {
     private InventoryFacilityRepository inventoryFacilityRepository;
 
     @Autowired
+    private InventoryFacilityActiveChangeAuditRepository facilityActiveChangeAuditRepository;
+
+    @Autowired
+    private InventoryFacilityMetadataChangeAuditRepository facilityMetadataChangeAuditRepository;
+
+    @Autowired
     private InventoryFixedAssetRepository inventoryFixedAssetRepository;
 
     @Autowired
@@ -160,6 +166,8 @@ class InventoryApiIntegrationTest {
         fixedAssetPartyRoleAssignmentRepository.deleteAll();
         inventoryFixedAssetRepository.deleteAll();
         inventoryFixedAssetTypeRepository.deleteAll();
+        facilityActiveChangeAuditRepository.deleteAll();
+        facilityMetadataChangeAuditRepository.deleteAll();
         inventoryFacilityRepository.deleteAll();
         locationMetadataChangeAuditRepository.deleteAll();
         inventoryLocationRepository.deleteAll();
@@ -1197,6 +1205,205 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].code").value("DC-WEST"));
+    }
+
+    @Test
+    void updatesInventoryFacilityActiveStateAndListsActiveHistory() throws Exception {
+        inventoryFacilityRepository.save(
+            InventoryFacility.create(
+                "dc-retire",
+                "Retirable Distribution Center",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/facilities/{code}/active",
+            "dc-retire"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "active": false,
+                  "changedBy": " Facilities.Ops@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("DC-RETIRE"))
+            .andExpect(jsonPath("$.active").value(false));
+
+        mockMvc.perform(get("/api/inventory/facilities")
+            .param("active", "false")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].code").value("DC-RETIRE"));
+
+        mockMvc.perform(get("/api/inventory/facilities/{code}/active-history", "dc-retire")
+            .param("changedBy", "facilities.ops@arcanaerp.com")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].facilityCode").value("DC-RETIRE"))
+            .andExpect(jsonPath("$.items[0].previousActive").value(true))
+            .andExpect(jsonPath("$.items[0].currentActive").value(false))
+            .andExpect(jsonPath("$.items[0].changedBy").value("facilities.ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
+    }
+
+    @Test
+    void rejectsNoOpInventoryFacilityActiveStateChange() throws Exception {
+        inventoryFacilityRepository.save(
+            InventoryFacility.create(
+                "dc-noop",
+                "No-op Distribution Center",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/facilities/{code}/active",
+                "dc-noop"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "active": true,
+                      "changedBy": "facilities.ops@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory facility active flag is already true",
+            "/api/inventory/facilities/dc-noop/active"
+        );
+    }
+
+    @Test
+    void updatesInventoryFacilityMetadataAndListsMetadataHistory() throws Exception {
+        inventoryFacilityRepository.save(
+            InventoryFacility.create(
+                "dc-metadata",
+                "Metadata Distribution Center",
+                "100 Dock Way",
+                null,
+                "Reno",
+                "nv",
+                "89501",
+                "us",
+                "Receiving",
+                "receiving@arcanaerp.com",
+                SEED_INSTANT
+            )
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/facilities/{code}/metadata",
+            "dc-metadata"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "name": " Metadata Distribution Center East ",
+                  "addressLine1": " 200 East Dock ",
+                  "addressLine2": " Building 2 ",
+                  "city": " Sparks ",
+                  "regionCode": " nv ",
+                  "postalCode": "89431",
+                  "countryCode": " us ",
+                  "contactName": " East Receiving ",
+                  "contactEmail": " East.Receiving@ArcanaERP.com ",
+                  "changedBy": " Facilities.Ops@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("DC-METADATA"))
+            .andExpect(jsonPath("$.name").value("Metadata Distribution Center East"))
+            .andExpect(jsonPath("$.addressLine1").value("200 East Dock"))
+            .andExpect(jsonPath("$.addressLine2").value("Building 2"))
+            .andExpect(jsonPath("$.city").value("Sparks"))
+            .andExpect(jsonPath("$.regionCode").value("NV"))
+            .andExpect(jsonPath("$.postalCode").value("89431"))
+            .andExpect(jsonPath("$.countryCode").value("US"))
+            .andExpect(jsonPath("$.contactName").value("East Receiving"))
+            .andExpect(jsonPath("$.contactEmail").value("east.receiving@arcanaerp.com"));
+
+        mockMvc.perform(get("/api/inventory/facilities/{code}/metadata-history", "dc-metadata")
+            .param("changedBy", "facilities.ops@arcanaerp.com")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].facilityCode").value("DC-METADATA"))
+            .andExpect(jsonPath("$.items[0].previousName").value("Metadata Distribution Center"))
+            .andExpect(jsonPath("$.items[0].currentName").value("Metadata Distribution Center East"))
+            .andExpect(jsonPath("$.items[0].previousAddressLine1").value("100 Dock Way"))
+            .andExpect(jsonPath("$.items[0].currentAddressLine1").value("200 East Dock"))
+            .andExpect(jsonPath("$.items[0].previousCity").value("Reno"))
+            .andExpect(jsonPath("$.items[0].currentCity").value("Sparks"))
+            .andExpect(jsonPath("$.items[0].previousContactEmail").value("receiving@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].currentContactEmail").value("east.receiving@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("facilities.ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
+    }
+
+    @Test
+    void rejectsNoOpInventoryFacilityMetadataChange() throws Exception {
+        inventoryFacilityRepository.save(
+            InventoryFacility.create(
+                "dc-metadata-noop",
+                "No-op Metadata Distribution Center",
+                "100 Dock Way",
+                null,
+                "Reno",
+                "nv",
+                "89501",
+                "us",
+                "Receiving",
+                "receiving@arcanaerp.com",
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/facilities/{code}/metadata",
+                "dc-metadata-noop"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "No-op Metadata Distribution Center",
+                      "addressLine1": "100 Dock Way",
+                      "city": "Reno",
+                      "regionCode": "nv",
+                      "postalCode": "89501",
+                      "countryCode": "us",
+                      "contactName": "Receiving",
+                      "contactEmail": "receiving@arcanaerp.com",
+                      "changedBy": "facilities.ops@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory facility metadata is unchanged",
+            "/api/inventory/facilities/dc-metadata-noop/metadata"
+        );
     }
 
     @Test

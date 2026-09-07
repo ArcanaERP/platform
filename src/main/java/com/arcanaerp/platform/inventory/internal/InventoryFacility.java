@@ -126,6 +126,68 @@ public class InventoryFacility {
         );
     }
 
+    void setActive(boolean active, Instant updatedAt) {
+        if (updatedAt == null) {
+            throw new IllegalArgumentException("updatedAt is required");
+        }
+        if (this.active == active) {
+            throw new IllegalArgumentException("Inventory facility active flag is already " + active);
+        }
+        this.active = active;
+        this.updatedAt = updatedAt;
+    }
+
+    void updateMetadata(
+        String name,
+        String addressLine1,
+        String addressLine2,
+        String city,
+        String regionCode,
+        String postalCode,
+        String countryCode,
+        String contactName,
+        String contactEmail,
+        Instant updatedAt
+    ) {
+        if (updatedAt == null) {
+            throw new IllegalArgumentException("updatedAt is required");
+        }
+        String normalizedName = normalizeRequired(name, "name");
+        String normalizedAddressLine1 = normalizeOptional(addressLine1);
+        String normalizedAddressLine2 = normalizeOptional(addressLine2);
+        String normalizedCity = normalizeOptional(city);
+        String normalizedRegionCode = normalizeOptionalUpper(regionCode);
+        String normalizedPostalCode = normalizeOptional(postalCode);
+        String normalizedCountryCode = normalizeOptionalUpper(countryCode);
+        String normalizedContactName = normalizeOptional(contactName);
+        String normalizedContactEmail = normalizeOptionalLower(contactEmail);
+
+        if (
+            this.name.equals(normalizedName)
+                && equalsNullable(this.addressLine1, normalizedAddressLine1)
+                && equalsNullable(this.addressLine2, normalizedAddressLine2)
+                && equalsNullable(this.city, normalizedCity)
+                && equalsNullable(this.regionCode, normalizedRegionCode)
+                && equalsNullable(this.postalCode, normalizedPostalCode)
+                && equalsNullable(this.countryCode, normalizedCountryCode)
+                && equalsNullable(this.contactName, normalizedContactName)
+                && equalsNullable(this.contactEmail, normalizedContactEmail)
+        ) {
+            throw new IllegalArgumentException("Inventory facility metadata is unchanged");
+        }
+
+        this.name = normalizedName;
+        this.addressLine1 = normalizedAddressLine1;
+        this.addressLine2 = normalizedAddressLine2;
+        this.city = normalizedCity;
+        this.regionCode = normalizedRegionCode;
+        this.postalCode = normalizedPostalCode;
+        this.countryCode = normalizedCountryCode;
+        this.contactName = normalizedContactName;
+        this.contactEmail = normalizedContactEmail;
+        this.updatedAt = updatedAt;
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");
@@ -148,5 +210,9 @@ public class InventoryFacility {
     private static String normalizeOptionalLower(String value) {
         String normalized = normalizeOptional(value);
         return normalized == null ? null : normalized.toLowerCase();
+    }
+
+    private static boolean equalsNullable(String left, String right) {
+        return left == null ? right == null : left.equals(right);
     }
 }

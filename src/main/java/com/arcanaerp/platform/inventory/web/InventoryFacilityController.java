@@ -3,12 +3,19 @@ package com.arcanaerp.platform.inventory.web;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.InventoryFacilityDirectory;
+import com.arcanaerp.platform.inventory.InventoryFacilityActiveChangeView;
+import com.arcanaerp.platform.inventory.InventoryFacilityMetadataChangeView;
 import com.arcanaerp.platform.inventory.InventoryFacilityView;
 import com.arcanaerp.platform.inventory.RegisterInventoryFacilityCommand;
+import com.arcanaerp.platform.inventory.UpdateInventoryFacilityActiveCommand;
+import com.arcanaerp.platform.inventory.UpdateInventoryFacilityMetadataCommand;
 import jakarta.validation.Valid;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -48,6 +55,82 @@ public class InventoryFacilityController {
         return toResponse(inventoryFacilityDirectory.facilityByCode(code));
     }
 
+    @PatchMapping("/{code}/active")
+    public InventoryFacilityResponse updateFacilityActive(
+        @PathVariable String code,
+        @Valid @RequestBody UpdateInventoryFacilityActiveRequest request
+    ) {
+        return toResponse(inventoryFacilityDirectory.updateFacilityActive(
+            code,
+            new UpdateInventoryFacilityActiveCommand(code, request.active(), request.changedBy())
+        ));
+    }
+
+    @PatchMapping("/{code}/metadata")
+    public InventoryFacilityResponse updateFacilityMetadata(
+        @PathVariable String code,
+        @Valid @RequestBody UpdateInventoryFacilityMetadataRequest request
+    ) {
+        return toResponse(inventoryFacilityDirectory.updateFacilityMetadata(
+            code,
+            new UpdateInventoryFacilityMetadataCommand(
+                code,
+                request.name(),
+                request.addressLine1(),
+                request.addressLine2(),
+                request.city(),
+                request.regionCode(),
+                request.postalCode(),
+                request.countryCode(),
+                request.contactName(),
+                request.contactEmail(),
+                request.changedBy()
+            )
+        ));
+    }
+
+    @GetMapping("/{code}/active-history")
+    public PageResult<InventoryFacilityActiveChangeResponse> listActiveHistory(
+        @PathVariable String code,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return inventoryFacilityDirectory.listActiveHistory(
+            code,
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toActiveChangeResponse);
+    }
+
+    @GetMapping("/{code}/metadata-history")
+    public PageResult<InventoryFacilityMetadataChangeResponse> listMetadataHistory(
+        @PathVariable String code,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return inventoryFacilityDirectory.listMetadataHistory(
+            code,
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toMetadataChangeResponse);
+    }
+
     @GetMapping
     public PageResult<InventoryFacilityResponse> listFacilities(
         @RequestParam(required = false) Boolean active,
@@ -75,5 +158,73 @@ public class InventoryFacilityController {
             facility.createdAt(),
             facility.updatedAt()
         );
+    }
+
+    private InventoryFacilityActiveChangeResponse toActiveChangeResponse(InventoryFacilityActiveChangeView change) {
+        return new InventoryFacilityActiveChangeResponse(
+            change.id(),
+            change.facilityCode(),
+            change.previousActive(),
+            change.currentActive(),
+            change.changedBy(),
+            change.changedAt()
+        );
+    }
+
+    private InventoryFacilityMetadataChangeResponse toMetadataChangeResponse(InventoryFacilityMetadataChangeView change) {
+        return new InventoryFacilityMetadataChangeResponse(
+            change.id(),
+            change.facilityCode(),
+            change.previousName(),
+            change.currentName(),
+            change.previousAddressLine1(),
+            change.currentAddressLine1(),
+            change.previousAddressLine2(),
+            change.currentAddressLine2(),
+            change.previousCity(),
+            change.currentCity(),
+            change.previousRegionCode(),
+            change.currentRegionCode(),
+            change.previousPostalCode(),
+            change.currentPostalCode(),
+            change.previousCountryCode(),
+            change.currentCountryCode(),
+            change.previousContactName(),
+            change.currentContactName(),
+            change.previousContactEmail(),
+            change.currentContactEmail(),
+            change.changedBy(),
+            change.changedAt()
+        );
+    }
+
+    private static String normalizeOptionalChangedBy(String changedBy) {
+        if (changedBy == null) {
+            return null;
+        }
+        if (changedBy.isBlank()) {
+            throw new IllegalArgumentException("changedBy query parameter must not be blank");
+        }
+        return changedBy.trim().toLowerCase();
+    }
+
+    private static Instant parseOptionalInstant(String value, String parameterName) {
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
+            throw new IllegalArgumentException(parameterName + " query parameter must not be blank");
+        }
+        try {
+            return Instant.parse(value.trim());
+        } catch (DateTimeParseException exception) {
+            throw new IllegalArgumentException(parameterName + " query parameter must be a valid ISO-8601 instant");
+        }
+    }
+
+    private static void validateChangedAtRange(Instant changedAtFrom, Instant changedAtTo) {
+        if (changedAtFrom != null && changedAtTo != null && changedAtFrom.isAfter(changedAtTo)) {
+            throw new IllegalArgumentException("changedAtFrom must be before or equal to changedAtTo");
+        }
     }
 }
