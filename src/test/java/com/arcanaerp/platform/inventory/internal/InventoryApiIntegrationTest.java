@@ -95,6 +95,9 @@ class InventoryApiIntegrationTest {
     private InventoryFacilityMetadataChangeAuditRepository facilityMetadataChangeAuditRepository;
 
     @Autowired
+    private InventoryFacilityPartyRoleAssignmentRepository facilityPartyRoleAssignmentRepository;
+
+    @Autowired
     private InventoryFixedAssetRepository inventoryFixedAssetRepository;
 
     @Autowired
@@ -168,6 +171,7 @@ class InventoryApiIntegrationTest {
         inventoryFixedAssetTypeRepository.deleteAll();
         facilityActiveChangeAuditRepository.deleteAll();
         facilityMetadataChangeAuditRepository.deleteAll();
+        facilityPartyRoleAssignmentRepository.deleteAll();
         inventoryFacilityRepository.deleteAll();
         locationMetadataChangeAuditRepository.deleteAll();
         inventoryLocationRepository.deleteAll();
@@ -1403,6 +1407,214 @@ class InventoryApiIntegrationTest {
                     """)),
             "Inventory facility metadata is unchanged",
             "/api/inventory/facilities/dc-metadata-noop/metadata"
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryFacilityPartyRoleAssignments() throws Exception {
+        inventoryFacilityRepository.save(
+            InventoryFacility.create(
+                "dc-role",
+                "Role Distribution Center",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        String assignmentId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/facility-party-role-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "facilityCode": " dc-role ",
+                  "partyCode": " west-operator ",
+                  "roleTypeCode": " manager ",
+                  "comments": " Primary site manager ",
+                  "fromDate": "2026-04-01T00:00:00Z",
+                  "thruDate": "2026-12-31T23:59:59Z",
+                  "assignedBy": " Facilities.Ops@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.inventoryFacilityId").isNotEmpty())
+            .andExpect(jsonPath("$.facilityCode").value("DC-ROLE"))
+            .andExpect(jsonPath("$.partyCode").value("WEST-OPERATOR"))
+            .andExpect(jsonPath("$.roleTypeCode").value("MANAGER"))
+            .andExpect(jsonPath("$.comments").value("Primary site manager"))
+            .andExpect(jsonPath("$.fromDate").value("2026-04-01T00:00:00Z"))
+            .andExpect(jsonPath("$.thruDate").value("2026-12-31T23:59:59Z"))
+            .andExpect(jsonPath("$.assignedBy").value("facilities.ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.assignedAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(get("/api/inventory/facility-party-role-assignments/{id}", assignmentId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.facilityCode").value("DC-ROLE"))
+            .andExpect(jsonPath("$.partyCode").value("WEST-OPERATOR"))
+            .andExpect(jsonPath("$.roleTypeCode").value("MANAGER"));
+
+        mockMvc.perform(get("/api/inventory/facility-party-role-assignments")
+            .param("facilityCode", "dc-role")
+            .param("partyCode", "west-operator")
+            .param("roleTypeCode", "manager")
+            .param("assignedBy", "facilities.ops@arcanaerp.com")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].facilityCode").value("DC-ROLE"))
+            .andExpect(jsonPath("$.items[0].partyCode").value("WEST-OPERATOR"))
+            .andExpect(jsonPath("$.items[0].roleTypeCode").value("MANAGER"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryFacilityPartyRoleAssignment() throws Exception {
+        inventoryFacilityRepository.save(
+            InventoryFacility.create(
+                "dc-role-dup",
+                "Duplicate Role Distribution Center",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+        String payload = """
+            {
+              "facilityCode": "dc-role-dup",
+              "partyCode": "west-operator",
+              "roleTypeCode": "manager",
+              "assignedBy": "facilities.ops@arcanaerp.com"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/facility-party-role-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/facility-party-role-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory facility party role assignment already exists for facility: DC-ROLE-DUP, party: WEST-OPERATOR, role type: MANAGER",
+            "/api/inventory/facility-party-role-assignments"
+        );
+    }
+
+    @Test
+    void rejectsUnknownFacilityForPartyRoleAssignment() throws Exception {
+        expectInventoryFacilityNotFound(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/facility-party-role-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "facilityCode": "missing-dc",
+                      "partyCode": "west-operator",
+                      "roleTypeCode": "manager",
+                      "assignedBy": "facilities.ops@arcanaerp.com"
+                    }
+                    """)),
+            "MISSING-DC",
+            "/api/inventory/facility-party-role-assignments"
+        );
+    }
+
+    @Test
+    void rejectsInactiveFacilityForPartyRoleAssignment() throws Exception {
+        InventoryFacility facility = inventoryFacilityRepository.save(
+            InventoryFacility.create(
+                "dc-role-inactive",
+                "Inactive Role Distribution Center",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+        facility.setActive(false, SEED_INSTANT.plusSeconds(60));
+        inventoryFacilityRepository.save(facility);
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/facility-party-role-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "facilityCode": "dc-role-inactive",
+                      "partyCode": "west-operator",
+                      "roleTypeCode": "manager",
+                      "assignedBy": "facilities.ops@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory facility is inactive: DC-ROLE-INACTIVE",
+            "/api/inventory/facility-party-role-assignments"
+        );
+    }
+
+    @Test
+    void rejectsInvalidFacilityPartyRoleAssignmentDateWindow() throws Exception {
+        inventoryFacilityRepository.save(
+            InventoryFacility.create(
+                "dc-role-window",
+                "Window Role Distribution Center",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/facility-party-role-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "facilityCode": "dc-role-window",
+                      "partyCode": "west-operator",
+                      "roleTypeCode": "manager",
+                      "fromDate": "2026-12-31T23:59:59Z",
+                      "thruDate": "2026-04-01T00:00:00Z",
+                      "assignedBy": "facilities.ops@arcanaerp.com"
+                    }
+                    """)),
+            "fromDate must be before or equal to thruDate",
+            "/api/inventory/facility-party-role-assignments"
         );
     }
 

@@ -16,6 +16,7 @@ erDiagram
     INVENTORY_FACILITIES ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : traces_facility
     INVENTORY_FACILITIES ||--o{ INVENTORY_FACILITY_ACTIVE_CHANGE_AUDITS : records_active_changes
     INVENTORY_FACILITIES ||--o{ INVENTORY_FACILITY_METADATA_CHANGE_AUDITS : records_metadata_changes
+    INVENTORY_FACILITIES ||--o{ INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENTS : assigns_party_roles
     INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : traces_asset
     INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_FIXED_ASSET_ACTIVE_CHANGE_AUDITS : records_active_changes
     INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_FIXED_ASSET_METADATA_CHANGE_AUDITS : records_metadata_changes
@@ -145,6 +146,19 @@ erDiagram
       STRING currentContactEmail
       STRING changedBy
       INSTANT changedAt
+    }
+
+    INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENTS {
+      UUID id PK
+      UUID inventoryFacilityId
+      STRING facilityCode
+      STRING partyCode
+      STRING roleTypeCode
+      STRING comments
+      INSTANT fromDate
+      INSTANT thruDate
+      STRING assignedBy
+      INSTANT assignedAt
     }
 
     INVENTORY_FIXED_ASSETS {
@@ -423,6 +437,8 @@ erDiagram
 - Inventory facilities are a first-class catalog for legacy facility traceability; facility codes normalize to uppercase.
 - Inventory facility active changes are append-only via `inventory_facility_active_change_audits`.
 - Inventory facility metadata changes are append-only via `inventory_facility_metadata_change_audits`.
+- Inventory facility party-role assignments link active facilities to normalized party and role type codes.
+- Inventory facility party-role assignments support optional `fromDate` and `thruDate` validity windows.
 - Inventory fixed assets are a first-class catalog for legacy fixed-asset traceability; fixed asset codes and type codes normalize to uppercase.
 - Inventory fixed asset `fixedAssetTypeCode` values are optional, but supplied codes must exist in `inventory_fixed_asset_types`.
 - Inventory fixed asset active changes are append-only via `inventory_fixed_asset_active_change_audits`.
@@ -446,6 +462,7 @@ erDiagram
 - `inventory_pickup_dropoff_transactions.inventoryAdjustmentId` is a logical reference to `inventory_adjustments.id`.
 - `inventory_facility_active_change_audits.inventoryFacilityId` is a logical reference to `inventory_facilities.id`.
 - `inventory_facility_metadata_change_audits.inventoryFacilityId` is a logical reference to `inventory_facilities.id`.
+- `inventory_facility_party_role_assignments.inventoryFacilityId` is a logical reference to `inventory_facilities.id`.
 - `inventory_fixed_asset_active_change_audits.inventoryFixedAssetId` is a logical reference to `inventory_fixed_assets.id`.
 - `inventory_fixed_asset_metadata_change_audits.inventoryFixedAssetId` is a logical reference to `inventory_fixed_assets.id`.
 - `inventory_fixed_asset_party_role_assignments.inventoryFixedAssetId` is a logical reference to `inventory_fixed_assets.id`.
@@ -481,6 +498,7 @@ erDiagram
   - `inventory_entry_relationship_types(code)`
   - `inventory_entry_role_types(code)`
   - `inventory_facilities(code)`
+  - `inventory_facility_party_role_assignments(inventoryFacilityId, partyCode, roleTypeCode)`
   - `inventory_fixed_assets(code)`
   - `inventory_fixed_asset_party_role_assignments(inventoryFixedAssetId, partyCode, roleTypeCode)`
   - `inventory_product_instance_assignments(inventoryItemId, productInstanceCode)`
@@ -494,6 +512,9 @@ erDiagram
   - `inventory_facility_active_change_audits(facilityCode, changedAt)`
   - `inventory_facility_metadata_change_audits(inventoryFacilityId, changedAt)`
   - `inventory_facility_metadata_change_audits(facilityCode, changedAt)`
+  - `inventory_facility_party_role_assignments(facilityCode)`
+  - `inventory_facility_party_role_assignments(partyCode, roleTypeCode)`
+  - `inventory_facility_party_role_assignments(assignedBy, assignedAt)`
   - `inventory_fixed_assets(active, code)`
   - `inventory_fixed_asset_active_change_audits(inventoryFixedAssetId, changedAt)`
   - `inventory_fixed_asset_active_change_audits(fixedAssetCode, changedAt)`
@@ -592,6 +613,9 @@ erDiagram
 - `PATCH /api/inventory/facilities/{code}/metadata`
 - `GET /api/inventory/facilities/{code}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/facilities?page=&size=&active=&query=`
+- `POST /api/inventory/facility-party-role-assignments`
+- `GET /api/inventory/facility-party-role-assignments/{id}`
+- `GET /api/inventory/facility-party-role-assignments?page=&size=&facilityCode=&partyCode=&roleTypeCode=&assignedBy=`
 - `POST /api/inventory/fixed-assets`
 - `GET /api/inventory/fixed-assets/{code}`
 - `PATCH /api/inventory/fixed-assets/{code}/active`
