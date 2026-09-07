@@ -101,6 +101,12 @@ class InventoryApiIntegrationTest {
     private InventoryProductInstanceAssignmentReleaseAuditRepository inventoryProductInstanceAssignmentReleaseAuditRepository;
 
     @Autowired
+    private InventoryItemLocationAssignmentRepository inventoryItemLocationAssignmentRepository;
+
+    @Autowired
+    private InventoryItemLocationAssignmentEndAuditRepository inventoryItemLocationAssignmentEndAuditRepository;
+
+    @Autowired
     private UnitOfMeasurementDirectory unitOfMeasurementDirectory;
 
     @BeforeEach
@@ -111,6 +117,8 @@ class InventoryApiIntegrationTest {
         inventoryEntryRelationshipRepository.deleteAll();
         inventoryProductInstanceAssignmentReleaseAuditRepository.deleteAll();
         inventoryProductInstanceAssignmentRepository.deleteAll();
+        inventoryItemLocationAssignmentEndAuditRepository.deleteAll();
+        inventoryItemLocationAssignmentRepository.deleteAll();
         availabilityChangeAuditRepository.deleteAll();
         metadataChangeAuditRepository.deleteAll();
         inventoryAdjustmentRepository.deleteAll();
@@ -769,6 +777,176 @@ class InventoryApiIntegrationTest {
             "missing-sku",
             "missing-location",
             "/api/inventory/product-instance-assignments"
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryItemLocationAssignments() throws Exception {
+        inventoryItemRepository.save(InventoryItem.create(
+            "arc-location-100",
+            "wh-source",
+            new BigDecimal("2"),
+            SEED_INSTANT
+        ));
+        inventoryLocationRepository.save(InventoryLocation.create("bin-a", "Bin A", SEED_INSTANT));
+
+        String assignmentId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/item-location-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "sku": " arc-location-100 ",
+                  "itemLocationCode": " wh-source ",
+                  "assignedLocationCode": " bin-a ",
+                  "validFrom": "2026-03-02T00:00:00Z",
+                  "assignedBy": " Inventory.Manager "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.inventoryItemId").isNotEmpty())
+            .andExpect(jsonPath("$.sku").value("ARC-LOCATION-100"))
+            .andExpect(jsonPath("$.itemLocationCode").value("WH-SOURCE"))
+            .andExpect(jsonPath("$.assignedLocationCode").value("BIN-A"))
+            .andExpect(jsonPath("$.validFrom").value("2026-03-02T00:00:00Z"))
+            .andExpect(jsonPath("$.validThru").doesNotExist())
+            .andExpect(jsonPath("$.active").value(true))
+            .andExpect(jsonPath("$.assignedBy").value("inventory.manager"))
+            .andExpect(jsonPath("$.assignedAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(get("/api/inventory/item-location-assignments/{id}", assignmentId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(assignmentId))
+            .andExpect(jsonPath("$.assignedLocationCode").value("BIN-A"));
+
+        mockMvc.perform(get("/api/inventory/item-location-assignments")
+            .param("sku", "arc-location-100")
+            .param("itemLocationCode", "wh-source")
+            .param("assignedLocationCode", "bin-a")
+            .param("active", "true")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(assignmentId))
+            .andExpect(jsonPath("$.items[0].active").value(true));
+    }
+
+    @Test
+    void endsInventoryItemLocationAssignmentAndListsEndHistory() throws Exception {
+        String assignmentId = registerItemLocationAssignment(
+            "arc-location-110",
+            "wh-source",
+            "bin-b",
+            "2026-03-02T00:00:00Z"
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/item-location-assignments/{id}/end",
+            assignmentId
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "validThru": "2026-03-03T00:00:00Z",
+                  "reason": "Moved to outbound",
+                  "endedBy": " Inventory.Manager "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(assignmentId))
+            .andExpect(jsonPath("$.validThru").value("2026-03-03T00:00:00Z"))
+            .andExpect(jsonPath("$.active").value(false))
+            .andExpect(jsonPath("$.endReason").value("Moved to outbound"))
+            .andExpect(jsonPath("$.endedBy").value("inventory.manager"))
+            .andExpect(jsonPath("$.endedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/item-location-assignments/{id}/end-history", assignmentId)
+            .param("endedBy", "inventory.manager")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].assignmentId").value(assignmentId))
+            .andExpect(jsonPath("$.items[0].sku").value("ARC-LOCATION-110"))
+            .andExpect(jsonPath("$.items[0].assignedLocationCode").value("BIN-B"))
+            .andExpect(jsonPath("$.items[0].previousValidThru").doesNotExist())
+            .andExpect(jsonPath("$.items[0].currentValidThru").value("2026-03-03T00:00:00Z"))
+            .andExpect(jsonPath("$.items[0].reason").value("Moved to outbound"))
+            .andExpect(jsonPath("$.items[0].endedBy").value("inventory.manager"));
+
+        mockMvc.perform(get("/api/inventory/item-location-assignments")
+            .param("assignedLocationCode", "bin-b")
+            .param("active", "false")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(assignmentId));
+    }
+
+    @Test
+    void rejectsEndingInventoryItemLocationAssignmentBeforeValidFrom() throws Exception {
+        String assignmentId = registerItemLocationAssignment(
+            "arc-location-111",
+            "wh-source",
+            "bin-c",
+            "2026-03-02T00:00:00Z"
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/item-location-assignments/{id}/end",
+                assignmentId
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "validThru": "2026-03-01T00:00:00Z",
+                      "reason": "Invalid window",
+                      "endedBy": "inventory.manager"
+                    }
+                    """)),
+            "validThru must be after or equal to validFrom",
+            "/api/inventory/item-location-assignments/" + assignmentId + "/end"
+        );
+    }
+
+    @Test
+    void rejectsInventoryItemLocationAssignmentToInactiveLocation() throws Exception {
+        inventoryItemRepository.save(InventoryItem.create(
+            "arc-location-112",
+            "wh-source",
+            new BigDecimal("2"),
+            SEED_INSTANT
+        ));
+        InventoryLocation inactiveLocation = inventoryLocationRepository.save(
+            InventoryLocation.create("bin-inactive", "Inactive Bin", SEED_INSTANT)
+        );
+        inactiveLocation.setActive(false, SEED_INSTANT.plusSeconds(60));
+        inventoryLocationRepository.save(inactiveLocation);
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/item-location-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "sku": "arc-location-112",
+                      "itemLocationCode": "wh-source",
+                      "assignedLocationCode": "bin-inactive",
+                      "validFrom": "2026-03-02T00:00:00Z",
+                      "assignedBy": "inventory.manager"
+                    }
+                    """)),
+            "Inventory location is inactive: BIN-INACTIVE",
+            "/api/inventory/item-location-assignments"
         );
     }
 
@@ -3532,6 +3710,35 @@ class InventoryApiIntegrationTest {
                   "assignedBy": "%s"
                 }
                 """.formatted(sku, locationCode, productInstanceCode, assignedBy)))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+    }
+
+    private String registerItemLocationAssignment(
+        String sku,
+        String itemLocationCode,
+        String assignedLocationCode,
+        String validFrom
+    ) throws Exception {
+        inventoryItemRepository.save(InventoryItem.create(sku, itemLocationCode, new BigDecimal("2"), SEED_INSTANT));
+        inventoryLocationRepository.save(InventoryLocation.create(assignedLocationCode, assignedLocationCode, SEED_INSTANT));
+
+        return mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/item-location-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "sku": "%s",
+                  "itemLocationCode": "%s",
+                  "assignedLocationCode": "%s",
+                  "validFrom": "%s",
+                  "assignedBy": "inventory.manager"
+                }
+                """.formatted(sku, itemLocationCode, assignedLocationCode, validFrom)))
             .andExpect(status().isCreated())
             .andReturn()
             .getResponse()

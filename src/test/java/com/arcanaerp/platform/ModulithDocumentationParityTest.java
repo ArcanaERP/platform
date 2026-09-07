@@ -59,6 +59,9 @@ class ModulithDocumentationParityTest {
     private static final Path INVENTORY_PRODUCT_INSTANCE_ASSIGNMENT_CONTROLLER = Path.of(
         "src/main/java/com/arcanaerp/platform/inventory/web/InventoryProductInstanceAssignmentController.java"
     );
+    private static final Path INVENTORY_ITEM_LOCATION_ASSIGNMENT_CONTROLLER = Path.of(
+        "src/main/java/com/arcanaerp/platform/inventory/web/InventoryItemLocationAssignmentController.java"
+    );
     private static final Path INVOICES_CONTROLLER = Path.of(
         "src/main/java/com/arcanaerp/platform/invoicing/web/InvoicesController.java"
     );
@@ -121,7 +124,8 @@ class ModulithDocumentationParityTest {
             INVENTORY_ITEM_CONTROLLER,
             INVENTORY_ENTRY_REFERENCE_DATA_CONTROLLER,
             INVENTORY_ENTRY_RELATIONSHIP_CONTROLLER,
-            INVENTORY_PRODUCT_INSTANCE_ASSIGNMENT_CONTROLLER
+            INVENTORY_PRODUCT_INSTANCE_ASSIGNMENT_CONTROLLER,
+            INVENTORY_ITEM_LOCATION_ASSIGNMENT_CONTROLLER
         );
     }
 

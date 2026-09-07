@@ -321,6 +321,7 @@ Inventory:
 - Inventory location `facilityTypeCode` values are validated against `POST /api/inventory/location-types` reference data.
 - Inventory entry relationship and role types are reference data for entry relationship records.
 - Product-instance assignment records link inventory items to product instance codes for legacy cross-reference parity.
+- Item-location assignment records track valid-from/valid-thru placement history for inventory items.
 - `POST /api/inventory/location-types`
 - `GET /api/inventory/location-types/{code}`
 - `GET /api/inventory/location-types?page=&size=`
@@ -340,6 +341,11 @@ Inventory:
 - `PATCH /api/inventory/product-instance-assignments/{id}/release`
 - `GET /api/inventory/product-instance-assignments/{id}/release-history?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
 - `GET /api/inventory/product-instance-assignments?page=&size=&sku=&locationCode=&productInstanceCode=&assignedBy=&active=`
+- `POST /api/inventory/item-location-assignments`
+- `GET /api/inventory/item-location-assignments/{id}`
+- `PATCH /api/inventory/item-location-assignments/{id}/end`
+- `GET /api/inventory/item-location-assignments/{id}/end-history?page=&size=&endedBy=&endedAtFrom=&endedAtTo=`
+- `GET /api/inventory/item-location-assignments?page=&size=&sku=&itemLocationCode=&assignedLocationCode=&active=`
 - `POST /api/inventory/locations`
 - `GET /api/inventory/locations/{code}`
 - `PATCH /api/inventory/locations/{code}/metadata`

@@ -14,7 +14,10 @@ erDiagram
     INVENTORY_ENTRY_RELATIONSHIPS ||--o{ INVENTORY_ENTRY_RELATIONSHIP_STATUS_CHANGE_AUDITS : records_status_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_PRODUCT_INSTANCE_ASSIGNMENTS : assigns_product_instances
     INVENTORY_PRODUCT_INSTANCE_ASSIGNMENTS ||--o{ INVENTORY_PRODUCT_INSTANCE_ASSIGNMENT_RELEASE_AUDITS : records_releases
+    INVENTORY_ITEMS ||--o{ INVENTORY_ITEM_LOCATION_ASSIGNMENTS : assigns_locations
+    INVENTORY_ITEM_LOCATION_ASSIGNMENTS ||--o{ INVENTORY_ITEM_LOCATION_ASSIGNMENT_END_AUDITS : records_ends
     INVENTORY_LOCATIONS ||--o{ INVENTORY_ITEMS : stores
+    INVENTORY_LOCATIONS ||--o{ INVENTORY_ITEM_LOCATION_ASSIGNMENTS : assigned_location
     INVENTORY_LOCATIONS ||--o{ INVENTORY_LOCATION_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_ADJUSTMENTS : records_movements
     INVENTORY_ITEMS ||--o{ INVENTORY_ITEM_AVAILABILITY_CHANGE_AUDITS : records_availability_changes
@@ -95,6 +98,36 @@ erDiagram
       STRING reason
       STRING releasedBy
       INSTANT releasedAt
+    }
+
+    INVENTORY_ITEM_LOCATION_ASSIGNMENTS {
+      UUID id PK
+      UUID inventoryItemId
+      STRING sku
+      STRING itemLocationCode
+      STRING assignedLocationCode
+      INSTANT validFrom
+      INSTANT validThru
+      BOOLEAN active
+      STRING assignedBy
+      INSTANT assignedAt
+      STRING endReason
+      STRING endedBy
+      INSTANT endedAt
+    }
+
+    INVENTORY_ITEM_LOCATION_ASSIGNMENT_END_AUDITS {
+      UUID id PK
+      UUID assignmentId
+      UUID inventoryItemId
+      STRING sku
+      STRING itemLocationCode
+      STRING assignedLocationCode
+      INSTANT previousValidThru
+      INSTANT currentValidThru
+      STRING reason
+      STRING endedBy
+      INSTANT endedAt
     }
 
     INVENTORY_LOCATIONS {
@@ -221,6 +254,8 @@ erDiagram
 - Inventory entry relationship status changes are append-only via `inventory_entry_relationship_status_change_audits`.
 - Inventory product-instance assignments are explicit cross-reference rows from inventory items to product instance codes.
 - Inventory product-instance assignment releases are append-only via `inventory_product_instance_assignment_release_audits`.
+- Inventory item-location assignments track valid-from/valid-thru placement history without mutating the stock row key.
+- Inventory item-location assignment ends are append-only via `inventory_item_location_assignment_end_audits`.
 - Inventory locations carry optional facility type, address, and contact metadata for facility-model parity.
 - Inventory location `facilityTypeCode` values are optional, but supplied codes must exist in `inventory_location_types`.
 - Inventory location metadata changes are append-only via `inventory_location_metadata_change_audits`.
@@ -234,6 +269,9 @@ erDiagram
 - `inventory_entry_relationship_status_change_audits.relationshipId` is a logical reference to `inventory_entry_relationships.id`.
 - `inventory_product_instance_assignments.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_product_instance_assignment_release_audits.assignmentId` is a logical reference to `inventory_product_instance_assignments.id`.
+- `inventory_item_location_assignments.inventoryItemId` is a logical reference to `inventory_items.id`.
+- `inventory_item_location_assignments.assignedLocationCode` aligns with `inventory_locations.code`.
+- `inventory_item_location_assignment_end_audits.assignmentId` is a logical reference to `inventory_item_location_assignments.id`.
 - Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` and `inventory_items.availableQuantity` store latest per-location state.
 - Inventory item availability changes are append-only via `inventory_item_availability_change_audits`.
 - Inventory item metadata changes are append-only via `inventory_item_metadata_change_audits`.
@@ -278,6 +316,13 @@ erDiagram
   - `inventory_product_instance_assignment_release_audits(assignmentId, releasedAt)`
   - `inventory_product_instance_assignment_release_audits(productInstanceCode, releasedAt)`
   - `inventory_product_instance_assignment_release_audits(releasedBy, releasedAt)`
+  - `inventory_item_location_assignments(inventoryItemId, validFrom, validThru)`
+  - `inventory_item_location_assignments(sku, itemLocationCode)`
+  - `inventory_item_location_assignments(assignedLocationCode)`
+  - `inventory_item_location_assignments(active)`
+  - `inventory_item_location_assignment_end_audits(assignmentId, endedAt)`
+  - `inventory_item_location_assignment_end_audits(sku, itemLocationCode, endedAt)`
+  - `inventory_item_location_assignment_end_audits(endedBy, endedAt)`
   - `inventory_transfer_reversal_idempotency(reversalTransferId)`
 
 ## Minimal HTTP Surface
@@ -301,6 +346,11 @@ erDiagram
 - `PATCH /api/inventory/product-instance-assignments/{id}/release`
 - `GET /api/inventory/product-instance-assignments/{id}/release-history?page=&size=&releasedBy=&releasedAtFrom=&releasedAtTo=`
 - `GET /api/inventory/product-instance-assignments?page=&size=&sku=&locationCode=&productInstanceCode=&assignedBy=&active=`
+- `POST /api/inventory/item-location-assignments`
+- `GET /api/inventory/item-location-assignments/{id}`
+- `PATCH /api/inventory/item-location-assignments/{id}/end`
+- `GET /api/inventory/item-location-assignments/{id}/end-history?page=&size=&endedBy=&endedAtFrom=&endedAtTo=`
+- `GET /api/inventory/item-location-assignments?page=&size=&sku=&itemLocationCode=&assignedLocationCode=&active=`
 - `POST /api/inventory/locations`
 - `GET /api/inventory/locations/{code}`
 - `PATCH /api/inventory/locations/{code}/metadata`
@@ -347,6 +397,9 @@ erDiagram
 - inventory product-instance assignment writes validate the inventory item and reject duplicate item/product-instance pairs
 - inventory product-instance assignment releases mark the assignment inactive and append release audit rows
 - inventory product-instance assignment list filters match normalized item keys, product instance code, assignedBy values, and active state
+- inventory item-location assignment writes validate the inventory item and active assigned location
+- inventory item-location assignment ends require `validThru >= validFrom` and append end audit rows
+- inventory item-location assignment list filters match normalized item keys, assigned location, and active state
 - inventory location facility type, region, and country codes are normalized to uppercase; contact email is normalized to lowercase
 - inventory location facility type codes must exist in the inventory location type catalog when supplied
 - inventory location metadata updates require `changedBy`, reject no-op changes, and append audit rows
