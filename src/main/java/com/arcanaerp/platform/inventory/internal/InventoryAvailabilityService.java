@@ -11,9 +11,11 @@ import com.arcanaerp.platform.inventory.DuplicateTransferReversalException;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
+import com.arcanaerp.platform.inventory.InventoryPickupDropoffTransactionView;
 import com.arcanaerp.platform.inventory.DailyInventoryTransferActivitySummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryTransferActivityByReferenceSummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryTransferActivitySummaryView;
+import com.arcanaerp.platform.inventory.RecordInventoryPickupDropoffCommand;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivitySummaryView;
@@ -63,6 +65,7 @@ class InventoryAvailabilityService implements InventoryAvailability {
 
     private final InventoryItemRepository inventoryItemRepository;
     private final InventoryAdjustmentRepository inventoryAdjustmentRepository;
+    private final InventoryPickupDropoffTransactionRepository pickupDropoffTransactionRepository;
     private final InventoryTransferReversalIdempotencyRepository reversalIdempotencyRepository;
     private final InventoryReversalIdempotencyProperties reversalIdempotencyProperties;
     private final InventoryLocationRepository inventoryLocationRepository;
@@ -238,6 +241,68 @@ class InventoryAvailabilityService implements InventoryAvailability {
             referenceId,
             adjustedAt
         );
+    }
+
+    @Override
+    public InventoryPickupDropoffTransactionView recordPickupDropoff(RecordInventoryPickupDropoffCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+
+        String normalizedSku = normalizeRequired(command.sku(), "sku").toUpperCase();
+        String normalizedLocationCode = normalizeLocationCode(command.locationCode());
+        String transactionTypeCode = InventoryPickupDropoffTransaction.normalizeTransactionTypeCode(command.transactionTypeCode());
+        BigDecimal quantity = normalizePositiveQuantity(command.quantity());
+        BigDecimal quantityDelta = InventoryPickupDropoffTransaction.quantityDeltaFor(transactionTypeCode, quantity);
+        String reason = normalizeRequired(command.reason(), "reason");
+        String handledBy = normalizeRequired(command.handledBy(), "handledBy").toLowerCase();
+        String referenceType = normalizeOptionalReferenceType(command.referenceType());
+        String referenceId = normalizeOptionalReferenceId(command.referenceId());
+        validateReferencePair(referenceType, referenceId);
+
+        ensureLocationExists(normalizedLocationCode);
+        InventoryItem item = findInventoryItem(normalizedSku, normalizedLocationCode);
+
+        BigDecimal previousOnHand = item.getOnHandQuantity();
+        Instant transactionAt = Instant.now(clock);
+        item.applyAdjustment(quantityDelta, transactionAt);
+        InventoryItem saved = inventoryItemRepository.save(item);
+        InventoryAdjustment adjustment = inventoryAdjustmentRepository.save(
+            InventoryAdjustment.create(
+                saved.getId(),
+                saved.getSku(),
+                saved.getLocationCode(),
+                null,
+                previousOnHand,
+                quantityDelta,
+                saved.getOnHandQuantity(),
+                reason,
+                handledBy,
+                transactionTypeCode,
+                null,
+                transactionAt
+            )
+        );
+
+        InventoryPickupDropoffTransaction transaction = pickupDropoffTransactionRepository.save(
+            InventoryPickupDropoffTransaction.create(
+                saved.getId(),
+                adjustment.getId(),
+                saved.getSku(),
+                saved.getLocationCode(),
+                transactionTypeCode,
+                quantity,
+                previousOnHand,
+                saved.getOnHandQuantity(),
+                reason,
+                handledBy,
+                referenceType,
+                referenceId,
+                transactionAt
+            )
+        );
+
+        return toPickupDropoffTransactionView(transaction);
     }
 
     @Override
@@ -529,6 +594,44 @@ class InventoryAvailabilityService implements InventoryAvailability {
                 transfer.getReferenceId(),
                 transfer.getTransferredAt()
             ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<InventoryPickupDropoffTransactionView> listPickupDropoffs(
+        String sku,
+        String locationCode,
+        String transactionTypeCode,
+        String handledBy,
+        String referenceType,
+        String referenceId,
+        Instant transactionAtFrom,
+        Instant transactionAtTo,
+        PageQuery pageQuery
+    ) {
+        String normalizedSku = normalizeRequired(sku, "sku").toUpperCase();
+        ensureSkuExists(normalizedSku);
+        String normalizedLocationCode = normalizeOptionalLocationCodeFilter(locationCode, "locationCode");
+        String normalizedTransactionTypeCode = transactionTypeCode == null
+            ? null
+            : InventoryPickupDropoffTransaction.normalizeTransactionTypeCode(transactionTypeCode);
+        String normalizedHandledBy = handledBy == null ? null : normalizeRequired(handledBy, "handledBy").toLowerCase();
+        String normalizedReferenceType = normalizeOptionalReferenceType(referenceType);
+        String normalizedReferenceId = normalizeOptionalReferenceId(referenceId);
+
+        Page<InventoryPickupDropoffTransaction> transactions = pickupDropoffTransactionRepository.findHistoryFiltered(
+            normalizedSku,
+            normalizedLocationCode,
+            normalizedTransactionTypeCode,
+            normalizedHandledBy,
+            normalizedReferenceType,
+            normalizedReferenceId,
+            transactionAtFrom,
+            transactionAtTo,
+            PageRequest.of(pageQuery.page(), pageQuery.size(), Sort.by(Sort.Direction.DESC, "transactionAt"))
+        );
+
+        return PageResult.from(transactions).map(InventoryAvailabilityService::toPickupDropoffTransactionView);
     }
 
     @Override
@@ -1259,6 +1362,27 @@ class InventoryAvailabilityService implements InventoryAvailability {
             totalPages,
             pageQuery.page() + 1 < totalPages,
             pageQuery.page() > 0 && !rows.isEmpty()
+        );
+    }
+
+    private static InventoryPickupDropoffTransactionView toPickupDropoffTransactionView(
+        InventoryPickupDropoffTransaction transaction
+    ) {
+        return new InventoryPickupDropoffTransactionView(
+            transaction.getId(),
+            transaction.getInventoryAdjustmentId(),
+            transaction.getSku(),
+            transaction.getLocationCode(),
+            transaction.getTransactionTypeCode(),
+            transaction.getQuantity(),
+            transaction.getQuantityDelta(),
+            transaction.getPreviousOnHandQuantity(),
+            transaction.getCurrentOnHandQuantity(),
+            transaction.getReason(),
+            transaction.getHandledBy(),
+            transaction.getReferenceType(),
+            transaction.getReferenceId(),
+            transaction.getTransactionAt()
         );
     }
 

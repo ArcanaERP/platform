@@ -13,6 +13,8 @@ public interface InventoryAvailability {
 
     InventoryTransferView transferInventory(TransferInventoryCommand command);
 
+    InventoryPickupDropoffTransactionView recordPickupDropoff(RecordInventoryPickupDropoffCommand command);
+
     InventoryTransferView transferById(UUID transferId);
 
     InventoryTransferView reverseTransfer(ReverseInventoryTransferCommand command);
@@ -28,6 +30,18 @@ public interface InventoryAvailability {
         String referenceId,
         Instant adjustedAtFrom,
         Instant adjustedAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<InventoryPickupDropoffTransactionView> listPickupDropoffs(
+        String sku,
+        String locationCode,
+        String transactionTypeCode,
+        String handledBy,
+        String referenceType,
+        String referenceId,
+        Instant transactionAtFrom,
+        Instant transactionAtTo,
         PageQuery pageQuery
     );
 

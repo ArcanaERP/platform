@@ -1,6 +1,6 @@
 # Inventory Module Data Model (High-Level)
 
-Updated: 2026-09-04
+Updated: 2026-09-06
 
 ## Entity Diagram
 
@@ -20,6 +20,8 @@ erDiagram
     INVENTORY_LOCATIONS ||--o{ INVENTORY_ITEM_LOCATION_ASSIGNMENTS : assigned_location
     INVENTORY_LOCATIONS ||--o{ INVENTORY_LOCATION_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_ADJUSTMENTS : records_movements
+    INVENTORY_ITEMS ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : records_pickups_dropoffs
+    INVENTORY_ADJUSTMENTS ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : links_stock_effect
     INVENTORY_ITEMS ||--o{ INVENTORY_ITEM_AVAILABILITY_CHANGE_AUDITS : records_availability_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_ITEM_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_ITEM_OWNER_CHANGE_AUDITS : records_owner_changes
@@ -213,6 +215,24 @@ erDiagram
       INSTANT adjustedAt
     }
 
+    INVENTORY_PICKUP_DROPOFF_TRANSACTIONS {
+      UUID id PK
+      UUID inventoryItemId
+      UUID inventoryAdjustmentId
+      STRING sku
+      STRING locationCode
+      STRING transactionTypeCode
+      DECIMAL quantity
+      DECIMAL quantityDelta
+      DECIMAL previousOnHandQuantity
+      DECIMAL currentOnHandQuantity
+      STRING reason
+      STRING handledBy
+      STRING referenceType
+      STRING referenceId
+      INSTANT transactionAt
+    }
+
     INVENTORY_ITEM_METADATA_CHANGE_AUDITS {
       UUID id PK
       UUID inventoryItemId
@@ -289,6 +309,8 @@ erDiagram
 - Inventory item `sourceSystemCode + externalReference` pairs are unique when both values are supplied.
 - `inventory_items.locationCode` aligns with `inventory_locations.code` (code-based location reference).
 - `inventory_adjustments.inventoryItemId` is a logical reference to `inventory_items.id`.
+- `inventory_pickup_dropoff_transactions.inventoryItemId` is a logical reference to `inventory_items.id`.
+- `inventory_pickup_dropoff_transactions.inventoryAdjustmentId` is a logical reference to `inventory_adjustments.id`.
 - `inventory_item_metadata_change_audits.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_item_owner_change_audits.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_entry_relationships.fromInventoryItemId` and `toInventoryItemId` are logical references to `inventory_items.id`.
@@ -299,6 +321,7 @@ erDiagram
 - `inventory_item_location_assignments.assignedLocationCode` aligns with `inventory_locations.code`.
 - `inventory_item_location_assignment_end_audits.assignmentId` is a logical reference to `inventory_item_location_assignments.id`.
 - Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` and `inventory_items.availableQuantity` store latest per-location state.
+- Pickup/dropoff transactions are append-only via `inventory_pickup_dropoff_transactions`; `PICKUP` decreases on-hand stock and `DROPOFF` increases on-hand stock through a linked adjustment row.
 - Inventory item availability changes are append-only via `inventory_item_availability_change_audits`.
 - Inventory item metadata changes are append-only via `inventory_item_metadata_change_audits`.
 - Inventory item owner changes are append-only via `inventory_item_owner_change_audits`.
@@ -327,6 +350,10 @@ erDiagram
   - `inventory_adjustments(inventoryItemId, adjustedBy, adjustedAt)`
   - `inventory_adjustments(transferId)`
   - `inventory_adjustments(sku, referenceType, referenceId, adjustedAt)`
+  - `inventory_pickup_dropoff_transactions(inventoryItemId, transactionAt)`
+  - `inventory_pickup_dropoff_transactions(sku, transactionTypeCode, transactionAt)`
+  - `inventory_pickup_dropoff_transactions(sku, referenceType, referenceId, transactionAt)`
+  - `inventory_pickup_dropoff_transactions(inventoryAdjustmentId)`
   - `inventory_location_metadata_change_audits(inventoryLocationId, changedAt)`
   - `inventory_location_metadata_change_audits(locationCode, changedAt)`
   - `inventory_item_metadata_change_audits(inventoryItemId, changedAt)`
@@ -400,6 +427,8 @@ erDiagram
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
 - `GET /api/inventory/{sku}/adjustments?page=&size=&locationCode=&adjustedBy=&adjustedAtFrom=&adjustedAtTo=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)
+- `POST /api/inventory/{sku}/pickup-dropoffs`
+- `GET /api/inventory/{sku}/pickup-dropoffs?page=&size=&locationCode=&transactionTypeCode=&handledBy=&referenceType=&referenceId=&transactionAtFrom=&transactionAtTo=`
 - `POST /api/inventory/{sku}/transfers`
 - `GET /api/inventory/transfers/{transferId}`
 - `POST /api/inventory/transfers/{transferId}/reversals` (optional `Idempotency-Key` header for retry-safe replay; reusing a key with a different payload returns `409 Conflict`; concurrent first-write requests with the same key return `409 Conflict`; stale pending claims are automatically reclaimed after 5 minutes on retry)

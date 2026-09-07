@@ -366,6 +366,8 @@ Inventory:
 - `GET /api/inventory/items/{sku}/locations/{locationCode}/owner-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)
+- `POST /api/inventory/{sku}/pickup-dropoffs`
+- `GET /api/inventory/{sku}/pickup-dropoffs?page=&size=&locationCode=&transactionTypeCode=&handledBy=&referenceType=&referenceId=&transactionAtFrom=&transactionAtTo=`
 - `POST /api/inventory/{sku}/transfers`
 - `GET /api/inventory/transfers/{transferId}`
 - `POST /api/inventory/transfers/{transferId}/reversals` (optional `Idempotency-Key` header for retry-safe replay; reusing a key with a different payload returns `409 Conflict`; concurrent first-write requests with the same key return `409 Conflict` for one request; stale pending claims are automatically reclaimed after 5 minutes on retry; duplicate reversal without a matching key also returns `409 Conflict`)

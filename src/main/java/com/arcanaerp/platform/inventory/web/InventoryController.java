@@ -9,6 +9,7 @@ import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivitySummaryV
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
+import com.arcanaerp.platform.inventory.InventoryPickupDropoffTransactionView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivitySummaryView;
@@ -17,6 +18,7 @@ import com.arcanaerp.platform.inventory.DailyInventoryTransferActivitySummaryVie
 import com.arcanaerp.platform.inventory.MonthlyInventoryTransferActivityByReferenceSummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryTransferActivitySummaryView;
 import com.arcanaerp.platform.inventory.ReverseInventoryTransferCommand;
+import com.arcanaerp.platform.inventory.RecordInventoryPickupDropoffCommand;
 import com.arcanaerp.platform.inventory.InventoryTransferView;
 import com.arcanaerp.platform.inventory.TransferInventoryCommand;
 import com.arcanaerp.platform.inventory.WeeklyInventoryTransferActivityByReferenceSummaryView;
@@ -117,6 +119,58 @@ public class InventoryController {
             )
         );
         return toAdjustmentResponse(adjustment);
+    }
+
+    @PostMapping("/{sku}/pickup-dropoffs")
+    @ResponseStatus(HttpStatus.CREATED)
+    public InventoryPickupDropoffTransactionResponse recordPickupDropoff(
+        @PathVariable String sku,
+        @Valid @RequestBody RecordInventoryPickupDropoffRequest request
+    ) {
+        InventoryPickupDropoffTransactionView transaction = inventoryAvailability.recordPickupDropoff(
+            new RecordInventoryPickupDropoffCommand(
+                sku,
+                request.locationCode(),
+                request.transactionTypeCode(),
+                request.quantity(),
+                request.reason(),
+                request.handledBy(),
+                request.referenceType(),
+                request.referenceId()
+            )
+        );
+        return toPickupDropoffTransactionResponse(transaction);
+    }
+
+    @GetMapping("/{sku}/pickup-dropoffs")
+    public PageResult<InventoryPickupDropoffTransactionResponse> listPickupDropoffs(
+        @PathVariable String sku,
+        @RequestParam(required = false) String locationCode,
+        @RequestParam(required = false) String transactionTypeCode,
+        @RequestParam(required = false) String handledBy,
+        @RequestParam(required = false) String referenceType,
+        @RequestParam(required = false) String referenceId,
+        @RequestParam(required = false) String transactionAtFrom,
+        @RequestParam(required = false) String transactionAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedTransactionAtFrom = parseOptionalInstant(transactionAtFrom, "transactionAtFrom");
+        Instant parsedTransactionAtTo = parseOptionalInstant(transactionAtTo, "transactionAtTo");
+        validateTransactionAtRange(parsedTransactionAtFrom, parsedTransactionAtTo);
+
+        return inventoryAvailability.listPickupDropoffs(
+                sku,
+                normalizeOptionalTransferLocationCode(locationCode, "locationCode"),
+                normalizeOptionalTransactionTypeCode(transactionTypeCode),
+                normalizeOptionalHandledBy(handledBy),
+                normalizeOptionalReferenceType(referenceType),
+                normalizeOptionalReferenceId(referenceId),
+                parsedTransactionAtFrom,
+                parsedTransactionAtTo,
+                PageQuery.of(page, size)
+            )
+            .map(this::toPickupDropoffTransactionResponse);
     }
 
     @GetMapping("/{sku}/adjustment-activity/daily-summary")
@@ -679,6 +733,27 @@ public class InventoryController {
         );
     }
 
+    private InventoryPickupDropoffTransactionResponse toPickupDropoffTransactionResponse(
+        InventoryPickupDropoffTransactionView transaction
+    ) {
+        return new InventoryPickupDropoffTransactionResponse(
+            transaction.id(),
+            transaction.inventoryAdjustmentId(),
+            transaction.sku(),
+            transaction.locationCode(),
+            transaction.transactionTypeCode(),
+            transaction.quantity(),
+            transaction.quantityDelta(),
+            transaction.previousOnHandQuantity(),
+            transaction.currentOnHandQuantity(),
+            transaction.reason(),
+            transaction.handledBy(),
+            transaction.referenceType(),
+            transaction.referenceId(),
+            transaction.transactionAt()
+        );
+    }
+
     private InventoryTransferResponse toTransferResponse(InventoryTransferView transfer) {
         return new InventoryTransferResponse(
             transfer.transferId(),
@@ -915,6 +990,30 @@ public class InventoryController {
         return adjustedBy.trim().toLowerCase();
     }
 
+    private static String normalizeOptionalHandledBy(String handledBy) {
+        if (handledBy == null) {
+            return null;
+        }
+        if (handledBy.isBlank()) {
+            throw new IllegalArgumentException("handledBy query parameter must not be blank");
+        }
+        return handledBy.trim().toLowerCase();
+    }
+
+    private static String normalizeOptionalTransactionTypeCode(String transactionTypeCode) {
+        if (transactionTypeCode == null) {
+            return null;
+        }
+        if (transactionTypeCode.isBlank()) {
+            throw new IllegalArgumentException("transactionTypeCode query parameter must not be blank");
+        }
+        String normalizedTransactionTypeCode = transactionTypeCode.trim().toUpperCase();
+        if (!"PICKUP".equals(normalizedTransactionTypeCode) && !"DROPOFF".equals(normalizedTransactionTypeCode)) {
+            throw new IllegalArgumentException("transactionTypeCode must be PICKUP or DROPOFF");
+        }
+        return normalizedTransactionTypeCode;
+    }
+
     private static String normalizeOptionalReferenceType(String referenceType) {
         if (referenceType == null) {
             return null;
@@ -986,6 +1085,12 @@ public class InventoryController {
     private static void validateAdjustedAtRange(Instant adjustedAtFrom, Instant adjustedAtTo) {
         if (adjustedAtFrom != null && adjustedAtTo != null && adjustedAtFrom.isAfter(adjustedAtTo)) {
             throw new IllegalArgumentException("adjustedAtFrom must be before or equal to adjustedAtTo");
+        }
+    }
+
+    private static void validateTransactionAtRange(Instant transactionAtFrom, Instant transactionAtTo) {
+        if (transactionAtFrom != null && transactionAtTo != null && transactionAtFrom.isAfter(transactionAtTo)) {
+            throw new IllegalArgumentException("transactionAtFrom must be before or equal to transactionAtTo");
         }
     }
 }

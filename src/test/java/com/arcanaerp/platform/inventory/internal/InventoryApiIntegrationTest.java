@@ -74,6 +74,9 @@ class InventoryApiIntegrationTest {
     private InventoryAdjustmentRepository inventoryAdjustmentRepository;
 
     @Autowired
+    private InventoryPickupDropoffTransactionRepository pickupDropoffTransactionRepository;
+
+    @Autowired
     private EntityManager entityManager;
 
     @MockitoSpyBean
@@ -131,6 +134,7 @@ class InventoryApiIntegrationTest {
         availabilityChangeAuditRepository.deleteAll();
         ownerChangeAuditRepository.deleteAll();
         metadataChangeAuditRepository.deleteAll();
+        pickupDropoffTransactionRepository.deleteAll();
         inventoryAdjustmentRepository.deleteAll();
         inventoryItemRepository.deleteAll();
         locationMetadataChangeAuditRepository.deleteAll();
@@ -2501,6 +2505,241 @@ class InventoryApiIntegrationTest {
         List<InventoryAdjustment> transferAdjustments = inventoryAdjustmentRepository
             .findByTransferIdOrderByAdjustedAtAsc(sourceAdjustment.getTransferId());
         assertThat(transferAdjustments).hasSize(2);
+    }
+
+    @Test
+    void recordsPickupAndDropoffInventoryTransactionsWithAdjustmentLinks() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9250",
+                "main",
+                new BigDecimal("12"),
+                SEED_INSTANT
+            )
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9250")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "locationCode": " main ",
+                  "transactionTypeCode": " pickup ",
+                  "quantity": 3,
+                  "reason": "Customer pickup",
+                  "handledBy": "OPS@ARCANAERP.COM",
+                  "referenceType": "shipment",
+                  "referenceId": "SHP-9250-1"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.inventoryAdjustmentId").isNotEmpty())
+            .andExpect(jsonPath("$.sku").value("ARC-9250"))
+            .andExpect(jsonPath("$.locationCode").value("MAIN"))
+            .andExpect(jsonPath("$.transactionTypeCode").value("PICKUP"))
+            .andExpect(jsonPath("$.quantity").value(3))
+            .andExpect(jsonPath("$.quantityDelta").value(-3))
+            .andExpect(jsonPath("$.previousOnHandQuantity").value(12))
+            .andExpect(jsonPath("$.currentOnHandQuantity").value(9))
+            .andExpect(jsonPath("$.reason").value("Customer pickup"))
+            .andExpect(jsonPath("$.handledBy").value("ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.referenceType").value("SHIPMENT"))
+            .andExpect(jsonPath("$.referenceId").value("SHP-9250-1"))
+            .andExpect(jsonPath("$.transactionAt").isNotEmpty());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9250")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "locationCode": "main",
+                  "transactionTypeCode": "dropoff",
+                  "quantity": 2,
+                  "reason": "Returned at dock",
+                  "handledBy": "receiving@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.transactionTypeCode").value("DROPOFF"))
+            .andExpect(jsonPath("$.quantity").value(2))
+            .andExpect(jsonPath("$.quantityDelta").value(2))
+            .andExpect(jsonPath("$.previousOnHandQuantity").value(9))
+            .andExpect(jsonPath("$.currentOnHandQuantity").value(11))
+            .andExpect(jsonPath("$.handledBy").value("receiving@arcanaerp.com"));
+
+        mockMvc.perform(get("/api/inventory/{sku}", "arc-9250"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.onHandQuantity").value(11));
+
+        InventoryItem item = inventoryItemRepository.findBySkuAndLocationCode("ARC-9250", "MAIN").orElseThrow();
+        List<InventoryAdjustment> adjustments = inventoryAdjustmentRepository.findByInventoryItemIdOrderByAdjustedAtDesc(item.getId());
+        assertThat(adjustments).hasSize(2);
+        assertThat(adjustments.get(0).getQuantityDelta()).isEqualByComparingTo("2");
+        assertThat(adjustments.get(0).getReferenceType()).isEqualTo("DROPOFF");
+        assertThat(adjustments.get(1).getQuantityDelta()).isEqualByComparingTo("-3");
+        assertThat(adjustments.get(1).getReferenceType()).isEqualTo("PICKUP");
+
+        List<InventoryPickupDropoffTransaction> transactions = pickupDropoffTransactionRepository.findAll();
+        assertThat(transactions).hasSize(2);
+        assertThat(transactions)
+            .extracting(InventoryPickupDropoffTransaction::getInventoryAdjustmentId)
+            .containsExactlyInAnyOrderElementsOf(adjustments.stream().map(InventoryAdjustment::getId).toList());
+    }
+
+    @Test
+    void listsPickupDropoffInventoryTransactionsWithFilters() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9251",
+                "main",
+                new BigDecimal("20"),
+                SEED_INSTANT
+            )
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9251")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "locationCode": "main",
+                  "transactionTypeCode": "pickup",
+                  "quantity": 4,
+                  "reason": "Shipment load",
+                  "handledBy": "dock-a@arcanaerp.com",
+                  "referenceType": "shipment",
+                  "referenceId": "SHP-9251-1"
+                }
+                """))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9251")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "locationCode": "main",
+                  "transactionTypeCode": "dropoff",
+                  "quantity": 1,
+                  "reason": "Return dock",
+                  "handledBy": "dock-b@arcanaerp.com",
+                  "referenceType": "rma",
+                  "referenceId": "RMA-9251-1"
+                }
+                """))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/inventory/{sku}/pickup-dropoffs", "arc-9251")
+            .param("transactionTypeCode", "pickup")
+            .param("handledBy", " DOCK-A@ARCANAERP.COM ")
+            .param("referenceType", "shipment")
+            .param("referenceId", "SHP-9251-1")
+            .param("transactionAtFrom", "2026-01-01T00:00:00Z")
+            .param("transactionAtTo", "2030-01-01T00:00:00Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].transactionTypeCode").value("PICKUP"))
+            .andExpect(jsonPath("$.items[0].handledBy").value("dock-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].referenceType").value("SHIPMENT"))
+            .andExpect(jsonPath("$.items[0].referenceId").value("SHP-9251-1"))
+            .andExpect(jsonPath("$.items[0].quantityDelta").value(-4));
+
+        mockMvc.perform(get("/api/inventory/{sku}/pickup-dropoffs", "arc-9251")
+            .param("transactionTypeCode", "dropoff")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].transactionTypeCode").value("DROPOFF"))
+            .andExpect(jsonPath("$.items[0].quantityDelta").value(1));
+    }
+
+    @Test
+    void rejectsInvalidPickupDropoffInventoryTransactions() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9252",
+                "main",
+                new BigDecimal("2"),
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9252")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "locationCode": "main",
+                      "transactionTypeCode": "move",
+                      "quantity": 1,
+                      "reason": "Bad type",
+                      "handledBy": "ops@arcanaerp.com"
+                    }
+                    """)),
+            "transactionTypeCode must be PICKUP or DROPOFF",
+            "/api/inventory/arc-9252/pickup-dropoffs"
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9252")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "locationCode": "main",
+                      "transactionTypeCode": "pickup",
+                      "quantity": 0,
+                      "reason": "Bad quantity",
+                      "handledBy": "ops@arcanaerp.com"
+                    }
+                    """)),
+            "quantity must be greater than zero",
+            "/api/inventory/arc-9252/pickup-dropoffs"
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9252")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "locationCode": "main",
+                      "transactionTypeCode": "pickup",
+                      "quantity": 1,
+                      "reason": "Missing reference id",
+                      "handledBy": "ops@arcanaerp.com",
+                      "referenceType": "shipment"
+                    }
+                    """)),
+            "referenceType and referenceId must both be provided together",
+            "/api/inventory/arc-9252/pickup-dropoffs"
+        );
+    }
+
+    @Test
+    void rejectsPickupThatWouldMakeInventoryNegative() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9253",
+                "main",
+                new BigDecimal("2"),
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9253")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "locationCode": "main",
+                      "transactionTypeCode": "pickup",
+                      "quantity": 3,
+                      "reason": "Over pickup",
+                      "handledBy": "ops@arcanaerp.com"
+                    }
+                    """)),
+            "onHandQuantity cannot become negative",
+            "/api/inventory/arc-9253/pickup-dropoffs"
+        );
     }
 
     @Test
