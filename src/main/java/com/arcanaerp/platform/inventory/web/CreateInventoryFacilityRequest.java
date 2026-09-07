@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 public record CreateInventoryFacilityRequest(
     @NotBlank String code,
     @NotBlank String name,
+    String facilityTypeCode,
     String addressLine1,
     String addressLine2,
     String city,

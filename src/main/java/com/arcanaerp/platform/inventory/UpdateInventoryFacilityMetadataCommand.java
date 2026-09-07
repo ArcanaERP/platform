@@ -3,6 +3,7 @@ package com.arcanaerp.platform.inventory;
 public record UpdateInventoryFacilityMetadataCommand(
     String code,
     String name,
+    String facilityTypeCode,
     String addressLine1,
     String addressLine2,
     String city,

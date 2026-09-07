@@ -324,6 +324,7 @@ Inventory:
 - Inventory facilities provide a first-class facility catalog for pickup/dropoff traceability.
 - Inventory facility active and metadata changes are audit-trailed with actor attribution.
 - Inventory facility party-role assignments track which parties serve facility-specific roles.
+- Inventory facility `facilityTypeCode` values are validated against `POST /api/inventory/location-types` reference data.
 - Inventory fixed assets provide a first-class asset catalog for pickup/dropoff traceability.
 - Inventory fixed asset active and metadata changes are audit-trailed with actor attribution.
 - Inventory fixed asset party-role assignments track which parties serve asset-specific roles.

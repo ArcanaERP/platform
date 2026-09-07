@@ -8,6 +8,8 @@ public record InventoryFacilityMetadataChangeView(
     String facilityCode,
     String previousName,
     String currentName,
+    String previousFacilityTypeCode,
+    String currentFacilityTypeCode,
     String previousAddressLine1,
     String currentAddressLine1,
     String previousAddressLine2,

@@ -1169,6 +1169,7 @@ class InventoryApiIntegrationTest {
                 {
                   "code": " dc-west ",
                   "name": " West Distribution Center ",
+                  "facilityTypeCode": " warehouse ",
                   "addressLine1": " 200 Distribution Way ",
                   "addressLine2": " Building 4 ",
                   "city": " Reno ",
@@ -1183,6 +1184,7 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.id").isNotEmpty())
             .andExpect(jsonPath("$.code").value("DC-WEST"))
             .andExpect(jsonPath("$.name").value("West Distribution Center"))
+            .andExpect(jsonPath("$.facilityTypeCode").value("WAREHOUSE"))
             .andExpect(jsonPath("$.addressLine1").value("200 Distribution Way"))
             .andExpect(jsonPath("$.addressLine2").value("Building 4"))
             .andExpect(jsonPath("$.city").value("Reno"))
@@ -1199,6 +1201,7 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.code").value("DC-WEST"))
             .andExpect(jsonPath("$.name").value("West Distribution Center"))
+            .andExpect(jsonPath("$.facilityTypeCode").value("WAREHOUSE"))
             .andExpect(jsonPath("$.countryCode").value("US"));
 
         mockMvc.perform(get("/api/inventory/facilities")
@@ -1208,7 +1211,25 @@ class InventoryApiIntegrationTest {
             .param("size", "10"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
-            .andExpect(jsonPath("$.items[0].code").value("DC-WEST"));
+            .andExpect(jsonPath("$.items[0].code").value("DC-WEST"))
+            .andExpect(jsonPath("$.items[0].facilityTypeCode").value("WAREHOUSE"));
+    }
+
+    @Test
+    void rejectsInventoryFacilityWithUnknownFacilityType() throws Exception {
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/facilities")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "dc-yard",
+                      "name": "Distribution Yard",
+                      "facilityTypeCode": "yard"
+                    }
+                    """)),
+            "Inventory location type not found: YARD",
+            "/api/inventory/facilities"
+        );
     }
 
     @Test
@@ -1217,6 +1238,7 @@ class InventoryApiIntegrationTest {
             InventoryFacility.create(
                 "dc-retire",
                 "Retirable Distribution Center",
+                null,
                 null,
                 null,
                 null,
@@ -1279,6 +1301,7 @@ class InventoryApiIntegrationTest {
                 null,
                 null,
                 null,
+                null,
                 SEED_INSTANT
             )
         );
@@ -1306,6 +1329,7 @@ class InventoryApiIntegrationTest {
             InventoryFacility.create(
                 "dc-metadata",
                 "Metadata Distribution Center",
+                "warehouse",
                 "100 Dock Way",
                 null,
                 "Reno",
@@ -1326,6 +1350,7 @@ class InventoryApiIntegrationTest {
             .content("""
                 {
                   "name": " Metadata Distribution Center East ",
+                  "facilityTypeCode": " store ",
                   "addressLine1": " 200 East Dock ",
                   "addressLine2": " Building 2 ",
                   "city": " Sparks ",
@@ -1340,6 +1365,7 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.code").value("DC-METADATA"))
             .andExpect(jsonPath("$.name").value("Metadata Distribution Center East"))
+            .andExpect(jsonPath("$.facilityTypeCode").value("STORE"))
             .andExpect(jsonPath("$.addressLine1").value("200 East Dock"))
             .andExpect(jsonPath("$.addressLine2").value("Building 2"))
             .andExpect(jsonPath("$.city").value("Sparks"))
@@ -1358,6 +1384,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.items[0].facilityCode").value("DC-METADATA"))
             .andExpect(jsonPath("$.items[0].previousName").value("Metadata Distribution Center"))
             .andExpect(jsonPath("$.items[0].currentName").value("Metadata Distribution Center East"))
+            .andExpect(jsonPath("$.items[0].previousFacilityTypeCode").value("WAREHOUSE"))
+            .andExpect(jsonPath("$.items[0].currentFacilityTypeCode").value("STORE"))
             .andExpect(jsonPath("$.items[0].previousAddressLine1").value("100 Dock Way"))
             .andExpect(jsonPath("$.items[0].currentAddressLine1").value("200 East Dock"))
             .andExpect(jsonPath("$.items[0].previousCity").value("Reno"))
@@ -1374,6 +1402,7 @@ class InventoryApiIntegrationTest {
             InventoryFacility.create(
                 "dc-metadata-noop",
                 "No-op Metadata Distribution Center",
+                "warehouse",
                 "100 Dock Way",
                 null,
                 "Reno",
@@ -1395,6 +1424,7 @@ class InventoryApiIntegrationTest {
                 .content("""
                     {
                       "name": "No-op Metadata Distribution Center",
+                      "facilityTypeCode": "warehouse",
                       "addressLine1": "100 Dock Way",
                       "city": "Reno",
                       "regionCode": "nv",
@@ -1411,11 +1441,49 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void rejectsInventoryFacilityMetadataUpdateWithUnknownFacilityType() throws Exception {
+        inventoryFacilityRepository.save(
+            InventoryFacility.create(
+                "dc-metadata-type",
+                "Typed Distribution Center",
+                "warehouse",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/facilities/{code}/metadata",
+                "dc-metadata-type"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "Typed Distribution Center",
+                      "facilityTypeCode": "yard",
+                      "changedBy": "facilities.ops@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory location type not found: YARD",
+            "/api/inventory/facilities/dc-metadata-type/metadata"
+        );
+    }
+
+    @Test
     void createsReadsAndListsInventoryFacilityPartyRoleAssignments() throws Exception {
         inventoryFacilityRepository.save(
             InventoryFacility.create(
                 "dc-role",
                 "Role Distribution Center",
+                null,
                 null,
                 null,
                 null,
@@ -1493,6 +1561,7 @@ class InventoryApiIntegrationTest {
                 null,
                 null,
                 null,
+                null,
                 SEED_INSTANT
             )
         );
@@ -1556,6 +1625,7 @@ class InventoryApiIntegrationTest {
                 null,
                 null,
                 null,
+                null,
                 SEED_INSTANT
             )
         );
@@ -1586,6 +1656,7 @@ class InventoryApiIntegrationTest {
             InventoryFacility.create(
                 "dc-role-window",
                 "Window Role Distribution Center",
+                null,
                 null,
                 null,
                 null,
@@ -3499,6 +3570,7 @@ class InventoryApiIntegrationTest {
             null,
             null,
             null,
+            null,
             SEED_INSTANT
         ));
         inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
@@ -3603,6 +3675,7 @@ class InventoryApiIntegrationTest {
             null,
             null,
             null,
+            null,
             SEED_INSTANT
         ));
         inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
@@ -3691,6 +3764,7 @@ class InventoryApiIntegrationTest {
         inventoryFacilityRepository.save(InventoryFacility.create(
             "dock-east",
             "Dock East",
+            null,
             null,
             null,
             null,

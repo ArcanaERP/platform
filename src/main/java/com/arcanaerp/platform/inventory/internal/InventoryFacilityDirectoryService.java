@@ -7,6 +7,7 @@ import com.arcanaerp.platform.inventory.InventoryFacilityDirectory;
 import com.arcanaerp.platform.inventory.InventoryFacilityActiveChangeView;
 import com.arcanaerp.platform.inventory.InventoryFacilityMetadataChangeView;
 import com.arcanaerp.platform.inventory.InventoryFacilityView;
+import com.arcanaerp.platform.inventory.InventoryLocationTypeDirectory;
 import com.arcanaerp.platform.inventory.RegisterInventoryFacilityCommand;
 import com.arcanaerp.platform.inventory.UpdateInventoryFacilityActiveCommand;
 import com.arcanaerp.platform.inventory.UpdateInventoryFacilityMetadataCommand;
@@ -27,6 +28,7 @@ class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
     private final InventoryFacilityRepository inventoryFacilityRepository;
     private final InventoryFacilityActiveChangeAuditRepository activeChangeAuditRepository;
     private final InventoryFacilityMetadataChangeAuditRepository metadataChangeAuditRepository;
+    private final InventoryLocationTypeDirectory inventoryLocationTypeDirectory;
     private final Clock clock;
 
     @Override
@@ -38,9 +40,11 @@ class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
         if (inventoryFacilityRepository.findByCode(code).isPresent()) {
             throw new ConflictException("Inventory facility already exists for code: " + code);
         }
+        ensureFacilityTypeExists(command.facilityTypeCode());
         return toView(inventoryFacilityRepository.save(InventoryFacility.create(
             code,
             command.name(),
+            command.facilityTypeCode(),
             command.addressLine1(),
             command.addressLine2(),
             command.city(),
@@ -96,11 +100,13 @@ class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
         if (!normalizedCode.equals(commandCode)) {
             throw new IllegalArgumentException("code path variable must match command code");
         }
+        ensureFacilityTypeExists(command.facilityTypeCode());
         InventoryFacility facility = findFacility(normalizedCode);
         InventoryFacilityMetadataSnapshot previous = InventoryFacilityMetadataSnapshot.from(facility);
         Instant changedAt = Instant.now(clock);
         facility.updateMetadata(
             command.name(),
+            command.facilityTypeCode(),
             command.addressLine1(),
             command.addressLine2(),
             command.city(),
@@ -183,6 +189,7 @@ class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
             facility.getId(),
             facility.getCode(),
             facility.getName(),
+            facility.getFacilityTypeCode(),
             facility.getAddressLine1(),
             facility.getAddressLine2(),
             facility.getCity(),
@@ -214,6 +221,8 @@ class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
             audit.getFacilityCode(),
             audit.getPreviousName(),
             audit.getCurrentName(),
+            audit.getPreviousFacilityTypeCode(),
+            audit.getCurrentFacilityTypeCode(),
             audit.getPreviousAddressLine1(),
             audit.getCurrentAddressLine1(),
             audit.getPreviousAddressLine2(),
@@ -254,5 +263,22 @@ class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
 
     private static String normalizeOptionalChangedBy(String value) {
         return value == null ? null : normalizeRequired(value, "changedBy").toLowerCase();
+    }
+
+    private void ensureFacilityTypeExists(String facilityTypeCode) {
+        String normalizedFacilityTypeCode = normalizeOptionalUpper(facilityTypeCode);
+        if (normalizedFacilityTypeCode != null && !inventoryLocationTypeDirectory.locationTypeExists(normalizedFacilityTypeCode)) {
+            throw new IllegalArgumentException("Inventory location type not found: " + normalizedFacilityTypeCode);
+        }
+    }
+
+    private static String normalizeOptionalUpper(String value) {
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
+            throw new IllegalArgumentException("facilityTypeCode is required");
+        }
+        return value.trim().toUpperCase();
     }
 }

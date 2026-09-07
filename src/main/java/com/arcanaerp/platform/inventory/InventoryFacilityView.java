@@ -7,6 +7,7 @@ public record InventoryFacilityView(
     UUID id,
     String code,
     String name,
+    String facilityTypeCode,
     String addressLine1,
     String addressLine2,
     String city,

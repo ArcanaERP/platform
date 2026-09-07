@@ -34,6 +34,9 @@ public class InventoryFacility {
     @Column(nullable = false, length = 255)
     private String name;
 
+    @Column(length = 64)
+    private String facilityTypeCode;
+
     @Column(length = 255)
     private String addressLine1;
 
@@ -70,6 +73,7 @@ public class InventoryFacility {
     private InventoryFacility(
         String code,
         String name,
+        String facilityTypeCode,
         String addressLine1,
         String addressLine2,
         String city,
@@ -82,6 +86,7 @@ public class InventoryFacility {
     ) {
         this.code = code;
         this.name = name;
+        this.facilityTypeCode = facilityTypeCode;
         this.addressLine1 = addressLine1;
         this.addressLine2 = addressLine2;
         this.city = city;
@@ -98,6 +103,7 @@ public class InventoryFacility {
     static InventoryFacility create(
         String code,
         String name,
+        String facilityTypeCode,
         String addressLine1,
         String addressLine2,
         String city,
@@ -114,6 +120,7 @@ public class InventoryFacility {
         return new InventoryFacility(
             normalizeRequired(code, "code").toUpperCase(),
             normalizeRequired(name, "name"),
+            normalizeOptionalUpper(facilityTypeCode),
             normalizeOptional(addressLine1),
             normalizeOptional(addressLine2),
             normalizeOptional(city),
@@ -139,6 +146,7 @@ public class InventoryFacility {
 
     void updateMetadata(
         String name,
+        String facilityTypeCode,
         String addressLine1,
         String addressLine2,
         String city,
@@ -153,6 +161,7 @@ public class InventoryFacility {
             throw new IllegalArgumentException("updatedAt is required");
         }
         String normalizedName = normalizeRequired(name, "name");
+        String normalizedFacilityTypeCode = normalizeOptionalUpper(facilityTypeCode);
         String normalizedAddressLine1 = normalizeOptional(addressLine1);
         String normalizedAddressLine2 = normalizeOptional(addressLine2);
         String normalizedCity = normalizeOptional(city);
@@ -164,6 +173,7 @@ public class InventoryFacility {
 
         if (
             this.name.equals(normalizedName)
+                && equalsNullable(this.facilityTypeCode, normalizedFacilityTypeCode)
                 && equalsNullable(this.addressLine1, normalizedAddressLine1)
                 && equalsNullable(this.addressLine2, normalizedAddressLine2)
                 && equalsNullable(this.city, normalizedCity)
@@ -177,6 +187,7 @@ public class InventoryFacility {
         }
 
         this.name = normalizedName;
+        this.facilityTypeCode = normalizedFacilityTypeCode;
         this.addressLine1 = normalizedAddressLine1;
         this.addressLine2 = normalizedAddressLine2;
         this.city = normalizedCity;

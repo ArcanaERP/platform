@@ -7,6 +7,7 @@ Updated: 2026-09-06
 ```mermaid
 erDiagram
     INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_LOCATIONS : classifies
+    INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_FACILITIES : classifies
     INVENTORY_FIXED_ASSET_TYPES ||--o{ INVENTORY_FIXED_ASSETS : classifies
     INVENTORY_ENTRY_RELATIONSHIP_TYPES ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : classifies
     INVENTORY_ENTRY_ROLE_TYPES ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : roles
@@ -99,6 +100,7 @@ erDiagram
       UUID id PK
       STRING code UK
       STRING name
+      STRING facilityTypeCode
       STRING addressLine1
       STRING addressLine2
       STRING city
@@ -128,6 +130,8 @@ erDiagram
       STRING facilityCode
       STRING previousName
       STRING currentName
+      STRING previousFacilityTypeCode
+      STRING currentFacilityTypeCode
       STRING previousAddressLine1
       STRING currentAddressLine1
       STRING previousAddressLine2
@@ -434,7 +438,7 @@ erDiagram
 - Inventory entry relationships link two existing inventory items and preserve normalized item keys for filtering.
 - Inventory entry relationships support optional `fromDate` and `thruDate` validity windows.
 - Inventory entry relationship status changes are append-only via `inventory_entry_relationship_status_change_audits`.
-- Inventory facilities are a first-class catalog for legacy facility traceability; facility codes normalize to uppercase.
+- Inventory facilities are a first-class catalog for legacy facility traceability; facility codes and facility type codes normalize to uppercase.
 - Inventory facility active changes are append-only via `inventory_facility_active_change_audits`.
 - Inventory facility metadata changes are append-only via `inventory_facility_metadata_change_audits`.
 - Inventory facility party-role assignments link active facilities to normalized party and role type codes.
@@ -450,7 +454,7 @@ erDiagram
 - Inventory item-location assignments track valid-from/valid-thru placement history without mutating the stock row key.
 - Inventory item-location assignment ends are append-only via `inventory_item_location_assignment_end_audits`.
 - Inventory locations carry optional facility type, address, and contact metadata for facility-model parity.
-- Inventory location `facilityTypeCode` values are optional, but supplied codes must exist in `inventory_location_types`.
+- Inventory location and facility `facilityTypeCode` values are optional, but supplied codes must exist in `inventory_location_types`.
 - Inventory location metadata changes are append-only via `inventory_location_metadata_change_audits`.
 - Inventory item state carries `onHandQuantity`, `availableQuantity`, and `soldQuantity` for legacy inventory-entry parity with `number_in_stock`, `number_available`, and `number_sold`.
 - Inventory item metadata carries `unitOfMeasurementCode`, `classificationCode`, optional `productInstanceCode`, optional `externalReference`, optional `sourceSystemCode`, and optional owner fields for legacy inventory-entry parity.

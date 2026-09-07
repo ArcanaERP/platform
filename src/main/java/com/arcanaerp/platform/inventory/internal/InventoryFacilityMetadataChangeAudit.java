@@ -41,6 +41,12 @@ class InventoryFacilityMetadataChangeAudit {
     @Column(nullable = false, length = 255)
     private String currentName;
 
+    @Column(length = 64)
+    private String previousFacilityTypeCode;
+
+    @Column(length = 64)
+    private String currentFacilityTypeCode;
+
     @Column(length = 255)
     private String previousAddressLine1;
 
@@ -120,6 +126,8 @@ class InventoryFacilityMetadataChangeAudit {
         audit.facilityCode = normalizeRequired(facilityCode, "facilityCode").toUpperCase();
         audit.previousName = normalizeRequired(previous.name(), "previousName");
         audit.currentName = normalizeRequired(current.name(), "currentName");
+        audit.previousFacilityTypeCode = normalizeOptionalUpper(previous.facilityTypeCode());
+        audit.currentFacilityTypeCode = normalizeOptionalUpper(current.facilityTypeCode());
         audit.previousAddressLine1 = normalizeOptional(previous.addressLine1());
         audit.currentAddressLine1 = normalizeOptional(current.addressLine1());
         audit.previousAddressLine2 = normalizeOptional(previous.addressLine2());

@@ -38,6 +38,7 @@ public class InventoryFacilityController {
             new RegisterInventoryFacilityCommand(
                 request.code(),
                 request.name(),
+                request.facilityTypeCode(),
                 request.addressLine1(),
                 request.addressLine2(),
                 request.city(),
@@ -76,6 +77,7 @@ public class InventoryFacilityController {
             new UpdateInventoryFacilityMetadataCommand(
                 code,
                 request.name(),
+                request.facilityTypeCode(),
                 request.addressLine1(),
                 request.addressLine2(),
                 request.city(),
@@ -146,6 +148,7 @@ public class InventoryFacilityController {
             facility.id(),
             facility.code(),
             facility.name(),
+            facility.facilityTypeCode(),
             facility.addressLine1(),
             facility.addressLine2(),
             facility.city(),
@@ -177,6 +180,8 @@ public class InventoryFacilityController {
             change.facilityCode(),
             change.previousName(),
             change.currentName(),
+            change.previousFacilityTypeCode(),
+            change.currentFacilityTypeCode(),
             change.previousAddressLine1(),
             change.currentAddressLine1(),
             change.previousAddressLine2(),
