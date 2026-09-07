@@ -6,6 +6,7 @@ import com.arcanaerp.platform.inventory.AdjustInventoryCommand;
 import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivitySummaryView;
+import com.arcanaerp.platform.inventory.DailyInventoryPickupDropoffActivitySummaryView;
 import com.arcanaerp.platform.inventory.DailyInventoryTransferActivityByReferenceSummaryView;
 import com.arcanaerp.platform.inventory.DuplicateTransferReversalException;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
@@ -13,6 +14,7 @@ import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
 import com.arcanaerp.platform.inventory.InventoryPickupDropoffTransactionView;
 import com.arcanaerp.platform.inventory.DailyInventoryTransferActivitySummaryView;
+import com.arcanaerp.platform.inventory.MonthlyInventoryPickupDropoffActivitySummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryTransferActivityByReferenceSummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryTransferActivitySummaryView;
 import com.arcanaerp.platform.inventory.RecordInventoryPickupDropoffCommand;
@@ -29,6 +31,7 @@ import com.arcanaerp.platform.inventory.WeeklyInventoryTransferActivitySummaryVi
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivitySummaryView;
+import com.arcanaerp.platform.inventory.WeeklyInventoryPickupDropoffActivitySummaryView;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -632,6 +635,93 @@ class InventoryAvailabilityService implements InventoryAvailability {
         );
 
         return PageResult.from(transactions).map(InventoryAvailabilityService::toPickupDropoffTransactionView);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DailyInventoryPickupDropoffActivitySummaryView> listDailyPickupDropoffActivitySummaries(
+        String sku,
+        String locationCode,
+        String transactionTypeCode,
+        String handledBy,
+        String referenceType,
+        String referenceId,
+        Instant transactionAtFrom,
+        Instant transactionAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizePickupDropoffActivityByBucket(
+            sku,
+            locationCode,
+            transactionTypeCode,
+            handledBy,
+            referenceType,
+            referenceId,
+            transactionAtFrom,
+            transactionAtTo,
+            pageQuery,
+            transaction -> transaction.getTransactionAt().atOffset(ZoneOffset.UTC).toLocalDate(),
+            DailyInventoryPickupDropoffActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WeeklyInventoryPickupDropoffActivitySummaryView> listWeeklyPickupDropoffActivitySummaries(
+        String sku,
+        String locationCode,
+        String transactionTypeCode,
+        String handledBy,
+        String referenceType,
+        String referenceId,
+        Instant transactionAtFrom,
+        Instant transactionAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizePickupDropoffActivityByBucket(
+            sku,
+            locationCode,
+            transactionTypeCode,
+            handledBy,
+            referenceType,
+            referenceId,
+            transactionAtFrom,
+            transactionAtTo,
+            pageQuery,
+            transaction -> transaction.getTransactionAt()
+                .atOffset(ZoneOffset.UTC)
+                .toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            WeeklyInventoryPickupDropoffActivitySummaryView::new
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<MonthlyInventoryPickupDropoffActivitySummaryView> listMonthlyPickupDropoffActivitySummaries(
+        String sku,
+        String locationCode,
+        String transactionTypeCode,
+        String handledBy,
+        String referenceType,
+        String referenceId,
+        Instant transactionAtFrom,
+        Instant transactionAtTo,
+        PageQuery pageQuery
+    ) {
+        return summarizePickupDropoffActivityByBucket(
+            sku,
+            locationCode,
+            transactionTypeCode,
+            handledBy,
+            referenceType,
+            referenceId,
+            transactionAtFrom,
+            transactionAtTo,
+            pageQuery,
+            transaction -> YearMonth.from(transaction.getTransactionAt().atOffset(ZoneOffset.UTC)),
+            MonthlyInventoryPickupDropoffActivitySummaryView::new
+        );
     }
 
     @Override
@@ -1349,6 +1439,89 @@ class InventoryAvailabilityService implements InventoryAvailability {
         return paginate(rows, pageQuery);
     }
 
+    private <B extends Comparable<? super B>, T> PageResult<T> summarizePickupDropoffActivityByBucket(
+        String sku,
+        String locationCode,
+        String transactionTypeCode,
+        String handledBy,
+        String referenceType,
+        String referenceId,
+        Instant transactionAtFrom,
+        Instant transactionAtTo,
+        PageQuery pageQuery,
+        PickupDropoffBucketExtractor<B> bucketExtractor,
+        PickupDropoffBucketSummaryFactory<B, T> summaryFactory
+    ) {
+        String normalizedSku = normalizeRequired(sku, "sku").toUpperCase();
+        ensureSkuExists(normalizedSku);
+        String normalizedLocationCode = normalizeOptionalLocationCodeFilter(locationCode, "locationCode");
+        String normalizedTransactionTypeCode = transactionTypeCode == null
+            ? null
+            : InventoryPickupDropoffTransaction.normalizeTransactionTypeCode(transactionTypeCode);
+        String normalizedHandledBy = handledBy == null ? null : normalizeRequired(handledBy, "handledBy").toLowerCase();
+        String normalizedReferenceType = normalizeOptionalReferenceType(referenceType);
+        String normalizedReferenceId = normalizeOptionalReferenceId(referenceId);
+
+        List<InventoryPickupDropoffTransaction> transactions = pickupDropoffTransactionRepository.findHistoryRowsFiltered(
+            normalizedSku,
+            normalizedLocationCode,
+            normalizedTransactionTypeCode,
+            normalizedHandledBy,
+            normalizedReferenceType,
+            normalizedReferenceId,
+            transactionAtFrom,
+            transactionAtTo
+        );
+
+        Map<PickupDropoffBucketKey<B>, PickupDropoffBucketSummary> summaries = new java.util.HashMap<>();
+        for (InventoryPickupDropoffTransaction transaction : transactions) {
+            PickupDropoffBucketKey<B> key = new PickupDropoffBucketKey<>(
+                bucketExtractor.bucket(transaction),
+                transaction.getLocationCode(),
+                transaction.getTransactionTypeCode(),
+                transaction.getHandledBy()
+            );
+            PickupDropoffBucketSummary summary = summaries.computeIfAbsent(key, ignored -> new PickupDropoffBucketSummary());
+            summary.transactionCount++;
+            if (InventoryPickupDropoffTransaction.PICKUP.equals(transaction.getTransactionTypeCode())) {
+                summary.totalPickupQuantity = summary.totalPickupQuantity.add(transaction.getQuantity());
+            } else {
+                summary.totalDropoffQuantity = summary.totalDropoffQuantity.add(transaction.getQuantity());
+            }
+            summary.netQuantityDelta = summary.netQuantityDelta.add(transaction.getQuantityDelta());
+        }
+
+        List<T> rows = summaries.entrySet().stream()
+            .sorted((left, right) -> {
+                int bucketComparison = right.getKey().bucket().compareTo(left.getKey().bucket());
+                if (bucketComparison != 0) {
+                    return bucketComparison;
+                }
+                int locationComparison = left.getKey().locationCode().compareTo(right.getKey().locationCode());
+                if (locationComparison != 0) {
+                    return locationComparison;
+                }
+                int typeComparison = left.getKey().transactionTypeCode().compareTo(right.getKey().transactionTypeCode());
+                if (typeComparison != 0) {
+                    return typeComparison;
+                }
+                return left.getKey().handledBy().compareTo(right.getKey().handledBy());
+            })
+            .map(entry -> summaryFactory.create(
+                normalizedSku,
+                entry.getKey().bucket(),
+                entry.getKey().locationCode(),
+                entry.getKey().transactionTypeCode(),
+                entry.getKey().handledBy(),
+                entry.getValue().transactionCount,
+                entry.getValue().totalPickupQuantity,
+                entry.getValue().totalDropoffQuantity,
+                entry.getValue().netQuantityDelta
+            ))
+            .toList();
+        return paginate(rows, pageQuery);
+    }
+
     private static <T> PageResult<T> paginate(List<T> rows, PageQuery pageQuery) {
         int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), rows.size());
         int toIndex = Math.min(fromIndex + pageQuery.size(), rows.size());
@@ -1397,6 +1570,11 @@ class InventoryAvailabilityService implements InventoryAvailability {
     }
 
     @FunctionalInterface
+    private interface PickupDropoffBucketExtractor<B> {
+        B bucket(InventoryPickupDropoffTransaction transaction);
+    }
+
+    @FunctionalInterface
     private interface AdjustmentBucketSummaryFactory<B, T> {
         T create(String sku, String locationCode, B bucket, long adjustmentCount, BigDecimal netQuantityDelta);
     }
@@ -1436,6 +1614,21 @@ class InventoryAvailabilityService implements InventoryAvailability {
         );
     }
 
+    @FunctionalInterface
+    private interface PickupDropoffBucketSummaryFactory<B, T> {
+        T create(
+            String sku,
+            B bucket,
+            String locationCode,
+            String transactionTypeCode,
+            String handledBy,
+            long transactionCount,
+            BigDecimal totalPickupQuantity,
+            BigDecimal totalDropoffQuantity,
+            BigDecimal netQuantityDelta
+        );
+    }
+
     private record AdjustmentBucketLocationKey<B extends Comparable<? super B>>(B bucket, String locationCode) {
     }
 
@@ -1457,6 +1650,14 @@ class InventoryAvailabilityService implements InventoryAvailability {
     ) {
     }
 
+    private record PickupDropoffBucketKey<B extends Comparable<? super B>>(
+        B bucket,
+        String locationCode,
+        String transactionTypeCode,
+        String handledBy
+    ) {
+    }
+
     private static final class AdjustmentBucketSummary {
         private long adjustmentCount;
         private BigDecimal netQuantityDelta = BigDecimal.ZERO;
@@ -1465,6 +1666,13 @@ class InventoryAvailabilityService implements InventoryAvailability {
     private static final class TransferBucketSummary {
         private long transferCount;
         private BigDecimal totalQuantity = BigDecimal.ZERO;
+    }
+
+    private static final class PickupDropoffBucketSummary {
+        private long transactionCount;
+        private BigDecimal totalPickupQuantity = BigDecimal.ZERO;
+        private BigDecimal totalDropoffQuantity = BigDecimal.ZERO;
+        private BigDecimal netQuantityDelta = BigDecimal.ZERO;
     }
 
     private static BigDecimal normalizeQuantityDelta(BigDecimal quantityDelta) {

@@ -6,10 +6,12 @@ import com.arcanaerp.platform.inventory.AdjustInventoryCommand;
 import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.DailyInventoryAdjustmentActivitySummaryView;
+import com.arcanaerp.platform.inventory.DailyInventoryPickupDropoffActivitySummaryView;
 import com.arcanaerp.platform.inventory.InventoryAvailability;
 import com.arcanaerp.platform.inventory.InventoryAdjustmentView;
 import com.arcanaerp.platform.inventory.InventoryItemView;
 import com.arcanaerp.platform.inventory.InventoryPickupDropoffTransactionView;
+import com.arcanaerp.platform.inventory.MonthlyInventoryPickupDropoffActivitySummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.MonthlyInventoryAdjustmentActivitySummaryView;
@@ -26,6 +28,7 @@ import com.arcanaerp.platform.inventory.WeeklyInventoryTransferActivitySummaryVi
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivityByAdjustedBySummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivityByLocationSummaryView;
 import com.arcanaerp.platform.inventory.WeeklyInventoryAdjustmentActivitySummaryView;
+import com.arcanaerp.platform.inventory.WeeklyInventoryPickupDropoffActivitySummaryView;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -171,6 +174,117 @@ public class InventoryController {
                 PageQuery.of(page, size)
             )
             .map(this::toPickupDropoffTransactionResponse);
+    }
+
+    @GetMapping("/{sku}/pickup-dropoff-activity/daily-summary")
+    public PageResult<DailyInventoryPickupDropoffActivitySummaryResponse> listDailyPickupDropoffActivitySummaries(
+        @PathVariable String sku,
+        @RequestParam(required = false) String locationCode,
+        @RequestParam(required = false) String transactionTypeCode,
+        @RequestParam(required = false) String handledBy,
+        @RequestParam(required = false) String referenceType,
+        @RequestParam(required = false) String referenceId,
+        @RequestParam(required = false) String transactionAtFrom,
+        @RequestParam(required = false) String transactionAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        PickupDropoffActivityQuery query = parsePickupDropoffActivityQuery(
+            locationCode,
+            transactionTypeCode,
+            handledBy,
+            referenceType,
+            referenceId,
+            transactionAtFrom,
+            transactionAtTo
+        );
+
+        return inventoryAvailability.listDailyPickupDropoffActivitySummaries(
+                sku,
+                query.locationCode(),
+                query.transactionTypeCode(),
+                query.handledBy(),
+                query.referenceType(),
+                query.referenceId(),
+                query.transactionAtFrom(),
+                query.transactionAtTo(),
+                PageQuery.of(page, size)
+            )
+            .map(this::toDailyPickupDropoffActivitySummaryResponse);
+    }
+
+    @GetMapping("/{sku}/pickup-dropoff-activity/weekly-summary")
+    public PageResult<WeeklyInventoryPickupDropoffActivitySummaryResponse> listWeeklyPickupDropoffActivitySummaries(
+        @PathVariable String sku,
+        @RequestParam(required = false) String locationCode,
+        @RequestParam(required = false) String transactionTypeCode,
+        @RequestParam(required = false) String handledBy,
+        @RequestParam(required = false) String referenceType,
+        @RequestParam(required = false) String referenceId,
+        @RequestParam(required = false) String transactionAtFrom,
+        @RequestParam(required = false) String transactionAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        PickupDropoffActivityQuery query = parsePickupDropoffActivityQuery(
+            locationCode,
+            transactionTypeCode,
+            handledBy,
+            referenceType,
+            referenceId,
+            transactionAtFrom,
+            transactionAtTo
+        );
+
+        return inventoryAvailability.listWeeklyPickupDropoffActivitySummaries(
+                sku,
+                query.locationCode(),
+                query.transactionTypeCode(),
+                query.handledBy(),
+                query.referenceType(),
+                query.referenceId(),
+                query.transactionAtFrom(),
+                query.transactionAtTo(),
+                PageQuery.of(page, size)
+            )
+            .map(this::toWeeklyPickupDropoffActivitySummaryResponse);
+    }
+
+    @GetMapping("/{sku}/pickup-dropoff-activity/monthly-summary")
+    public PageResult<MonthlyInventoryPickupDropoffActivitySummaryResponse> listMonthlyPickupDropoffActivitySummaries(
+        @PathVariable String sku,
+        @RequestParam(required = false) String locationCode,
+        @RequestParam(required = false) String transactionTypeCode,
+        @RequestParam(required = false) String handledBy,
+        @RequestParam(required = false) String referenceType,
+        @RequestParam(required = false) String referenceId,
+        @RequestParam(required = false) String transactionAtFrom,
+        @RequestParam(required = false) String transactionAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        PickupDropoffActivityQuery query = parsePickupDropoffActivityQuery(
+            locationCode,
+            transactionTypeCode,
+            handledBy,
+            referenceType,
+            referenceId,
+            transactionAtFrom,
+            transactionAtTo
+        );
+
+        return inventoryAvailability.listMonthlyPickupDropoffActivitySummaries(
+                sku,
+                query.locationCode(),
+                query.transactionTypeCode(),
+                query.handledBy(),
+                query.referenceType(),
+                query.referenceId(),
+                query.transactionAtFrom(),
+                query.transactionAtTo(),
+                PageQuery.of(page, size)
+            )
+            .map(this::toMonthlyPickupDropoffActivitySummaryResponse);
     }
 
     @GetMapping("/{sku}/adjustment-activity/daily-summary")
@@ -754,6 +868,54 @@ public class InventoryController {
         );
     }
 
+    private DailyInventoryPickupDropoffActivitySummaryResponse toDailyPickupDropoffActivitySummaryResponse(
+        DailyInventoryPickupDropoffActivitySummaryView summary
+    ) {
+        return new DailyInventoryPickupDropoffActivitySummaryResponse(
+            summary.sku(),
+            summary.businessDate(),
+            summary.locationCode(),
+            summary.transactionTypeCode(),
+            summary.handledBy(),
+            summary.transactionCount(),
+            summary.totalPickupQuantity(),
+            summary.totalDropoffQuantity(),
+            summary.netQuantityDelta()
+        );
+    }
+
+    private WeeklyInventoryPickupDropoffActivitySummaryResponse toWeeklyPickupDropoffActivitySummaryResponse(
+        WeeklyInventoryPickupDropoffActivitySummaryView summary
+    ) {
+        return new WeeklyInventoryPickupDropoffActivitySummaryResponse(
+            summary.sku(),
+            summary.businessWeekStart(),
+            summary.locationCode(),
+            summary.transactionTypeCode(),
+            summary.handledBy(),
+            summary.transactionCount(),
+            summary.totalPickupQuantity(),
+            summary.totalDropoffQuantity(),
+            summary.netQuantityDelta()
+        );
+    }
+
+    private MonthlyInventoryPickupDropoffActivitySummaryResponse toMonthlyPickupDropoffActivitySummaryResponse(
+        MonthlyInventoryPickupDropoffActivitySummaryView summary
+    ) {
+        return new MonthlyInventoryPickupDropoffActivitySummaryResponse(
+            summary.sku(),
+            summary.businessMonth(),
+            summary.locationCode(),
+            summary.transactionTypeCode(),
+            summary.handledBy(),
+            summary.transactionCount(),
+            summary.totalPickupQuantity(),
+            summary.totalDropoffQuantity(),
+            summary.netQuantityDelta()
+        );
+    }
+
     private InventoryTransferResponse toTransferResponse(InventoryTransferView transfer) {
         return new InventoryTransferResponse(
             transfer.transferId(),
@@ -1057,6 +1219,29 @@ public class InventoryController {
         );
     }
 
+    private static PickupDropoffActivityQuery parsePickupDropoffActivityQuery(
+        String locationCode,
+        String transactionTypeCode,
+        String handledBy,
+        String referenceType,
+        String referenceId,
+        String transactionAtFrom,
+        String transactionAtTo
+    ) {
+        Instant parsedTransactionAtFrom = parseOptionalInstant(transactionAtFrom, "transactionAtFrom");
+        Instant parsedTransactionAtTo = parseOptionalInstant(transactionAtTo, "transactionAtTo");
+        validateTransactionAtRange(parsedTransactionAtFrom, parsedTransactionAtTo);
+        return new PickupDropoffActivityQuery(
+            normalizeOptionalTransferLocationCode(locationCode, "locationCode"),
+            normalizeOptionalTransactionTypeCode(transactionTypeCode),
+            normalizeOptionalHandledBy(handledBy),
+            normalizeOptionalReferenceType(referenceType),
+            normalizeOptionalReferenceId(referenceId),
+            parsedTransactionAtFrom,
+            parsedTransactionAtTo
+        );
+    }
+
     private record TransferActivityQuery(
         String sourceLocationCode,
         String destinationLocationCode,
@@ -1065,6 +1250,17 @@ public class InventoryController {
         String referenceId,
         Instant adjustedAtFrom,
         Instant adjustedAtTo
+    ) {
+    }
+
+    private record PickupDropoffActivityQuery(
+        String locationCode,
+        String transactionTypeCode,
+        String handledBy,
+        String referenceType,
+        String referenceId,
+        Instant transactionAtFrom,
+        Instant transactionAtTo
     ) {
     }
 

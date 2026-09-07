@@ -2654,6 +2654,136 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void readsDailyWeeklyAndMonthlyPickupDropoffActivitySummaries() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9251a",
+                "main",
+                new BigDecimal("30"),
+                SEED_INSTANT
+            )
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9251a")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "locationCode": "main",
+                  "transactionTypeCode": "pickup",
+                  "quantity": 4,
+                  "reason": "First load",
+                  "handledBy": "dock-a@arcanaerp.com",
+                  "referenceType": "shipment",
+                  "referenceId": "SHP-9251A-1"
+                }
+                """))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9251a")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "locationCode": "main",
+                  "transactionTypeCode": "pickup",
+                  "quantity": 3,
+                  "reason": "Second load",
+                  "handledBy": "dock-a@arcanaerp.com",
+                  "referenceType": "shipment",
+                  "referenceId": "SHP-9251A-1"
+                }
+                """))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9251a")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "locationCode": "main",
+                  "transactionTypeCode": "dropoff",
+                  "quantity": 2,
+                  "reason": "Dock return",
+                  "handledBy": "dock-b@arcanaerp.com",
+                  "referenceType": "rma",
+                  "referenceId": "RMA-9251A-1"
+                }
+                """))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/inventory/{sku}/pickup-dropoff-activity/daily-summary", "arc-9251a")
+            .param("locationCode", "main")
+            .param("transactionTypeCode", "pickup")
+            .param("handledBy", "DOCK-A@ARCANAERP.COM")
+            .param("referenceType", "shipment")
+            .param("referenceId", "SHP-9251A-1")
+            .param("transactionAtFrom", "2026-01-01T00:00:00Z")
+            .param("transactionAtTo", "2030-01-01T00:00:00Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].sku").value("ARC-9251A"))
+            .andExpect(jsonPath("$.items[0].businessDate").isNotEmpty())
+            .andExpect(jsonPath("$.items[0].locationCode").value("MAIN"))
+            .andExpect(jsonPath("$.items[0].transactionTypeCode").value("PICKUP"))
+            .andExpect(jsonPath("$.items[0].handledBy").value("dock-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].transactionCount").value(2))
+            .andExpect(jsonPath("$.items[0].totalPickupQuantity").value(7))
+            .andExpect(jsonPath("$.items[0].totalDropoffQuantity").value(0))
+            .andExpect(jsonPath("$.items[0].netQuantityDelta").value(-7));
+
+        mockMvc.perform(get("/api/inventory/{sku}/pickup-dropoff-activity/weekly-summary", "arc-9251a")
+            .param("transactionAtFrom", "2026-01-01T00:00:00Z")
+            .param("transactionAtTo", "2030-01-01T00:00:00Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].businessWeekStart").isNotEmpty())
+            .andExpect(jsonPath("$.items[0].locationCode").value("MAIN"))
+            .andExpect(jsonPath("$.items[0].transactionTypeCode").value("DROPOFF"))
+            .andExpect(jsonPath("$.items[0].totalDropoffQuantity").value(2))
+            .andExpect(jsonPath("$.items[0].netQuantityDelta").value(2))
+            .andExpect(jsonPath("$.items[1].transactionTypeCode").value("PICKUP"))
+            .andExpect(jsonPath("$.items[1].totalPickupQuantity").value(7))
+            .andExpect(jsonPath("$.items[1].netQuantityDelta").value(-7));
+
+        mockMvc.perform(get("/api/inventory/{sku}/pickup-dropoff-activity/monthly-summary", "arc-9251a")
+            .param("transactionTypeCode", "dropoff")
+            .param("transactionAtFrom", "2026-01-01T00:00:00Z")
+            .param("transactionAtTo", "2030-01-01T00:00:00Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].businessMonth").isNotEmpty())
+            .andExpect(jsonPath("$.items[0].transactionTypeCode").value("DROPOFF"))
+            .andExpect(jsonPath("$.items[0].transactionCount").value(1))
+            .andExpect(jsonPath("$.items[0].totalPickupQuantity").value(0))
+            .andExpect(jsonPath("$.items[0].totalDropoffQuantity").value(2))
+            .andExpect(jsonPath("$.items[0].netQuantityDelta").value(2));
+    }
+
+    @Test
+    void rejectsPickupDropoffActivitySummaryWhenTransactionAtRangeInvalid() throws Exception {
+        inventoryItemRepository.save(
+            InventoryItem.create(
+                "arc-9251b",
+                "main",
+                new BigDecimal("5"),
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(get("/api/inventory/{sku}/pickup-dropoff-activity/daily-summary", "arc-9251b")
+                .param("transactionAtFrom", "2030-01-01T00:00:00Z")
+                .param("transactionAtTo", "2026-01-01T00:00:00Z")),
+            "transactionAtFrom must be before or equal to transactionAtTo",
+            "/api/inventory/arc-9251b/pickup-dropoff-activity/daily-summary"
+        );
+    }
+
+    @Test
     void rejectsInvalidPickupDropoffInventoryTransactions() throws Exception {
         inventoryItemRepository.save(
             InventoryItem.create(

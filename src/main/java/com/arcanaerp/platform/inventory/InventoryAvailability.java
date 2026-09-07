@@ -45,6 +45,42 @@ public interface InventoryAvailability {
         PageQuery pageQuery
     );
 
+    PageResult<DailyInventoryPickupDropoffActivitySummaryView> listDailyPickupDropoffActivitySummaries(
+        String sku,
+        String locationCode,
+        String transactionTypeCode,
+        String handledBy,
+        String referenceType,
+        String referenceId,
+        Instant transactionAtFrom,
+        Instant transactionAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<WeeklyInventoryPickupDropoffActivitySummaryView> listWeeklyPickupDropoffActivitySummaries(
+        String sku,
+        String locationCode,
+        String transactionTypeCode,
+        String handledBy,
+        String referenceType,
+        String referenceId,
+        Instant transactionAtFrom,
+        Instant transactionAtTo,
+        PageQuery pageQuery
+    );
+
+    PageResult<MonthlyInventoryPickupDropoffActivitySummaryView> listMonthlyPickupDropoffActivitySummaries(
+        String sku,
+        String locationCode,
+        String transactionTypeCode,
+        String handledBy,
+        String referenceType,
+        String referenceId,
+        Instant transactionAtFrom,
+        Instant transactionAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<DailyInventoryTransferActivitySummaryView> listDailyTransferActivitySummaries(
         String sku,
         String sourceLocationCode,
