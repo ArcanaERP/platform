@@ -95,6 +95,12 @@ class InventoryApiIntegrationTest {
     private InventoryFixedAssetTypeRepository inventoryFixedAssetTypeRepository;
 
     @Autowired
+    private InventoryFixedAssetActiveChangeAuditRepository fixedAssetActiveChangeAuditRepository;
+
+    @Autowired
+    private InventoryFixedAssetMetadataChangeAuditRepository fixedAssetMetadataChangeAuditRepository;
+
+    @Autowired
     private InventoryLocationMetadataChangeAuditRepository locationMetadataChangeAuditRepository;
 
     @Autowired
@@ -146,6 +152,8 @@ class InventoryApiIntegrationTest {
         pickupDropoffTransactionRepository.deleteAll();
         inventoryAdjustmentRepository.deleteAll();
         inventoryItemRepository.deleteAll();
+        fixedAssetActiveChangeAuditRepository.deleteAll();
+        fixedAssetMetadataChangeAuditRepository.deleteAll();
         inventoryFixedAssetRepository.deleteAll();
         inventoryFixedAssetTypeRepository.deleteAll();
         inventoryFacilityRepository.deleteAll();
@@ -1243,6 +1251,213 @@ class InventoryApiIntegrationTest {
                     """)),
             "TRAILER",
             "/api/inventory/fixed-assets"
+        );
+    }
+
+    @Test
+    void updatesInventoryFixedAssetActiveStateAndListsActiveHistory() throws Exception {
+        inventoryFixedAssetRepository.save(
+            InventoryFixedAsset.create(
+                "truck-101",
+                "Delivery Truck 101",
+                "vehicle",
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/fixed-assets/{code}/active",
+            "truck-101"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "active": false,
+                  "changedBy": " Fleet.Manager@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("TRUCK-101"))
+            .andExpect(jsonPath("$.active").value(false));
+
+        mockMvc.perform(get("/api/inventory/fixed-assets")
+            .param("active", "false")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].code").value("TRUCK-101"));
+
+        mockMvc.perform(get("/api/inventory/fixed-assets/{code}/active-history", "truck-101")
+            .param("changedBy", "fleet.manager@arcanaerp.com")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].fixedAssetCode").value("TRUCK-101"))
+            .andExpect(jsonPath("$.items[0].previousActive").value(true))
+            .andExpect(jsonPath("$.items[0].currentActive").value(false))
+            .andExpect(jsonPath("$.items[0].changedBy").value("fleet.manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
+    }
+
+    @Test
+    void rejectsNoOpInventoryFixedAssetActiveStateChange() throws Exception {
+        inventoryFixedAssetRepository.save(
+            InventoryFixedAsset.create(
+                "truck-102",
+                "Delivery Truck 102",
+                "vehicle",
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/fixed-assets/{code}/active",
+                "truck-102"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "active": true,
+                      "changedBy": "fleet.manager@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory fixed asset active flag is already true",
+            "/api/inventory/fixed-assets/truck-102/active"
+        );
+    }
+
+    @Test
+    void updatesInventoryFixedAssetMetadataAndListsMetadataHistory() throws Exception {
+        seedFixedAssetType("FORKLIFT", "Forklift");
+        inventoryFixedAssetRepository.save(
+            InventoryFixedAsset.create(
+                "truck-103",
+                "Delivery Truck 103",
+                "vehicle",
+                "Box truck",
+                "FA-0103",
+                "legacy",
+                SEED_INSTANT
+            )
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/fixed-assets/{code}/metadata",
+            "truck-103"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "description": " Forklift 103 ",
+                  "fixedAssetTypeCode": " forklift ",
+                  "comments": " Warehouse forklift ",
+                  "externalIdentifier": "FA-1103",
+                  "externalIdSource": " fleet ",
+                  "changedBy": " Fleet.Manager@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("TRUCK-103"))
+            .andExpect(jsonPath("$.description").value("Forklift 103"))
+            .andExpect(jsonPath("$.fixedAssetTypeCode").value("FORKLIFT"))
+            .andExpect(jsonPath("$.comments").value("Warehouse forklift"))
+            .andExpect(jsonPath("$.externalIdentifier").value("FA-1103"))
+            .andExpect(jsonPath("$.externalIdSource").value("FLEET"));
+
+        mockMvc.perform(get("/api/inventory/fixed-assets/{code}/metadata-history", "truck-103")
+            .param("changedBy", "fleet.manager@arcanaerp.com")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].fixedAssetCode").value("TRUCK-103"))
+            .andExpect(jsonPath("$.items[0].previousDescription").value("Delivery Truck 103"))
+            .andExpect(jsonPath("$.items[0].currentDescription").value("Forklift 103"))
+            .andExpect(jsonPath("$.items[0].previousFixedAssetTypeCode").value("VEHICLE"))
+            .andExpect(jsonPath("$.items[0].currentFixedAssetTypeCode").value("FORKLIFT"))
+            .andExpect(jsonPath("$.items[0].previousComments").value("Box truck"))
+            .andExpect(jsonPath("$.items[0].currentComments").value("Warehouse forklift"))
+            .andExpect(jsonPath("$.items[0].previousExternalIdentifier").value("FA-0103"))
+            .andExpect(jsonPath("$.items[0].currentExternalIdentifier").value("FA-1103"))
+            .andExpect(jsonPath("$.items[0].previousExternalIdSource").value("LEGACY"))
+            .andExpect(jsonPath("$.items[0].currentExternalIdSource").value("FLEET"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("fleet.manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
+    }
+
+    @Test
+    void rejectsNoOpInventoryFixedAssetMetadataChange() throws Exception {
+        inventoryFixedAssetRepository.save(
+            InventoryFixedAsset.create(
+                "truck-104",
+                "Delivery Truck 104",
+                "vehicle",
+                "Box truck",
+                "FA-0104",
+                "legacy",
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/fixed-assets/{code}/metadata",
+                "truck-104"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "description": " Delivery Truck 104 ",
+                      "fixedAssetTypeCode": " vehicle ",
+                      "comments": " Box truck ",
+                      "externalIdentifier": "FA-0104",
+                      "externalIdSource": " legacy ",
+                      "changedBy": "fleet.manager@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory fixed asset metadata is unchanged",
+            "/api/inventory/fixed-assets/truck-104/metadata"
+        );
+    }
+
+    @Test
+    void rejectsUnknownInventoryFixedAssetTypeCodeOnMetadataUpdate() throws Exception {
+        inventoryFixedAssetRepository.save(
+            InventoryFixedAsset.create(
+                "truck-105",
+                "Delivery Truck 105",
+                "vehicle",
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        expectInventoryFixedAssetTypeNotFound(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/fixed-assets/{code}/metadata",
+                "truck-105"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "description": " Trailer 105 ",
+                      "fixedAssetTypeCode": " trailer ",
+                      "changedBy": "fleet.manager@arcanaerp.com"
+                    }
+                    """)),
+            "TRAILER",
+            "/api/inventory/fixed-assets/truck-105/metadata"
         );
     }
 

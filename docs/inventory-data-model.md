@@ -15,6 +15,8 @@ erDiagram
     INVENTORY_ENTRY_RELATIONSHIPS ||--o{ INVENTORY_ENTRY_RELATIONSHIP_STATUS_CHANGE_AUDITS : records_status_changes
     INVENTORY_FACILITIES ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : traces_facility
     INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : traces_asset
+    INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_FIXED_ASSET_ACTIVE_CHANGE_AUDITS : records_active_changes
+    INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_FIXED_ASSET_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_PRODUCT_INSTANCE_ASSIGNMENTS : assigns_product_instances
     INVENTORY_PRODUCT_INSTANCE_ASSIGNMENTS ||--o{ INVENTORY_PRODUCT_INSTANCE_ASSIGNMENT_RELEASE_AUDITS : records_releases
     INVENTORY_ITEMS ||--o{ INVENTORY_ITEM_LOCATION_ASSIGNMENTS : assigns_locations
@@ -117,6 +119,34 @@ erDiagram
       BOOLEAN active
       INSTANT createdAt
       INSTANT updatedAt
+    }
+
+    INVENTORY_FIXED_ASSET_ACTIVE_CHANGE_AUDITS {
+      UUID id PK
+      UUID inventoryFixedAssetId
+      STRING fixedAssetCode
+      BOOLEAN previousActive
+      BOOLEAN currentActive
+      STRING changedBy
+      INSTANT changedAt
+    }
+
+    INVENTORY_FIXED_ASSET_METADATA_CHANGE_AUDITS {
+      UUID id PK
+      UUID inventoryFixedAssetId
+      STRING fixedAssetCode
+      STRING previousDescription
+      STRING currentDescription
+      STRING previousFixedAssetTypeCode
+      STRING currentFixedAssetTypeCode
+      STRING previousComments
+      STRING currentComments
+      STRING previousExternalIdentifier
+      STRING currentExternalIdentifier
+      STRING previousExternalIdSource
+      STRING currentExternalIdSource
+      STRING changedBy
+      INSTANT changedAt
     }
 
     INVENTORY_PRODUCT_INSTANCE_ASSIGNMENTS {
@@ -341,6 +371,8 @@ erDiagram
 - Inventory facilities are a first-class catalog for legacy facility traceability; facility codes normalize to uppercase.
 - Inventory fixed assets are a first-class catalog for legacy fixed-asset traceability; fixed asset codes and type codes normalize to uppercase.
 - Inventory fixed asset `fixedAssetTypeCode` values are optional, but supplied codes must exist in `inventory_fixed_asset_types`.
+- Inventory fixed asset active changes are append-only via `inventory_fixed_asset_active_change_audits`.
+- Inventory fixed asset metadata changes are append-only via `inventory_fixed_asset_metadata_change_audits`.
 - Inventory product-instance assignments are explicit cross-reference rows from inventory items to product instance codes.
 - Inventory product-instance assignment releases are append-only via `inventory_product_instance_assignment_release_audits`.
 - Inventory item-location assignments track valid-from/valid-thru placement history without mutating the stock row key.
@@ -356,6 +388,8 @@ erDiagram
 - `inventory_adjustments.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_pickup_dropoff_transactions.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_pickup_dropoff_transactions.inventoryAdjustmentId` is a logical reference to `inventory_adjustments.id`.
+- `inventory_fixed_asset_active_change_audits.inventoryFixedAssetId` is a logical reference to `inventory_fixed_assets.id`.
+- `inventory_fixed_asset_metadata_change_audits.inventoryFixedAssetId` is a logical reference to `inventory_fixed_assets.id`.
 - `inventory_item_metadata_change_audits.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_item_owner_change_audits.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_entry_relationships.fromInventoryItemId` and `toInventoryItemId` are logical references to `inventory_items.id`.
@@ -397,6 +431,10 @@ erDiagram
 - Indexes:
   - `inventory_facilities(active, code)`
   - `inventory_fixed_assets(active, code)`
+  - `inventory_fixed_asset_active_change_audits(inventoryFixedAssetId, changedAt)`
+  - `inventory_fixed_asset_active_change_audits(fixedAssetCode, changedAt)`
+  - `inventory_fixed_asset_metadata_change_audits(inventoryFixedAssetId, changedAt)`
+  - `inventory_fixed_asset_metadata_change_audits(fixedAssetCode, changedAt)`
   - `inventory_adjustments(inventoryItemId, adjustedAt)`
   - `inventory_adjustments(inventoryItemId, adjustedBy, adjustedAt)`
   - `inventory_adjustments(transferId)`
@@ -485,6 +523,10 @@ erDiagram
 - `GET /api/inventory/facilities?page=&size=&active=&query=`
 - `POST /api/inventory/fixed-assets`
 - `GET /api/inventory/fixed-assets/{code}`
+- `PATCH /api/inventory/fixed-assets/{code}/active`
+- `GET /api/inventory/fixed-assets/{code}/active-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
+- `PATCH /api/inventory/fixed-assets/{code}/metadata`
+- `GET /api/inventory/fixed-assets/{code}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/fixed-assets?page=&size=&active=&query=`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
 - `GET /api/inventory/{sku}/adjustments?page=&size=&locationCode=&adjustedBy=&adjustedAtFrom=&adjustedAtTo=` (`locationCode` defaults to `MAIN`)

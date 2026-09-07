@@ -98,6 +98,52 @@ public class InventoryFixedAsset {
         );
     }
 
+    void setActive(boolean active, Instant updatedAt) {
+        if (updatedAt == null) {
+            throw new IllegalArgumentException("updatedAt is required");
+        }
+        if (this.active == active) {
+            throw new IllegalArgumentException("Inventory fixed asset active flag is already " + active);
+        }
+        this.active = active;
+        this.updatedAt = updatedAt;
+    }
+
+    void updateMetadata(
+        String description,
+        String fixedAssetTypeCode,
+        String comments,
+        String externalIdentifier,
+        String externalIdSource,
+        Instant updatedAt
+    ) {
+        if (updatedAt == null) {
+            throw new IllegalArgumentException("updatedAt is required");
+        }
+        String normalizedDescription = normalizeRequired(description, "description");
+        String normalizedFixedAssetTypeCode = normalizeOptionalUpper(fixedAssetTypeCode);
+        String normalizedComments = normalizeOptional(comments);
+        String normalizedExternalIdentifier = normalizeOptional(externalIdentifier);
+        String normalizedExternalIdSource = normalizeOptionalUpper(externalIdSource);
+
+        if (
+            this.description.equals(normalizedDescription)
+                && equalsNullable(this.fixedAssetTypeCode, normalizedFixedAssetTypeCode)
+                && equalsNullable(this.comments, normalizedComments)
+                && equalsNullable(this.externalIdentifier, normalizedExternalIdentifier)
+                && equalsNullable(this.externalIdSource, normalizedExternalIdSource)
+        ) {
+            throw new IllegalArgumentException("Inventory fixed asset metadata is unchanged");
+        }
+
+        this.description = normalizedDescription;
+        this.fixedAssetTypeCode = normalizedFixedAssetTypeCode;
+        this.comments = normalizedComments;
+        this.externalIdentifier = normalizedExternalIdentifier;
+        this.externalIdSource = normalizedExternalIdSource;
+        this.updatedAt = updatedAt;
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");
@@ -115,5 +161,9 @@ public class InventoryFixedAsset {
     private static String normalizeOptionalUpper(String value) {
         String normalized = normalizeOptional(value);
         return normalized == null ? null : normalized.toUpperCase();
+    }
+
+    private static boolean equalsNullable(String left, String right) {
+        return left == null ? right == null : left.equals(right);
     }
 }
