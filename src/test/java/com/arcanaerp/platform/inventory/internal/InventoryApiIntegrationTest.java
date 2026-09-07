@@ -2517,6 +2517,7 @@ class InventoryApiIntegrationTest {
                 SEED_INSTANT
             )
         );
+        inventoryLocationRepository.save(InventoryLocation.create("fulfill-west", "Fulfillment West", SEED_INSTANT));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9250")
             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
@@ -2527,6 +2528,8 @@ class InventoryApiIntegrationTest {
                   "quantity": 3,
                   "reason": "Customer pickup",
                   "handledBy": "OPS@ARCANAERP.COM",
+                  "fixedAssetCode": " truck-7 ",
+                  "facilityCode": " fulfill-west ",
                   "referenceType": "shipment",
                   "referenceId": "SHP-9250-1"
                 }
@@ -2543,6 +2546,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.currentOnHandQuantity").value(9))
             .andExpect(jsonPath("$.reason").value("Customer pickup"))
             .andExpect(jsonPath("$.handledBy").value("ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.fixedAssetCode").value("TRUCK-7"))
+            .andExpect(jsonPath("$.facilityCode").value("FULFILL-WEST"))
             .andExpect(jsonPath("$.referenceType").value("SHIPMENT"))
             .andExpect(jsonPath("$.referenceId").value("SHP-9250-1"))
             .andExpect(jsonPath("$.transactionAt").isNotEmpty());
@@ -2595,6 +2600,7 @@ class InventoryApiIntegrationTest {
                 SEED_INSTANT
             )
         );
+        inventoryLocationRepository.save(InventoryLocation.create("dock-west", "Dock West", SEED_INSTANT));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9251")
             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
@@ -2605,6 +2611,8 @@ class InventoryApiIntegrationTest {
                   "quantity": 4,
                   "reason": "Shipment load",
                   "handledBy": "dock-a@arcanaerp.com",
+                  "fixedAssetCode": "forklift-11",
+                  "facilityCode": "dock-west",
                   "referenceType": "shipment",
                   "referenceId": "SHP-9251-1"
                 }
@@ -2629,6 +2637,8 @@ class InventoryApiIntegrationTest {
         mockMvc.perform(get("/api/inventory/{sku}/pickup-dropoffs", "arc-9251")
             .param("transactionTypeCode", "pickup")
             .param("handledBy", " DOCK-A@ARCANAERP.COM ")
+            .param("fixedAssetCode", " FORKLIFT-11 ")
+            .param("facilityCode", " DOCK-WEST ")
             .param("referenceType", "shipment")
             .param("referenceId", "SHP-9251-1")
             .param("transactionAtFrom", "2026-01-01T00:00:00Z")
@@ -2639,6 +2649,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].transactionTypeCode").value("PICKUP"))
             .andExpect(jsonPath("$.items[0].handledBy").value("dock-a@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].fixedAssetCode").value("FORKLIFT-11"))
+            .andExpect(jsonPath("$.items[0].facilityCode").value("DOCK-WEST"))
             .andExpect(jsonPath("$.items[0].referenceType").value("SHIPMENT"))
             .andExpect(jsonPath("$.items[0].referenceId").value("SHP-9251-1"))
             .andExpect(jsonPath("$.items[0].quantityDelta").value(-4));
@@ -2663,6 +2675,7 @@ class InventoryApiIntegrationTest {
                 SEED_INSTANT
             )
         );
+        inventoryLocationRepository.save(InventoryLocation.create("dock-east", "Dock East", SEED_INSTANT));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9251a")
             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
@@ -2673,6 +2686,8 @@ class InventoryApiIntegrationTest {
                   "quantity": 4,
                   "reason": "First load",
                   "handledBy": "dock-a@arcanaerp.com",
+                  "fixedAssetCode": "trailer-12",
+                  "facilityCode": "dock-east",
                   "referenceType": "shipment",
                   "referenceId": "SHP-9251A-1"
                 }
@@ -2688,6 +2703,8 @@ class InventoryApiIntegrationTest {
                   "quantity": 3,
                   "reason": "Second load",
                   "handledBy": "dock-a@arcanaerp.com",
+                  "fixedAssetCode": "trailer-12",
+                  "facilityCode": "dock-east",
                   "referenceType": "shipment",
                   "referenceId": "SHP-9251A-1"
                 }
@@ -2713,6 +2730,8 @@ class InventoryApiIntegrationTest {
             .param("locationCode", "main")
             .param("transactionTypeCode", "pickup")
             .param("handledBy", "DOCK-A@ARCANAERP.COM")
+            .param("fixedAssetCode", "trailer-12")
+            .param("facilityCode", "dock-east")
             .param("referenceType", "shipment")
             .param("referenceId", "SHP-9251A-1")
             .param("transactionAtFrom", "2026-01-01T00:00:00Z")
@@ -2840,6 +2859,23 @@ class InventoryApiIntegrationTest {
                     }
                     """)),
             "referenceType and referenceId must both be provided together",
+            "/api/inventory/arc-9252/pickup-dropoffs"
+        );
+
+        expectInventoryLocationNotFound(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/{sku}/pickup-dropoffs", "arc-9252")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "locationCode": "main",
+                      "transactionTypeCode": "pickup",
+                      "quantity": 1,
+                      "reason": "Unknown facility",
+                      "handledBy": "ops@arcanaerp.com",
+                      "facilityCode": "missing-facility"
+                    }
+                    """)),
+            "MISSING-FACILITY",
             "/api/inventory/arc-9252/pickup-dropoffs"
         );
     }

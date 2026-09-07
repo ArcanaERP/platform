@@ -16,6 +16,8 @@ public record InventoryPickupDropoffTransactionResponse(
     BigDecimal currentOnHandQuantity,
     String reason,
     String handledBy,
+    String fixedAssetCode,
+    String facilityCode,
     String referenceType,
     String referenceId,
     Instant transactionAt

@@ -19,6 +19,8 @@ interface InventoryPickupDropoffTransactionRepository extends JpaRepository<Inve
           and (:locationCode is null or transaction.locationCode = :locationCode)
           and (:transactionTypeCode is null or transaction.transactionTypeCode = :transactionTypeCode)
           and (:handledBy is null or transaction.handledBy = :handledBy)
+          and (:fixedAssetCode is null or transaction.fixedAssetCode = :fixedAssetCode)
+          and (:facilityCode is null or transaction.facilityCode = :facilityCode)
           and (:referenceType is null or transaction.referenceType = :referenceType)
           and (:referenceId is null or transaction.referenceId = :referenceId)
           and (:transactionAtFrom is null or transaction.transactionAt >= :transactionAtFrom)
@@ -30,6 +32,8 @@ interface InventoryPickupDropoffTransactionRepository extends JpaRepository<Inve
         @Param("locationCode") String locationCode,
         @Param("transactionTypeCode") String transactionTypeCode,
         @Param("handledBy") String handledBy,
+        @Param("fixedAssetCode") String fixedAssetCode,
+        @Param("facilityCode") String facilityCode,
         @Param("referenceType") String referenceType,
         @Param("referenceId") String referenceId,
         @Param("transactionAtFrom") Instant transactionAtFrom,
@@ -45,6 +49,8 @@ interface InventoryPickupDropoffTransactionRepository extends JpaRepository<Inve
           and (:locationCode is null or transaction.locationCode = :locationCode)
           and (:transactionTypeCode is null or transaction.transactionTypeCode = :transactionTypeCode)
           and (:handledBy is null or transaction.handledBy = :handledBy)
+          and (:fixedAssetCode is null or transaction.fixedAssetCode = :fixedAssetCode)
+          and (:facilityCode is null or transaction.facilityCode = :facilityCode)
           and (:referenceType is null or transaction.referenceType = :referenceType)
           and (:referenceId is null or transaction.referenceId = :referenceId)
           and (:transactionAtFrom is null or transaction.transactionAt >= :transactionAtFrom)
@@ -57,6 +63,8 @@ interface InventoryPickupDropoffTransactionRepository extends JpaRepository<Inve
         @Param("locationCode") String locationCode,
         @Param("transactionTypeCode") String transactionTypeCode,
         @Param("handledBy") String handledBy,
+        @Param("fixedAssetCode") String fixedAssetCode,
+        @Param("facilityCode") String facilityCode,
         @Param("referenceType") String referenceType,
         @Param("referenceId") String referenceId,
         @Param("transactionAtFrom") Instant transactionAtFrom,

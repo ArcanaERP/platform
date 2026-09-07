@@ -228,6 +228,8 @@ erDiagram
       DECIMAL currentOnHandQuantity
       STRING reason
       STRING handledBy
+      STRING fixedAssetCode
+      STRING facilityCode
       STRING referenceType
       STRING referenceId
       INSTANT transactionAt
@@ -322,6 +324,7 @@ erDiagram
 - `inventory_item_location_assignment_end_audits.assignmentId` is a logical reference to `inventory_item_location_assignments.id`.
 - Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` and `inventory_items.availableQuantity` store latest per-location state.
 - Pickup/dropoff transactions are append-only via `inventory_pickup_dropoff_transactions`; `PICKUP` decreases on-hand stock and `DROPOFF` increases on-hand stock through a linked adjustment row.
+- Pickup/dropoff transactions can carry optional `fixedAssetCode` and `facilityCode` values for legacy fixed-asset/facility traceability; `facilityCode` must match an active inventory location.
 - Inventory item availability changes are append-only via `inventory_item_availability_change_audits`.
 - Inventory item metadata changes are append-only via `inventory_item_metadata_change_audits`.
 - Inventory item owner changes are append-only via `inventory_item_owner_change_audits`.
@@ -353,6 +356,8 @@ erDiagram
   - `inventory_pickup_dropoff_transactions(inventoryItemId, transactionAt)`
   - `inventory_pickup_dropoff_transactions(sku, transactionTypeCode, transactionAt)`
   - `inventory_pickup_dropoff_transactions(sku, referenceType, referenceId, transactionAt)`
+  - `inventory_pickup_dropoff_transactions(sku, fixedAssetCode, transactionAt)`
+  - `inventory_pickup_dropoff_transactions(sku, facilityCode, transactionAt)`
   - `inventory_pickup_dropoff_transactions(inventoryAdjustmentId)`
   - `inventory_location_metadata_change_audits(inventoryLocationId, changedAt)`
   - `inventory_location_metadata_change_audits(locationCode, changedAt)`
@@ -428,10 +433,10 @@ erDiagram
 - `GET /api/inventory/{sku}/adjustments?page=&size=&locationCode=&adjustedBy=&adjustedAtFrom=&adjustedAtTo=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/pickup-dropoffs`
-- `GET /api/inventory/{sku}/pickup-dropoffs?page=&size=&locationCode=&transactionTypeCode=&handledBy=&referenceType=&referenceId=&transactionAtFrom=&transactionAtTo=`
-- `GET /api/inventory/{sku}/pickup-dropoff-activity/daily-summary?page=&size=&locationCode=&transactionTypeCode=&handledBy=&referenceType=&referenceId=&transactionAtFrom=&transactionAtTo=`
-- `GET /api/inventory/{sku}/pickup-dropoff-activity/weekly-summary?page=&size=&locationCode=&transactionTypeCode=&handledBy=&referenceType=&referenceId=&transactionAtFrom=&transactionAtTo=`
-- `GET /api/inventory/{sku}/pickup-dropoff-activity/monthly-summary?page=&size=&locationCode=&transactionTypeCode=&handledBy=&referenceType=&referenceId=&transactionAtFrom=&transactionAtTo=`
+- `GET /api/inventory/{sku}/pickup-dropoffs?page=&size=&locationCode=&transactionTypeCode=&handledBy=&fixedAssetCode=&facilityCode=&referenceType=&referenceId=&transactionAtFrom=&transactionAtTo=`
+- `GET /api/inventory/{sku}/pickup-dropoff-activity/daily-summary?page=&size=&locationCode=&transactionTypeCode=&handledBy=&fixedAssetCode=&facilityCode=&referenceType=&referenceId=&transactionAtFrom=&transactionAtTo=`
+- `GET /api/inventory/{sku}/pickup-dropoff-activity/weekly-summary?page=&size=&locationCode=&transactionTypeCode=&handledBy=&fixedAssetCode=&facilityCode=&referenceType=&referenceId=&transactionAtFrom=&transactionAtTo=`
+- `GET /api/inventory/{sku}/pickup-dropoff-activity/monthly-summary?page=&size=&locationCode=&transactionTypeCode=&handledBy=&fixedAssetCode=&facilityCode=&referenceType=&referenceId=&transactionAtFrom=&transactionAtTo=`
 - `POST /api/inventory/{sku}/transfers`
 - `GET /api/inventory/transfers/{transferId}`
 - `POST /api/inventory/transfers/{transferId}/reversals` (optional `Idempotency-Key` header for retry-safe replay; reusing a key with a different payload returns `409 Conflict`; concurrent first-write requests with the same key return `409 Conflict`; stale pending claims are automatically reclaimed after 5 minutes on retry)

@@ -9,6 +9,8 @@ public record RecordInventoryPickupDropoffCommand(
     BigDecimal quantity,
     String reason,
     String handledBy,
+    String fixedAssetCode,
+    String facilityCode,
     String referenceType,
     String referenceId
 ) {

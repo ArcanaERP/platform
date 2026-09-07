@@ -21,6 +21,8 @@ import lombok.NoArgsConstructor;
         @Index(name = "idx_inventory_pickup_dropoff_item_time", columnList = "inventoryItemId,transactionAt"),
         @Index(name = "idx_inventory_pickup_dropoff_sku_type_time", columnList = "sku,transactionTypeCode,transactionAt"),
         @Index(name = "idx_inventory_pickup_dropoff_ref_time", columnList = "sku,referenceType,referenceId,transactionAt"),
+        @Index(name = "idx_inventory_pickup_dropoff_asset_time", columnList = "sku,fixedAssetCode,transactionAt"),
+        @Index(name = "idx_inventory_pickup_dropoff_facility_time", columnList = "sku,facilityCode,transactionAt"),
         @Index(name = "idx_inventory_pickup_dropoff_adjustment", columnList = "inventoryAdjustmentId")
     }
 )
@@ -69,6 +71,12 @@ public class InventoryPickupDropoffTransaction {
     private String handledBy;
 
     @Column(length = 64)
+    private String fixedAssetCode;
+
+    @Column(length = 64)
+    private String facilityCode;
+
+    @Column(length = 64)
     private String referenceType;
 
     @Column(length = 128)
@@ -89,6 +97,8 @@ public class InventoryPickupDropoffTransaction {
         BigDecimal currentOnHandQuantity,
         String reason,
         String handledBy,
+        String fixedAssetCode,
+        String facilityCode,
         String referenceType,
         String referenceId,
         Instant transactionAt
@@ -104,6 +114,8 @@ public class InventoryPickupDropoffTransaction {
         this.currentOnHandQuantity = currentOnHandQuantity;
         this.reason = reason;
         this.handledBy = handledBy;
+        this.fixedAssetCode = fixedAssetCode;
+        this.facilityCode = facilityCode;
         this.referenceType = referenceType;
         this.referenceId = referenceId;
         this.transactionAt = transactionAt;
@@ -120,6 +132,8 @@ public class InventoryPickupDropoffTransaction {
         BigDecimal currentOnHandQuantity,
         String reason,
         String handledBy,
+        String fixedAssetCode,
+        String facilityCode,
         String referenceType,
         String referenceId,
         Instant transactionAt
@@ -156,6 +170,8 @@ public class InventoryPickupDropoffTransaction {
             currentOnHandQuantity,
             normalizeRequired(reason, "reason"),
             normalizeRequired(handledBy, "handledBy").toLowerCase(),
+            normalizeOptionalUpper(fixedAssetCode),
+            normalizeOptionalUpper(facilityCode),
             normalizeOptionalUpper(referenceType),
             normalizeOptional(referenceId),
             transactionAt

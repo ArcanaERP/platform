@@ -259,11 +259,14 @@ class InventoryAvailabilityService implements InventoryAvailability {
         BigDecimal quantityDelta = InventoryPickupDropoffTransaction.quantityDeltaFor(transactionTypeCode, quantity);
         String reason = normalizeRequired(command.reason(), "reason");
         String handledBy = normalizeRequired(command.handledBy(), "handledBy").toLowerCase();
+        String fixedAssetCode = normalizeOptionalUpper(command.fixedAssetCode(), "fixedAssetCode");
+        String facilityCode = normalizeOptionalFacilityCode(command.facilityCode());
         String referenceType = normalizeOptionalReferenceType(command.referenceType());
         String referenceId = normalizeOptionalReferenceId(command.referenceId());
         validateReferencePair(referenceType, referenceId);
 
         ensureLocationExists(normalizedLocationCode);
+        ensureOptionalFacilityLocationExists(facilityCode);
         InventoryItem item = findInventoryItem(normalizedSku, normalizedLocationCode);
 
         BigDecimal previousOnHand = item.getOnHandQuantity();
@@ -299,6 +302,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
                 saved.getOnHandQuantity(),
                 reason,
                 handledBy,
+                fixedAssetCode,
+                facilityCode,
                 referenceType,
                 referenceId,
                 transactionAt
@@ -606,6 +611,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
         String locationCode,
         String transactionTypeCode,
         String handledBy,
+        String fixedAssetCode,
+        String facilityCode,
         String referenceType,
         String referenceId,
         Instant transactionAtFrom,
@@ -619,6 +626,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
             ? null
             : InventoryPickupDropoffTransaction.normalizeTransactionTypeCode(transactionTypeCode);
         String normalizedHandledBy = handledBy == null ? null : normalizeRequired(handledBy, "handledBy").toLowerCase();
+        String normalizedFixedAssetCode = normalizeOptionalUpper(fixedAssetCode, "fixedAssetCode");
+        String normalizedFacilityCode = normalizeOptionalFacilityCode(facilityCode);
         String normalizedReferenceType = normalizeOptionalReferenceType(referenceType);
         String normalizedReferenceId = normalizeOptionalReferenceId(referenceId);
 
@@ -627,6 +636,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
             normalizedLocationCode,
             normalizedTransactionTypeCode,
             normalizedHandledBy,
+            normalizedFixedAssetCode,
+            normalizedFacilityCode,
             normalizedReferenceType,
             normalizedReferenceId,
             transactionAtFrom,
@@ -644,6 +655,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
         String locationCode,
         String transactionTypeCode,
         String handledBy,
+        String fixedAssetCode,
+        String facilityCode,
         String referenceType,
         String referenceId,
         Instant transactionAtFrom,
@@ -655,6 +668,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
             locationCode,
             transactionTypeCode,
             handledBy,
+            fixedAssetCode,
+            facilityCode,
             referenceType,
             referenceId,
             transactionAtFrom,
@@ -672,6 +687,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
         String locationCode,
         String transactionTypeCode,
         String handledBy,
+        String fixedAssetCode,
+        String facilityCode,
         String referenceType,
         String referenceId,
         Instant transactionAtFrom,
@@ -683,6 +700,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
             locationCode,
             transactionTypeCode,
             handledBy,
+            fixedAssetCode,
+            facilityCode,
             referenceType,
             referenceId,
             transactionAtFrom,
@@ -703,6 +722,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
         String locationCode,
         String transactionTypeCode,
         String handledBy,
+        String fixedAssetCode,
+        String facilityCode,
         String referenceType,
         String referenceId,
         Instant transactionAtFrom,
@@ -714,6 +735,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
             locationCode,
             transactionTypeCode,
             handledBy,
+            fixedAssetCode,
+            facilityCode,
             referenceType,
             referenceId,
             transactionAtFrom,
@@ -1444,6 +1467,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
         String locationCode,
         String transactionTypeCode,
         String handledBy,
+        String fixedAssetCode,
+        String facilityCode,
         String referenceType,
         String referenceId,
         Instant transactionAtFrom,
@@ -1459,6 +1484,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
             ? null
             : InventoryPickupDropoffTransaction.normalizeTransactionTypeCode(transactionTypeCode);
         String normalizedHandledBy = handledBy == null ? null : normalizeRequired(handledBy, "handledBy").toLowerCase();
+        String normalizedFixedAssetCode = normalizeOptionalUpper(fixedAssetCode, "fixedAssetCode");
+        String normalizedFacilityCode = normalizeOptionalFacilityCode(facilityCode);
         String normalizedReferenceType = normalizeOptionalReferenceType(referenceType);
         String normalizedReferenceId = normalizeOptionalReferenceId(referenceId);
 
@@ -1467,6 +1494,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
             normalizedLocationCode,
             normalizedTransactionTypeCode,
             normalizedHandledBy,
+            normalizedFixedAssetCode,
+            normalizedFacilityCode,
             normalizedReferenceType,
             normalizedReferenceId,
             transactionAtFrom,
@@ -1553,6 +1582,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
             transaction.getCurrentOnHandQuantity(),
             transaction.getReason(),
             transaction.getHandledBy(),
+            transaction.getFixedAssetCode(),
+            transaction.getFacilityCode(),
             transaction.getReferenceType(),
             transaction.getReferenceId(),
             transaction.getTransactionAt()
@@ -1712,6 +1743,26 @@ class InventoryAvailabilityService implements InventoryAvailability {
         return referenceType.trim().toUpperCase();
     }
 
+    private static String normalizeOptionalUpper(String value, String fieldName) {
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " is required");
+        }
+        return value.trim().toUpperCase();
+    }
+
+    private static String normalizeOptionalFacilityCode(String facilityCode) {
+        if (facilityCode == null) {
+            return null;
+        }
+        if (facilityCode.isBlank()) {
+            throw new IllegalArgumentException("facilityCode is required");
+        }
+        return facilityCode.trim().toUpperCase();
+    }
+
     private static String normalizeOptionalReferenceId(String referenceId) {
         if (referenceId == null) {
             return null;
@@ -1791,6 +1842,17 @@ class InventoryAvailabilityService implements InventoryAvailability {
             ));
         if (!location.isActive()) {
             throw new IllegalArgumentException("Inventory location is inactive: " + locationCode);
+        }
+    }
+
+    private void ensureOptionalFacilityLocationExists(String facilityCode) {
+        if (facilityCode == null) {
+            return;
+        }
+        InventoryLocation location = inventoryLocationRepository.findByCode(facilityCode)
+            .orElseThrow(() -> new NoSuchElementException("Inventory location not found for code: " + facilityCode));
+        if (!location.isActive()) {
+            throw new IllegalArgumentException("Inventory location is inactive: " + facilityCode);
         }
     }
 }

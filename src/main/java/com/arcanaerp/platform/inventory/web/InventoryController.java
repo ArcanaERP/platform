@@ -138,6 +138,8 @@ public class InventoryController {
                 request.quantity(),
                 request.reason(),
                 request.handledBy(),
+                request.fixedAssetCode(),
+                request.facilityCode(),
                 request.referenceType(),
                 request.referenceId()
             )
@@ -151,6 +153,8 @@ public class InventoryController {
         @RequestParam(required = false) String locationCode,
         @RequestParam(required = false) String transactionTypeCode,
         @RequestParam(required = false) String handledBy,
+        @RequestParam(required = false) String fixedAssetCode,
+        @RequestParam(required = false) String facilityCode,
         @RequestParam(required = false) String referenceType,
         @RequestParam(required = false) String referenceId,
         @RequestParam(required = false) String transactionAtFrom,
@@ -167,6 +171,8 @@ public class InventoryController {
                 normalizeOptionalTransferLocationCode(locationCode, "locationCode"),
                 normalizeOptionalTransactionTypeCode(transactionTypeCode),
                 normalizeOptionalHandledBy(handledBy),
+                normalizeOptionalFixedAssetCode(fixedAssetCode),
+                normalizeOptionalFacilityCode(facilityCode),
                 normalizeOptionalReferenceType(referenceType),
                 normalizeOptionalReferenceId(referenceId),
                 parsedTransactionAtFrom,
@@ -182,6 +188,8 @@ public class InventoryController {
         @RequestParam(required = false) String locationCode,
         @RequestParam(required = false) String transactionTypeCode,
         @RequestParam(required = false) String handledBy,
+        @RequestParam(required = false) String fixedAssetCode,
+        @RequestParam(required = false) String facilityCode,
         @RequestParam(required = false) String referenceType,
         @RequestParam(required = false) String referenceId,
         @RequestParam(required = false) String transactionAtFrom,
@@ -193,6 +201,8 @@ public class InventoryController {
             locationCode,
             transactionTypeCode,
             handledBy,
+            fixedAssetCode,
+            facilityCode,
             referenceType,
             referenceId,
             transactionAtFrom,
@@ -204,6 +214,8 @@ public class InventoryController {
                 query.locationCode(),
                 query.transactionTypeCode(),
                 query.handledBy(),
+                query.fixedAssetCode(),
+                query.facilityCode(),
                 query.referenceType(),
                 query.referenceId(),
                 query.transactionAtFrom(),
@@ -219,6 +231,8 @@ public class InventoryController {
         @RequestParam(required = false) String locationCode,
         @RequestParam(required = false) String transactionTypeCode,
         @RequestParam(required = false) String handledBy,
+        @RequestParam(required = false) String fixedAssetCode,
+        @RequestParam(required = false) String facilityCode,
         @RequestParam(required = false) String referenceType,
         @RequestParam(required = false) String referenceId,
         @RequestParam(required = false) String transactionAtFrom,
@@ -230,6 +244,8 @@ public class InventoryController {
             locationCode,
             transactionTypeCode,
             handledBy,
+            fixedAssetCode,
+            facilityCode,
             referenceType,
             referenceId,
             transactionAtFrom,
@@ -241,6 +257,8 @@ public class InventoryController {
                 query.locationCode(),
                 query.transactionTypeCode(),
                 query.handledBy(),
+                query.fixedAssetCode(),
+                query.facilityCode(),
                 query.referenceType(),
                 query.referenceId(),
                 query.transactionAtFrom(),
@@ -256,6 +274,8 @@ public class InventoryController {
         @RequestParam(required = false) String locationCode,
         @RequestParam(required = false) String transactionTypeCode,
         @RequestParam(required = false) String handledBy,
+        @RequestParam(required = false) String fixedAssetCode,
+        @RequestParam(required = false) String facilityCode,
         @RequestParam(required = false) String referenceType,
         @RequestParam(required = false) String referenceId,
         @RequestParam(required = false) String transactionAtFrom,
@@ -267,6 +287,8 @@ public class InventoryController {
             locationCode,
             transactionTypeCode,
             handledBy,
+            fixedAssetCode,
+            facilityCode,
             referenceType,
             referenceId,
             transactionAtFrom,
@@ -278,6 +300,8 @@ public class InventoryController {
                 query.locationCode(),
                 query.transactionTypeCode(),
                 query.handledBy(),
+                query.fixedAssetCode(),
+                query.facilityCode(),
                 query.referenceType(),
                 query.referenceId(),
                 query.transactionAtFrom(),
@@ -862,6 +886,8 @@ public class InventoryController {
             transaction.currentOnHandQuantity(),
             transaction.reason(),
             transaction.handledBy(),
+            transaction.fixedAssetCode(),
+            transaction.facilityCode(),
             transaction.referenceType(),
             transaction.referenceId(),
             transaction.transactionAt()
@@ -1162,6 +1188,26 @@ public class InventoryController {
         return handledBy.trim().toLowerCase();
     }
 
+    private static String normalizeOptionalFixedAssetCode(String fixedAssetCode) {
+        if (fixedAssetCode == null) {
+            return null;
+        }
+        if (fixedAssetCode.isBlank()) {
+            throw new IllegalArgumentException("fixedAssetCode query parameter must not be blank");
+        }
+        return fixedAssetCode.trim().toUpperCase();
+    }
+
+    private static String normalizeOptionalFacilityCode(String facilityCode) {
+        if (facilityCode == null) {
+            return null;
+        }
+        if (facilityCode.isBlank()) {
+            throw new IllegalArgumentException("facilityCode query parameter must not be blank");
+        }
+        return facilityCode.trim().toUpperCase();
+    }
+
     private static String normalizeOptionalTransactionTypeCode(String transactionTypeCode) {
         if (transactionTypeCode == null) {
             return null;
@@ -1223,6 +1269,8 @@ public class InventoryController {
         String locationCode,
         String transactionTypeCode,
         String handledBy,
+        String fixedAssetCode,
+        String facilityCode,
         String referenceType,
         String referenceId,
         String transactionAtFrom,
@@ -1235,6 +1283,8 @@ public class InventoryController {
             normalizeOptionalTransferLocationCode(locationCode, "locationCode"),
             normalizeOptionalTransactionTypeCode(transactionTypeCode),
             normalizeOptionalHandledBy(handledBy),
+            normalizeOptionalFixedAssetCode(fixedAssetCode),
+            normalizeOptionalFacilityCode(facilityCode),
             normalizeOptionalReferenceType(referenceType),
             normalizeOptionalReferenceId(referenceId),
             parsedTransactionAtFrom,
@@ -1257,6 +1307,8 @@ public class InventoryController {
         String locationCode,
         String transactionTypeCode,
         String handledBy,
+        String fixedAssetCode,
+        String facilityCode,
         String referenceType,
         String referenceId,
         Instant transactionAtFrom,

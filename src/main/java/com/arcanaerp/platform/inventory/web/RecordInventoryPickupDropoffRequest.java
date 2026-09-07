@@ -10,6 +10,8 @@ public record RecordInventoryPickupDropoffRequest(
     @NotNull BigDecimal quantity,
     @NotBlank String reason,
     @NotBlank String handledBy,
+    String fixedAssetCode,
+    String facilityCode,
     String referenceType,
     String referenceId
 ) {
