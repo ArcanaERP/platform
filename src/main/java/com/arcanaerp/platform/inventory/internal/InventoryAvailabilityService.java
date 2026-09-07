@@ -83,6 +83,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
             item.getUnitOfMeasurementCode(),
             item.getClassificationCode(),
             item.getProductInstanceCode(),
+            item.getExternalReference(),
+            item.getSourceSystemCode(),
             item.getUpdatedAt()
         );
     }
@@ -169,6 +171,8 @@ class InventoryAvailabilityService implements InventoryAvailability {
                 sourceItem.getUnitOfMeasurementCode(),
                 sourceItem.getClassificationCode(),
                 sourceItem.getProductInstanceCode(),
+                sourceItem.getExternalReference(),
+                sourceItem.getSourceSystemCode(),
                 adjustedAt
             ));
 

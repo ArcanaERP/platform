@@ -44,8 +44,30 @@ class InventoryItemDomainTest {
         assertThat(item.getUnitOfMeasurementCode()).isEqualTo("CASE");
         assertThat(item.getClassificationCode()).isEqualTo("QUARANTINE");
         assertThat(item.getProductInstanceCode()).isEqualTo("PI-100");
+        assertThat(item.getExternalReference()).isNull();
+        assertThat(item.getSourceSystemCode()).isNull();
         assertThat(item.getAvailableQuantity()).isEqualByComparingTo("20");
         assertThat(item.getSoldQuantity()).isEqualByComparingTo("5");
+    }
+
+    @Test
+    void createNormalizesExternalItemMetadata() {
+        InventoryItem item = InventoryItem.create(
+            "arc-9000b",
+            "wh-west",
+            new BigDecimal("25"),
+            new BigDecimal("20"),
+            new BigDecimal("5"),
+            " case ",
+            " quarantine ",
+            " pi-100 ",
+            " legacy-entry-100 ",
+            " legacy_inv ",
+            Instant.parse("2026-03-01T00:00:00Z")
+        );
+
+        assertThat(item.getExternalReference()).isEqualTo("legacy-entry-100");
+        assertThat(item.getSourceSystemCode()).isEqualTo("LEGACY_INV");
     }
 
     @Test
@@ -92,11 +114,20 @@ class InventoryItemDomainTest {
             Instant.parse("2026-03-01T00:00:00Z")
         );
 
-        item.updateMetadata(" each ", " available ", " pi-101 ", Instant.parse("2026-03-01T01:00:00Z"));
+        item.updateMetadata(
+            " each ",
+            " available ",
+            " pi-101 ",
+            " legacy-entry-101 ",
+            " warehouse_migration ",
+            Instant.parse("2026-03-01T01:00:00Z")
+        );
 
         assertThat(item.getUnitOfMeasurementCode()).isEqualTo("EACH");
         assertThat(item.getClassificationCode()).isEqualTo("AVAILABLE");
         assertThat(item.getProductInstanceCode()).isEqualTo("PI-101");
+        assertThat(item.getExternalReference()).isEqualTo("legacy-entry-101");
+        assertThat(item.getSourceSystemCode()).isEqualTo("WAREHOUSE_MIGRATION");
         assertThat(item.getOnHandQuantity()).isEqualByComparingTo("5");
         assertThat(item.getAvailableQuantity()).isEqualByComparingTo("5");
         assertThat(item.getSoldQuantity()).isEqualByComparingTo("0");

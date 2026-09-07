@@ -13,6 +13,8 @@ public record CreateInventoryItemRequest(
     @PositiveOrZero BigDecimal soldQuantity,
     String unitOfMeasurementCode,
     String classificationCode,
-    String productInstanceCode
+    String productInstanceCode,
+    String externalReference,
+    String sourceSystemCode
 ) {
 }

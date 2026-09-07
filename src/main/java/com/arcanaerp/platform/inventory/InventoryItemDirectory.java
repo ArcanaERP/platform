@@ -38,6 +38,8 @@ public interface InventoryItemDirectory {
         String unitOfMeasurementCode,
         String classificationCode,
         String productInstanceCode,
+        String externalReference,
+        String sourceSystemCode,
         PageQuery pageQuery
     );
 }

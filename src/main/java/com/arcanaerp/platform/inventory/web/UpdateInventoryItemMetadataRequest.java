@@ -6,6 +6,8 @@ public record UpdateInventoryItemMetadataRequest(
     @NotBlank String unitOfMeasurementCode,
     @NotBlank String classificationCode,
     String productInstanceCode,
+    String externalReference,
+    String sourceSystemCode,
     @NotBlank String changedBy
 ) {
 }

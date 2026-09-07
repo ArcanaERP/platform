@@ -56,6 +56,18 @@ class InventoryItemMetadataChangeAudit {
     @Column(length = 128)
     private String currentProductInstanceCode;
 
+    @Column(length = 128)
+    private String previousExternalReference;
+
+    @Column(length = 128)
+    private String currentExternalReference;
+
+    @Column(length = 64)
+    private String previousSourceSystemCode;
+
+    @Column(length = 64)
+    private String currentSourceSystemCode;
+
     @Column(nullable = false, length = 128)
     private String changedBy;
 
@@ -73,6 +85,10 @@ class InventoryItemMetadataChangeAudit {
         String currentClassificationCode,
         String previousProductInstanceCode,
         String currentProductInstanceCode,
+        String previousExternalReference,
+        String currentExternalReference,
+        String previousSourceSystemCode,
+        String currentSourceSystemCode,
         String changedBy,
         Instant changedAt
     ) {
@@ -86,6 +102,10 @@ class InventoryItemMetadataChangeAudit {
         this.currentClassificationCode = currentClassificationCode;
         this.previousProductInstanceCode = previousProductInstanceCode;
         this.currentProductInstanceCode = currentProductInstanceCode;
+        this.previousExternalReference = previousExternalReference;
+        this.currentExternalReference = currentExternalReference;
+        this.previousSourceSystemCode = previousSourceSystemCode;
+        this.currentSourceSystemCode = currentSourceSystemCode;
         this.changedBy = changedBy;
         this.changedAt = changedAt;
     }
@@ -100,6 +120,42 @@ class InventoryItemMetadataChangeAudit {
         String currentClassificationCode,
         String previousProductInstanceCode,
         String currentProductInstanceCode,
+        String changedBy,
+        Instant changedAt
+    ) {
+        return create(
+            inventoryItemId,
+            sku,
+            locationCode,
+            previousUnitOfMeasurementCode,
+            currentUnitOfMeasurementCode,
+            previousClassificationCode,
+            currentClassificationCode,
+            previousProductInstanceCode,
+            currentProductInstanceCode,
+            null,
+            null,
+            null,
+            null,
+            changedBy,
+            changedAt
+        );
+    }
+
+    static InventoryItemMetadataChangeAudit create(
+        UUID inventoryItemId,
+        String sku,
+        String locationCode,
+        String previousUnitOfMeasurementCode,
+        String currentUnitOfMeasurementCode,
+        String previousClassificationCode,
+        String currentClassificationCode,
+        String previousProductInstanceCode,
+        String currentProductInstanceCode,
+        String previousExternalReference,
+        String currentExternalReference,
+        String previousSourceSystemCode,
+        String currentSourceSystemCode,
         String changedBy,
         Instant changedAt
     ) {
@@ -120,6 +176,10 @@ class InventoryItemMetadataChangeAudit {
             normalizeRequired(currentClassificationCode, "currentClassificationCode").toUpperCase(),
             normalizeOptionalUpper(previousProductInstanceCode),
             normalizeOptionalUpper(currentProductInstanceCode),
+            normalizeOptional(previousExternalReference),
+            normalizeOptional(currentExternalReference),
+            normalizeOptionalUpper(previousSourceSystemCode),
+            normalizeOptionalUpper(currentSourceSystemCode),
             normalizeRequired(changedBy, "changedBy").toLowerCase(),
             changedAt
         );
@@ -137,5 +197,12 @@ class InventoryItemMetadataChangeAudit {
             return null;
         }
         return value.trim().toUpperCase();
+    }
+
+    private static String normalizeOptional(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 }

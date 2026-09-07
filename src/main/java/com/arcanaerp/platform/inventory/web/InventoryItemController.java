@@ -42,7 +42,9 @@ public class InventoryItemController {
             request.soldQuantity(),
             request.unitOfMeasurementCode(),
             request.classificationCode(),
-            request.productInstanceCode()
+            request.productInstanceCode(),
+            request.externalReference(),
+            request.sourceSystemCode()
         ));
         return toResponse(item);
     }
@@ -70,6 +72,8 @@ public class InventoryItemController {
                 request.unitOfMeasurementCode(),
                 request.classificationCode(),
                 request.productInstanceCode(),
+                request.externalReference(),
+                request.sourceSystemCode(),
                 request.changedBy()
             )
         ));
@@ -148,6 +152,8 @@ public class InventoryItemController {
         @RequestParam(required = false) String unitOfMeasurementCode,
         @RequestParam(required = false) String classificationCode,
         @RequestParam(required = false) String productInstanceCode,
+        @RequestParam(required = false) String externalReference,
+        @RequestParam(required = false) String sourceSystemCode,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
@@ -157,6 +163,8 @@ public class InventoryItemController {
             unitOfMeasurementCode,
             classificationCode,
             productInstanceCode,
+            externalReference,
+            sourceSystemCode,
             PageQuery.of(page, size)
         ).map(this::toResponse);
     }
@@ -172,6 +180,8 @@ public class InventoryItemController {
             item.unitOfMeasurementCode(),
             item.classificationCode(),
             item.productInstanceCode(),
+            item.externalReference(),
+            item.sourceSystemCode(),
             item.updatedAt()
         );
     }
@@ -204,6 +214,10 @@ public class InventoryItemController {
             change.currentClassificationCode(),
             change.previousProductInstanceCode(),
             change.currentProductInstanceCode(),
+            change.previousExternalReference(),
+            change.currentExternalReference(),
+            change.previousSourceSystemCode(),
+            change.currentSourceSystemCode(),
             change.changedBy(),
             change.changedAt()
         );

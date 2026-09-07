@@ -318,6 +318,7 @@ Inventory:
 
 - Inventory item UOM codes are validated against `POST /api/core/units-of-measurement` reference data.
 - Inventory item registration accepts optional `availableQuantity` and `soldQuantity`; available defaults to on-hand, sold defaults to zero.
+- Inventory items support optional external reference and source-system metadata for legacy inventory-entry traceability.
 - Inventory location `facilityTypeCode` values are validated against `POST /api/inventory/location-types` reference data.
 - Inventory entry relationship and role types are reference data for entry relationship records.
 - Inventory entry relationships support optional `fromDate` and `thruDate` validity windows.
@@ -354,7 +355,7 @@ Inventory:
 - `PATCH /api/inventory/locations/{code}/active`
 - `GET /api/inventory/locations?page=&size=&active=`
 - `POST /api/inventory/items`
-- `GET /api/inventory/items?page=&size=&sku=&locationCode=&unitOfMeasurementCode=&classificationCode=&productInstanceCode=`
+- `GET /api/inventory/items?page=&size=&sku=&locationCode=&unitOfMeasurementCode=&classificationCode=&productInstanceCode=&externalReference=&sourceSystemCode=`
 - `GET /api/inventory/items/{sku}/locations/{locationCode}`
 - `PATCH /api/inventory/items/{sku}/locations/{locationCode}/availability`
 - `GET /api/inventory/items/{sku}/locations/{locationCode}/availability-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`

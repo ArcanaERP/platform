@@ -1390,7 +1390,9 @@ class InventoryApiIntegrationTest {
                   "soldQuantity": 2,
                   "unitOfMeasurementCode": "case",
                   "classificationCode": "quarantine",
-                  "productInstanceCode": " pi-100 "
+                  "productInstanceCode": " pi-100 ",
+                  "externalReference": " legacy-entry-100 ",
+                  "sourceSystemCode": " legacy_inv "
                 }
                 """))
             .andExpect(status().isCreated())
@@ -1403,6 +1405,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.unitOfMeasurementCode").value("CASE"))
             .andExpect(jsonPath("$.classificationCode").value("QUARANTINE"))
             .andExpect(jsonPath("$.productInstanceCode").value("PI-100"))
+            .andExpect(jsonPath("$.externalReference").value("legacy-entry-100"))
+            .andExpect(jsonPath("$.sourceSystemCode").value("LEGACY_INV"))
             .andExpect(jsonPath("$.updatedAt").isNotEmpty());
 
         mockMvc.perform(get("/api/inventory/items/{sku}/locations/{locationCode}", "arc-9250", "wh-item"))
@@ -1414,12 +1418,16 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.soldQuantity").value(2))
             .andExpect(jsonPath("$.unitOfMeasurementCode").value("CASE"))
             .andExpect(jsonPath("$.classificationCode").value("QUARANTINE"))
-            .andExpect(jsonPath("$.productInstanceCode").value("PI-100"));
+            .andExpect(jsonPath("$.productInstanceCode").value("PI-100"))
+            .andExpect(jsonPath("$.externalReference").value("legacy-entry-100"))
+            .andExpect(jsonPath("$.sourceSystemCode").value("LEGACY_INV"));
 
         mockMvc.perform(get("/api/inventory/items")
             .param("sku", "ARC-9250")
             .param("classificationCode", "quarantine")
             .param("productInstanceCode", "pi-100")
+            .param("externalReference", "legacy-entry-100")
+            .param("sourceSystemCode", "legacy_inv")
             .param("page", "0")
             .param("size", "10"))
             .andExpect(status().isOk())
@@ -1428,7 +1436,9 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.items[0].availableQuantity").value(12))
             .andExpect(jsonPath("$.items[0].soldQuantity").value(2))
             .andExpect(jsonPath("$.items[0].classificationCode").value("QUARANTINE"))
-            .andExpect(jsonPath("$.items[0].productInstanceCode").value("PI-100"));
+            .andExpect(jsonPath("$.items[0].productInstanceCode").value("PI-100"))
+            .andExpect(jsonPath("$.items[0].externalReference").value("legacy-entry-100"))
+            .andExpect(jsonPath("$.items[0].sourceSystemCode").value("LEGACY_INV"));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
             "/api/inventory/items/{sku}/locations/{locationCode}/metadata",
@@ -1441,6 +1451,8 @@ class InventoryApiIntegrationTest {
                   "unitOfMeasurementCode": "each",
                   "classificationCode": "available",
                   "productInstanceCode": "pi-101",
+                  "externalReference": " legacy-entry-101 ",
+                  "sourceSystemCode": " warehouse_migration ",
                   "changedBy": " Inventory.Ops@ArcanaERP.com "
                 }
                 """))
@@ -1452,7 +1464,9 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.soldQuantity").value(2))
             .andExpect(jsonPath("$.unitOfMeasurementCode").value("EACH"))
             .andExpect(jsonPath("$.classificationCode").value("AVAILABLE"))
-            .andExpect(jsonPath("$.productInstanceCode").value("PI-101"));
+            .andExpect(jsonPath("$.productInstanceCode").value("PI-101"))
+            .andExpect(jsonPath("$.externalReference").value("legacy-entry-101"))
+            .andExpect(jsonPath("$.sourceSystemCode").value("WAREHOUSE_MIGRATION"));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
             "/api/inventory/items/{sku}/locations/{locationCode}/availability",
@@ -1476,7 +1490,9 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.soldQuantity").value(5))
             .andExpect(jsonPath("$.unitOfMeasurementCode").value("EACH"))
             .andExpect(jsonPath("$.classificationCode").value("AVAILABLE"))
-            .andExpect(jsonPath("$.productInstanceCode").value("PI-101"));
+            .andExpect(jsonPath("$.productInstanceCode").value("PI-101"))
+            .andExpect(jsonPath("$.externalReference").value("legacy-entry-101"))
+            .andExpect(jsonPath("$.sourceSystemCode").value("WAREHOUSE_MIGRATION"));
 
         mockMvc.perform(get("/api/inventory/items/{sku}/locations/{locationCode}/availability-history", "arc-9250", "wh-item")
             .param("changedBy", "inventory.ops@arcanaerp.com")
@@ -1510,6 +1526,10 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.items[0].currentClassificationCode").value("AVAILABLE"))
             .andExpect(jsonPath("$.items[0].previousProductInstanceCode").value("PI-100"))
             .andExpect(jsonPath("$.items[0].currentProductInstanceCode").value("PI-101"))
+            .andExpect(jsonPath("$.items[0].previousExternalReference").value("legacy-entry-100"))
+            .andExpect(jsonPath("$.items[0].currentExternalReference").value("legacy-entry-101"))
+            .andExpect(jsonPath("$.items[0].previousSourceSystemCode").value("LEGACY_INV"))
+            .andExpect(jsonPath("$.items[0].currentSourceSystemCode").value("WAREHOUSE_MIGRATION"))
             .andExpect(jsonPath("$.items[0].changedBy").value("inventory.ops@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
     }

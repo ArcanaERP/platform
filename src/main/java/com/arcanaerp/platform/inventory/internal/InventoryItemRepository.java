@@ -23,6 +23,8 @@ interface InventoryItemRepository extends JpaRepository<InventoryItem, UUID> {
           and (:unitOfMeasurementCode is null or item.unitOfMeasurementCode = :unitOfMeasurementCode)
           and (:classificationCode is null or item.classificationCode = :classificationCode)
           and (:productInstanceCode is null or item.productInstanceCode = :productInstanceCode)
+          and (:externalReference is null or item.externalReference = :externalReference)
+          and (:sourceSystemCode is null or item.sourceSystemCode = :sourceSystemCode)
         """
     )
     Page<InventoryItem> findItemsFiltered(
@@ -31,6 +33,8 @@ interface InventoryItemRepository extends JpaRepository<InventoryItem, UUID> {
         @Param("unitOfMeasurementCode") String unitOfMeasurementCode,
         @Param("classificationCode") String classificationCode,
         @Param("productInstanceCode") String productInstanceCode,
+        @Param("externalReference") String externalReference,
+        @Param("sourceSystemCode") String sourceSystemCode,
         Pageable pageable
     );
 }

@@ -14,6 +14,8 @@ public record InventoryItemView(
     String unitOfMeasurementCode,
     String classificationCode,
     String productInstanceCode,
+    String externalReference,
+    String sourceSystemCode,
     Instant updatedAt
 ) {
 }

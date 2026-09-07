@@ -6,6 +6,8 @@ public record UpdateInventoryItemMetadataCommand(
     String unitOfMeasurementCode,
     String classificationCode,
     String productInstanceCode,
+    String externalReference,
+    String sourceSystemCode,
     String changedBy
 ) {
 }

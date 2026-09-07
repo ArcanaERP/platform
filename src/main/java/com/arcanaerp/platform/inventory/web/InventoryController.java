@@ -65,6 +65,8 @@ public class InventoryController {
             item.unitOfMeasurementCode(),
             item.classificationCode(),
             item.productInstanceCode(),
+            item.externalReference(),
+            item.sourceSystemCode(),
             item.updatedAt()
         );
     }

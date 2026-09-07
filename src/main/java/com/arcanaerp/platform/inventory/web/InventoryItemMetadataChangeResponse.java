@@ -13,6 +13,10 @@ public record InventoryItemMetadataChangeResponse(
     String currentClassificationCode,
     String previousProductInstanceCode,
     String currentProductInstanceCode,
+    String previousExternalReference,
+    String currentExternalReference,
+    String previousSourceSystemCode,
+    String currentSourceSystemCode,
     String changedBy,
     Instant changedAt
 ) {

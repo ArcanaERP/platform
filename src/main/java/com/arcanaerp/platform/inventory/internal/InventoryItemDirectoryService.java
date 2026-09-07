@@ -69,6 +69,8 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             unitOfMeasurementCode,
             normalizeOptionalCode(command.classificationCode(), "classificationCode", "ON_HAND"),
             normalizeOptionalCode(command.productInstanceCode(), "productInstanceCode"),
+            normalizeOptionalExternalReference(command.externalReference()),
+            normalizeOptionalCode(command.sourceSystemCode(), "sourceSystemCode"),
             Instant.now(clock)
         )));
     }
@@ -98,12 +100,16 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
         String previousUnitOfMeasurementCode = item.getUnitOfMeasurementCode();
         String previousClassificationCode = item.getClassificationCode();
         String previousProductInstanceCode = item.getProductInstanceCode();
+        String previousExternalReference = item.getExternalReference();
+        String previousSourceSystemCode = item.getSourceSystemCode();
         Instant changedAt = Instant.now(clock);
         ensureUnitOfMeasurementExists(command.unitOfMeasurementCode());
         item.updateMetadata(
             command.unitOfMeasurementCode(),
             command.classificationCode(),
             command.productInstanceCode(),
+            command.externalReference(),
+            command.sourceSystemCode(),
             changedAt
         );
         String changedBy = normalizeRequired(command.changedBy(), "changedBy").toLowerCase();
@@ -117,6 +123,10 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             item.getClassificationCode(),
             previousProductInstanceCode,
             item.getProductInstanceCode(),
+            previousExternalReference,
+            item.getExternalReference(),
+            previousSourceSystemCode,
+            item.getSourceSystemCode(),
             changedBy,
             changedAt
         ));
@@ -221,6 +231,8 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
         String unitOfMeasurementCode,
         String classificationCode,
         String productInstanceCode,
+        String externalReference,
+        String sourceSystemCode,
         PageQuery pageQuery
     ) {
         Page<InventoryItem> items = inventoryItemRepository.findItemsFiltered(
@@ -229,6 +241,8 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             normalizeOptionalCode(unitOfMeasurementCode, "unitOfMeasurementCode"),
             normalizeOptionalCode(classificationCode, "classificationCode"),
             normalizeOptionalCode(productInstanceCode, "productInstanceCode"),
+            normalizeOptionalExternalReference(externalReference),
+            normalizeOptionalCode(sourceSystemCode, "sourceSystemCode"),
             pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "sku").and(Sort.by(Sort.Direction.ASC, "locationCode")))
         );
         return PageResult.from(items).map(this::toView);
@@ -271,6 +285,8 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             item.getUnitOfMeasurementCode(),
             item.getClassificationCode(),
             item.getProductInstanceCode(),
+            item.getExternalReference(),
+            item.getSourceSystemCode(),
             item.getUpdatedAt()
         );
     }
@@ -303,6 +319,10 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
             audit.getCurrentClassificationCode(),
             audit.getPreviousProductInstanceCode(),
             audit.getCurrentProductInstanceCode(),
+            audit.getPreviousExternalReference(),
+            audit.getCurrentExternalReference(),
+            audit.getPreviousSourceSystemCode(),
+            audit.getCurrentSourceSystemCode(),
             audit.getChangedBy(),
             audit.getChangedAt()
         );
@@ -321,6 +341,10 @@ class InventoryItemDirectoryService implements InventoryItemDirectory {
 
     private static String normalizeOptionalCode(String value, String fieldName) {
         return value == null ? null : normalizeRequired(value, fieldName).toUpperCase();
+    }
+
+    private static String normalizeOptionalExternalReference(String value) {
+        return value == null ? null : normalizeRequired(value, "externalReference");
     }
 
     private static String normalizeOptionalChangedBy(String value) {
