@@ -25,6 +25,8 @@ public interface InventoryItemLocationAssignmentDirectory {
         String sku,
         String itemLocationCode,
         String assignedLocationCode,
+        String assignedFacilityCode,
+        String assignedStorageAreaCode,
         Boolean active,
         PageQuery pageQuery
     );

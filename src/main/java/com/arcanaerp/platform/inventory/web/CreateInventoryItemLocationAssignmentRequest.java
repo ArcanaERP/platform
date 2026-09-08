@@ -6,6 +6,8 @@ public record CreateInventoryItemLocationAssignmentRequest(
     @NotBlank String sku,
     @NotBlank String itemLocationCode,
     @NotBlank String assignedLocationCode,
+    String assignedFacilityCode,
+    String assignedStorageAreaCode,
     String validFrom,
     @NotBlank String assignedBy
 ) {

@@ -339,7 +339,7 @@ Inventory:
 - Inventory entry relationship and role types are reference data for entry relationship records.
 - Inventory entry relationships support optional `fromDate` and `thruDate` validity windows.
 - Product-instance assignment records link inventory items to product instance codes for legacy cross-reference parity.
-- Item-location assignment records track valid-from/valid-thru placement history for inventory items.
+- Item-location assignment records track valid-from/valid-thru placement history for inventory items and can target facility storage areas/bins.
 - `POST /api/inventory/location-types`
 - `GET /api/inventory/location-types/{code}`
 - `GET /api/inventory/location-types?page=&size=`
@@ -392,7 +392,7 @@ Inventory:
 - `GET /api/inventory/item-location-assignments/{id}`
 - `PATCH /api/inventory/item-location-assignments/{id}/end`
 - `GET /api/inventory/item-location-assignments/{id}/end-history?page=&size=&endedBy=&endedAtFrom=&endedAtTo=`
-- `GET /api/inventory/item-location-assignments?page=&size=&sku=&itemLocationCode=&assignedLocationCode=&active=`
+- `GET /api/inventory/item-location-assignments?page=&size=&sku=&itemLocationCode=&assignedLocationCode=&assignedFacilityCode=&assignedStorageAreaCode=&active=`
 - `POST /api/inventory/locations`
 - `GET /api/inventory/locations/{code}`
 - `PATCH /api/inventory/locations/{code}/metadata`

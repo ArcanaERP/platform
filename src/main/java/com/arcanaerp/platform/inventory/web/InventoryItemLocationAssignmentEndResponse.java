@@ -10,6 +10,8 @@ public record InventoryItemLocationAssignmentEndResponse(
     String sku,
     String itemLocationCode,
     String assignedLocationCode,
+    String assignedFacilityCode,
+    String assignedStorageAreaCode,
     Instant previousValidThru,
     Instant currentValidThru,
     String reason,

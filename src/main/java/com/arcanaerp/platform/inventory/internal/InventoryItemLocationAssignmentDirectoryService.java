@@ -26,6 +26,8 @@ class InventoryItemLocationAssignmentDirectoryService implements InventoryItemLo
     private final InventoryItemLocationAssignmentEndAuditRepository endAuditRepository;
     private final InventoryItemRepository inventoryItemRepository;
     private final InventoryLocationRepository inventoryLocationRepository;
+    private final InventoryFacilityRepository inventoryFacilityRepository;
+    private final InventoryStorageAreaRepository inventoryStorageAreaRepository;
     private final Clock clock;
 
     @Override
@@ -35,10 +37,15 @@ class InventoryItemLocationAssignmentDirectoryService implements InventoryItemLo
         }
         InventoryItem item = findItem(command.sku(), command.itemLocationCode());
         InventoryLocation assignedLocation = findActiveLocation(command.assignedLocationCode());
+        String assignedFacilityCode = normalizeOptionalUpper(command.assignedFacilityCode(), "assignedFacilityCode");
+        String assignedStorageAreaCode = normalizeOptionalUpper(command.assignedStorageAreaCode(), "assignedStorageAreaCode");
+        validateStorageTarget(assignedFacilityCode, assignedStorageAreaCode);
         Instant validFrom = command.validFrom() == null ? Instant.now(clock) : command.validFrom();
         return toView(assignmentRepository.save(InventoryItemLocationAssignment.create(
             item,
             assignedLocation,
+            assignedFacilityCode,
+            assignedStorageAreaCode,
             validFrom,
             command.assignedBy(),
             Instant.now(clock)
@@ -102,6 +109,8 @@ class InventoryItemLocationAssignmentDirectoryService implements InventoryItemLo
         String sku,
         String itemLocationCode,
         String assignedLocationCode,
+        String assignedFacilityCode,
+        String assignedStorageAreaCode,
         Boolean active,
         PageQuery pageQuery
     ) {
@@ -109,6 +118,8 @@ class InventoryItemLocationAssignmentDirectoryService implements InventoryItemLo
             normalizeOptionalUpper(sku, "sku"),
             normalizeOptionalUpper(itemLocationCode, "itemLocationCode"),
             normalizeOptionalUpper(assignedLocationCode, "assignedLocationCode"),
+            normalizeOptionalUpper(assignedFacilityCode, "assignedFacilityCode"),
+            normalizeOptionalUpper(assignedStorageAreaCode, "assignedStorageAreaCode"),
             active,
             pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "sku").and(Sort.by("validFrom")))
         );
@@ -137,6 +148,33 @@ class InventoryItemLocationAssignmentDirectoryService implements InventoryItemLo
         return location;
     }
 
+    private void validateStorageTarget(String assignedFacilityCode, String assignedStorageAreaCode) {
+        if (assignedStorageAreaCode != null && assignedFacilityCode == null) {
+            throw new IllegalArgumentException("assignedFacilityCode is required when assignedStorageAreaCode is supplied");
+        }
+        if (assignedFacilityCode == null) {
+            return;
+        }
+        InventoryFacility facility = inventoryFacilityRepository.findByCode(assignedFacilityCode)
+            .orElseThrow(() -> new IllegalArgumentException("Inventory facility not found: " + assignedFacilityCode));
+        if (!facility.isActive()) {
+            throw new IllegalArgumentException("Inventory facility is inactive: " + assignedFacilityCode);
+        }
+        if (
+            assignedStorageAreaCode != null
+                && inventoryStorageAreaRepository
+                    .findByFacilityCodeAndCode(assignedFacilityCode, assignedStorageAreaCode)
+                    .isEmpty()
+        ) {
+            throw new IllegalArgumentException(
+                "Inventory storage area not found for facility: "
+                    + assignedFacilityCode
+                    + " and code: "
+                    + assignedStorageAreaCode
+            );
+        }
+    }
+
     private InventoryItemLocationAssignment findAssignment(UUID id) {
         if (id == null) {
             throw new IllegalArgumentException("id is required");
@@ -152,6 +190,8 @@ class InventoryItemLocationAssignmentDirectoryService implements InventoryItemLo
             assignment.getSku(),
             assignment.getItemLocationCode(),
             assignment.getAssignedLocationCode(),
+            assignment.getAssignedFacilityCode(),
+            assignment.getAssignedStorageAreaCode(),
             assignment.getValidFrom(),
             assignment.getValidThru(),
             assignment.isActive(),
@@ -171,6 +211,8 @@ class InventoryItemLocationAssignmentDirectoryService implements InventoryItemLo
             audit.getSku(),
             audit.getItemLocationCode(),
             audit.getAssignedLocationCode(),
+            audit.getAssignedFacilityCode(),
+            audit.getAssignedStorageAreaCode(),
             audit.getPreviousValidThru(),
             audit.getCurrentValidThru(),
             audit.getReason(),

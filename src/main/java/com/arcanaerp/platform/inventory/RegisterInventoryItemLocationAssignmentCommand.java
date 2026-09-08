@@ -6,6 +6,8 @@ public record RegisterInventoryItemLocationAssignmentCommand(
     String sku,
     String itemLocationCode,
     String assignedLocationCode,
+    String assignedFacilityCode,
+    String assignedStorageAreaCode,
     Instant validFrom,
     String assignedBy
 ) {

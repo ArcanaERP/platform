@@ -16,6 +16,8 @@ interface InventoryItemLocationAssignmentRepository extends JpaRepository<Invent
         where (:sku is null or assignment.sku = :sku)
           and (:itemLocationCode is null or assignment.itemLocationCode = :itemLocationCode)
           and (:assignedLocationCode is null or assignment.assignedLocationCode = :assignedLocationCode)
+          and (:assignedFacilityCode is null or assignment.assignedFacilityCode = :assignedFacilityCode)
+          and (:assignedStorageAreaCode is null or assignment.assignedStorageAreaCode = :assignedStorageAreaCode)
           and (:active is null or assignment.active = :active)
         """
     )
@@ -23,6 +25,8 @@ interface InventoryItemLocationAssignmentRepository extends JpaRepository<Invent
         @Param("sku") String sku,
         @Param("itemLocationCode") String itemLocationCode,
         @Param("assignedLocationCode") String assignedLocationCode,
+        @Param("assignedFacilityCode") String assignedFacilityCode,
+        @Param("assignedStorageAreaCode") String assignedStorageAreaCode,
         @Param("active") Boolean active,
         Pageable pageable
     );

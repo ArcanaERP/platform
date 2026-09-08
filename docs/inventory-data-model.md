@@ -408,6 +408,8 @@ erDiagram
       STRING sku
       STRING itemLocationCode
       STRING assignedLocationCode
+      STRING assignedFacilityCode
+      STRING assignedStorageAreaCode
       INSTANT validFrom
       INSTANT validThru
       BOOLEAN active
@@ -425,6 +427,8 @@ erDiagram
       STRING sku
       STRING itemLocationCode
       STRING assignedLocationCode
+      STRING assignedFacilityCode
+      STRING assignedStorageAreaCode
       INSTANT previousValidThru
       INSTANT currentValidThru
       STRING reason
@@ -622,6 +626,8 @@ erDiagram
 - Inventory product-instance assignments are explicit cross-reference rows from inventory items to product instance codes.
 - Inventory product-instance assignment releases are append-only via `inventory_product_instance_assignment_release_audits`.
 - Inventory item-location assignments track valid-from/valid-thru placement history without mutating the stock row key.
+- Inventory item-location assignments can optionally target an active facility and storage area/bin.
+- Supplying `assignedStorageAreaCode` requires `assignedFacilityCode`, and the storage-area code must exist inside that facility.
 - Inventory item-location assignment ends are append-only via `inventory_item_location_assignment_end_audits`.
 - Inventory locations carry optional facility type, address, and contact metadata for facility-model parity.
 - Inventory location and facility `facilityTypeCode` values are optional, but supplied codes must exist in `inventory_location_types`.
@@ -656,6 +662,8 @@ erDiagram
 - `inventory_product_instance_assignment_release_audits.assignmentId` is a logical reference to `inventory_product_instance_assignments.id`.
 - `inventory_item_location_assignments.inventoryItemId` is a logical reference to `inventory_items.id`.
 - `inventory_item_location_assignments.assignedLocationCode` aligns with `inventory_locations.code`.
+- `inventory_item_location_assignments.assignedFacilityCode` aligns with `inventory_facilities.code`.
+- `inventory_item_location_assignments.assignedStorageAreaCode` aligns with `inventory_storage_areas.code` for the assigned facility.
 - `inventory_item_location_assignment_end_audits.assignmentId` is a logical reference to `inventory_item_location_assignments.id`.
 - Inventory changes are append-only via `inventory_adjustments`; `inventory_items.onHandQuantity` and `inventory_items.availableQuantity` store latest per-location state.
 - Pickup/dropoff transactions are append-only via `inventory_pickup_dropoff_transactions`; `PICKUP` decreases on-hand stock and `DROPOFF` increases on-hand stock through a linked adjustment row.
@@ -763,9 +771,11 @@ erDiagram
   - `inventory_item_location_assignments(inventoryItemId, validFrom, validThru)`
   - `inventory_item_location_assignments(sku, itemLocationCode)`
   - `inventory_item_location_assignments(assignedLocationCode)`
+  - `inventory_item_location_assignments(assignedFacilityCode, assignedStorageAreaCode)`
   - `inventory_item_location_assignments(active)`
   - `inventory_item_location_assignment_end_audits(assignmentId, endedAt)`
   - `inventory_item_location_assignment_end_audits(sku, itemLocationCode, endedAt)`
+  - `inventory_item_location_assignment_end_audits(assignedFacilityCode, assignedStorageAreaCode, endedAt)`
   - `inventory_item_location_assignment_end_audits(endedBy, endedAt)`
   - `inventory_transfer_reversal_idempotency(reversalTransferId)`
 
@@ -823,7 +833,7 @@ erDiagram
 - `GET /api/inventory/item-location-assignments/{id}`
 - `PATCH /api/inventory/item-location-assignments/{id}/end`
 - `GET /api/inventory/item-location-assignments/{id}/end-history?page=&size=&endedBy=&endedAtFrom=&endedAtTo=`
-- `GET /api/inventory/item-location-assignments?page=&size=&sku=&itemLocationCode=&assignedLocationCode=&active=`
+- `GET /api/inventory/item-location-assignments?page=&size=&sku=&itemLocationCode=&assignedLocationCode=&assignedFacilityCode=&assignedStorageAreaCode=&active=`
 - `POST /api/inventory/locations`
 - `GET /api/inventory/locations/{code}`
 - `PATCH /api/inventory/locations/{code}/metadata`
@@ -902,8 +912,9 @@ erDiagram
 - inventory product-instance assignment releases mark the assignment inactive and append release audit rows
 - inventory product-instance assignment list filters match normalized item keys, product instance code, assignedBy values, and active state
 - inventory item-location assignment writes validate the inventory item and active assigned location
+- inventory item-location assignment writes validate optional assigned facility and assigned storage-area targets
 - inventory item-location assignment ends require `validThru >= validFrom` and append end audit rows
-- inventory item-location assignment list filters match normalized item keys, assigned location, and active state
+- inventory item-location assignment list filters match normalized item keys, assigned location, assigned facility, assigned storage area, and active state
 - inventory location facility type, address purpose, region, country, and contact purpose codes are normalized to uppercase; contact email is normalized to lowercase
 - inventory location and facility address metadata requires a supplied address purpose code
 - inventory location and facility contact name/email metadata requires a supplied contact purpose code

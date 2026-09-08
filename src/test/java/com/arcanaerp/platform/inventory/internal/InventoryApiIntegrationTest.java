@@ -1310,6 +1310,28 @@ class InventoryApiIntegrationTest {
             SEED_INSTANT
         ));
         inventoryLocationRepository.save(InventoryLocation.create("bin-a", "Bin A", SEED_INSTANT));
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "wh-location-storage",
+            "Storage Warehouse",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        inventoryStorageAreaRepository.save(InventoryStorageArea.create(
+            "wh-location-storage",
+            "bin-a-01",
+            "Bin A-01",
+            "BIN",
+            null,
+            SEED_INSTANT
+        ));
 
         String assignmentId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
             "/api/inventory/item-location-assignments"
@@ -1320,6 +1342,8 @@ class InventoryApiIntegrationTest {
                   "sku": " arc-location-100 ",
                   "itemLocationCode": " wh-source ",
                   "assignedLocationCode": " bin-a ",
+                  "assignedFacilityCode": " wh-location-storage ",
+                  "assignedStorageAreaCode": " bin-a-01 ",
                   "validFrom": "2026-03-02T00:00:00Z",
                   "assignedBy": " Inventory.Manager "
                 }
@@ -1330,6 +1354,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.sku").value("ARC-LOCATION-100"))
             .andExpect(jsonPath("$.itemLocationCode").value("WH-SOURCE"))
             .andExpect(jsonPath("$.assignedLocationCode").value("BIN-A"))
+            .andExpect(jsonPath("$.assignedFacilityCode").value("WH-LOCATION-STORAGE"))
+            .andExpect(jsonPath("$.assignedStorageAreaCode").value("BIN-A-01"))
             .andExpect(jsonPath("$.validFrom").value("2026-03-02T00:00:00Z"))
             .andExpect(jsonPath("$.validThru").doesNotExist())
             .andExpect(jsonPath("$.active").value(true))
@@ -1343,18 +1369,24 @@ class InventoryApiIntegrationTest {
         mockMvc.perform(get("/api/inventory/item-location-assignments/{id}", assignmentId))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(assignmentId))
-            .andExpect(jsonPath("$.assignedLocationCode").value("BIN-A"));
+            .andExpect(jsonPath("$.assignedLocationCode").value("BIN-A"))
+            .andExpect(jsonPath("$.assignedFacilityCode").value("WH-LOCATION-STORAGE"))
+            .andExpect(jsonPath("$.assignedStorageAreaCode").value("BIN-A-01"));
 
         mockMvc.perform(get("/api/inventory/item-location-assignments")
             .param("sku", "arc-location-100")
             .param("itemLocationCode", "wh-source")
             .param("assignedLocationCode", "bin-a")
+            .param("assignedFacilityCode", "wh-location-storage")
+            .param("assignedStorageAreaCode", "bin-a-01")
             .param("active", "true")
             .param("page", "0")
             .param("size", "10"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(1))
             .andExpect(jsonPath("$.items[0].id").value(assignmentId))
+            .andExpect(jsonPath("$.items[0].assignedFacilityCode").value("WH-LOCATION-STORAGE"))
+            .andExpect(jsonPath("$.items[0].assignedStorageAreaCode").value("BIN-A-01"))
             .andExpect(jsonPath("$.items[0].active").value(true));
     }
 
@@ -1467,6 +1499,81 @@ class InventoryApiIntegrationTest {
                     }
                     """)),
             "Inventory location is inactive: BIN-INACTIVE",
+            "/api/inventory/item-location-assignments"
+        );
+    }
+
+    @Test
+    void rejectsInventoryItemLocationAssignmentWithStorageAreaButNoFacility() throws Exception {
+        inventoryItemRepository.save(InventoryItem.create(
+            "arc-location-113",
+            "wh-source",
+            new BigDecimal("2"),
+            SEED_INSTANT
+        ));
+        inventoryLocationRepository.save(InventoryLocation.create("bin-storage-missing-facility", "Bin A", SEED_INSTANT));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/item-location-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "sku": "arc-location-113",
+                      "itemLocationCode": "wh-source",
+                      "assignedLocationCode": "bin-storage-missing-facility",
+                      "assignedStorageAreaCode": "bin-a-01",
+                      "validFrom": "2026-03-02T00:00:00Z",
+                      "assignedBy": "inventory.manager"
+                    }
+                    """)),
+            "assignedFacilityCode is required when assignedStorageAreaCode is supplied",
+            "/api/inventory/item-location-assignments"
+        );
+    }
+
+    @Test
+    void rejectsInventoryItemLocationAssignmentWithUnknownStorageArea() throws Exception {
+        inventoryItemRepository.save(InventoryItem.create(
+            "arc-location-114",
+            "wh-source",
+            new BigDecimal("2"),
+            SEED_INSTANT
+        ));
+        inventoryLocationRepository.save(InventoryLocation.create("bin-storage-unknown", "Bin A", SEED_INSTANT));
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "wh-storage-unknown",
+            "Storage Warehouse",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/item-location-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "sku": "arc-location-114",
+                      "itemLocationCode": "wh-source",
+                      "assignedLocationCode": "bin-storage-unknown",
+                      "assignedFacilityCode": "wh-storage-unknown",
+                      "assignedStorageAreaCode": "bin-a-01",
+                      "validFrom": "2026-03-02T00:00:00Z",
+                      "assignedBy": "inventory.manager"
+                    }
+                    """)),
+            "Inventory storage area not found for facility: WH-STORAGE-UNKNOWN and code: BIN-A-01",
             "/api/inventory/item-location-assignments"
         );
     }

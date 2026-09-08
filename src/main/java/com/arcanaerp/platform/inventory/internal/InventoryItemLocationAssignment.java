@@ -20,6 +20,7 @@ import lombok.NoArgsConstructor;
         @Index(name = "idx_iila_item_valid", columnList = "inventoryItemId,validFrom,validThru"),
         @Index(name = "idx_iila_sku_item_location", columnList = "sku,itemLocationCode"),
         @Index(name = "idx_iila_assigned_location", columnList = "assignedLocationCode"),
+        @Index(name = "idx_iila_assigned_storage", columnList = "assignedFacilityCode,assignedStorageAreaCode"),
         @Index(name = "idx_iila_active", columnList = "active")
     }
 )
@@ -42,6 +43,12 @@ class InventoryItemLocationAssignment {
 
     @Column(nullable = false, length = 64)
     private String assignedLocationCode;
+
+    @Column(length = 64)
+    private String assignedFacilityCode;
+
+    @Column(length = 64)
+    private String assignedStorageAreaCode;
 
     @Column(nullable = false)
     private Instant validFrom;
@@ -68,6 +75,8 @@ class InventoryItemLocationAssignment {
     static InventoryItemLocationAssignment create(
         InventoryItem item,
         InventoryLocation assignedLocation,
+        String assignedFacilityCode,
+        String assignedStorageAreaCode,
         Instant validFrom,
         String assignedBy,
         Instant assignedAt
@@ -90,6 +99,8 @@ class InventoryItemLocationAssignment {
         assignment.sku = item.getSku();
         assignment.itemLocationCode = item.getLocationCode();
         assignment.assignedLocationCode = assignedLocation.getCode();
+        assignment.assignedFacilityCode = normalizeOptionalUpper(assignedFacilityCode);
+        assignment.assignedStorageAreaCode = normalizeOptionalUpper(assignedStorageAreaCode);
         assignment.validFrom = validFrom;
         assignment.active = true;
         assignment.assignedBy = normalizeRequired(assignedBy, "assignedBy").toLowerCase();
@@ -123,5 +134,12 @@ class InventoryItemLocationAssignment {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private static String normalizeOptionalUpper(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim().toUpperCase();
     }
 }

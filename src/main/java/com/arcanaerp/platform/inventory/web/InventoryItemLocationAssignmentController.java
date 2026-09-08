@@ -39,6 +39,8 @@ public class InventoryItemLocationAssignmentController {
             request.sku(),
             request.itemLocationCode(),
             request.assignedLocationCode(),
+            request.assignedFacilityCode(),
+            request.assignedStorageAreaCode(),
             parseOptionalInstant(request.validFrom(), "validFrom"),
             request.assignedBy()
         )));
@@ -91,6 +93,8 @@ public class InventoryItemLocationAssignmentController {
         @RequestParam(required = false) String sku,
         @RequestParam(required = false) String itemLocationCode,
         @RequestParam(required = false) String assignedLocationCode,
+        @RequestParam(required = false) String assignedFacilityCode,
+        @RequestParam(required = false) String assignedStorageAreaCode,
         @RequestParam(required = false) Boolean active,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
@@ -99,6 +103,8 @@ public class InventoryItemLocationAssignmentController {
             sku,
             itemLocationCode,
             assignedLocationCode,
+            assignedFacilityCode,
+            assignedStorageAreaCode,
             active,
             PageQuery.of(page, size)
         ).map(this::toResponse);
@@ -111,6 +117,8 @@ public class InventoryItemLocationAssignmentController {
             assignment.sku(),
             assignment.itemLocationCode(),
             assignment.assignedLocationCode(),
+            assignment.assignedFacilityCode(),
+            assignment.assignedStorageAreaCode(),
             assignment.validFrom(),
             assignment.validThru(),
             assignment.active(),
@@ -130,6 +138,8 @@ public class InventoryItemLocationAssignmentController {
             end.sku(),
             end.itemLocationCode(),
             end.assignedLocationCode(),
+            end.assignedFacilityCode(),
+            end.assignedStorageAreaCode(),
             end.previousValidThru(),
             end.currentValidThru(),
             end.reason(),

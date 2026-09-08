@@ -9,6 +9,8 @@ public record InventoryItemLocationAssignmentView(
     String sku,
     String itemLocationCode,
     String assignedLocationCode,
+    String assignedFacilityCode,
+    String assignedStorageAreaCode,
     Instant validFrom,
     Instant validThru,
     boolean active,

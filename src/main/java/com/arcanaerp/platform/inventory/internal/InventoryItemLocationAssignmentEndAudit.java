@@ -19,6 +19,7 @@ import lombok.NoArgsConstructor;
     indexes = {
         @Index(name = "idx_iilaea_assignment_ended", columnList = "assignmentId,endedAt"),
         @Index(name = "idx_iilaea_sku_location", columnList = "sku,itemLocationCode,endedAt"),
+        @Index(name = "idx_iilaea_storage", columnList = "assignedFacilityCode,assignedStorageAreaCode,endedAt"),
         @Index(name = "idx_iilaea_ended_by", columnList = "endedBy,endedAt")
     }
 )
@@ -44,6 +45,12 @@ class InventoryItemLocationAssignmentEndAudit {
 
     @Column(nullable = false, length = 64)
     private String assignedLocationCode;
+
+    @Column(length = 64)
+    private String assignedFacilityCode;
+
+    @Column(length = 64)
+    private String assignedStorageAreaCode;
 
     private Instant previousValidThru;
 
@@ -82,6 +89,8 @@ class InventoryItemLocationAssignmentEndAudit {
         audit.sku = assignment.getSku();
         audit.itemLocationCode = assignment.getItemLocationCode();
         audit.assignedLocationCode = assignment.getAssignedLocationCode();
+        audit.assignedFacilityCode = assignment.getAssignedFacilityCode();
+        audit.assignedStorageAreaCode = assignment.getAssignedStorageAreaCode();
         audit.previousValidThru = previousValidThru;
         audit.currentValidThru = assignment.getValidThru();
         audit.reason = normalizeRequired(reason, "reason");
