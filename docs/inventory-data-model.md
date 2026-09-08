@@ -8,6 +8,8 @@ Updated: 2026-09-06
 erDiagram
     INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_LOCATIONS : classifies
     INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_FACILITIES : classifies
+    INVENTORY_CONTACT_PURPOSES ||--o{ INVENTORY_LOCATIONS : classifies_contact
+    INVENTORY_CONTACT_PURPOSES ||--o{ INVENTORY_FACILITIES : classifies_contact
     INVENTORY_COUNTRIES ||--o{ INVENTORY_REGIONS : contains
     INVENTORY_COUNTRIES ||--o{ INVENTORY_LOCATIONS : addresses
     INVENTORY_COUNTRIES ||--o{ INVENTORY_FACILITIES : addresses
@@ -56,6 +58,13 @@ erDiagram
     }
 
     INVENTORY_FIXED_ASSET_TYPES {
+      UUID id PK
+      STRING code UK
+      STRING description
+      INSTANT createdAt
+    }
+
+    INVENTORY_CONTACT_PURPOSES {
       UUID id PK
       STRING code UK
       STRING description
@@ -147,6 +156,7 @@ erDiagram
       STRING regionCode
       STRING postalCode
       STRING countryCode
+      STRING contactPurposeCode
       STRING contactName
       STRING contactEmail
       BOOLEAN active
@@ -184,6 +194,8 @@ erDiagram
       STRING currentPostalCode
       STRING previousCountryCode
       STRING currentCountryCode
+      STRING previousContactPurposeCode
+      STRING currentContactPurposeCode
       STRING previousContactName
       STRING currentContactName
       STRING previousContactEmail
@@ -362,6 +374,7 @@ erDiagram
       STRING regionCode
       STRING postalCode
       STRING countryCode
+      STRING contactPurposeCode
       STRING contactName
       STRING contactEmail
       BOOLEAN active
@@ -407,6 +420,8 @@ erDiagram
       STRING currentPostalCode
       STRING previousCountryCode
       STRING currentCountryCode
+      STRING previousContactPurposeCode
+      STRING currentContactPurposeCode
       STRING previousContactName
       STRING currentContactName
       STRING previousContactEmail
@@ -537,6 +552,7 @@ erDiagram
 - Inventory location and facility `facilityTypeCode` values are optional, but supplied codes must exist in `inventory_location_types`.
 - Inventory location and facility `countryCode` values are optional, but supplied codes must exist in `inventory_countries`.
 - Inventory location and facility `regionCode` values require `countryCode` and must exist for that country in `inventory_regions`.
+- Inventory location and facility contact metadata requires `contactPurposeCode`; supplied purpose codes must exist in `inventory_contact_purposes`.
 - Inventory location metadata changes are append-only via `inventory_location_metadata_change_audits`.
 - Inventory item state carries `onHandQuantity`, `availableQuantity`, and `soldQuantity` for legacy inventory-entry parity with `number_in_stock`, `number_available`, and `number_sold`.
 - Inventory item metadata carries `unitOfMeasurementCode`, `classificationCode`, optional `productInstanceCode`, optional `externalReference`, optional `sourceSystemCode`, and optional owner fields for legacy inventory-entry parity.
@@ -581,6 +597,7 @@ erDiagram
 - Unique constraints:
   - `inventory_location_types(code)`
   - `inventory_fixed_asset_types(code)`
+  - `inventory_contact_purposes(code)`
   - `inventory_countries(code)`
   - `inventory_regions(countryCode, code)`
   - `inventory_parties(code)`
@@ -670,6 +687,9 @@ erDiagram
 - `POST /api/inventory/fixed-asset-types`
 - `GET /api/inventory/fixed-asset-types/{code}`
 - `GET /api/inventory/fixed-asset-types?page=&size=`
+- `POST /api/inventory/contact-purposes`
+- `GET /api/inventory/contact-purposes/{code}`
+- `GET /api/inventory/contact-purposes?page=&size=`
 - `POST /api/inventory/countries`
 - `GET /api/inventory/countries/{code}`
 - `GET /api/inventory/countries?page=&size=`
@@ -783,7 +803,8 @@ erDiagram
 - inventory item-location assignment writes validate the inventory item and active assigned location
 - inventory item-location assignment ends require `validThru >= validFrom` and append end audit rows
 - inventory item-location assignment list filters match normalized item keys, assigned location, and active state
-- inventory location facility type, region, and country codes are normalized to uppercase; contact email is normalized to lowercase
+- inventory location facility type, region, country, and contact purpose codes are normalized to uppercase; contact email is normalized to lowercase
+- inventory location and facility contact name/email metadata requires a supplied contact purpose code
 - inventory location facility type codes must exist in the inventory location type catalog when supplied
 - inventory location metadata updates require `changedBy`, reject no-op changes, and append audit rows
 - inventory location metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges

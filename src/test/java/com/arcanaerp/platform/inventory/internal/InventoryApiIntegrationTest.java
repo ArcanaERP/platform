@@ -131,6 +131,9 @@ class InventoryApiIntegrationTest {
     private InventoryLocationTypeRepository inventoryLocationTypeRepository;
 
     @Autowired
+    private InventoryContactPurposeRepository inventoryContactPurposeRepository;
+
+    @Autowired
     private InventoryCountryRepository inventoryCountryRepository;
 
     @Autowired
@@ -198,12 +201,14 @@ class InventoryApiIntegrationTest {
         locationMetadataChangeAuditRepository.deleteAll();
         inventoryLocationRepository.deleteAll();
         inventoryLocationTypeRepository.deleteAll();
+        inventoryContactPurposeRepository.deleteAll();
         inventoryRegionRepository.deleteAll();
         inventoryCountryRepository.deleteAll();
         inventoryEntryRelationshipTypeRepository.deleteAll();
         inventoryEntryRoleTypeRepository.deleteAll();
         seedLocationType("WAREHOUSE", "Warehouse");
         seedLocationType("STORE", "Store");
+        seedContactPurpose("PRIMARY", "Primary contact");
         seedInventoryCountry("US", "United States");
         seedInventoryRegion("US", "OR", "Oregon");
         seedInventoryRegion("US", "NV", "Nevada");
@@ -403,6 +408,58 @@ class InventoryApiIntegrationTest {
                 .content(payload)),
             "Inventory country already exists for code: CA",
             "/api/inventory/countries"
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryContactPurposes() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/contact-purposes")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " receiving ",
+                  "description": " Receiving contact "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.code").value("RECEIVING"))
+            .andExpect(jsonPath("$.description").value("Receiving contact"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/contact-purposes/{code}", "receiving"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("RECEIVING"))
+            .andExpect(jsonPath("$.description").value("Receiving contact"));
+
+        mockMvc.perform(get("/api/inventory/contact-purposes")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].code").value("PRIMARY"))
+            .andExpect(jsonPath("$.items[1].code").value("RECEIVING"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryContactPurposeCode() throws Exception {
+        String payload = """
+            {
+              "code": "receiving",
+              "description": "Receiving contact"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/contact-purposes")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/contact-purposes")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory contact purpose already exists for code: RECEIVING",
+            "/api/inventory/contact-purposes"
         );
     }
 
@@ -1360,6 +1417,7 @@ class InventoryApiIntegrationTest {
                   "regionCode": " or ",
                   "postalCode": "97301",
                   "countryCode": " us ",
+                  "contactPurposeCode": " primary ",
                   "contactName": " Receiving Desk ",
                   "contactEmail": " Receiving@ArcanaERP.com "
                 }
@@ -1375,6 +1433,7 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.regionCode").value("OR"))
             .andExpect(jsonPath("$.postalCode").value("97301"))
             .andExpect(jsonPath("$.countryCode").value("US"))
+            .andExpect(jsonPath("$.contactPurposeCode").value("PRIMARY"))
             .andExpect(jsonPath("$.contactName").value("Receiving Desk"))
             .andExpect(jsonPath("$.contactEmail").value("receiving@arcanaerp.com"))
             .andExpect(jsonPath("$.active").value(true))
@@ -1387,6 +1446,7 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.name").value("Central Warehouse"))
             .andExpect(jsonPath("$.facilityTypeCode").value("WAREHOUSE"))
             .andExpect(jsonPath("$.countryCode").value("US"))
+            .andExpect(jsonPath("$.contactPurposeCode").value("PRIMARY"))
             .andExpect(jsonPath("$.contactEmail").value("receiving@arcanaerp.com"))
             .andExpect(jsonPath("$.active").value(true));
 
@@ -1423,6 +1483,7 @@ class InventoryApiIntegrationTest {
                   "regionCode": " nv ",
                   "postalCode": "89501",
                   "countryCode": " us ",
+                  "contactPurposeCode": " primary ",
                   "contactName": " Facility Desk ",
                   "contactEmail": " Facility@ArcanaERP.com "
                 }
@@ -1438,6 +1499,7 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.regionCode").value("NV"))
             .andExpect(jsonPath("$.postalCode").value("89501"))
             .andExpect(jsonPath("$.countryCode").value("US"))
+            .andExpect(jsonPath("$.contactPurposeCode").value("PRIMARY"))
             .andExpect(jsonPath("$.contactName").value("Facility Desk"))
             .andExpect(jsonPath("$.contactEmail").value("facility@arcanaerp.com"))
             .andExpect(jsonPath("$.active").value(true))
@@ -1449,7 +1511,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.code").value("DC-WEST"))
             .andExpect(jsonPath("$.name").value("West Distribution Center"))
             .andExpect(jsonPath("$.facilityTypeCode").value("WAREHOUSE"))
-            .andExpect(jsonPath("$.countryCode").value("US"));
+            .andExpect(jsonPath("$.countryCode").value("US"))
+            .andExpect(jsonPath("$.contactPurposeCode").value("PRIMARY"));
 
         mockMvc.perform(get("/api/inventory/facilities")
             .param("active", "true")
@@ -1509,6 +1572,40 @@ class InventoryApiIntegrationTest {
                     }
                     """)),
             "countryCode is required when regionCode is supplied",
+            "/api/inventory/facilities"
+        );
+    }
+
+    @Test
+    void rejectsInventoryFacilityWithUnknownContactPurpose() throws Exception {
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/facilities")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "dc-unknown-purpose",
+                      "name": "Unknown Purpose Facility",
+                      "contactPurposeCode": "dispatch"
+                    }
+                    """)),
+            "Inventory contact purpose not found: DISPATCH",
+            "/api/inventory/facilities"
+        );
+    }
+
+    @Test
+    void rejectsInventoryFacilityContactMetadataWithoutContactPurpose() throws Exception {
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/facilities")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "dc-contact-no-purpose",
+                      "name": "Contact Without Purpose Facility",
+                      "contactEmail": "receiving@arcanaerp.com"
+                    }
+                    """)),
+            "contactPurposeCode is required when contact metadata is supplied",
             "/api/inventory/facilities"
         );
     }
@@ -1617,6 +1714,7 @@ class InventoryApiIntegrationTest {
                 "nv",
                 "89501",
                 "us",
+                "primary",
                 "Receiving",
                 "receiving@arcanaerp.com",
                 SEED_INSTANT
@@ -1638,6 +1736,7 @@ class InventoryApiIntegrationTest {
                   "regionCode": " nv ",
                   "postalCode": "89431",
                   "countryCode": " us ",
+                  "contactPurposeCode": " primary ",
                   "contactName": " East Receiving ",
                   "contactEmail": " East.Receiving@ArcanaERP.com ",
                   "changedBy": " Facilities.Ops@ArcanaERP.com "
@@ -1653,6 +1752,7 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.regionCode").value("NV"))
             .andExpect(jsonPath("$.postalCode").value("89431"))
             .andExpect(jsonPath("$.countryCode").value("US"))
+            .andExpect(jsonPath("$.contactPurposeCode").value("PRIMARY"))
             .andExpect(jsonPath("$.contactName").value("East Receiving"))
             .andExpect(jsonPath("$.contactEmail").value("east.receiving@arcanaerp.com"));
 
@@ -1671,6 +1771,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.items[0].currentAddressLine1").value("200 East Dock"))
             .andExpect(jsonPath("$.items[0].previousCity").value("Reno"))
             .andExpect(jsonPath("$.items[0].currentCity").value("Sparks"))
+            .andExpect(jsonPath("$.items[0].previousContactPurposeCode").value("PRIMARY"))
+            .andExpect(jsonPath("$.items[0].currentContactPurposeCode").value("PRIMARY"))
             .andExpect(jsonPath("$.items[0].previousContactEmail").value("receiving@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].currentContactEmail").value("east.receiving@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].changedBy").value("facilities.ops@arcanaerp.com"))
@@ -1690,6 +1792,7 @@ class InventoryApiIntegrationTest {
                 "nv",
                 "89501",
                 "us",
+                "primary",
                 "Receiving",
                 "receiving@arcanaerp.com",
                 SEED_INSTANT
@@ -1711,6 +1814,7 @@ class InventoryApiIntegrationTest {
                       "regionCode": "nv",
                       "postalCode": "89501",
                       "countryCode": "us",
+                  "contactPurposeCode": " primary ",
                       "contactName": "Receiving",
                       "contactEmail": "receiving@arcanaerp.com",
                       "changedBy": "facilities.ops@arcanaerp.com"
@@ -2852,6 +2956,7 @@ class InventoryApiIntegrationTest {
                   "regionCode": "or",
                   "postalCode": "97201",
                   "countryCode": "us",
+                  "contactPurposeCode": " primary ",
                   "contactName": "East Receiving",
                   "contactEmail": "East.Receiving@ArcanaERP.com",
                   "changedBy": " Facilities.Ops@ArcanaERP.com "
@@ -2866,6 +2971,7 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.regionCode").value("OR"))
             .andExpect(jsonPath("$.postalCode").value("97201"))
             .andExpect(jsonPath("$.countryCode").value("US"))
+            .andExpect(jsonPath("$.contactPurposeCode").value("PRIMARY"))
             .andExpect(jsonPath("$.contactName").value("East Receiving"))
             .andExpect(jsonPath("$.contactEmail").value("east.receiving@arcanaerp.com"))
             .andExpect(jsonPath("$.active").value(true));
@@ -2881,6 +2987,7 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.items[0].currentName").value("Metadata Warehouse East"))
             .andExpect(jsonPath("$.items[0].currentFacilityTypeCode").value("STORE"))
             .andExpect(jsonPath("$.items[0].currentCountryCode").value("US"))
+            .andExpect(jsonPath("$.items[0].currentContactPurposeCode").value("PRIMARY"))
             .andExpect(jsonPath("$.items[0].currentContactEmail").value("east.receiving@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].changedBy").value("facilities.ops@arcanaerp.com"))
             .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
@@ -3036,6 +3143,7 @@ class InventoryApiIntegrationTest {
                 null,
                 null,
                 null,
+                null,
                 null
             ),
             new InventoryLocationMetadataSnapshot(
@@ -3047,6 +3155,7 @@ class InventoryApiIntegrationTest {
                 "or",
                 "97301",
                 "us",
+                "primary",
                 "Receiving",
                 "receiving@arcanaerp.com"
             ),
@@ -3065,6 +3174,7 @@ class InventoryApiIntegrationTest {
                 "or",
                 "97301",
                 "us",
+                "primary",
                 "Receiving",
                 "receiving@arcanaerp.com"
             ),
@@ -3077,6 +3187,7 @@ class InventoryApiIntegrationTest {
                 "or",
                 "97201",
                 "us",
+                "primary",
                 "West Receiving",
                 "west.receiving@arcanaerp.com"
             ),
@@ -6106,6 +6217,12 @@ class InventoryApiIntegrationTest {
     private void seedLocationType(String code, String description) {
         inventoryLocationTypeRepository.save(
             InventoryLocationType.create(code, description, SEED_INSTANT)
+        );
+    }
+
+    private void seedContactPurpose(String code, String description) {
+        inventoryContactPurposeRepository.save(
+            InventoryContactPurpose.create(code, description, SEED_INSTANT)
         );
     }
 

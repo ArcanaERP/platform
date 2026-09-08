@@ -9,6 +9,7 @@ record InventoryLocationMetadataSnapshot(
     String regionCode,
     String postalCode,
     String countryCode,
+    String contactPurposeCode,
     String contactName,
     String contactEmail
 ) {
@@ -22,6 +23,7 @@ record InventoryLocationMetadataSnapshot(
             location.getRegionCode(),
             location.getPostalCode(),
             location.getCountryCode(),
+            location.getContactPurposeCode(),
             location.getContactName(),
             location.getContactEmail()
         );

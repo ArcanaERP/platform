@@ -11,6 +11,7 @@ public record UpdateInventoryLocationMetadataRequest(
     String regionCode,
     String postalCode,
     String countryCode,
+    String contactPurposeCode,
     String contactName,
     String contactEmail,
     @NotBlank String changedBy

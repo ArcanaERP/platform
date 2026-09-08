@@ -55,6 +55,9 @@ public class InventoryFacility {
     @Column(length = 2)
     private String countryCode;
 
+    @Column(length = 64)
+    private String contactPurposeCode;
+
     @Column(length = 128)
     private String contactName;
 
@@ -80,6 +83,7 @@ public class InventoryFacility {
         String regionCode,
         String postalCode,
         String countryCode,
+        String contactPurposeCode,
         String contactName,
         String contactEmail,
         Instant createdAt
@@ -93,6 +97,7 @@ public class InventoryFacility {
         this.regionCode = regionCode;
         this.postalCode = postalCode;
         this.countryCode = countryCode;
+        this.contactPurposeCode = contactPurposeCode;
         this.contactName = contactName;
         this.contactEmail = contactEmail;
         this.active = true;
@@ -114,6 +119,38 @@ public class InventoryFacility {
         String contactEmail,
         Instant createdAt
     ) {
+        return create(
+            code,
+            name,
+            facilityTypeCode,
+            addressLine1,
+            addressLine2,
+            city,
+            regionCode,
+            postalCode,
+            countryCode,
+            null,
+            contactName,
+            contactEmail,
+            createdAt
+        );
+    }
+
+    static InventoryFacility create(
+        String code,
+        String name,
+        String facilityTypeCode,
+        String addressLine1,
+        String addressLine2,
+        String city,
+        String regionCode,
+        String postalCode,
+        String countryCode,
+        String contactPurposeCode,
+        String contactName,
+        String contactEmail,
+        Instant createdAt
+    ) {
         if (createdAt == null) {
             throw new IllegalArgumentException("createdAt is required");
         }
@@ -127,6 +164,7 @@ public class InventoryFacility {
             normalizeOptionalUpper(regionCode),
             normalizeOptional(postalCode),
             normalizeOptionalUpper(countryCode),
+            normalizeOptionalUpper(contactPurposeCode),
             normalizeOptional(contactName),
             normalizeOptionalLower(contactEmail),
             createdAt
@@ -153,6 +191,7 @@ public class InventoryFacility {
         String regionCode,
         String postalCode,
         String countryCode,
+        String contactPurposeCode,
         String contactName,
         String contactEmail,
         Instant updatedAt
@@ -168,6 +207,7 @@ public class InventoryFacility {
         String normalizedRegionCode = normalizeOptionalUpper(regionCode);
         String normalizedPostalCode = normalizeOptional(postalCode);
         String normalizedCountryCode = normalizeOptionalUpper(countryCode);
+        String normalizedContactPurposeCode = normalizeOptionalUpper(contactPurposeCode);
         String normalizedContactName = normalizeOptional(contactName);
         String normalizedContactEmail = normalizeOptionalLower(contactEmail);
 
@@ -180,6 +220,7 @@ public class InventoryFacility {
                 && equalsNullable(this.regionCode, normalizedRegionCode)
                 && equalsNullable(this.postalCode, normalizedPostalCode)
                 && equalsNullable(this.countryCode, normalizedCountryCode)
+                && equalsNullable(this.contactPurposeCode, normalizedContactPurposeCode)
                 && equalsNullable(this.contactName, normalizedContactName)
                 && equalsNullable(this.contactEmail, normalizedContactEmail)
         ) {
@@ -194,6 +235,7 @@ public class InventoryFacility {
         this.regionCode = normalizedRegionCode;
         this.postalCode = normalizedPostalCode;
         this.countryCode = normalizedCountryCode;
+        this.contactPurposeCode = normalizedContactPurposeCode;
         this.contactName = normalizedContactName;
         this.contactEmail = normalizedContactEmail;
         this.updatedAt = updatedAt;

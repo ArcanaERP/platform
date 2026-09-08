@@ -325,6 +325,7 @@ Inventory:
 - Inventory facility active and metadata changes are audit-trailed with actor attribution.
 - Inventory facility party-role assignments track which parties serve facility-specific roles and support end history.
 - Inventory facility `facilityTypeCode` values are validated against `POST /api/inventory/location-types` reference data.
+- Inventory location and facility contact metadata requires a valid `contactPurposeCode` from `POST /api/inventory/contact-purposes`.
 - Inventory fixed assets provide a first-class asset catalog for pickup/dropoff traceability.
 - Inventory fixed asset active and metadata changes are audit-trailed with actor attribution.
 - Inventory fixed asset party-role assignments track which parties serve asset-specific roles and support end history.
@@ -342,6 +343,9 @@ Inventory:
 - `POST /api/inventory/fixed-asset-types`
 - `GET /api/inventory/fixed-asset-types/{code}`
 - `GET /api/inventory/fixed-asset-types?page=&size=`
+- `POST /api/inventory/contact-purposes`
+- `GET /api/inventory/contact-purposes/{code}`
+- `GET /api/inventory/contact-purposes?page=&size=`
 - `POST /api/inventory/countries`
 - `GET /api/inventory/countries/{code}`
 - `GET /api/inventory/countries?page=&size=`

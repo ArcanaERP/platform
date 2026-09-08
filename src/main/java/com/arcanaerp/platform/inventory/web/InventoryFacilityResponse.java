@@ -14,6 +14,7 @@ public record InventoryFacilityResponse(
     String regionCode,
     String postalCode,
     String countryCode,
+    String contactPurposeCode,
     String contactName,
     String contactEmail,
     boolean active,

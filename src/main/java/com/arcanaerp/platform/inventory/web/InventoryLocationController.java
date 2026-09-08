@@ -44,6 +44,7 @@ public class InventoryLocationController {
                 request.regionCode(),
                 request.postalCode(),
                 request.countryCode(),
+                request.contactPurposeCode(),
                 request.contactName(),
                 request.contactEmail()
             )
@@ -84,6 +85,7 @@ public class InventoryLocationController {
                 request.regionCode(),
                 request.postalCode(),
                 request.countryCode(),
+                request.contactPurposeCode(),
                 request.contactName(),
                 request.contactEmail(),
                 request.changedBy()
@@ -133,6 +135,7 @@ public class InventoryLocationController {
             location.regionCode(),
             location.postalCode(),
             location.countryCode(),
+            location.contactPurposeCode(),
             location.contactName(),
             location.contactEmail(),
             location.active(),
@@ -161,6 +164,8 @@ public class InventoryLocationController {
             change.currentPostalCode(),
             change.previousCountryCode(),
             change.currentCountryCode(),
+            change.previousContactPurposeCode(),
+            change.currentContactPurposeCode(),
             change.previousContactName(),
             change.currentContactName(),
             change.previousContactEmail(),

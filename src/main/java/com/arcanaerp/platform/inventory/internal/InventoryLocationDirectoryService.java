@@ -3,6 +3,7 @@ package com.arcanaerp.platform.inventory.internal;
 import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.inventory.InventoryContactPurposeDirectory;
 import com.arcanaerp.platform.inventory.InventoryCountryDirectory;
 import com.arcanaerp.platform.inventory.InventoryLocationDirectory;
 import com.arcanaerp.platform.inventory.InventoryLocationMetadataChangeView;
@@ -31,6 +32,7 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
     private final InventoryLocationTypeDirectory inventoryLocationTypeDirectory;
     private final InventoryCountryDirectory inventoryCountryDirectory;
     private final InventoryRegionDirectory inventoryRegionDirectory;
+    private final InventoryContactPurposeDirectory inventoryContactPurposeDirectory;
     private final Clock clock;
 
     @Override
@@ -45,6 +47,7 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
         }
         ensureLocationTypeExists(command.facilityTypeCode());
         ensureGeoReferenceExists(command.countryCode(), command.regionCode());
+        ensureContactPurposeExists(command.contactPurposeCode(), command.contactName(), command.contactEmail());
 
         return toView(inventoryLocationRepository.save(InventoryLocation.create(
             code,
@@ -56,6 +59,7 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
             command.regionCode(),
             command.postalCode(),
             command.countryCode(),
+            command.contactPurposeCode(),
             command.contactName(),
             command.contactEmail(),
             Instant.now(clock)
@@ -100,6 +104,7 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
             .orElseThrow(() -> new NoSuchElementException("Inventory location not found for code: " + normalizedCode));
         ensureLocationTypeExists(command.facilityTypeCode());
         ensureGeoReferenceExists(command.countryCode(), command.regionCode());
+        ensureContactPurposeExists(command.contactPurposeCode(), command.contactName(), command.contactEmail());
         InventoryLocationMetadataSnapshot previous = InventoryLocationMetadataSnapshot.from(location);
         Instant changedAt = Instant.now(clock);
         location.updateMetadata(
@@ -111,6 +116,7 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
             command.regionCode(),
             command.postalCode(),
             command.countryCode(),
+            command.contactPurposeCode(),
             command.contactName(),
             command.contactEmail(),
             changedAt
@@ -174,6 +180,7 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
             location.getRegionCode(),
             location.getPostalCode(),
             location.getCountryCode(),
+            location.getContactPurposeCode(),
             location.getContactName(),
             location.getContactEmail(),
             location.isActive(),
@@ -202,6 +209,8 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
             audit.getCurrentPostalCode(),
             audit.getPreviousCountryCode(),
             audit.getCurrentCountryCode(),
+            audit.getPreviousContactPurposeCode(),
+            audit.getCurrentContactPurposeCode(),
             audit.getPreviousContactName(),
             audit.getCurrentContactName(),
             audit.getPreviousContactEmail(),
@@ -245,6 +254,23 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
                 );
             }
         }
+    }
+
+    private void ensureContactPurposeExists(String contactPurposeCode, String contactName, String contactEmail) {
+        String normalizedContactPurposeCode = normalizeOptionalUpper(contactPurposeCode, "contactPurposeCode");
+        if (normalizedContactPurposeCode == null) {
+            if (hasText(contactName) || hasText(contactEmail)) {
+                throw new IllegalArgumentException("contactPurposeCode is required when contact metadata is supplied");
+            }
+            return;
+        }
+        if (!inventoryContactPurposeDirectory.contactPurposeExists(normalizedContactPurposeCode)) {
+            throw new IllegalArgumentException("Inventory contact purpose not found: " + normalizedContactPurposeCode);
+        }
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private static String normalizeOptionalUpper(String value) {

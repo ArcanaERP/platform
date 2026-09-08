@@ -12,6 +12,7 @@ public record CreateInventoryFacilityRequest(
     String regionCode,
     String postalCode,
     String countryCode,
+    String contactPurposeCode,
     String contactName,
     String contactEmail
 ) {

@@ -22,6 +22,8 @@ public record InventoryLocationMetadataChangeView(
     String currentPostalCode,
     String previousCountryCode,
     String currentCountryCode,
+    String previousContactPurposeCode,
+    String currentContactPurposeCode,
     String previousContactName,
     String currentContactName,
     String previousContactEmail,

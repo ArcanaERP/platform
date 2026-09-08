@@ -10,6 +10,7 @@ public record UpdateInventoryLocationMetadataCommand(
     String regionCode,
     String postalCode,
     String countryCode,
+    String contactPurposeCode,
     String contactName,
     String contactEmail,
     String changedBy

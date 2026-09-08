@@ -53,6 +53,9 @@ public class InventoryLocation {
     @Column(length = 2)
     private String countryCode;
 
+    @Column(length = 64)
+    private String contactPurposeCode;
+
     @Column(length = 128)
     private String contactName;
 
@@ -79,6 +82,7 @@ public class InventoryLocation {
         String regionCode,
         String postalCode,
         String countryCode,
+        String contactPurposeCode,
         String contactName,
         String contactEmail,
         boolean active,
@@ -95,6 +99,7 @@ public class InventoryLocation {
         this.regionCode = regionCode;
         this.postalCode = postalCode;
         this.countryCode = countryCode;
+        this.contactPurposeCode = contactPurposeCode;
         this.contactName = contactName;
         this.contactEmail = contactEmail;
         this.active = active;
@@ -103,7 +108,7 @@ public class InventoryLocation {
     }
 
     static InventoryLocation create(String code, String name, Instant createdAt) {
-        return create(code, name, null, null, null, null, null, null, null, null, null, createdAt);
+        return create(code, name, null, null, null, null, null, null, null, null, null, null, createdAt);
     }
 
     static InventoryLocation create(
@@ -116,6 +121,38 @@ public class InventoryLocation {
         String regionCode,
         String postalCode,
         String countryCode,
+        String contactName,
+        String contactEmail,
+        Instant createdAt
+    ) {
+        return create(
+            code,
+            name,
+            facilityTypeCode,
+            addressLine1,
+            addressLine2,
+            city,
+            regionCode,
+            postalCode,
+            countryCode,
+            null,
+            contactName,
+            contactEmail,
+            createdAt
+        );
+    }
+
+    static InventoryLocation create(
+        String code,
+        String name,
+        String facilityTypeCode,
+        String addressLine1,
+        String addressLine2,
+        String city,
+        String regionCode,
+        String postalCode,
+        String countryCode,
+        String contactPurposeCode,
         String contactName,
         String contactEmail,
         Instant createdAt
@@ -134,6 +171,7 @@ public class InventoryLocation {
             normalizeOptionalUpper(regionCode),
             normalizeOptional(postalCode),
             normalizeOptionalUpper(countryCode),
+            normalizeOptionalUpper(contactPurposeCode),
             normalizeOptional(contactName),
             normalizeOptionalLower(contactEmail),
             true,
@@ -162,6 +200,7 @@ public class InventoryLocation {
         String regionCode,
         String postalCode,
         String countryCode,
+        String contactPurposeCode,
         String contactName,
         String contactEmail,
         Instant updatedAt
@@ -177,6 +216,7 @@ public class InventoryLocation {
         String normalizedRegionCode = normalizeOptionalUpper(regionCode);
         String normalizedPostalCode = normalizeOptional(postalCode);
         String normalizedCountryCode = normalizeOptionalUpper(countryCode);
+        String normalizedContactPurposeCode = normalizeOptionalUpper(contactPurposeCode);
         String normalizedContactName = normalizeOptional(contactName);
         String normalizedContactEmail = normalizeOptionalLower(contactEmail);
 
@@ -189,6 +229,7 @@ public class InventoryLocation {
                 && equalsNullable(this.regionCode, normalizedRegionCode)
                 && equalsNullable(this.postalCode, normalizedPostalCode)
                 && equalsNullable(this.countryCode, normalizedCountryCode)
+                && equalsNullable(this.contactPurposeCode, normalizedContactPurposeCode)
                 && equalsNullable(this.contactName, normalizedContactName)
                 && equalsNullable(this.contactEmail, normalizedContactEmail)
         ) {
@@ -203,6 +244,7 @@ public class InventoryLocation {
         this.regionCode = normalizedRegionCode;
         this.postalCode = normalizedPostalCode;
         this.countryCode = normalizedCountryCode;
+        this.contactPurposeCode = normalizedContactPurposeCode;
         this.contactName = normalizedContactName;
         this.contactEmail = normalizedContactEmail;
         this.updatedAt = updatedAt;

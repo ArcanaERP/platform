@@ -14,6 +14,7 @@ public record InventoryFacilityView(
     String regionCode,
     String postalCode,
     String countryCode,
+    String contactPurposeCode,
     String contactName,
     String contactEmail,
     boolean active,

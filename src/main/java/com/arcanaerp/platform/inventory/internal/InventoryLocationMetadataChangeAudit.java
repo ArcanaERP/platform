@@ -83,6 +83,12 @@ class InventoryLocationMetadataChangeAudit {
     @Column(length = 2)
     private String currentCountryCode;
 
+    @Column(length = 64)
+    private String previousContactPurposeCode;
+
+    @Column(length = 64)
+    private String currentContactPurposeCode;
+
     @Column(length = 128)
     private String previousContactName;
 
@@ -140,6 +146,8 @@ class InventoryLocationMetadataChangeAudit {
         audit.currentPostalCode = normalizeOptional(current.postalCode());
         audit.previousCountryCode = normalizeOptionalUpper(previous.countryCode());
         audit.currentCountryCode = normalizeOptionalUpper(current.countryCode());
+        audit.previousContactPurposeCode = normalizeOptionalUpper(previous.contactPurposeCode());
+        audit.currentContactPurposeCode = normalizeOptionalUpper(current.contactPurposeCode());
         audit.previousContactName = normalizeOptional(previous.contactName());
         audit.currentContactName = normalizeOptional(current.contactName());
         audit.previousContactEmail = normalizeOptionalLower(previous.contactEmail());
