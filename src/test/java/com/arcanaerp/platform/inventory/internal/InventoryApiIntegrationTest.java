@@ -89,6 +89,12 @@ class InventoryApiIntegrationTest {
     private InventoryFacilityRepository inventoryFacilityRepository;
 
     @Autowired
+    private InventoryPostalAddressRepository inventoryPostalAddressRepository;
+
+    @Autowired
+    private InventoryPostalAddressMetadataChangeAuditRepository postalAddressMetadataChangeAuditRepository;
+
+    @Autowired
     private InventoryFacilityActiveChangeAuditRepository facilityActiveChangeAuditRepository;
 
     @Autowired
@@ -198,6 +204,8 @@ class InventoryApiIntegrationTest {
         facilityMetadataChangeAuditRepository.deleteAll();
         facilityPartyRoleAssignmentEndAuditRepository.deleteAll();
         facilityPartyRoleAssignmentRepository.deleteAll();
+        postalAddressMetadataChangeAuditRepository.deleteAll();
+        inventoryPostalAddressRepository.deleteAll();
         inventoryFacilityRepository.deleteAll();
         inventoryPartyRoleTypeRepository.deleteAll();
         inventoryPartyRepository.deleteAll();
@@ -3027,6 +3035,248 @@ class InventoryApiIntegrationTest {
             mockMvc.perform(get("/api/inventory/locations/{code}", "wh-missing")),
             "WH-MISSING",
             "/api/inventory/locations/wh-missing"
+        );
+    }
+
+    @Test
+    void createsReadsUpdatesAndListsInventoryPostalAddresses() throws Exception {
+        inventoryLocationRepository.save(InventoryLocation.create("wh-address", "Address Warehouse", SEED_INSTANT));
+
+        String addressId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/postal-addresses"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "ownerType": " location ",
+                  "ownerCode": " wh-address ",
+                  "addressPurposeCode": " primary ",
+                  "addressLine1": " 100 Dock Way ",
+                  "addressLine2": " Suite 2 ",
+                  "city": " Salem ",
+                  "regionCode": " or ",
+                  "postalCode": "97301",
+                  "countryCode": " us "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.ownerType").value("LOCATION"))
+            .andExpect(jsonPath("$.ownerCode").value("WH-ADDRESS"))
+            .andExpect(jsonPath("$.addressPurposeCode").value("PRIMARY"))
+            .andExpect(jsonPath("$.addressLine1").value("100 Dock Way"))
+            .andExpect(jsonPath("$.addressLine2").value("Suite 2"))
+            .andExpect(jsonPath("$.city").value("Salem"))
+            .andExpect(jsonPath("$.regionCode").value("OR"))
+            .andExpect(jsonPath("$.postalCode").value("97301"))
+            .andExpect(jsonPath("$.countryCode").value("US"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andExpect(jsonPath("$.updatedAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(get("/api/inventory/postal-addresses/{id}", addressId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.ownerType").value("LOCATION"))
+            .andExpect(jsonPath("$.ownerCode").value("WH-ADDRESS"))
+            .andExpect(jsonPath("$.addressPurposeCode").value("PRIMARY"))
+            .andExpect(jsonPath("$.addressLine1").value("100 Dock Way"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/postal-addresses/{id}/metadata",
+            addressId
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "addressPurposeCode": " primary ",
+                  "addressLine1": " 200 Dock Way ",
+                  "addressLine2": " Floor 3 ",
+                  "city": " Portland ",
+                  "regionCode": " or ",
+                  "postalCode": "97201",
+                  "countryCode": " us ",
+                  "changedBy": " Ops.Team@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.addressPurposeCode").value("PRIMARY"))
+            .andExpect(jsonPath("$.addressLine1").value("200 Dock Way"))
+            .andExpect(jsonPath("$.addressLine2").value("Floor 3"))
+            .andExpect(jsonPath("$.city").value("Portland"))
+            .andExpect(jsonPath("$.regionCode").value("OR"))
+            .andExpect(jsonPath("$.postalCode").value("97201"))
+            .andExpect(jsonPath("$.countryCode").value("US"));
+
+        mockMvc.perform(get("/api/inventory/postal-addresses/{id}/metadata-history", addressId)
+            .param("changedBy", "ops.team@arcanaerp.com"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].postalAddressId").value(addressId))
+            .andExpect(jsonPath("$.items[0].previousAddressLine1").value("100 Dock Way"))
+            .andExpect(jsonPath("$.items[0].currentAddressLine1").value("200 Dock Way"))
+            .andExpect(jsonPath("$.items[0].previousCity").value("Salem"))
+            .andExpect(jsonPath("$.items[0].currentCity").value("Portland"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("ops.team@arcanaerp.com"));
+
+        mockMvc.perform(get("/api/inventory/postal-addresses")
+            .param("ownerType", "location")
+            .param("ownerCode", "wh-address")
+            .param("addressPurposeCode", "primary"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].id").value(addressId))
+            .andExpect(jsonPath("$.items[0].ownerType").value("LOCATION"))
+            .andExpect(jsonPath("$.items[0].ownerCode").value("WH-ADDRESS"))
+            .andExpect(jsonPath("$.items[0].addressPurposeCode").value("PRIMARY"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryPostalAddressForOwnerPurpose() throws Exception {
+        inventoryLocationRepository.save(InventoryLocation.create("wh-address-dup", "Address Warehouse", SEED_INSTANT));
+        String payload = """
+            {
+              "ownerType": "LOCATION",
+              "ownerCode": "WH-ADDRESS-DUP",
+              "addressPurposeCode": "PRIMARY",
+              "addressLine1": "100 Dock Way",
+              "city": "Salem",
+              "regionCode": "OR",
+              "postalCode": "97301",
+              "countryCode": "US"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/postal-addresses"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/postal-addresses"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory postal address already exists for owner: LOCATION/WH-ADDRESS-DUP and purpose: PRIMARY",
+            "/api/inventory/postal-addresses"
+        );
+    }
+
+    @Test
+    void rejectsInventoryPostalAddressForUnknownOwner() throws Exception {
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/postal-addresses"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "ownerType": "LOCATION",
+                      "ownerCode": "wh-missing",
+                      "addressPurposeCode": "primary",
+                      "addressLine1": "100 Dock Way",
+                      "city": "Salem",
+                      "regionCode": "OR",
+                      "postalCode": "97301",
+                      "countryCode": "US"
+                    }
+                    """)),
+            "Inventory location not found: WH-MISSING",
+            "/api/inventory/postal-addresses"
+        );
+    }
+
+    @Test
+    void rejectsInventoryPostalAddressWithUnknownAddressPurpose() throws Exception {
+        inventoryLocationRepository.save(InventoryLocation.create("wh-address-purpose", "Address Warehouse", SEED_INSTANT));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/postal-addresses"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "ownerType": "LOCATION",
+                      "ownerCode": "wh-address-purpose",
+                      "addressPurposeCode": "billing",
+                      "addressLine1": "100 Dock Way",
+                      "city": "Salem",
+                      "regionCode": "OR",
+                      "postalCode": "97301",
+                      "countryCode": "US"
+                    }
+                    """)),
+            "Inventory address purpose not found: BILLING",
+            "/api/inventory/postal-addresses"
+        );
+    }
+
+    @Test
+    void rejectsInventoryPostalAddressWithUnknownRegion() throws Exception {
+        inventoryLocationRepository.save(InventoryLocation.create("wh-address-region", "Address Warehouse", SEED_INSTANT));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/postal-addresses"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "ownerType": "LOCATION",
+                      "ownerCode": "wh-address-region",
+                      "addressPurposeCode": "primary",
+                      "addressLine1": "100 Dock Way",
+                      "city": "Salem",
+                      "regionCode": "WA",
+                      "postalCode": "97301",
+                      "countryCode": "US"
+                    }
+                    """)),
+            "Inventory region not found for country: US and code: WA",
+            "/api/inventory/postal-addresses"
+        );
+    }
+
+    @Test
+    void rejectsNoOpInventoryPostalAddressMetadataChange() throws Exception {
+        InventoryLocation location = inventoryLocationRepository.save(
+            InventoryLocation.create("wh-address-noop", "Address Warehouse", SEED_INSTANT)
+        );
+        InventoryPostalAddress address = inventoryPostalAddressRepository.save(InventoryPostalAddress.create(
+            "LOCATION",
+            location.getCode(),
+            "PRIMARY",
+            "100 Dock Way",
+            null,
+            "Salem",
+            "OR",
+            "97301",
+            "US",
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/postal-addresses/{id}/metadata",
+                address.getId()
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "addressPurposeCode": "primary",
+                      "addressLine1": "100 Dock Way",
+                      "city": "Salem",
+                      "regionCode": "OR",
+                      "postalCode": "97301",
+                      "countryCode": "US",
+                      "changedBy": "ops"
+                    }
+                    """)),
+            "Inventory postal address metadata is unchanged",
+            "/api/inventory/postal-addresses/" + address.getId() + "/metadata"
         );
     }
 

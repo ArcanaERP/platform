@@ -326,6 +326,7 @@ Inventory:
 - Inventory facility party-role assignments track which parties serve facility-specific roles and support end history.
 - Inventory facility `facilityTypeCode` values are validated against `POST /api/inventory/location-types` reference data.
 - Inventory location and facility address metadata requires a valid `addressPurposeCode` from `POST /api/inventory/address-purposes`.
+- Inventory postal addresses are first-class location/facility address records with address-purpose and country/region validation plus metadata history.
 - Inventory location and facility contact metadata requires a valid `contactPurposeCode` from `POST /api/inventory/contact-purposes`.
 - Inventory fixed assets provide a first-class asset catalog for pickup/dropoff traceability.
 - Inventory fixed asset active and metadata changes are audit-trailed with actor attribution.
@@ -347,6 +348,11 @@ Inventory:
 - `POST /api/inventory/address-purposes`
 - `GET /api/inventory/address-purposes/{code}`
 - `GET /api/inventory/address-purposes?page=&size=`
+- `POST /api/inventory/postal-addresses`
+- `GET /api/inventory/postal-addresses/{id}`
+- `PATCH /api/inventory/postal-addresses/{id}/metadata`
+- `GET /api/inventory/postal-addresses/{id}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/inventory/postal-addresses?page=&size=&ownerType=&ownerCode=&addressPurposeCode=`
 - `POST /api/inventory/contact-purposes`
 - `GET /api/inventory/contact-purposes/{code}`
 - `GET /api/inventory/contact-purposes?page=&size=`

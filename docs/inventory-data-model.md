@@ -1,6 +1,6 @@
 # Inventory Module Data Model (High-Level)
 
-Updated: 2026-09-06
+Updated: 2026-09-08
 
 ## Entity Diagram
 
@@ -10,13 +10,16 @@ erDiagram
     INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_FACILITIES : classifies
     INVENTORY_ADDRESS_PURPOSES ||--o{ INVENTORY_LOCATIONS : classifies_address
     INVENTORY_ADDRESS_PURPOSES ||--o{ INVENTORY_FACILITIES : classifies_address
+    INVENTORY_ADDRESS_PURPOSES ||--o{ INVENTORY_POSTAL_ADDRESSES : classifies
     INVENTORY_CONTACT_PURPOSES ||--o{ INVENTORY_LOCATIONS : classifies_contact
     INVENTORY_CONTACT_PURPOSES ||--o{ INVENTORY_FACILITIES : classifies_contact
     INVENTORY_COUNTRIES ||--o{ INVENTORY_REGIONS : contains
     INVENTORY_COUNTRIES ||--o{ INVENTORY_LOCATIONS : addresses
     INVENTORY_COUNTRIES ||--o{ INVENTORY_FACILITIES : addresses
+    INVENTORY_COUNTRIES ||--o{ INVENTORY_POSTAL_ADDRESSES : addresses
     INVENTORY_REGIONS ||--o{ INVENTORY_LOCATIONS : addresses
     INVENTORY_REGIONS ||--o{ INVENTORY_FACILITIES : addresses
+    INVENTORY_REGIONS ||--o{ INVENTORY_POSTAL_ADDRESSES : addresses
     INVENTORY_FIXED_ASSET_TYPES ||--o{ INVENTORY_FIXED_ASSETS : classifies
     INVENTORY_PARTIES ||--o{ INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENTS : participates
     INVENTORY_PARTIES ||--o{ INVENTORY_FIXED_ASSET_PARTY_ROLE_ASSIGNMENTS : participates
@@ -31,6 +34,7 @@ erDiagram
     INVENTORY_FACILITIES ||--o{ INVENTORY_FACILITY_ACTIVE_CHANGE_AUDITS : records_active_changes
     INVENTORY_FACILITIES ||--o{ INVENTORY_FACILITY_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_FACILITIES ||--o{ INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENTS : assigns_party_roles
+    INVENTORY_FACILITIES ||--o{ INVENTORY_POSTAL_ADDRESSES : owns_addresses
     INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENTS ||--o{ INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENT_END_AUDITS : records_ends
     INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : traces_asset
     INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_FIXED_ASSET_ACTIVE_CHANGE_AUDITS : records_active_changes
@@ -44,6 +48,8 @@ erDiagram
     INVENTORY_LOCATIONS ||--o{ INVENTORY_ITEMS : stores
     INVENTORY_LOCATIONS ||--o{ INVENTORY_ITEM_LOCATION_ASSIGNMENTS : assigned_location
     INVENTORY_LOCATIONS ||--o{ INVENTORY_LOCATION_METADATA_CHANGE_AUDITS : records_metadata_changes
+    INVENTORY_LOCATIONS ||--o{ INVENTORY_POSTAL_ADDRESSES : owns_addresses
+    INVENTORY_POSTAL_ADDRESSES ||--o{ INVENTORY_POSTAL_ADDRESS_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_ADJUSTMENTS : records_movements
     INVENTORY_ITEMS ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : records_pickups_dropoffs
     INVENTORY_ADJUSTMENTS ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : links_stock_effect
@@ -93,6 +99,44 @@ erDiagram
       STRING code
       STRING name
       INSTANT createdAt
+    }
+
+    INVENTORY_POSTAL_ADDRESSES {
+      UUID id PK
+      STRING ownerType
+      STRING ownerCode
+      STRING addressPurposeCode
+      STRING addressLine1
+      STRING addressLine2
+      STRING city
+      STRING regionCode
+      STRING postalCode
+      STRING countryCode
+      INSTANT createdAt
+      INSTANT updatedAt
+    }
+
+    INVENTORY_POSTAL_ADDRESS_METADATA_CHANGE_AUDITS {
+      UUID id PK
+      UUID postalAddressId
+      STRING ownerType
+      STRING ownerCode
+      STRING previousAddressPurposeCode
+      STRING currentAddressPurposeCode
+      STRING previousAddressLine1
+      STRING currentAddressLine1
+      STRING previousAddressLine2
+      STRING currentAddressLine2
+      STRING previousCity
+      STRING currentCity
+      STRING previousRegionCode
+      STRING currentRegionCode
+      STRING previousPostalCode
+      STRING currentPostalCode
+      STRING previousCountryCode
+      STRING currentCountryCode
+      STRING changedBy
+      INSTANT changedAt
     }
 
     INVENTORY_PARTIES {
@@ -568,6 +612,10 @@ erDiagram
 - Inventory location and facility address metadata requires `addressPurposeCode`; supplied purpose codes must exist in `inventory_address_purposes`.
 - Inventory location and facility `countryCode` values are optional, but supplied codes must exist in `inventory_countries`.
 - Inventory location and facility `regionCode` values require `countryCode` and must exist for that country in `inventory_regions`.
+- Inventory postal addresses are first-class address records owned by either `LOCATION` or `FACILITY`.
+- Postal addresses require address purpose, address line 1, city, postal code, and country code.
+- Postal address country/region codes use the inventory-owned country/region catalogs.
+- Postal address metadata changes are append-only via `inventory_postal_address_metadata_change_audits`.
 - Inventory location and facility contact metadata requires `contactPurposeCode`; supplied purpose codes must exist in `inventory_contact_purposes`.
 - Inventory location metadata changes are append-only via `inventory_location_metadata_change_audits`.
 - Inventory item state carries `onHandQuantity`, `availableQuantity`, and `soldQuantity` for legacy inventory-entry parity with `number_in_stock`, `number_available`, and `number_sold`.
@@ -625,9 +673,10 @@ erDiagram
   - `inventory_facility_party_role_assignments(inventoryFacilityId, partyCode, roleTypeCode)`
   - `inventory_fixed_assets(code)`
   - `inventory_fixed_asset_party_role_assignments(inventoryFixedAssetId, partyCode, roleTypeCode)`
-  - `inventory_product_instance_assignments(inventoryItemId, productInstanceCode)`
-  - `inventory_locations(code)`
-  - `inventory_items(sku, locationCode)`
+- `inventory_product_instance_assignments(inventoryItemId, productInstanceCode)`
+- `inventory_locations(code)`
+- `inventory_postal_addresses(ownerType, ownerCode, addressPurposeCode)`
+- `inventory_items(sku, locationCode)`
   - `inventory_items(sourceSystemCode, externalReference)`
   - `inventory_transfer_reversal_idempotency(transferId, idempotencyKey)`
 - Indexes:
@@ -668,6 +717,10 @@ erDiagram
   - `inventory_pickup_dropoff_transactions(inventoryAdjustmentId)`
   - `inventory_location_metadata_change_audits(inventoryLocationId, changedAt)`
   - `inventory_location_metadata_change_audits(locationCode, changedAt)`
+  - `inventory_postal_addresses(ownerType, ownerCode)`
+  - `inventory_postal_addresses(addressPurposeCode)`
+  - `inventory_postal_address_metadata_change_audits(postalAddressId, changedAt)`
+  - `inventory_postal_address_metadata_change_audits(ownerType, ownerCode, changedAt)`
   - `inventory_item_metadata_change_audits(inventoryItemId, changedAt)`
   - `inventory_item_metadata_change_audits(sku, locationCode, changedAt)`
   - `inventory_item_owner_change_audits(inventoryItemId, changedAt)`
@@ -707,6 +760,11 @@ erDiagram
 - `POST /api/inventory/address-purposes`
 - `GET /api/inventory/address-purposes/{code}`
 - `GET /api/inventory/address-purposes?page=&size=`
+- `POST /api/inventory/postal-addresses`
+- `GET /api/inventory/postal-addresses/{id}`
+- `PATCH /api/inventory/postal-addresses/{id}/metadata`
+- `GET /api/inventory/postal-addresses/{id}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/inventory/postal-addresses?page=&size=&ownerType=&ownerCode=&addressPurposeCode=`
 - `POST /api/inventory/contact-purposes`
 - `GET /api/inventory/contact-purposes/{code}`
 - `GET /api/inventory/contact-purposes?page=&size=`
