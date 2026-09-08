@@ -95,6 +95,9 @@ class InventoryApiIntegrationTest {
     private InventoryPostalAddressMetadataChangeAuditRepository postalAddressMetadataChangeAuditRepository;
 
     @Autowired
+    private InventoryStorageAreaRepository inventoryStorageAreaRepository;
+
+    @Autowired
     private InventoryFacilityActiveChangeAuditRepository facilityActiveChangeAuditRepository;
 
     @Autowired
@@ -206,6 +209,7 @@ class InventoryApiIntegrationTest {
         facilityPartyRoleAssignmentRepository.deleteAll();
         postalAddressMetadataChangeAuditRepository.deleteAll();
         inventoryPostalAddressRepository.deleteAll();
+        inventoryStorageAreaRepository.deleteAll();
         inventoryFacilityRepository.deleteAll();
         inventoryPartyRoleTypeRepository.deleteAll();
         inventoryPartyRepository.deleteAll();
@@ -3277,6 +3281,223 @@ class InventoryApiIntegrationTest {
                     """)),
             "Inventory postal address metadata is unchanged",
             "/api/inventory/postal-addresses/" + address.getId() + "/metadata"
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryStorageAreas() throws Exception {
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "wh-storage",
+            "Storage Warehouse",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+
+        String areaId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/storage-areas"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "facilityCode": " wh-storage ",
+                  "code": " receiving ",
+                  "name": " Receiving Area ",
+                  "storageAreaType": " area "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.facilityCode").value("WH-STORAGE"))
+            .andExpect(jsonPath("$.code").value("RECEIVING"))
+            .andExpect(jsonPath("$.name").value("Receiving Area"))
+            .andExpect(jsonPath("$.storageAreaType").value("AREA"))
+            .andExpect(jsonPath("$.parentStorageAreaCode").doesNotExist())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        String binId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/storage-areas"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "facilityCode": " wh-storage ",
+                  "code": " bin-a-01 ",
+                  "name": " Bin A-01 ",
+                  "storageAreaType": " bin ",
+                  "parentStorageAreaCode": " receiving "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.facilityCode").value("WH-STORAGE"))
+            .andExpect(jsonPath("$.code").value("BIN-A-01"))
+            .andExpect(jsonPath("$.name").value("Bin A-01"))
+            .andExpect(jsonPath("$.storageAreaType").value("BIN"))
+            .andExpect(jsonPath("$.parentStorageAreaCode").value("RECEIVING"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(get("/api/inventory/storage-areas/{id}", areaId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.facilityCode").value("WH-STORAGE"))
+            .andExpect(jsonPath("$.code").value("RECEIVING"))
+            .andExpect(jsonPath("$.storageAreaType").value("AREA"));
+
+        mockMvc.perform(get("/api/inventory/storage-areas")
+            .param("facilityCode", "wh-storage")
+            .param("storageAreaType", "bin")
+            .param("parentStorageAreaCode", "receiving"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].id").value(binId))
+            .andExpect(jsonPath("$.items[0].facilityCode").value("WH-STORAGE"))
+            .andExpect(jsonPath("$.items[0].code").value("BIN-A-01"))
+            .andExpect(jsonPath("$.items[0].storageAreaType").value("BIN"))
+            .andExpect(jsonPath("$.items[0].parentStorageAreaCode").value("RECEIVING"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryStorageAreaForFacility() throws Exception {
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "wh-storage-dup",
+            "Storage Warehouse",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        String payload = """
+            {
+              "facilityCode": "WH-STORAGE-DUP",
+              "code": "RECEIVING",
+              "name": "Receiving Area",
+              "storageAreaType": "AREA"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/storage-areas"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/storage-areas"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory storage area already exists for facility: WH-STORAGE-DUP and code: RECEIVING",
+            "/api/inventory/storage-areas"
+        );
+    }
+
+    @Test
+    void rejectsInventoryStorageAreaForUnknownFacility() throws Exception {
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/storage-areas"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "facilityCode": "wh-missing",
+                      "code": "receiving",
+                      "name": "Receiving Area",
+                      "storageAreaType": "AREA"
+                    }
+                    """)),
+            "Inventory facility not found: WH-MISSING",
+            "/api/inventory/storage-areas"
+        );
+    }
+
+    @Test
+    void rejectsInventoryStorageAreaWithUnknownParent() throws Exception {
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "wh-storage-parent",
+            "Storage Warehouse",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/storage-areas"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "facilityCode": "wh-storage-parent",
+                      "code": "bin-a-01",
+                      "name": "Bin A-01",
+                      "storageAreaType": "BIN",
+                      "parentStorageAreaCode": "receiving"
+                    }
+                    """)),
+            "Inventory storage area not found for facility: WH-STORAGE-PARENT and code: RECEIVING",
+            "/api/inventory/storage-areas"
+        );
+    }
+
+    @Test
+    void rejectsInventoryStorageAreaWithInvalidType() throws Exception {
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "wh-storage-type",
+            "Storage Warehouse",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/storage-areas"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "facilityCode": "wh-storage-type",
+                      "code": "overflow",
+                      "name": "Overflow",
+                      "storageAreaType": "SHELF"
+                    }
+                    """)),
+            "storageAreaType must be AREA or BIN",
+            "/api/inventory/storage-areas"
         );
     }
 

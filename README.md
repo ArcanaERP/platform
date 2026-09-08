@@ -327,6 +327,7 @@ Inventory:
 - Inventory facility `facilityTypeCode` values are validated against `POST /api/inventory/location-types` reference data.
 - Inventory location and facility address metadata requires a valid `addressPurposeCode` from `POST /api/inventory/address-purposes`.
 - Inventory postal addresses are first-class location/facility address records with address-purpose and country/region validation plus metadata history.
+- Inventory storage areas model facility-owned areas and bins with optional same-facility parent hierarchy.
 - Inventory location and facility contact metadata requires a valid `contactPurposeCode` from `POST /api/inventory/contact-purposes`.
 - Inventory fixed assets provide a first-class asset catalog for pickup/dropoff traceability.
 - Inventory fixed asset active and metadata changes are audit-trailed with actor attribution.
@@ -353,6 +354,9 @@ Inventory:
 - `PATCH /api/inventory/postal-addresses/{id}/metadata`
 - `GET /api/inventory/postal-addresses/{id}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/postal-addresses?page=&size=&ownerType=&ownerCode=&addressPurposeCode=`
+- `POST /api/inventory/storage-areas`
+- `GET /api/inventory/storage-areas/{id}`
+- `GET /api/inventory/storage-areas?page=&size=&facilityCode=&storageAreaType=&parentStorageAreaCode=`
 - `POST /api/inventory/contact-purposes`
 - `GET /api/inventory/contact-purposes/{code}`
 - `GET /api/inventory/contact-purposes?page=&size=`

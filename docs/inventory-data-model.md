@@ -35,6 +35,8 @@ erDiagram
     INVENTORY_FACILITIES ||--o{ INVENTORY_FACILITY_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_FACILITIES ||--o{ INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENTS : assigns_party_roles
     INVENTORY_FACILITIES ||--o{ INVENTORY_POSTAL_ADDRESSES : owns_addresses
+    INVENTORY_FACILITIES ||--o{ INVENTORY_STORAGE_AREAS : owns_storage
+    INVENTORY_STORAGE_AREAS ||--o{ INVENTORY_STORAGE_AREAS : contains
     INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENTS ||--o{ INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENT_END_AUDITS : records_ends
     INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : traces_asset
     INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_FIXED_ASSET_ACTIVE_CHANGE_AUDITS : records_active_changes
@@ -137,6 +139,17 @@ erDiagram
       STRING currentCountryCode
       STRING changedBy
       INSTANT changedAt
+    }
+
+    INVENTORY_STORAGE_AREAS {
+      UUID id PK
+      STRING facilityCode
+      STRING code
+      STRING name
+      STRING storageAreaType
+      STRING parentStorageAreaCode
+      INSTANT createdAt
+      INSTANT updatedAt
     }
 
     INVENTORY_PARTIES {
@@ -595,6 +608,9 @@ erDiagram
 - Inventory facility party-role assignments validate `partyCode` against `inventory_parties` and `roleTypeCode` against `inventory_party_role_types`.
 - Inventory facility party-role assignments support optional `fromDate` and `thruDate` validity windows.
 - Inventory facility party-role assignment end operations mark assignments inactive, set `thruDate`, and append actor-attributed end audit rows.
+- Inventory storage areas are facility-owned physical storage nodes with `AREA` or `BIN` type.
+- Inventory storage areas can reference an optional parent storage area in the same facility.
+- Inventory storage area writes require an active facility and reject missing parent storage-area codes.
 - Inventory fixed assets are a first-class catalog for legacy fixed-asset traceability; fixed asset codes and type codes normalize to uppercase.
 - Inventory fixed asset `fixedAssetTypeCode` values are optional, but supplied codes must exist in `inventory_fixed_asset_types`.
 - Inventory fixed asset active changes are append-only via `inventory_fixed_asset_active_change_audits`.
@@ -670,7 +686,8 @@ erDiagram
   - `inventory_entry_relationship_types(code)`
   - `inventory_entry_role_types(code)`
   - `inventory_facilities(code)`
-  - `inventory_facility_party_role_assignments(inventoryFacilityId, partyCode, roleTypeCode)`
+- `inventory_facility_party_role_assignments(inventoryFacilityId, partyCode, roleTypeCode)`
+  - `inventory_storage_areas(facilityCode, code)`
   - `inventory_fixed_assets(code)`
   - `inventory_fixed_asset_party_role_assignments(inventoryFixedAssetId, partyCode, roleTypeCode)`
 - `inventory_product_instance_assignments(inventoryItemId, productInstanceCode)`
@@ -693,6 +710,9 @@ erDiagram
   - `inventory_facility_party_role_assignment_end_audits(assignmentId, endedAt)`
   - `inventory_facility_party_role_assignment_end_audits(facilityCode, partyCode, roleTypeCode, endedAt)`
   - `inventory_facility_party_role_assignment_end_audits(endedBy, endedAt)`
+  - `inventory_storage_areas(facilityCode)`
+  - `inventory_storage_areas(storageAreaType)`
+  - `inventory_storage_areas(facilityCode, parentStorageAreaCode)`
   - `inventory_fixed_assets(active, code)`
   - `inventory_fixed_asset_active_change_audits(inventoryFixedAssetId, changedAt)`
   - `inventory_fixed_asset_active_change_audits(fixedAssetCode, changedAt)`
@@ -765,6 +785,9 @@ erDiagram
 - `PATCH /api/inventory/postal-addresses/{id}/metadata`
 - `GET /api/inventory/postal-addresses/{id}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/postal-addresses?page=&size=&ownerType=&ownerCode=&addressPurposeCode=`
+- `POST /api/inventory/storage-areas`
+- `GET /api/inventory/storage-areas/{id}`
+- `GET /api/inventory/storage-areas?page=&size=&facilityCode=&storageAreaType=&parentStorageAreaCode=`
 - `POST /api/inventory/contact-purposes`
 - `GET /api/inventory/contact-purposes/{code}`
 - `GET /api/inventory/contact-purposes?page=&size=`
@@ -887,6 +910,9 @@ erDiagram
 - inventory location facility type codes must exist in the inventory location type catalog when supplied
 - inventory location metadata updates require `changedBy`, reject no-op changes, and append audit rows
 - inventory location metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
+- inventory storage area type, facility, code, and parent codes are normalized to uppercase
+- inventory storage area writes require an active facility and optional parent storage area in the same facility
+- inventory storage area list filters match normalized facility code, storage-area type, and parent storage-area code
 - inactive inventory locations remain readable but reject new adjustment and transfer writes
 - inventory item UOM and classification codes default to `EA` and `ON_HAND` when not explicitly supplied
 - inventory item available quantity defaults to on-hand quantity, sold quantity defaults to zero, and available quantity cannot exceed on-hand quantity
