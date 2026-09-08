@@ -98,6 +98,9 @@ class InventoryApiIntegrationTest {
     private InventoryStorageAreaRepository inventoryStorageAreaRepository;
 
     @Autowired
+    private InventoryStorageAreaMetadataChangeAuditRepository storageAreaMetadataChangeAuditRepository;
+
+    @Autowired
     private InventoryTelecomContactRepository inventoryTelecomContactRepository;
 
     @Autowired
@@ -217,6 +220,7 @@ class InventoryApiIntegrationTest {
         inventoryPostalAddressRepository.deleteAll();
         telecomContactMetadataChangeAuditRepository.deleteAll();
         inventoryTelecomContactRepository.deleteAll();
+        storageAreaMetadataChangeAuditRepository.deleteAll();
         inventoryStorageAreaRepository.deleteAll();
         inventoryFacilityRepository.deleteAll();
         inventoryPartyRoleTypeRepository.deleteAll();
@@ -3710,6 +3714,221 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.items[0].code").value("BIN-A-01"))
             .andExpect(jsonPath("$.items[0].storageAreaType").value("BIN"))
             .andExpect(jsonPath("$.items[0].parentStorageAreaCode").value("RECEIVING"));
+    }
+
+    @Test
+    void updatesInventoryStorageAreaMetadataAndListsHistory() throws Exception {
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "wh-storage-metadata",
+            "Storage Warehouse",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        InventoryStorageArea receiving = inventoryStorageAreaRepository.save(InventoryStorageArea.create(
+            "wh-storage-metadata",
+            "receiving",
+            "Receiving Area",
+            "AREA",
+            null,
+            SEED_INSTANT
+        ));
+        InventoryStorageArea overflow = inventoryStorageAreaRepository.save(InventoryStorageArea.create(
+            "wh-storage-metadata",
+            "overflow",
+            "Overflow Area",
+            "AREA",
+            null,
+            SEED_INSTANT
+        ));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/storage-areas/{id}/metadata",
+            receiving.getId()
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "name": " Receiving Bin ",
+                  "storageAreaType": " bin ",
+                  "parentStorageAreaCode": " overflow ",
+                  "changedBy": " Facilities.Ops@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(receiving.getId().toString()))
+            .andExpect(jsonPath("$.facilityCode").value("WH-STORAGE-METADATA"))
+            .andExpect(jsonPath("$.code").value("RECEIVING"))
+            .andExpect(jsonPath("$.name").value("Receiving Bin"))
+            .andExpect(jsonPath("$.storageAreaType").value("BIN"))
+            .andExpect(jsonPath("$.parentStorageAreaCode").value("OVERFLOW"));
+
+        mockMvc.perform(get("/api/inventory/storage-areas/{id}/metadata-history", receiving.getId())
+            .param("changedBy", "facilities.ops@arcanaerp.com"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].storageAreaId").value(receiving.getId().toString()))
+            .andExpect(jsonPath("$.items[0].facilityCode").value("WH-STORAGE-METADATA"))
+            .andExpect(jsonPath("$.items[0].storageAreaCode").value("RECEIVING"))
+            .andExpect(jsonPath("$.items[0].previousName").value("Receiving Area"))
+            .andExpect(jsonPath("$.items[0].currentName").value("Receiving Bin"))
+            .andExpect(jsonPath("$.items[0].previousStorageAreaType").value("AREA"))
+            .andExpect(jsonPath("$.items[0].currentStorageAreaType").value("BIN"))
+            .andExpect(jsonPath("$.items[0].previousParentStorageAreaCode").doesNotExist())
+            .andExpect(jsonPath("$.items[0].currentParentStorageAreaCode").value("OVERFLOW"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("facilities.ops@arcanaerp.com"));
+
+        mockMvc.perform(get("/api/inventory/storage-areas")
+            .param("facilityCode", "wh-storage-metadata")
+            .param("storageAreaType", "bin")
+            .param("parentStorageAreaCode", overflow.getCode()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].id").value(receiving.getId().toString()));
+    }
+
+    @Test
+    void rejectsNoOpInventoryStorageAreaMetadataChange() throws Exception {
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "wh-storage-noop",
+            "Storage Warehouse",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        InventoryStorageArea area = inventoryStorageAreaRepository.save(InventoryStorageArea.create(
+            "wh-storage-noop",
+            "receiving",
+            "Receiving Area",
+            "AREA",
+            null,
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/storage-areas/{id}/metadata",
+                area.getId()
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "Receiving Area",
+                      "storageAreaType": "area",
+                      "changedBy": "ops"
+                    }
+                    """)),
+            "Inventory storage area metadata is unchanged",
+            "/api/inventory/storage-areas/" + area.getId() + "/metadata"
+        );
+    }
+
+    @Test
+    void rejectsInventoryStorageAreaMetadataWithUnknownParent() throws Exception {
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "wh-storage-missing-parent",
+            "Storage Warehouse",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        InventoryStorageArea area = inventoryStorageAreaRepository.save(InventoryStorageArea.create(
+            "wh-storage-missing-parent",
+            "receiving",
+            "Receiving Area",
+            "AREA",
+            null,
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/storage-areas/{id}/metadata",
+                area.getId()
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "Receiving Area East",
+                      "storageAreaType": "area",
+                      "parentStorageAreaCode": "missing",
+                      "changedBy": "ops"
+                    }
+                    """)),
+            "Inventory storage area not found for facility: WH-STORAGE-MISSING-PARENT and code: MISSING",
+            "/api/inventory/storage-areas/" + area.getId() + "/metadata"
+        );
+    }
+
+    @Test
+    void rejectsInventoryStorageAreaMetadataCycle() throws Exception {
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "wh-storage-cycle",
+            "Storage Warehouse",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        InventoryStorageArea parent = inventoryStorageAreaRepository.save(InventoryStorageArea.create(
+            "wh-storage-cycle",
+            "parent",
+            "Parent Area",
+            "AREA",
+            null,
+            SEED_INSTANT
+        ));
+        inventoryStorageAreaRepository.save(InventoryStorageArea.create(
+            "wh-storage-cycle",
+            "child",
+            "Child Area",
+            "AREA",
+            "parent",
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/storage-areas/{id}/metadata",
+                parent.getId()
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "Parent Area",
+                      "storageAreaType": "area",
+                      "parentStorageAreaCode": "child",
+                      "changedBy": "ops"
+                    }
+                    """)),
+            "parentStorageAreaCode must not create a cycle",
+            "/api/inventory/storage-areas/" + parent.getId() + "/metadata"
+        );
     }
 
     @Test

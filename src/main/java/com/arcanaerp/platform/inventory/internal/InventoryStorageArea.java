@@ -95,6 +95,29 @@ class InventoryStorageArea {
         return normalized;
     }
 
+    void updateMetadata(String name, String storageAreaType, String parentStorageAreaCode, Instant updatedAt) {
+        if (updatedAt == null) {
+            throw new IllegalArgumentException("updatedAt is required");
+        }
+        String normalizedName = normalizeRequired(name, "name");
+        String normalizedStorageAreaType = normalizeStorageAreaType(storageAreaType);
+        String normalizedParentStorageAreaCode = normalizeOptionalUpper(parentStorageAreaCode);
+        if (code.equals(normalizedParentStorageAreaCode)) {
+            throw new IllegalArgumentException("parentStorageAreaCode must not match code");
+        }
+        if (
+            this.name.equals(normalizedName)
+                && this.storageAreaType.equals(normalizedStorageAreaType)
+                && equalsNullable(this.parentStorageAreaCode, normalizedParentStorageAreaCode)
+        ) {
+            throw new IllegalArgumentException("Inventory storage area metadata is unchanged");
+        }
+        this.name = normalizedName;
+        this.storageAreaType = normalizedStorageAreaType;
+        this.parentStorageAreaCode = normalizedParentStorageAreaCode;
+        this.updatedAt = updatedAt;
+    }
+
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");
@@ -107,5 +130,9 @@ class InventoryStorageArea {
             return null;
         }
         return value.trim().toUpperCase();
+    }
+
+    private static boolean equalsNullable(String left, String right) {
+        return left == null ? right == null : left.equals(right);
     }
 }

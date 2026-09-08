@@ -4,8 +4,10 @@ import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.InventoryStorageAreaDirectory;
+import com.arcanaerp.platform.inventory.InventoryStorageAreaMetadataChangeView;
 import com.arcanaerp.platform.inventory.InventoryStorageAreaView;
 import com.arcanaerp.platform.inventory.RegisterInventoryStorageAreaCommand;
+import com.arcanaerp.platform.inventory.UpdateInventoryStorageAreaMetadataCommand;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.NoSuchElementException;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 class InventoryStorageAreaDirectoryService implements InventoryStorageAreaDirectory {
 
     private final InventoryStorageAreaRepository inventoryStorageAreaRepository;
+    private final InventoryStorageAreaMetadataChangeAuditRepository metadataChangeAuditRepository;
     private final InventoryFacilityRepository inventoryFacilityRepository;
     private final Clock clock;
 
@@ -54,6 +57,56 @@ class InventoryStorageAreaDirectoryService implements InventoryStorageAreaDirect
     @Transactional(readOnly = true)
     public InventoryStorageAreaView storageAreaById(UUID id) {
         return toView(findStorageArea(id));
+    }
+
+    @Override
+    public InventoryStorageAreaView updateStorageAreaMetadata(
+        UUID id,
+        UpdateInventoryStorageAreaMetadataCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        InventoryStorageArea storageArea = findStorageArea(id);
+        String storageAreaType = InventoryStorageArea.normalizeStorageAreaType(command.storageAreaType());
+        String parentStorageAreaCode = normalizeOptionalUpper(command.parentStorageAreaCode());
+        ensureParentStorageAreaExists(storageArea.getFacilityCode(), storageArea.getCode(), parentStorageAreaCode);
+        ensureParentChangeDoesNotCreateCycle(storageArea.getFacilityCode(), storageArea.getCode(), parentStorageAreaCode);
+        InventoryStorageAreaMetadataSnapshot previous = InventoryStorageAreaMetadataSnapshot.from(storageArea);
+        Instant changedAt = Instant.now(clock);
+        storageArea.updateMetadata(
+            command.name(),
+            storageAreaType,
+            parentStorageAreaCode,
+            changedAt
+        );
+        metadataChangeAuditRepository.save(InventoryStorageAreaMetadataChangeAudit.create(
+            storageArea,
+            previous,
+            InventoryStorageAreaMetadataSnapshot.from(storageArea),
+            command.changedBy(),
+            changedAt
+        ));
+        return toView(inventoryStorageAreaRepository.save(storageArea));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<InventoryStorageAreaMetadataChangeView> listMetadataHistory(
+        UUID id,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        InventoryStorageArea storageArea = findStorageArea(id);
+        return PageResult.from(metadataChangeAuditRepository.findHistoryFiltered(
+            storageArea.getId(),
+            normalizeOptionalChangedBy(changedBy),
+            changedAtFrom,
+            changedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
+        )).map(this::toMetadataChangeView);
     }
 
     @Override
@@ -106,6 +159,23 @@ class InventoryStorageAreaDirectoryService implements InventoryStorageAreaDirect
         }
     }
 
+    private void ensureParentChangeDoesNotCreateCycle(
+        String facilityCode,
+        String storageAreaCode,
+        String parentStorageAreaCode
+    ) {
+        String currentParentCode = parentStorageAreaCode;
+        while (currentParentCode != null) {
+            if (storageAreaCode.equals(currentParentCode)) {
+                throw new IllegalArgumentException("parentStorageAreaCode must not create a cycle");
+            }
+            currentParentCode = inventoryStorageAreaRepository
+                .findByFacilityCodeAndCode(facilityCode, currentParentCode)
+                .map(InventoryStorageArea::getParentStorageAreaCode)
+                .orElse(null);
+        }
+    }
+
     private InventoryStorageAreaView toView(InventoryStorageArea storageArea) {
         return new InventoryStorageAreaView(
             storageArea.getId(),
@@ -116,6 +186,25 @@ class InventoryStorageAreaDirectoryService implements InventoryStorageAreaDirect
             storageArea.getParentStorageAreaCode(),
             storageArea.getCreatedAt(),
             storageArea.getUpdatedAt()
+        );
+    }
+
+    private InventoryStorageAreaMetadataChangeView toMetadataChangeView(
+        InventoryStorageAreaMetadataChangeAudit audit
+    ) {
+        return new InventoryStorageAreaMetadataChangeView(
+            audit.getId(),
+            audit.getStorageAreaId(),
+            audit.getFacilityCode(),
+            audit.getStorageAreaCode(),
+            audit.getPreviousName(),
+            audit.getCurrentName(),
+            audit.getPreviousStorageAreaType(),
+            audit.getCurrentStorageAreaType(),
+            audit.getPreviousParentStorageAreaCode(),
+            audit.getCurrentParentStorageAreaCode(),
+            audit.getChangedBy(),
+            audit.getChangedAt()
         );
     }
 
@@ -138,5 +227,9 @@ class InventoryStorageAreaDirectoryService implements InventoryStorageAreaDirect
 
     private static String normalizeOptionalStorageAreaType(String value) {
         return value == null ? null : InventoryStorageArea.normalizeStorageAreaType(value);
+    }
+
+    private static String normalizeOptionalChangedBy(String value) {
+        return value == null ? null : normalizeRequired(value, "changedBy").toLowerCase();
     }
 }
