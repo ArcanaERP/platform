@@ -9,6 +9,10 @@ erDiagram
     INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_LOCATIONS : classifies
     INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_FACILITIES : classifies
     INVENTORY_FIXED_ASSET_TYPES ||--o{ INVENTORY_FIXED_ASSETS : classifies
+    INVENTORY_PARTIES ||--o{ INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENTS : participates
+    INVENTORY_PARTIES ||--o{ INVENTORY_FIXED_ASSET_PARTY_ROLE_ASSIGNMENTS : participates
+    INVENTORY_PARTY_ROLE_TYPES ||--o{ INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENTS : classifies
+    INVENTORY_PARTY_ROLE_TYPES ||--o{ INVENTORY_FIXED_ASSET_PARTY_ROLE_ASSIGNMENTS : classifies
     INVENTORY_ENTRY_RELATIONSHIP_TYPES ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : classifies
     INVENTORY_ENTRY_ROLE_TYPES ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : roles
     INVENTORY_ITEMS ||--o{ INVENTORY_ENTRY_RELATIONSHIPS : from_item
@@ -47,6 +51,20 @@ erDiagram
     }
 
     INVENTORY_FIXED_ASSET_TYPES {
+      UUID id PK
+      STRING code UK
+      STRING description
+      INSTANT createdAt
+    }
+
+    INVENTORY_PARTIES {
+      UUID id PK
+      STRING code UK
+      STRING description
+      INSTANT createdAt
+    }
+
+    INVENTORY_PARTY_ROLE_TYPES {
       UUID id PK
       STRING code UK
       STRING description
@@ -480,6 +498,7 @@ erDiagram
 - Inventory facility active changes are append-only via `inventory_facility_active_change_audits`.
 - Inventory facility metadata changes are append-only via `inventory_facility_metadata_change_audits`.
 - Inventory facility party-role assignments link active facilities to normalized party and role type codes.
+- Inventory facility party-role assignments validate `partyCode` against `inventory_parties` and `roleTypeCode` against `inventory_party_role_types`.
 - Inventory facility party-role assignments support optional `fromDate` and `thruDate` validity windows.
 - Inventory facility party-role assignment end operations mark assignments inactive, set `thruDate`, and append actor-attributed end audit rows.
 - Inventory fixed assets are a first-class catalog for legacy fixed-asset traceability; fixed asset codes and type codes normalize to uppercase.
@@ -487,6 +506,7 @@ erDiagram
 - Inventory fixed asset active changes are append-only via `inventory_fixed_asset_active_change_audits`.
 - Inventory fixed asset metadata changes are append-only via `inventory_fixed_asset_metadata_change_audits`.
 - Inventory fixed asset party-role assignments link active fixed assets to normalized party and role type codes.
+- Inventory fixed asset party-role assignments validate `partyCode` against `inventory_parties` and `roleTypeCode` against `inventory_party_role_types`.
 - Inventory fixed asset party-role assignments support optional `fromDate` and `thruDate` validity windows.
 - Inventory fixed asset party-role assignment end operations mark assignments inactive, set `thruDate`, and append actor-attributed end audit rows.
 - Inventory product-instance assignments are explicit cross-reference rows from inventory items to product instance codes.
@@ -539,6 +559,8 @@ erDiagram
 - Unique constraints:
   - `inventory_location_types(code)`
   - `inventory_fixed_asset_types(code)`
+  - `inventory_parties(code)`
+  - `inventory_party_role_types(code)`
   - `inventory_entry_relationship_types(code)`
   - `inventory_entry_role_types(code)`
   - `inventory_facilities(code)`
@@ -623,6 +645,12 @@ erDiagram
 - `POST /api/inventory/fixed-asset-types`
 - `GET /api/inventory/fixed-asset-types/{code}`
 - `GET /api/inventory/fixed-asset-types?page=&size=`
+- `POST /api/inventory/parties`
+- `GET /api/inventory/parties/{code}`
+- `GET /api/inventory/parties?page=&size=`
+- `POST /api/inventory/party-role-types`
+- `GET /api/inventory/party-role-types/{code}`
+- `GET /api/inventory/party-role-types?page=&size=`
 - `POST /api/inventory/entry-relationship-types`
 - `GET /api/inventory/entry-relationship-types/{code}`
 - `GET /api/inventory/entry-relationship-types?page=&size=`

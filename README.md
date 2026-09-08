@@ -329,6 +329,7 @@ Inventory:
 - Inventory fixed asset active and metadata changes are audit-trailed with actor attribution.
 - Inventory fixed asset party-role assignments track which parties serve asset-specific roles and support end history.
 - Inventory fixed asset `fixedAssetTypeCode` values are validated against `POST /api/inventory/fixed-asset-types` reference data.
+- Inventory facility and fixed asset party-role assignments validate party and role codes against inventory-owned party reference data.
 - Inventory location `facilityTypeCode` values are validated against `POST /api/inventory/location-types` reference data.
 - Inventory entry relationship and role types are reference data for entry relationship records.
 - Inventory entry relationships support optional `fromDate` and `thruDate` validity windows.
@@ -340,6 +341,12 @@ Inventory:
 - `POST /api/inventory/fixed-asset-types`
 - `GET /api/inventory/fixed-asset-types/{code}`
 - `GET /api/inventory/fixed-asset-types?page=&size=`
+- `POST /api/inventory/parties`
+- `GET /api/inventory/parties/{code}`
+- `GET /api/inventory/parties?page=&size=`
+- `POST /api/inventory/party-role-types`
+- `GET /api/inventory/party-role-types/{code}`
+- `GET /api/inventory/party-role-types?page=&size=`
 - `POST /api/inventory/entry-relationship-types`
 - `GET /api/inventory/entry-relationship-types/{code}`
 - `GET /api/inventory/entry-relationship-types?page=&size=`

@@ -119,6 +119,12 @@ class InventoryApiIntegrationTest {
     private InventoryFixedAssetPartyRoleAssignmentEndAuditRepository fixedAssetPartyRoleAssignmentEndAuditRepository;
 
     @Autowired
+    private InventoryPartyRepository inventoryPartyRepository;
+
+    @Autowired
+    private InventoryPartyRoleTypeRepository inventoryPartyRoleTypeRepository;
+
+    @Autowired
     private InventoryLocationMetadataChangeAuditRepository locationMetadataChangeAuditRepository;
 
     @Autowired
@@ -181,6 +187,8 @@ class InventoryApiIntegrationTest {
         facilityPartyRoleAssignmentEndAuditRepository.deleteAll();
         facilityPartyRoleAssignmentRepository.deleteAll();
         inventoryFacilityRepository.deleteAll();
+        inventoryPartyRoleTypeRepository.deleteAll();
+        inventoryPartyRepository.deleteAll();
         locationMetadataChangeAuditRepository.deleteAll();
         inventoryLocationRepository.deleteAll();
         inventoryLocationTypeRepository.deleteAll();
@@ -189,6 +197,10 @@ class InventoryApiIntegrationTest {
         seedLocationType("WAREHOUSE", "Warehouse");
         seedLocationType("STORE", "Store");
         seedFixedAssetType("VEHICLE", "Vehicle");
+        seedInventoryParty("WEST-OPERATOR", "West operator");
+        seedInventoryParty("WEST-CARRIER", "West carrier");
+        seedInventoryPartyRoleType("MANAGER", "Manager");
+        seedInventoryPartyRoleType("OPERATOR", "Operator");
         ensureUnitOfMeasurement("EA", "Each");
         ensureUnitOfMeasurement("CASE", "Case");
         ensureUnitOfMeasurement("EACH", "Each alternate");
@@ -380,6 +392,112 @@ class InventoryApiIntegrationTest {
                 .content(payload)),
             "Inventory fixed asset type already exists for code: FORKLIFT",
             "/api/inventory/fixed-asset-types"
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryParties() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/parties")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " service-vendor ",
+                  "description": " Service vendor "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.code").value("SERVICE-VENDOR"))
+            .andExpect(jsonPath("$.description").value("Service vendor"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/parties/{code}", "service-vendor"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("SERVICE-VENDOR"))
+            .andExpect(jsonPath("$.description").value("Service vendor"));
+
+        mockMvc.perform(get("/api/inventory/parties")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].code").value("SERVICE-VENDOR"))
+            .andExpect(jsonPath("$.items[1].code").value("WEST-CARRIER"))
+            .andExpect(jsonPath("$.items[2].code").value("WEST-OPERATOR"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryPartyCode() throws Exception {
+        String payload = """
+            {
+              "code": "service-vendor",
+              "description": "Service vendor"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/parties")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/parties")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory party already exists for code: SERVICE-VENDOR",
+            "/api/inventory/parties"
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryPartyRoleTypes() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/party-role-types")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " maintainer ",
+                  "description": " Maintainer "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.code").value("MAINTAINER"))
+            .andExpect(jsonPath("$.description").value("Maintainer"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/party-role-types/{code}", "maintainer"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("MAINTAINER"))
+            .andExpect(jsonPath("$.description").value("Maintainer"));
+
+        mockMvc.perform(get("/api/inventory/party-role-types")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].code").value("MAINTAINER"))
+            .andExpect(jsonPath("$.items[1].code").value("MANAGER"))
+            .andExpect(jsonPath("$.items[2].code").value("OPERATOR"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryPartyRoleTypeCode() throws Exception {
+        String payload = """
+            {
+              "code": "maintainer",
+              "description": "Maintainer"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/party-role-types")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/party-role-types")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory party role type already exists for code: MAINTAINER",
+            "/api/inventory/party-role-types"
         );
     }
 
@@ -1724,6 +1842,80 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void rejectsUnknownPartyForFacilityPartyRoleAssignment() throws Exception {
+        inventoryFacilityRepository.save(
+            InventoryFacility.create(
+                "dc-role-party-missing",
+                "Missing Party Distribution Center",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/facility-party-role-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "facilityCode": "dc-role-party-missing",
+                      "partyCode": "unknown-party",
+                      "roleTypeCode": "manager",
+                      "assignedBy": "facilities.ops@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory party not found: UNKNOWN-PARTY",
+            "/api/inventory/facility-party-role-assignments"
+        );
+    }
+
+    @Test
+    void rejectsUnknownPartyRoleTypeForFacilityPartyRoleAssignment() throws Exception {
+        inventoryFacilityRepository.save(
+            InventoryFacility.create(
+                "dc-role-type-missing",
+                "Missing Role Type Distribution Center",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/facility-party-role-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "facilityCode": "dc-role-type-missing",
+                      "partyCode": "west-operator",
+                      "roleTypeCode": "unknown-role",
+                      "assignedBy": "facilities.ops@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory party role type not found: UNKNOWN-ROLE",
+            "/api/inventory/facility-party-role-assignments"
+        );
+    }
+
+    @Test
     void rejectsInactiveFacilityForPartyRoleAssignment() throws Exception {
         InventoryFacility facility = inventoryFacilityRepository.save(
             InventoryFacility.create(
@@ -2271,6 +2463,70 @@ class InventoryApiIntegrationTest {
                     }
                     """)),
             "MISSING-TRUCK",
+            "/api/inventory/fixed-asset-party-role-assignments"
+        );
+    }
+
+    @Test
+    void rejectsUnknownPartyForFixedAssetPartyRoleAssignment() throws Exception {
+        inventoryFixedAssetRepository.save(
+            InventoryFixedAsset.create(
+                "truck-party-missing",
+                "Truck Party Missing",
+                "vehicle",
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/fixed-asset-party-role-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fixedAssetCode": "truck-party-missing",
+                      "partyCode": "unknown-party",
+                      "roleTypeCode": "operator",
+                      "assignedBy": "fleet.manager@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory party not found: UNKNOWN-PARTY",
+            "/api/inventory/fixed-asset-party-role-assignments"
+        );
+    }
+
+    @Test
+    void rejectsUnknownPartyRoleTypeForFixedAssetPartyRoleAssignment() throws Exception {
+        inventoryFixedAssetRepository.save(
+            InventoryFixedAsset.create(
+                "truck-role-missing",
+                "Truck Role Missing",
+                "vehicle",
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/fixed-asset-party-role-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fixedAssetCode": "truck-role-missing",
+                      "partyCode": "west-carrier",
+                      "roleTypeCode": "unknown-role",
+                      "assignedBy": "fleet.manager@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory party role type not found: UNKNOWN-ROLE",
             "/api/inventory/fixed-asset-party-role-assignments"
         );
     }
@@ -5644,6 +5900,18 @@ class InventoryApiIntegrationTest {
     private void seedFixedAssetType(String code, String description) {
         inventoryFixedAssetTypeRepository.save(
             InventoryFixedAssetType.create(code, description, SEED_INSTANT)
+        );
+    }
+
+    private void seedInventoryParty(String code, String description) {
+        inventoryPartyRepository.save(
+            InventoryParty.create(code, description, SEED_INSTANT)
+        );
+    }
+
+    private void seedInventoryPartyRoleType(String code, String description) {
+        inventoryPartyRoleTypeRepository.save(
+            InventoryPartyRoleType.create(code, description, SEED_INSTANT)
         );
     }
 

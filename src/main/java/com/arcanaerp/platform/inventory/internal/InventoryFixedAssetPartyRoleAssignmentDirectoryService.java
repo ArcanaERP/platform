@@ -7,6 +7,8 @@ import com.arcanaerp.platform.inventory.EndInventoryFixedAssetPartyRoleAssignmen
 import com.arcanaerp.platform.inventory.InventoryFixedAssetPartyRoleAssignmentDirectory;
 import com.arcanaerp.platform.inventory.InventoryFixedAssetPartyRoleAssignmentEndView;
 import com.arcanaerp.platform.inventory.InventoryFixedAssetPartyRoleAssignmentView;
+import com.arcanaerp.platform.inventory.InventoryPartyDirectory;
+import com.arcanaerp.platform.inventory.InventoryPartyRoleTypeDirectory;
 import com.arcanaerp.platform.inventory.RegisterInventoryFixedAssetPartyRoleAssignmentCommand;
 import java.time.Clock;
 import java.time.Instant;
@@ -27,6 +29,8 @@ class InventoryFixedAssetPartyRoleAssignmentDirectoryService
     private final InventoryFixedAssetPartyRoleAssignmentRepository assignmentRepository;
     private final InventoryFixedAssetPartyRoleAssignmentEndAuditRepository endAuditRepository;
     private final InventoryFixedAssetRepository inventoryFixedAssetRepository;
+    private final InventoryPartyDirectory inventoryPartyDirectory;
+    private final InventoryPartyRoleTypeDirectory inventoryPartyRoleTypeDirectory;
     private final Clock clock;
 
     @Override
@@ -42,6 +46,8 @@ class InventoryFixedAssetPartyRoleAssignmentDirectoryService
         }
         String partyCode = normalizeRequired(command.partyCode(), "partyCode").toUpperCase();
         String roleTypeCode = normalizeRequired(command.roleTypeCode(), "roleTypeCode").toUpperCase();
+        ensurePartyExists(partyCode);
+        ensureRoleTypeExists(roleTypeCode);
         if (
             assignmentRepository.findByInventoryFixedAssetIdAndPartyCodeAndRoleTypeCode(
                 fixedAsset.getId(),
@@ -198,6 +204,18 @@ class InventoryFixedAssetPartyRoleAssignmentDirectoryService
             audit.getEndedBy(),
             audit.getEndedAt()
         );
+    }
+
+    private void ensurePartyExists(String partyCode) {
+        if (!inventoryPartyDirectory.partyExists(partyCode)) {
+            throw new IllegalArgumentException("Inventory party not found: " + partyCode);
+        }
+    }
+
+    private void ensureRoleTypeExists(String roleTypeCode) {
+        if (!inventoryPartyRoleTypeDirectory.roleTypeExists(roleTypeCode)) {
+            throw new IllegalArgumentException("Inventory party role type not found: " + roleTypeCode);
+        }
     }
 
     private static String normalizeRequired(String value, String fieldName) {
