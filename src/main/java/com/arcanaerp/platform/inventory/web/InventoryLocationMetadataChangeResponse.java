@@ -10,6 +10,8 @@ public record InventoryLocationMetadataChangeResponse(
     String currentName,
     String previousFacilityTypeCode,
     String currentFacilityTypeCode,
+    String previousAddressPurposeCode,
+    String currentAddressPurposeCode,
     String previousAddressLine1,
     String currentAddressLine1,
     String previousAddressLine2,

@@ -47,6 +47,12 @@ class InventoryLocationMetadataChangeAudit {
     @Column(length = 64)
     private String currentFacilityTypeCode;
 
+    @Column(length = 64)
+    private String previousAddressPurposeCode;
+
+    @Column(length = 64)
+    private String currentAddressPurposeCode;
+
     @Column(length = 255)
     private String previousAddressLine1;
 
@@ -134,6 +140,8 @@ class InventoryLocationMetadataChangeAudit {
         audit.currentName = normalizeRequired(current.name(), "currentName");
         audit.previousFacilityTypeCode = normalizeOptionalUpper(previous.facilityTypeCode());
         audit.currentFacilityTypeCode = normalizeOptionalUpper(current.facilityTypeCode());
+        audit.previousAddressPurposeCode = normalizeOptionalUpper(previous.addressPurposeCode());
+        audit.currentAddressPurposeCode = normalizeOptionalUpper(current.addressPurposeCode());
         audit.previousAddressLine1 = normalizeOptional(previous.addressLine1());
         audit.currentAddressLine1 = normalizeOptional(current.addressLine1());
         audit.previousAddressLine2 = normalizeOptional(previous.addressLine2());

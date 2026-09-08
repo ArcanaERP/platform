@@ -8,6 +8,8 @@ Updated: 2026-09-06
 erDiagram
     INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_LOCATIONS : classifies
     INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_FACILITIES : classifies
+    INVENTORY_ADDRESS_PURPOSES ||--o{ INVENTORY_LOCATIONS : classifies_address
+    INVENTORY_ADDRESS_PURPOSES ||--o{ INVENTORY_FACILITIES : classifies_address
     INVENTORY_CONTACT_PURPOSES ||--o{ INVENTORY_LOCATIONS : classifies_contact
     INVENTORY_CONTACT_PURPOSES ||--o{ INVENTORY_FACILITIES : classifies_contact
     INVENTORY_COUNTRIES ||--o{ INVENTORY_REGIONS : contains
@@ -58,6 +60,13 @@ erDiagram
     }
 
     INVENTORY_FIXED_ASSET_TYPES {
+      UUID id PK
+      STRING code UK
+      STRING description
+      INSTANT createdAt
+    }
+
+    INVENTORY_ADDRESS_PURPOSES {
       UUID id PK
       STRING code UK
       STRING description
@@ -150,6 +159,7 @@ erDiagram
       STRING code UK
       STRING name
       STRING facilityTypeCode
+      STRING addressPurposeCode
       STRING addressLine1
       STRING addressLine2
       STRING city
@@ -182,6 +192,8 @@ erDiagram
       STRING currentName
       STRING previousFacilityTypeCode
       STRING currentFacilityTypeCode
+      STRING previousAddressPurposeCode
+      STRING currentAddressPurposeCode
       STRING previousAddressLine1
       STRING currentAddressLine1
       STRING previousAddressLine2
@@ -368,6 +380,7 @@ erDiagram
       STRING code UK
       STRING name
       STRING facilityTypeCode
+      STRING addressPurposeCode
       STRING addressLine1
       STRING addressLine2
       STRING city
@@ -408,6 +421,8 @@ erDiagram
       STRING currentName
       STRING previousFacilityTypeCode
       STRING currentFacilityTypeCode
+      STRING previousAddressPurposeCode
+      STRING currentAddressPurposeCode
       STRING previousAddressLine1
       STRING currentAddressLine1
       STRING previousAddressLine2
@@ -550,6 +565,7 @@ erDiagram
 - Inventory item-location assignment ends are append-only via `inventory_item_location_assignment_end_audits`.
 - Inventory locations carry optional facility type, address, and contact metadata for facility-model parity.
 - Inventory location and facility `facilityTypeCode` values are optional, but supplied codes must exist in `inventory_location_types`.
+- Inventory location and facility address metadata requires `addressPurposeCode`; supplied purpose codes must exist in `inventory_address_purposes`.
 - Inventory location and facility `countryCode` values are optional, but supplied codes must exist in `inventory_countries`.
 - Inventory location and facility `regionCode` values require `countryCode` and must exist for that country in `inventory_regions`.
 - Inventory location and facility contact metadata requires `contactPurposeCode`; supplied purpose codes must exist in `inventory_contact_purposes`.
@@ -597,6 +613,7 @@ erDiagram
 - Unique constraints:
   - `inventory_location_types(code)`
   - `inventory_fixed_asset_types(code)`
+  - `inventory_address_purposes(code)`
   - `inventory_contact_purposes(code)`
   - `inventory_countries(code)`
   - `inventory_regions(countryCode, code)`
@@ -687,6 +704,9 @@ erDiagram
 - `POST /api/inventory/fixed-asset-types`
 - `GET /api/inventory/fixed-asset-types/{code}`
 - `GET /api/inventory/fixed-asset-types?page=&size=`
+- `POST /api/inventory/address-purposes`
+- `GET /api/inventory/address-purposes/{code}`
+- `GET /api/inventory/address-purposes?page=&size=`
 - `POST /api/inventory/contact-purposes`
 - `GET /api/inventory/contact-purposes/{code}`
 - `GET /api/inventory/contact-purposes?page=&size=`
@@ -803,7 +823,8 @@ erDiagram
 - inventory item-location assignment writes validate the inventory item and active assigned location
 - inventory item-location assignment ends require `validThru >= validFrom` and append end audit rows
 - inventory item-location assignment list filters match normalized item keys, assigned location, and active state
-- inventory location facility type, region, country, and contact purpose codes are normalized to uppercase; contact email is normalized to lowercase
+- inventory location facility type, address purpose, region, country, and contact purpose codes are normalized to uppercase; contact email is normalized to lowercase
+- inventory location and facility address metadata requires a supplied address purpose code
 - inventory location and facility contact name/email metadata requires a supplied contact purpose code
 - inventory location facility type codes must exist in the inventory location type catalog when supplied
 - inventory location metadata updates require `changedBy`, reject no-op changes, and append audit rows

@@ -3,6 +3,7 @@ package com.arcanaerp.platform.inventory.internal;
 record InventoryLocationMetadataSnapshot(
     String name,
     String facilityTypeCode,
+    String addressPurposeCode,
     String addressLine1,
     String addressLine2,
     String city,
@@ -17,6 +18,7 @@ record InventoryLocationMetadataSnapshot(
         return new InventoryLocationMetadataSnapshot(
             location.getName(),
             location.getFacilityTypeCode(),
+            location.getAddressPurposeCode(),
             location.getAddressLine1(),
             location.getAddressLine2(),
             location.getCity(),

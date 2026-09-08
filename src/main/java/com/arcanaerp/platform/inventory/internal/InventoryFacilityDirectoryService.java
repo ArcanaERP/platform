@@ -3,6 +3,7 @@ package com.arcanaerp.platform.inventory.internal;
 import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.inventory.InventoryAddressPurposeDirectory;
 import com.arcanaerp.platform.inventory.InventoryContactPurposeDirectory;
 import com.arcanaerp.platform.inventory.InventoryCountryDirectory;
 import com.arcanaerp.platform.inventory.InventoryFacilityDirectory;
@@ -32,6 +33,7 @@ class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
     private final InventoryFacilityActiveChangeAuditRepository activeChangeAuditRepository;
     private final InventoryFacilityMetadataChangeAuditRepository metadataChangeAuditRepository;
     private final InventoryLocationTypeDirectory inventoryLocationTypeDirectory;
+    private final InventoryAddressPurposeDirectory inventoryAddressPurposeDirectory;
     private final InventoryCountryDirectory inventoryCountryDirectory;
     private final InventoryRegionDirectory inventoryRegionDirectory;
     private final InventoryContactPurposeDirectory inventoryContactPurposeDirectory;
@@ -47,12 +49,22 @@ class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
             throw new ConflictException("Inventory facility already exists for code: " + code);
         }
         ensureFacilityTypeExists(command.facilityTypeCode());
+        ensureAddressPurposeExists(
+            command.addressPurposeCode(),
+            command.addressLine1(),
+            command.addressLine2(),
+            command.city(),
+            command.regionCode(),
+            command.postalCode(),
+            command.countryCode()
+        );
         ensureGeoReferenceExists(command.countryCode(), command.regionCode());
         ensureContactPurposeExists(command.contactPurposeCode(), command.contactName(), command.contactEmail());
         return toView(inventoryFacilityRepository.save(InventoryFacility.create(
             code,
             command.name(),
             command.facilityTypeCode(),
+            command.addressPurposeCode(),
             command.addressLine1(),
             command.addressLine2(),
             command.city(),
@@ -110,6 +122,15 @@ class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
             throw new IllegalArgumentException("code path variable must match command code");
         }
         ensureFacilityTypeExists(command.facilityTypeCode());
+        ensureAddressPurposeExists(
+            command.addressPurposeCode(),
+            command.addressLine1(),
+            command.addressLine2(),
+            command.city(),
+            command.regionCode(),
+            command.postalCode(),
+            command.countryCode()
+        );
         ensureGeoReferenceExists(command.countryCode(), command.regionCode());
         ensureContactPurposeExists(command.contactPurposeCode(), command.contactName(), command.contactEmail());
         InventoryFacility facility = findFacility(normalizedCode);
@@ -118,6 +139,7 @@ class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
         facility.updateMetadata(
             command.name(),
             command.facilityTypeCode(),
+            command.addressPurposeCode(),
             command.addressLine1(),
             command.addressLine2(),
             command.city(),
@@ -202,6 +224,7 @@ class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
             facility.getCode(),
             facility.getName(),
             facility.getFacilityTypeCode(),
+            facility.getAddressPurposeCode(),
             facility.getAddressLine1(),
             facility.getAddressLine2(),
             facility.getCity(),
@@ -236,6 +259,8 @@ class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
             audit.getCurrentName(),
             audit.getPreviousFacilityTypeCode(),
             audit.getCurrentFacilityTypeCode(),
+            audit.getPreviousAddressPurposeCode(),
+            audit.getCurrentAddressPurposeCode(),
             audit.getPreviousAddressLine1(),
             audit.getCurrentAddressLine1(),
             audit.getPreviousAddressLine2(),
@@ -284,6 +309,34 @@ class InventoryFacilityDirectoryService implements InventoryFacilityDirectory {
         String normalizedFacilityTypeCode = normalizeOptionalUpper(facilityTypeCode);
         if (normalizedFacilityTypeCode != null && !inventoryLocationTypeDirectory.locationTypeExists(normalizedFacilityTypeCode)) {
             throw new IllegalArgumentException("Inventory location type not found: " + normalizedFacilityTypeCode);
+        }
+    }
+
+    private void ensureAddressPurposeExists(
+        String addressPurposeCode,
+        String addressLine1,
+        String addressLine2,
+        String city,
+        String regionCode,
+        String postalCode,
+        String countryCode
+    ) {
+        String normalizedAddressPurposeCode = normalizeOptionalUpper(addressPurposeCode, "addressPurposeCode");
+        if (normalizedAddressPurposeCode == null) {
+            if (
+                hasText(addressLine1)
+                    || hasText(addressLine2)
+                    || hasText(city)
+                    || hasText(regionCode)
+                    || hasText(postalCode)
+                    || hasText(countryCode)
+            ) {
+                throw new IllegalArgumentException("addressPurposeCode is required when address metadata is supplied");
+            }
+            return;
+        }
+        if (!inventoryAddressPurposeDirectory.addressPurposeExists(normalizedAddressPurposeCode)) {
+            throw new IllegalArgumentException("Inventory address purpose not found: " + normalizedAddressPurposeCode);
         }
     }
 

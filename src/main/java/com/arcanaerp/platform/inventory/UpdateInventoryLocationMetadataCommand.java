@@ -4,6 +4,7 @@ public record UpdateInventoryLocationMetadataCommand(
     String code,
     String name,
     String facilityTypeCode,
+    String addressPurposeCode,
     String addressLine1,
     String addressLine2,
     String city,

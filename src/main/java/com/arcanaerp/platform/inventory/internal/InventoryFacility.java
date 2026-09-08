@@ -37,6 +37,9 @@ public class InventoryFacility {
     @Column(length = 64)
     private String facilityTypeCode;
 
+    @Column(length = 64)
+    private String addressPurposeCode;
+
     @Column(length = 255)
     private String addressLine1;
 
@@ -77,6 +80,7 @@ public class InventoryFacility {
         String code,
         String name,
         String facilityTypeCode,
+        String addressPurposeCode,
         String addressLine1,
         String addressLine2,
         String city,
@@ -91,6 +95,7 @@ public class InventoryFacility {
         this.code = code;
         this.name = name;
         this.facilityTypeCode = facilityTypeCode;
+        this.addressPurposeCode = addressPurposeCode;
         this.addressLine1 = addressLine1;
         this.addressLine2 = addressLine2;
         this.city = city;
@@ -123,6 +128,7 @@ public class InventoryFacility {
             code,
             name,
             facilityTypeCode,
+            null,
             addressLine1,
             addressLine2,
             city,
@@ -140,6 +146,7 @@ public class InventoryFacility {
         String code,
         String name,
         String facilityTypeCode,
+        String addressPurposeCode,
         String addressLine1,
         String addressLine2,
         String city,
@@ -158,6 +165,7 @@ public class InventoryFacility {
             normalizeRequired(code, "code").toUpperCase(),
             normalizeRequired(name, "name"),
             normalizeOptionalUpper(facilityTypeCode),
+            normalizeOptionalUpper(addressPurposeCode),
             normalizeOptional(addressLine1),
             normalizeOptional(addressLine2),
             normalizeOptional(city),
@@ -185,6 +193,7 @@ public class InventoryFacility {
     void updateMetadata(
         String name,
         String facilityTypeCode,
+        String addressPurposeCode,
         String addressLine1,
         String addressLine2,
         String city,
@@ -201,6 +210,7 @@ public class InventoryFacility {
         }
         String normalizedName = normalizeRequired(name, "name");
         String normalizedFacilityTypeCode = normalizeOptionalUpper(facilityTypeCode);
+        String normalizedAddressPurposeCode = normalizeOptionalUpper(addressPurposeCode);
         String normalizedAddressLine1 = normalizeOptional(addressLine1);
         String normalizedAddressLine2 = normalizeOptional(addressLine2);
         String normalizedCity = normalizeOptional(city);
@@ -214,6 +224,7 @@ public class InventoryFacility {
         if (
             this.name.equals(normalizedName)
                 && equalsNullable(this.facilityTypeCode, normalizedFacilityTypeCode)
+                && equalsNullable(this.addressPurposeCode, normalizedAddressPurposeCode)
                 && equalsNullable(this.addressLine1, normalizedAddressLine1)
                 && equalsNullable(this.addressLine2, normalizedAddressLine2)
                 && equalsNullable(this.city, normalizedCity)
@@ -229,6 +240,7 @@ public class InventoryFacility {
 
         this.name = normalizedName;
         this.facilityTypeCode = normalizedFacilityTypeCode;
+        this.addressPurposeCode = normalizedAddressPurposeCode;
         this.addressLine1 = normalizedAddressLine1;
         this.addressLine2 = normalizedAddressLine2;
         this.city = normalizedCity;

@@ -6,6 +6,7 @@ public record CreateInventoryFacilityRequest(
     @NotBlank String code,
     @NotBlank String name,
     String facilityTypeCode,
+    String addressPurposeCode,
     String addressLine1,
     String addressLine2,
     String city,

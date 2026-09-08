@@ -131,6 +131,9 @@ class InventoryApiIntegrationTest {
     private InventoryLocationTypeRepository inventoryLocationTypeRepository;
 
     @Autowired
+    private InventoryAddressPurposeRepository inventoryAddressPurposeRepository;
+
+    @Autowired
     private InventoryContactPurposeRepository inventoryContactPurposeRepository;
 
     @Autowired
@@ -201,6 +204,7 @@ class InventoryApiIntegrationTest {
         locationMetadataChangeAuditRepository.deleteAll();
         inventoryLocationRepository.deleteAll();
         inventoryLocationTypeRepository.deleteAll();
+        inventoryAddressPurposeRepository.deleteAll();
         inventoryContactPurposeRepository.deleteAll();
         inventoryRegionRepository.deleteAll();
         inventoryCountryRepository.deleteAll();
@@ -208,6 +212,7 @@ class InventoryApiIntegrationTest {
         inventoryEntryRoleTypeRepository.deleteAll();
         seedLocationType("WAREHOUSE", "Warehouse");
         seedLocationType("STORE", "Store");
+        seedAddressPurpose("PRIMARY", "Primary address");
         seedContactPurpose("PRIMARY", "Primary contact");
         seedInventoryCountry("US", "United States");
         seedInventoryRegion("US", "OR", "Oregon");
@@ -408,6 +413,58 @@ class InventoryApiIntegrationTest {
                 .content(payload)),
             "Inventory country already exists for code: CA",
             "/api/inventory/countries"
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryAddressPurposes() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/address-purposes")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " shipping ",
+                  "description": " Shipping address "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.code").value("SHIPPING"))
+            .andExpect(jsonPath("$.description").value("Shipping address"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/address-purposes/{code}", "shipping"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("SHIPPING"))
+            .andExpect(jsonPath("$.description").value("Shipping address"));
+
+        mockMvc.perform(get("/api/inventory/address-purposes")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].code").value("PRIMARY"))
+            .andExpect(jsonPath("$.items[1].code").value("SHIPPING"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryAddressPurposeCode() throws Exception {
+        String payload = """
+            {
+              "code": "shipping",
+              "description": "Shipping address"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/address-purposes")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/address-purposes")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory address purpose already exists for code: SHIPPING",
+            "/api/inventory/address-purposes"
         );
     }
 
@@ -1411,6 +1468,7 @@ class InventoryApiIntegrationTest {
                   "code": " wh-central ",
                   "name": " Central Warehouse ",
                   "facilityTypeCode": " warehouse ",
+                  "addressPurposeCode": " primary ",
                   "addressLine1": " 100 Main Dock ",
                   "addressLine2": " Suite 2 ",
                   "city": " Salem ",
@@ -1477,6 +1535,7 @@ class InventoryApiIntegrationTest {
                   "code": " dc-west ",
                   "name": " West Distribution Center ",
                   "facilityTypeCode": " warehouse ",
+                  "addressPurposeCode": " primary ",
                   "addressLine1": " 200 Distribution Way ",
                   "addressLine2": " Building 4 ",
                   "city": " Reno ",
@@ -1551,6 +1610,7 @@ class InventoryApiIntegrationTest {
                     {
                       "code": "dc-unknown-country",
                       "name": "Unknown Country Facility",
+                      "addressPurposeCode": "primary",
                       "countryCode": "ca"
                     }
                     """)),
@@ -1568,10 +1628,45 @@ class InventoryApiIntegrationTest {
                     {
                       "code": "dc-region-only",
                       "name": "Region Only Facility",
+                      "addressPurposeCode": "primary",
                       "regionCode": "nv"
                     }
                     """)),
             "countryCode is required when regionCode is supplied",
+            "/api/inventory/facilities"
+        );
+    }
+
+    @Test
+    void rejectsInventoryFacilityWithUnknownAddressPurpose() throws Exception {
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/facilities")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "dc-unknown-address-purpose",
+                      "name": "Unknown Address Purpose Facility",
+                      "addressPurposeCode": "drop-ship"
+                    }
+                    """)),
+            "Inventory address purpose not found: DROP-SHIP",
+            "/api/inventory/facilities"
+        );
+    }
+
+    @Test
+    void rejectsInventoryFacilityAddressMetadataWithoutAddressPurpose() throws Exception {
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/facilities")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "dc-address-no-purpose",
+                      "name": "Address Without Purpose Facility",
+                      "addressLine1": "100 Dock Way"
+                    }
+                    """)),
+            "addressPurposeCode is required when address metadata is supplied",
             "/api/inventory/facilities"
         );
     }
@@ -1708,6 +1803,7 @@ class InventoryApiIntegrationTest {
                 "dc-metadata",
                 "Metadata Distribution Center",
                 "warehouse",
+                "primary",
                 "100 Dock Way",
                 null,
                 "Reno",
@@ -1730,6 +1826,7 @@ class InventoryApiIntegrationTest {
                 {
                   "name": " Metadata Distribution Center East ",
                   "facilityTypeCode": " store ",
+                  "addressPurposeCode": " primary ",
                   "addressLine1": " 200 East Dock ",
                   "addressLine2": " Building 2 ",
                   "city": " Sparks ",
@@ -1786,6 +1883,7 @@ class InventoryApiIntegrationTest {
                 "dc-metadata-noop",
                 "No-op Metadata Distribution Center",
                 "warehouse",
+                "primary",
                 "100 Dock Way",
                 null,
                 "Reno",
@@ -1809,6 +1907,7 @@ class InventoryApiIntegrationTest {
                     {
                       "name": "No-op Metadata Distribution Center",
                       "facilityTypeCode": "warehouse",
+                  "addressPurposeCode": " primary ",
                       "addressLine1": "100 Dock Way",
                       "city": "Reno",
                       "regionCode": "nv",
@@ -1891,6 +1990,7 @@ class InventoryApiIntegrationTest {
                     {
                       "name": "Region Distribution Center",
                       "facilityTypeCode": "warehouse",
+                      "addressPurposeCode": "primary",
                       "regionCode": "wa",
                       "countryCode": "us",
                       "changedBy": "facilities.ops@arcanaerp.com"
@@ -2911,6 +3011,7 @@ class InventoryApiIntegrationTest {
                     {
                       "code": "wh-unknown-region",
                       "name": "Unknown Region Warehouse",
+                      "addressPurposeCode": "primary",
                       "regionCode": "wa",
                       "countryCode": "us"
                     }
@@ -2951,6 +3052,7 @@ class InventoryApiIntegrationTest {
                 {
                   "name": "Metadata Warehouse East",
                   "facilityTypeCode": "store",
+                  "addressPurposeCode": " primary ",
                   "addressLine1": "500 East Dock",
                   "city": "Portland",
                   "regionCode": "or",
@@ -3144,11 +3246,13 @@ class InventoryApiIntegrationTest {
                 null,
                 null,
                 null,
+                null,
                 null
             ),
             new InventoryLocationMetadataSnapshot(
                 "Location History East",
                 "warehouse",
+                "primary",
                 "100 East Dock",
                 null,
                 "Salem",
@@ -3168,6 +3272,7 @@ class InventoryApiIntegrationTest {
             new InventoryLocationMetadataSnapshot(
                 "Location History East",
                 "warehouse",
+                "primary",
                 "100 East Dock",
                 null,
                 "Salem",
@@ -3181,6 +3286,7 @@ class InventoryApiIntegrationTest {
             new InventoryLocationMetadataSnapshot(
                 "Location History West",
                 "store",
+                "primary",
                 "200 West Dock",
                 null,
                 "Portland",
@@ -6217,6 +6323,12 @@ class InventoryApiIntegrationTest {
     private void seedLocationType(String code, String description) {
         inventoryLocationTypeRepository.save(
             InventoryLocationType.create(code, description, SEED_INSTANT)
+        );
+    }
+
+    private void seedAddressPurpose(String code, String description) {
+        inventoryAddressPurposeRepository.save(
+            InventoryAddressPurpose.create(code, description, SEED_INSTANT)
         );
     }
 
