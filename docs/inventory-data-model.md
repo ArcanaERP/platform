@@ -13,6 +13,7 @@ erDiagram
     INVENTORY_ADDRESS_PURPOSES ||--o{ INVENTORY_POSTAL_ADDRESSES : classifies
     INVENTORY_CONTACT_PURPOSES ||--o{ INVENTORY_LOCATIONS : classifies_contact
     INVENTORY_CONTACT_PURPOSES ||--o{ INVENTORY_FACILITIES : classifies_contact
+    INVENTORY_CONTACT_PURPOSES ||--o{ INVENTORY_TELECOM_CONTACTS : classifies
     INVENTORY_COUNTRIES ||--o{ INVENTORY_REGIONS : contains
     INVENTORY_COUNTRIES ||--o{ INVENTORY_LOCATIONS : addresses
     INVENTORY_COUNTRIES ||--o{ INVENTORY_FACILITIES : addresses
@@ -35,6 +36,7 @@ erDiagram
     INVENTORY_FACILITIES ||--o{ INVENTORY_FACILITY_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_FACILITIES ||--o{ INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENTS : assigns_party_roles
     INVENTORY_FACILITIES ||--o{ INVENTORY_POSTAL_ADDRESSES : owns_addresses
+    INVENTORY_FACILITIES ||--o{ INVENTORY_TELECOM_CONTACTS : owns_contacts
     INVENTORY_FACILITIES ||--o{ INVENTORY_STORAGE_AREAS : owns_storage
     INVENTORY_STORAGE_AREAS ||--o{ INVENTORY_STORAGE_AREAS : contains
     INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENTS ||--o{ INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENT_END_AUDITS : records_ends
@@ -51,7 +53,9 @@ erDiagram
     INVENTORY_LOCATIONS ||--o{ INVENTORY_ITEM_LOCATION_ASSIGNMENTS : assigned_location
     INVENTORY_LOCATIONS ||--o{ INVENTORY_LOCATION_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_LOCATIONS ||--o{ INVENTORY_POSTAL_ADDRESSES : owns_addresses
+    INVENTORY_LOCATIONS ||--o{ INVENTORY_TELECOM_CONTACTS : owns_contacts
     INVENTORY_POSTAL_ADDRESSES ||--o{ INVENTORY_POSTAL_ADDRESS_METADATA_CHANGE_AUDITS : records_metadata_changes
+    INVENTORY_TELECOM_CONTACTS ||--o{ INVENTORY_TELECOM_CONTACT_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ITEMS ||--o{ INVENTORY_ADJUSTMENTS : records_movements
     INVENTORY_ITEMS ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : records_pickups_dropoffs
     INVENTORY_ADJUSTMENTS ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : links_stock_effect
@@ -150,6 +154,35 @@ erDiagram
       STRING parentStorageAreaCode
       INSTANT createdAt
       INSTANT updatedAt
+    }
+
+    INVENTORY_TELECOM_CONTACTS {
+      UUID id PK
+      STRING ownerType
+      STRING ownerCode
+      STRING contactPurposeCode
+      STRING telecomType
+      STRING contactName
+      STRING contactValue
+      INSTANT createdAt
+      INSTANT updatedAt
+    }
+
+    INVENTORY_TELECOM_CONTACT_METADATA_CHANGE_AUDITS {
+      UUID id PK
+      UUID telecomContactId
+      STRING ownerType
+      STRING ownerCode
+      STRING previousContactPurposeCode
+      STRING currentContactPurposeCode
+      STRING previousTelecomType
+      STRING currentTelecomType
+      STRING previousContactName
+      STRING currentContactName
+      STRING previousContactValue
+      STRING currentContactValue
+      STRING changedBy
+      INSTANT changedAt
     }
 
     INVENTORY_PARTIES {
@@ -639,6 +672,10 @@ erDiagram
 - Postal address country/region codes use the inventory-owned country/region catalogs.
 - Postal address metadata changes are append-only via `inventory_postal_address_metadata_change_audits`.
 - Inventory location and facility contact metadata requires `contactPurposeCode`; supplied purpose codes must exist in `inventory_contact_purposes`.
+- Inventory telecom contacts are first-class contact records owned by either `LOCATION` or `FACILITY`.
+- Telecom contacts require contact purpose, telecom type, and contact value.
+- Telecom contacts support `EMAIL` and `PHONE`; email contact values normalize to lowercase.
+- Telecom contact metadata changes are append-only via `inventory_telecom_contact_metadata_change_audits`.
 - Inventory location metadata changes are append-only via `inventory_location_metadata_change_audits`.
 - Inventory item state carries `onHandQuantity`, `availableQuantity`, and `soldQuantity` for legacy inventory-entry parity with `number_in_stock`, `number_available`, and `number_sold`.
 - Inventory item metadata carries `unitOfMeasurementCode`, `classificationCode`, optional `productInstanceCode`, optional `externalReference`, optional `sourceSystemCode`, and optional owner fields for legacy inventory-entry parity.
@@ -694,14 +731,15 @@ erDiagram
   - `inventory_entry_relationship_types(code)`
   - `inventory_entry_role_types(code)`
   - `inventory_facilities(code)`
-- `inventory_facility_party_role_assignments(inventoryFacilityId, partyCode, roleTypeCode)`
+  - `inventory_facility_party_role_assignments(inventoryFacilityId, partyCode, roleTypeCode)`
   - `inventory_storage_areas(facilityCode, code)`
   - `inventory_fixed_assets(code)`
   - `inventory_fixed_asset_party_role_assignments(inventoryFixedAssetId, partyCode, roleTypeCode)`
-- `inventory_product_instance_assignments(inventoryItemId, productInstanceCode)`
-- `inventory_locations(code)`
-- `inventory_postal_addresses(ownerType, ownerCode, addressPurposeCode)`
-- `inventory_items(sku, locationCode)`
+  - `inventory_product_instance_assignments(inventoryItemId, productInstanceCode)`
+  - `inventory_locations(code)`
+  - `inventory_postal_addresses(ownerType, ownerCode, addressPurposeCode)`
+  - `inventory_telecom_contacts(ownerType, ownerCode, contactPurposeCode, telecomType)`
+  - `inventory_items(sku, locationCode)`
   - `inventory_items(sourceSystemCode, externalReference)`
   - `inventory_transfer_reversal_idempotency(transferId, idempotencyKey)`
 - Indexes:
@@ -749,6 +787,11 @@ erDiagram
   - `inventory_postal_addresses(addressPurposeCode)`
   - `inventory_postal_address_metadata_change_audits(postalAddressId, changedAt)`
   - `inventory_postal_address_metadata_change_audits(ownerType, ownerCode, changedAt)`
+  - `inventory_telecom_contacts(ownerType, ownerCode)`
+  - `inventory_telecom_contacts(contactPurposeCode)`
+  - `inventory_telecom_contacts(telecomType)`
+  - `inventory_telecom_contact_metadata_change_audits(telecomContactId, changedAt)`
+  - `inventory_telecom_contact_metadata_change_audits(ownerType, ownerCode, changedAt)`
   - `inventory_item_metadata_change_audits(inventoryItemId, changedAt)`
   - `inventory_item_metadata_change_audits(sku, locationCode, changedAt)`
   - `inventory_item_owner_change_audits(inventoryItemId, changedAt)`
@@ -798,6 +841,11 @@ erDiagram
 - `POST /api/inventory/storage-areas`
 - `GET /api/inventory/storage-areas/{id}`
 - `GET /api/inventory/storage-areas?page=&size=&facilityCode=&storageAreaType=&parentStorageAreaCode=`
+- `POST /api/inventory/telecom-contacts`
+- `GET /api/inventory/telecom-contacts/{id}`
+- `PATCH /api/inventory/telecom-contacts/{id}/metadata`
+- `GET /api/inventory/telecom-contacts/{id}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/inventory/telecom-contacts?page=&size=&ownerType=&ownerCode=&contactPurposeCode=&telecomType=`
 - `POST /api/inventory/contact-purposes`
 - `GET /api/inventory/contact-purposes/{code}`
 - `GET /api/inventory/contact-purposes?page=&size=`
@@ -924,6 +972,10 @@ erDiagram
 - inventory storage area type, facility, code, and parent codes are normalized to uppercase
 - inventory storage area writes require an active facility and optional parent storage area in the same facility
 - inventory storage area list filters match normalized facility code, storage-area type, and parent storage-area code
+- inventory telecom contact owner, purpose, and type codes are normalized to uppercase
+- inventory telecom contact email values are normalized to lowercase
+- inventory telecom contact writes validate owner existence and contact purpose
+- inventory telecom contact metadata updates require `changedBy`, reject no-op changes, and append audit rows
 - inactive inventory locations remain readable but reject new adjustment and transfer writes
 - inventory item UOM and classification codes default to `EA` and `ON_HAND` when not explicitly supplied
 - inventory item available quantity defaults to on-hand quantity, sold quantity defaults to zero, and available quantity cannot exceed on-hand quantity

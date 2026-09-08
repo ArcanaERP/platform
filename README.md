@@ -329,6 +329,7 @@ Inventory:
 - Inventory postal addresses are first-class location/facility address records with address-purpose and country/region validation plus metadata history.
 - Inventory storage areas model facility-owned areas and bins with optional same-facility parent hierarchy.
 - Inventory location and facility contact metadata requires a valid `contactPurposeCode` from `POST /api/inventory/contact-purposes`.
+- Inventory telecom contacts are first-class location/facility contact records with contact-purpose validation and metadata history.
 - Inventory fixed assets provide a first-class asset catalog for pickup/dropoff traceability.
 - Inventory fixed asset active and metadata changes are audit-trailed with actor attribution.
 - Inventory fixed asset party-role assignments track which parties serve asset-specific roles and support end history.
@@ -357,6 +358,11 @@ Inventory:
 - `POST /api/inventory/storage-areas`
 - `GET /api/inventory/storage-areas/{id}`
 - `GET /api/inventory/storage-areas?page=&size=&facilityCode=&storageAreaType=&parentStorageAreaCode=`
+- `POST /api/inventory/telecom-contacts`
+- `GET /api/inventory/telecom-contacts/{id}`
+- `PATCH /api/inventory/telecom-contacts/{id}/metadata`
+- `GET /api/inventory/telecom-contacts/{id}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/inventory/telecom-contacts?page=&size=&ownerType=&ownerCode=&contactPurposeCode=&telecomType=`
 - `POST /api/inventory/contact-purposes`
 - `GET /api/inventory/contact-purposes/{code}`
 - `GET /api/inventory/contact-purposes?page=&size=`

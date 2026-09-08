@@ -98,6 +98,12 @@ class InventoryApiIntegrationTest {
     private InventoryStorageAreaRepository inventoryStorageAreaRepository;
 
     @Autowired
+    private InventoryTelecomContactRepository inventoryTelecomContactRepository;
+
+    @Autowired
+    private InventoryTelecomContactMetadataChangeAuditRepository telecomContactMetadataChangeAuditRepository;
+
+    @Autowired
     private InventoryFacilityActiveChangeAuditRepository facilityActiveChangeAuditRepository;
 
     @Autowired
@@ -209,6 +215,8 @@ class InventoryApiIntegrationTest {
         facilityPartyRoleAssignmentRepository.deleteAll();
         postalAddressMetadataChangeAuditRepository.deleteAll();
         inventoryPostalAddressRepository.deleteAll();
+        telecomContactMetadataChangeAuditRepository.deleteAll();
+        inventoryTelecomContactRepository.deleteAll();
         inventoryStorageAreaRepository.deleteAll();
         inventoryFacilityRepository.deleteAll();
         inventoryPartyRoleTypeRepository.deleteAll();
@@ -3388,6 +3396,235 @@ class InventoryApiIntegrationTest {
                     """)),
             "Inventory postal address metadata is unchanged",
             "/api/inventory/postal-addresses/" + address.getId() + "/metadata"
+        );
+    }
+
+    @Test
+    void createsReadsUpdatesAndListsInventoryTelecomContacts() throws Exception {
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "wh-telecom",
+            "Telecom Warehouse",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+
+        String contactId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/telecom-contacts"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "ownerType": " facility ",
+                  "ownerCode": " wh-telecom ",
+                  "contactPurposeCode": " primary ",
+                  "telecomType": " email ",
+                  "contactName": " Receiving Desk ",
+                  "contactValue": " Receiving@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.ownerType").value("FACILITY"))
+            .andExpect(jsonPath("$.ownerCode").value("WH-TELECOM"))
+            .andExpect(jsonPath("$.contactPurposeCode").value("PRIMARY"))
+            .andExpect(jsonPath("$.telecomType").value("EMAIL"))
+            .andExpect(jsonPath("$.contactName").value("Receiving Desk"))
+            .andExpect(jsonPath("$.contactValue").value("receiving@arcanaerp.com"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andExpect(jsonPath("$.updatedAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(get("/api/inventory/telecom-contacts/{id}", contactId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.ownerType").value("FACILITY"))
+            .andExpect(jsonPath("$.ownerCode").value("WH-TELECOM"))
+            .andExpect(jsonPath("$.contactPurposeCode").value("PRIMARY"))
+            .andExpect(jsonPath("$.telecomType").value("EMAIL"))
+            .andExpect(jsonPath("$.contactValue").value("receiving@arcanaerp.com"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/telecom-contacts/{id}/metadata",
+            contactId
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "contactPurposeCode": " primary ",
+                  "telecomType": " phone ",
+                  "contactName": " Receiving Phone ",
+                  "contactValue": " +1-503-555-0101 ",
+                  "changedBy": " Facilities.Ops@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contactPurposeCode").value("PRIMARY"))
+            .andExpect(jsonPath("$.telecomType").value("PHONE"))
+            .andExpect(jsonPath("$.contactName").value("Receiving Phone"))
+            .andExpect(jsonPath("$.contactValue").value("+1-503-555-0101"));
+
+        mockMvc.perform(get("/api/inventory/telecom-contacts/{id}/metadata-history", contactId)
+            .param("changedBy", "facilities.ops@arcanaerp.com"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].telecomContactId").value(contactId))
+            .andExpect(jsonPath("$.items[0].previousTelecomType").value("EMAIL"))
+            .andExpect(jsonPath("$.items[0].currentTelecomType").value("PHONE"))
+            .andExpect(jsonPath("$.items[0].previousContactValue").value("receiving@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].currentContactValue").value("+1-503-555-0101"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("facilities.ops@arcanaerp.com"));
+
+        mockMvc.perform(get("/api/inventory/telecom-contacts")
+            .param("ownerType", "facility")
+            .param("ownerCode", "wh-telecom")
+            .param("contactPurposeCode", "primary")
+            .param("telecomType", "phone"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].id").value(contactId))
+            .andExpect(jsonPath("$.items[0].ownerType").value("FACILITY"))
+            .andExpect(jsonPath("$.items[0].ownerCode").value("WH-TELECOM"))
+            .andExpect(jsonPath("$.items[0].telecomType").value("PHONE"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryTelecomContactForOwnerPurposeType() throws Exception {
+        inventoryLocationRepository.save(InventoryLocation.create("wh-telecom-dup", "Telecom Warehouse", SEED_INSTANT));
+        String payload = """
+            {
+              "ownerType": "LOCATION",
+              "ownerCode": "WH-TELECOM-DUP",
+              "contactPurposeCode": "PRIMARY",
+              "telecomType": "EMAIL",
+              "contactName": "Receiving Desk",
+              "contactValue": "receiving@arcanaerp.com"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/telecom-contacts"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/telecom-contacts"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory telecom contact already exists for owner: LOCATION/WH-TELECOM-DUP, purpose: PRIMARY, and type: EMAIL",
+            "/api/inventory/telecom-contacts"
+        );
+    }
+
+    @Test
+    void rejectsInventoryTelecomContactForUnknownOwner() throws Exception {
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/telecom-contacts"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "ownerType": "LOCATION",
+                      "ownerCode": "wh-missing",
+                      "contactPurposeCode": "primary",
+                      "telecomType": "EMAIL",
+                      "contactValue": "receiving@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory location not found: WH-MISSING",
+            "/api/inventory/telecom-contacts"
+        );
+    }
+
+    @Test
+    void rejectsInventoryTelecomContactWithUnknownContactPurpose() throws Exception {
+        inventoryLocationRepository.save(InventoryLocation.create("wh-telecom-purpose", "Telecom Warehouse", SEED_INSTANT));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/telecom-contacts"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "ownerType": "LOCATION",
+                      "ownerCode": "wh-telecom-purpose",
+                      "contactPurposeCode": "dispatch",
+                      "telecomType": "EMAIL",
+                      "contactValue": "receiving@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory contact purpose not found: DISPATCH",
+            "/api/inventory/telecom-contacts"
+        );
+    }
+
+    @Test
+    void rejectsInventoryTelecomContactWithInvalidType() throws Exception {
+        inventoryLocationRepository.save(InventoryLocation.create("wh-telecom-type", "Telecom Warehouse", SEED_INSTANT));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/telecom-contacts"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "ownerType": "LOCATION",
+                      "ownerCode": "wh-telecom-type",
+                      "contactPurposeCode": "primary",
+                      "telecomType": "FAX",
+                      "contactValue": "+1-503-555-0101"
+                    }
+                    """)),
+            "telecomType must be EMAIL or PHONE",
+            "/api/inventory/telecom-contacts"
+        );
+    }
+
+    @Test
+    void rejectsNoOpInventoryTelecomContactMetadataChange() throws Exception {
+        InventoryLocation location = inventoryLocationRepository.save(
+            InventoryLocation.create("wh-telecom-noop", "Telecom Warehouse", SEED_INSTANT)
+        );
+        InventoryTelecomContact contact = inventoryTelecomContactRepository.save(InventoryTelecomContact.create(
+            "LOCATION",
+            location.getCode(),
+            "PRIMARY",
+            "EMAIL",
+            "Receiving Desk",
+            "receiving@arcanaerp.com",
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/telecom-contacts/{id}/metadata",
+                contact.getId()
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "contactPurposeCode": "primary",
+                      "telecomType": "email",
+                      "contactName": "Receiving Desk",
+                      "contactValue": "Receiving@ArcanaERP.com",
+                      "changedBy": "ops"
+                    }
+                    """)),
+            "Inventory telecom contact metadata is unchanged",
+            "/api/inventory/telecom-contacts/" + contact.getId() + "/metadata"
         );
     }
 
