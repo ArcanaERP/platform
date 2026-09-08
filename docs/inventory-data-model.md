@@ -8,6 +8,11 @@ Updated: 2026-09-06
 erDiagram
     INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_LOCATIONS : classifies
     INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_FACILITIES : classifies
+    INVENTORY_COUNTRIES ||--o{ INVENTORY_REGIONS : contains
+    INVENTORY_COUNTRIES ||--o{ INVENTORY_LOCATIONS : addresses
+    INVENTORY_COUNTRIES ||--o{ INVENTORY_FACILITIES : addresses
+    INVENTORY_REGIONS ||--o{ INVENTORY_LOCATIONS : addresses
+    INVENTORY_REGIONS ||--o{ INVENTORY_FACILITIES : addresses
     INVENTORY_FIXED_ASSET_TYPES ||--o{ INVENTORY_FIXED_ASSETS : classifies
     INVENTORY_PARTIES ||--o{ INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENTS : participates
     INVENTORY_PARTIES ||--o{ INVENTORY_FIXED_ASSET_PARTY_ROLE_ASSIGNMENTS : participates
@@ -54,6 +59,21 @@ erDiagram
       UUID id PK
       STRING code UK
       STRING description
+      INSTANT createdAt
+    }
+
+    INVENTORY_COUNTRIES {
+      UUID id PK
+      STRING code UK
+      STRING name
+      INSTANT createdAt
+    }
+
+    INVENTORY_REGIONS {
+      UUID id PK
+      STRING countryCode
+      STRING code
+      STRING name
       INSTANT createdAt
     }
 
@@ -515,6 +535,8 @@ erDiagram
 - Inventory item-location assignment ends are append-only via `inventory_item_location_assignment_end_audits`.
 - Inventory locations carry optional facility type, address, and contact metadata for facility-model parity.
 - Inventory location and facility `facilityTypeCode` values are optional, but supplied codes must exist in `inventory_location_types`.
+- Inventory location and facility `countryCode` values are optional, but supplied codes must exist in `inventory_countries`.
+- Inventory location and facility `regionCode` values require `countryCode` and must exist for that country in `inventory_regions`.
 - Inventory location metadata changes are append-only via `inventory_location_metadata_change_audits`.
 - Inventory item state carries `onHandQuantity`, `availableQuantity`, and `soldQuantity` for legacy inventory-entry parity with `number_in_stock`, `number_available`, and `number_sold`.
 - Inventory item metadata carries `unitOfMeasurementCode`, `classificationCode`, optional `productInstanceCode`, optional `externalReference`, optional `sourceSystemCode`, and optional owner fields for legacy inventory-entry parity.
@@ -559,6 +581,8 @@ erDiagram
 - Unique constraints:
   - `inventory_location_types(code)`
   - `inventory_fixed_asset_types(code)`
+  - `inventory_countries(code)`
+  - `inventory_regions(countryCode, code)`
   - `inventory_parties(code)`
   - `inventory_party_role_types(code)`
   - `inventory_entry_relationship_types(code)`
@@ -574,6 +598,7 @@ erDiagram
   - `inventory_transfer_reversal_idempotency(transferId, idempotencyKey)`
 - Indexes:
   - `inventory_facilities(active, code)`
+  - `inventory_regions(countryCode)`
   - `inventory_facility_active_change_audits(inventoryFacilityId, changedAt)`
   - `inventory_facility_active_change_audits(facilityCode, changedAt)`
   - `inventory_facility_metadata_change_audits(inventoryFacilityId, changedAt)`
@@ -645,6 +670,12 @@ erDiagram
 - `POST /api/inventory/fixed-asset-types`
 - `GET /api/inventory/fixed-asset-types/{code}`
 - `GET /api/inventory/fixed-asset-types?page=&size=`
+- `POST /api/inventory/countries`
+- `GET /api/inventory/countries/{code}`
+- `GET /api/inventory/countries?page=&size=`
+- `POST /api/inventory/regions`
+- `GET /api/inventory/countries/{countryCode}/regions/{code}`
+- `GET /api/inventory/regions?page=&size=&countryCode=`
 - `POST /api/inventory/parties`
 - `GET /api/inventory/parties/{code}`
 - `GET /api/inventory/parties?page=&size=`

@@ -131,6 +131,12 @@ class InventoryApiIntegrationTest {
     private InventoryLocationTypeRepository inventoryLocationTypeRepository;
 
     @Autowired
+    private InventoryCountryRepository inventoryCountryRepository;
+
+    @Autowired
+    private InventoryRegionRepository inventoryRegionRepository;
+
+    @Autowired
     private InventoryEntryRelationshipTypeRepository inventoryEntryRelationshipTypeRepository;
 
     @Autowired
@@ -192,10 +198,15 @@ class InventoryApiIntegrationTest {
         locationMetadataChangeAuditRepository.deleteAll();
         inventoryLocationRepository.deleteAll();
         inventoryLocationTypeRepository.deleteAll();
+        inventoryRegionRepository.deleteAll();
+        inventoryCountryRepository.deleteAll();
         inventoryEntryRelationshipTypeRepository.deleteAll();
         inventoryEntryRoleTypeRepository.deleteAll();
         seedLocationType("WAREHOUSE", "Warehouse");
         seedLocationType("STORE", "Store");
+        seedInventoryCountry("US", "United States");
+        seedInventoryRegion("US", "OR", "Oregon");
+        seedInventoryRegion("US", "NV", "Nevada");
         seedFixedAssetType("VEHICLE", "Vehicle");
         seedInventoryParty("WEST-OPERATOR", "West operator");
         seedInventoryParty("WEST-CARRIER", "West carrier");
@@ -340,6 +351,116 @@ class InventoryApiIntegrationTest {
                 .content(payload)),
             "Inventory location type already exists for code: CROSS_DOCK",
             "/api/inventory/location-types"
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryCountries() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/countries")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " ca ",
+                  "name": " Canada "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.code").value("CA"))
+            .andExpect(jsonPath("$.name").value("Canada"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/countries/{code}", "ca"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("CA"))
+            .andExpect(jsonPath("$.name").value("Canada"));
+
+        mockMvc.perform(get("/api/inventory/countries")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].code").value("CA"))
+            .andExpect(jsonPath("$.items[1].code").value("US"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryCountryCode() throws Exception {
+        String payload = """
+            {
+              "code": "ca",
+              "name": "Canada"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/countries")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/countries")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory country already exists for code: CA",
+            "/api/inventory/countries"
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryRegions() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/regions")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "countryCode": " us ",
+                  "code": " wa ",
+                  "name": " Washington "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.countryCode").value("US"))
+            .andExpect(jsonPath("$.code").value("WA"))
+            .andExpect(jsonPath("$.name").value("Washington"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/countries/{countryCode}/regions/{code}", "us", "wa"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.countryCode").value("US"))
+            .andExpect(jsonPath("$.code").value("WA"))
+            .andExpect(jsonPath("$.name").value("Washington"));
+
+        mockMvc.perform(get("/api/inventory/regions")
+            .param("countryCode", "us")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(3))
+            .andExpect(jsonPath("$.items[0].code").value("NV"))
+            .andExpect(jsonPath("$.items[1].code").value("OR"))
+            .andExpect(jsonPath("$.items[2].code").value("WA"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryRegionCodeForCountry() throws Exception {
+        String payload = """
+            {
+              "countryCode": "us",
+              "code": "wa",
+              "name": "Washington"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/regions")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/regions")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory region already exists for country: US and code: WA",
+            "/api/inventory/regions"
         );
     }
 
@@ -1359,6 +1480,40 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void rejectsInventoryFacilityWithUnknownCountry() throws Exception {
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/facilities")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "dc-unknown-country",
+                      "name": "Unknown Country Facility",
+                      "countryCode": "ca"
+                    }
+                    """)),
+            "Inventory country not found: CA",
+            "/api/inventory/facilities"
+        );
+    }
+
+    @Test
+    void rejectsInventoryFacilityWithRegionWithoutCountry() throws Exception {
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/facilities")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "dc-region-only",
+                      "name": "Region Only Facility",
+                      "regionCode": "nv"
+                    }
+                    """)),
+            "countryCode is required when regionCode is supplied",
+            "/api/inventory/facilities"
+        );
+    }
+
+    @Test
     void updatesInventoryFacilityActiveStateAndListsActiveHistory() throws Exception {
         inventoryFacilityRepository.save(
             InventoryFacility.create(
@@ -1600,6 +1755,45 @@ class InventoryApiIntegrationTest {
                     """)),
             "Inventory location type not found: YARD",
             "/api/inventory/facilities/dc-metadata-type/metadata"
+        );
+    }
+
+    @Test
+    void rejectsInventoryFacilityMetadataUpdateWithUnknownRegion() throws Exception {
+        inventoryFacilityRepository.save(
+            InventoryFacility.create(
+                "dc-metadata-region",
+                "Region Distribution Center",
+                "warehouse",
+                null,
+                null,
+                null,
+                "nv",
+                null,
+                "us",
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/facilities/{code}/metadata",
+                "dc-metadata-region"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "Region Distribution Center",
+                      "facilityTypeCode": "warehouse",
+                      "regionCode": "wa",
+                      "countryCode": "us",
+                      "changedBy": "facilities.ops@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory region not found for country: US and code: WA",
+            "/api/inventory/facilities/dc-metadata-region/metadata"
         );
     }
 
@@ -2600,6 +2794,24 @@ class InventoryApiIntegrationTest {
                     }
                     """)),
             "Inventory location type not found: YARD",
+            "/api/inventory/locations"
+        );
+    }
+
+    @Test
+    void rejectsInventoryLocationRegistrationWithUnknownRegion() throws Exception {
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/locations")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "wh-unknown-region",
+                      "name": "Unknown Region Warehouse",
+                      "regionCode": "wa",
+                      "countryCode": "us"
+                    }
+                    """)),
+            "Inventory region not found for country: US and code: WA",
             "/api/inventory/locations"
         );
     }
@@ -5894,6 +6106,18 @@ class InventoryApiIntegrationTest {
     private void seedLocationType(String code, String description) {
         inventoryLocationTypeRepository.save(
             InventoryLocationType.create(code, description, SEED_INSTANT)
+        );
+    }
+
+    private void seedInventoryCountry(String code, String name) {
+        inventoryCountryRepository.save(
+            InventoryCountry.create(code, name, SEED_INSTANT)
+        );
+    }
+
+    private void seedInventoryRegion(String countryCode, String code, String name) {
+        inventoryRegionRepository.save(
+            InventoryRegion.create(countryCode, code, name, SEED_INSTANT)
         );
     }
 

@@ -3,10 +3,12 @@ package com.arcanaerp.platform.inventory.internal;
 import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.inventory.InventoryCountryDirectory;
 import com.arcanaerp.platform.inventory.InventoryLocationDirectory;
 import com.arcanaerp.platform.inventory.InventoryLocationMetadataChangeView;
 import com.arcanaerp.platform.inventory.InventoryLocationTypeDirectory;
 import com.arcanaerp.platform.inventory.InventoryLocationView;
+import com.arcanaerp.platform.inventory.InventoryRegionDirectory;
 import com.arcanaerp.platform.inventory.RegisterInventoryLocationCommand;
 import com.arcanaerp.platform.inventory.UpdateInventoryLocationActiveCommand;
 import com.arcanaerp.platform.inventory.UpdateInventoryLocationMetadataCommand;
@@ -27,6 +29,8 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
     private final InventoryLocationRepository inventoryLocationRepository;
     private final InventoryLocationMetadataChangeAuditRepository metadataChangeAuditRepository;
     private final InventoryLocationTypeDirectory inventoryLocationTypeDirectory;
+    private final InventoryCountryDirectory inventoryCountryDirectory;
+    private final InventoryRegionDirectory inventoryRegionDirectory;
     private final Clock clock;
 
     @Override
@@ -40,6 +44,7 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
             throw new ConflictException("Inventory location already exists for code: " + code);
         }
         ensureLocationTypeExists(command.facilityTypeCode());
+        ensureGeoReferenceExists(command.countryCode(), command.regionCode());
 
         return toView(inventoryLocationRepository.save(InventoryLocation.create(
             code,
@@ -94,6 +99,7 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
         InventoryLocation location = inventoryLocationRepository.findByCode(normalizedCode)
             .orElseThrow(() -> new NoSuchElementException("Inventory location not found for code: " + normalizedCode));
         ensureLocationTypeExists(command.facilityTypeCode());
+        ensureGeoReferenceExists(command.countryCode(), command.regionCode());
         InventoryLocationMetadataSnapshot previous = InventoryLocationMetadataSnapshot.from(location);
         Instant changedAt = Instant.now(clock);
         location.updateMetadata(
@@ -223,12 +229,34 @@ class InventoryLocationDirectoryService implements InventoryLocationDirectory {
         }
     }
 
+    private void ensureGeoReferenceExists(String countryCode, String regionCode) {
+        String normalizedCountryCode = normalizeOptionalUpper(countryCode, "countryCode");
+        String normalizedRegionCode = normalizeOptionalUpper(regionCode, "regionCode");
+        if (normalizedCountryCode != null && !inventoryCountryDirectory.countryExists(normalizedCountryCode)) {
+            throw new IllegalArgumentException("Inventory country not found: " + normalizedCountryCode);
+        }
+        if (normalizedRegionCode != null) {
+            if (normalizedCountryCode == null) {
+                throw new IllegalArgumentException("countryCode is required when regionCode is supplied");
+            }
+            if (!inventoryRegionDirectory.regionExists(normalizedCountryCode, normalizedRegionCode)) {
+                throw new IllegalArgumentException(
+                    "Inventory region not found for country: " + normalizedCountryCode + " and code: " + normalizedRegionCode
+                );
+            }
+        }
+    }
+
     private static String normalizeOptionalUpper(String value) {
+        return normalizeOptionalUpper(value, "facilityTypeCode");
+    }
+
+    private static String normalizeOptionalUpper(String value, String fieldName) {
         if (value == null) {
             return null;
         }
         if (value.isBlank()) {
-            throw new IllegalArgumentException("facilityTypeCode is required");
+            throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim().toUpperCase();
     }
