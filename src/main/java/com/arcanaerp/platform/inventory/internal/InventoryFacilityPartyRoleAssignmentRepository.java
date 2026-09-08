@@ -25,6 +25,7 @@ interface InventoryFacilityPartyRoleAssignmentRepository
           and (:partyCode is null or assignment.partyCode = :partyCode)
           and (:roleTypeCode is null or assignment.roleTypeCode = :roleTypeCode)
           and (:assignedBy is null or assignment.assignedBy = :assignedBy)
+          and (:active is null or assignment.active = :active)
         """
     )
     Page<InventoryFacilityPartyRoleAssignment> findAssignmentsFiltered(
@@ -32,6 +33,7 @@ interface InventoryFacilityPartyRoleAssignmentRepository
         @Param("partyCode") String partyCode,
         @Param("roleTypeCode") String roleTypeCode,
         @Param("assignedBy") String assignedBy,
+        @Param("active") Boolean active,
         Pageable pageable
     );
 }

@@ -98,6 +98,9 @@ class InventoryApiIntegrationTest {
     private InventoryFacilityPartyRoleAssignmentRepository facilityPartyRoleAssignmentRepository;
 
     @Autowired
+    private InventoryFacilityPartyRoleAssignmentEndAuditRepository facilityPartyRoleAssignmentEndAuditRepository;
+
+    @Autowired
     private InventoryFixedAssetRepository inventoryFixedAssetRepository;
 
     @Autowired
@@ -111,6 +114,9 @@ class InventoryApiIntegrationTest {
 
     @Autowired
     private InventoryFixedAssetPartyRoleAssignmentRepository fixedAssetPartyRoleAssignmentRepository;
+
+    @Autowired
+    private InventoryFixedAssetPartyRoleAssignmentEndAuditRepository fixedAssetPartyRoleAssignmentEndAuditRepository;
 
     @Autowired
     private InventoryLocationMetadataChangeAuditRepository locationMetadataChangeAuditRepository;
@@ -166,11 +172,13 @@ class InventoryApiIntegrationTest {
         inventoryItemRepository.deleteAll();
         fixedAssetActiveChangeAuditRepository.deleteAll();
         fixedAssetMetadataChangeAuditRepository.deleteAll();
+        fixedAssetPartyRoleAssignmentEndAuditRepository.deleteAll();
         fixedAssetPartyRoleAssignmentRepository.deleteAll();
         inventoryFixedAssetRepository.deleteAll();
         inventoryFixedAssetTypeRepository.deleteAll();
         facilityActiveChangeAuditRepository.deleteAll();
         facilityMetadataChangeAuditRepository.deleteAll();
+        facilityPartyRoleAssignmentEndAuditRepository.deleteAll();
         facilityPartyRoleAssignmentRepository.deleteAll();
         inventoryFacilityRepository.deleteAll();
         locationMetadataChangeAuditRepository.deleteAll();
@@ -1522,6 +1530,7 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.thruDate").value("2026-12-31T23:59:59Z"))
             .andExpect(jsonPath("$.assignedBy").value("facilities.ops@arcanaerp.com"))
             .andExpect(jsonPath("$.assignedAt").isNotEmpty())
+            .andExpect(jsonPath("$.active").value(true))
             .andReturn()
             .getResponse()
             .getContentAsString()
@@ -1538,6 +1547,7 @@ class InventoryApiIntegrationTest {
             .param("partyCode", "west-operator")
             .param("roleTypeCode", "manager")
             .param("assignedBy", "facilities.ops@arcanaerp.com")
+            .param("active", "true")
             .param("page", "0")
             .param("size", "10"))
             .andExpect(status().isOk())
@@ -1545,6 +1555,108 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.items[0].facilityCode").value("DC-ROLE"))
             .andExpect(jsonPath("$.items[0].partyCode").value("WEST-OPERATOR"))
             .andExpect(jsonPath("$.items[0].roleTypeCode").value("MANAGER"));
+    }
+
+    @Test
+    void endsInventoryFacilityPartyRoleAssignmentAndListsEndHistory() throws Exception {
+        inventoryFacilityRepository.save(
+            InventoryFacility.create(
+                "dc-role-end",
+                "End Role Distribution Center",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        String assignmentId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/facility-party-role-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "facilityCode": "dc-role-end",
+                  "partyCode": "west-operator",
+                  "roleTypeCode": "manager",
+                  "fromDate": "2026-04-01T00:00:00Z",
+                  "assignedBy": "facilities.ops@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.active").value(true))
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/facility-party-role-assignments/{id}/end",
+            assignmentId
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "thruDate": "2026-09-01T00:00:00Z",
+                  "reason": " Operator rotation ",
+                  "endedBy": " Facilities.Ops@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(assignmentId))
+            .andExpect(jsonPath("$.active").value(false))
+            .andExpect(jsonPath("$.thruDate").value("2026-09-01T00:00:00Z"))
+            .andExpect(jsonPath("$.endReason").value("Operator rotation"))
+            .andExpect(jsonPath("$.endedBy").value("facilities.ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.endedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/facility-party-role-assignments")
+            .param("facilityCode", "dc-role-end")
+            .param("active", "false")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].active").value(false));
+
+        mockMvc.perform(get("/api/inventory/facility-party-role-assignments/{id}/end-history", assignmentId)
+            .param("endedBy", "facilities.ops@arcanaerp.com")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].assignmentId").value(assignmentId))
+            .andExpect(jsonPath("$.items[0].facilityCode").value("DC-ROLE-END"))
+            .andExpect(jsonPath("$.items[0].partyCode").value("WEST-OPERATOR"))
+            .andExpect(jsonPath("$.items[0].roleTypeCode").value("MANAGER"))
+            .andExpect(jsonPath("$.items[0].previousThruDate").doesNotExist())
+            .andExpect(jsonPath("$.items[0].currentThruDate").value("2026-09-01T00:00:00Z"))
+            .andExpect(jsonPath("$.items[0].reason").value("Operator rotation"))
+            .andExpect(jsonPath("$.items[0].endedBy").value("facilities.ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].endedAt").isNotEmpty());
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/facility-party-role-assignments/{id}/end",
+                assignmentId
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "thruDate": "2026-09-02T00:00:00Z",
+                      "reason": "Second end",
+                      "endedBy": "facilities.ops@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory facility party role assignment is already ended",
+            "/api/inventory/facility-party-role-assignments/" + assignmentId + "/end"
+        );
     }
 
     @Test
@@ -1995,6 +2107,7 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.thruDate").value("2026-12-31T23:59:59Z"))
             .andExpect(jsonPath("$.assignedBy").value("fleet.manager@arcanaerp.com"))
             .andExpect(jsonPath("$.assignedAt").isNotEmpty())
+            .andExpect(jsonPath("$.active").value(true))
             .andReturn()
             .getResponse()
             .getContentAsString();
@@ -2012,6 +2125,7 @@ class InventoryApiIntegrationTest {
             .param("partyCode", "west-carrier")
             .param("roleTypeCode", "operator")
             .param("assignedBy", "fleet.manager@arcanaerp.com")
+            .param("active", "true")
             .param("page", "0")
             .param("size", "10"))
             .andExpect(status().isOk())
@@ -2019,6 +2133,87 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.items[0].fixedAssetCode").value("TRUCK-106"))
             .andExpect(jsonPath("$.items[0].partyCode").value("WEST-CARRIER"))
             .andExpect(jsonPath("$.items[0].roleTypeCode").value("OPERATOR"));
+    }
+
+    @Test
+    void endsInventoryFixedAssetPartyRoleAssignmentAndListsEndHistory() throws Exception {
+        inventoryFixedAssetRepository.save(
+            InventoryFixedAsset.create(
+                "truck-106-end",
+                "Delivery Truck 106 End",
+                "vehicle",
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        String response = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-party-role-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fixedAssetCode": "truck-106-end",
+                  "partyCode": "west-carrier",
+                  "roleTypeCode": "operator",
+                  "fromDate": "2026-04-01T00:00:00Z",
+                  "assignedBy": "fleet.manager@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.active").value(true))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+        String assignmentId = response.replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/fixed-asset-party-role-assignments/{id}/end",
+            assignmentId
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "thruDate": "2026-09-01T00:00:00Z",
+                  "reason": " Carrier rotation ",
+                  "endedBy": " Fleet.Manager@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(assignmentId))
+            .andExpect(jsonPath("$.active").value(false))
+            .andExpect(jsonPath("$.thruDate").value("2026-09-01T00:00:00Z"))
+            .andExpect(jsonPath("$.endReason").value("Carrier rotation"))
+            .andExpect(jsonPath("$.endedBy").value("fleet.manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.endedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/fixed-asset-party-role-assignments")
+            .param("fixedAssetCode", "truck-106-end")
+            .param("active", "false")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].active").value(false));
+
+        mockMvc.perform(get("/api/inventory/fixed-asset-party-role-assignments/{id}/end-history", assignmentId)
+            .param("endedBy", "fleet.manager@arcanaerp.com")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].assignmentId").value(assignmentId))
+            .andExpect(jsonPath("$.items[0].fixedAssetCode").value("TRUCK-106-END"))
+            .andExpect(jsonPath("$.items[0].partyCode").value("WEST-CARRIER"))
+            .andExpect(jsonPath("$.items[0].roleTypeCode").value("OPERATOR"))
+            .andExpect(jsonPath("$.items[0].previousThruDate").doesNotExist())
+            .andExpect(jsonPath("$.items[0].currentThruDate").value("2026-09-01T00:00:00Z"))
+            .andExpect(jsonPath("$.items[0].reason").value("Carrier rotation"))
+            .andExpect(jsonPath("$.items[0].endedBy").value("fleet.manager@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].endedAt").isNotEmpty());
     }
 
     @Test

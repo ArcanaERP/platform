@@ -3,7 +3,9 @@ package com.arcanaerp.platform.inventory.internal;
 import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.inventory.EndInventoryFixedAssetPartyRoleAssignmentCommand;
 import com.arcanaerp.platform.inventory.InventoryFixedAssetPartyRoleAssignmentDirectory;
+import com.arcanaerp.platform.inventory.InventoryFixedAssetPartyRoleAssignmentEndView;
 import com.arcanaerp.platform.inventory.InventoryFixedAssetPartyRoleAssignmentView;
 import com.arcanaerp.platform.inventory.RegisterInventoryFixedAssetPartyRoleAssignmentCommand;
 import java.time.Clock;
@@ -23,6 +25,7 @@ class InventoryFixedAssetPartyRoleAssignmentDirectoryService
     implements InventoryFixedAssetPartyRoleAssignmentDirectory {
 
     private final InventoryFixedAssetPartyRoleAssignmentRepository assignmentRepository;
+    private final InventoryFixedAssetPartyRoleAssignmentEndAuditRepository endAuditRepository;
     private final InventoryFixedAssetRepository inventoryFixedAssetRepository;
     private final Clock clock;
 
@@ -74,12 +77,61 @@ class InventoryFixedAssetPartyRoleAssignmentDirectoryService
     }
 
     @Override
+    public InventoryFixedAssetPartyRoleAssignmentView endAssignment(
+        UUID id,
+        EndInventoryFixedAssetPartyRoleAssignmentCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        if (id == null || command.id() == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        if (!id.equals(command.id())) {
+            throw new IllegalArgumentException("id path variable must match command id");
+        }
+        InventoryFixedAssetPartyRoleAssignment assignment = findAssignment(id);
+        Instant previousThruDate = assignment.getThruDate();
+        Instant endedAt = Instant.now(clock);
+        assignment.end(command.thruDate(), command.reason(), command.endedBy(), endedAt);
+        endAuditRepository.save(InventoryFixedAssetPartyRoleAssignmentEndAudit.create(
+            assignment,
+            previousThruDate,
+            command.reason(),
+            command.endedBy(),
+            endedAt
+        ));
+        return toView(assignmentRepository.save(assignment));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<InventoryFixedAssetPartyRoleAssignmentEndView> listEndHistory(
+        UUID id,
+        String endedBy,
+        Instant endedAtFrom,
+        Instant endedAtTo,
+        PageQuery pageQuery
+    ) {
+        InventoryFixedAssetPartyRoleAssignment assignment = findAssignment(id);
+        Page<InventoryFixedAssetPartyRoleAssignmentEndAudit> history = endAuditRepository.findHistoryFiltered(
+            assignment.getId(),
+            normalizeOptionalLower(endedBy, "endedBy"),
+            endedAtFrom,
+            endedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "endedAt"))
+        );
+        return PageResult.from(history).map(this::toEndView);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public PageResult<InventoryFixedAssetPartyRoleAssignmentView> listAssignments(
         String fixedAssetCode,
         String partyCode,
         String roleTypeCode,
         String assignedBy,
+        Boolean active,
         PageQuery pageQuery
     ) {
         Page<InventoryFixedAssetPartyRoleAssignment> assignments = assignmentRepository.findAssignmentsFiltered(
@@ -87,6 +139,7 @@ class InventoryFixedAssetPartyRoleAssignmentDirectoryService
             normalizeOptionalUpper(partyCode, "partyCode"),
             normalizeOptionalUpper(roleTypeCode, "roleTypeCode"),
             normalizeOptionalLower(assignedBy, "assignedBy"),
+            active,
             pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "fixedAssetCode").and(Sort.by("partyCode")))
         );
         return PageResult.from(assignments).map(this::toView);
@@ -121,7 +174,29 @@ class InventoryFixedAssetPartyRoleAssignmentDirectoryService
             assignment.getFromDate(),
             assignment.getThruDate(),
             assignment.getAssignedBy(),
-            assignment.getAssignedAt()
+            assignment.getAssignedAt(),
+            assignment.isActive(),
+            assignment.getEndReason(),
+            assignment.getEndedBy(),
+            assignment.getEndedAt()
+        );
+    }
+
+    private InventoryFixedAssetPartyRoleAssignmentEndView toEndView(
+        InventoryFixedAssetPartyRoleAssignmentEndAudit audit
+    ) {
+        return new InventoryFixedAssetPartyRoleAssignmentEndView(
+            audit.getId(),
+            audit.getAssignmentId(),
+            audit.getInventoryFixedAssetId(),
+            audit.getFixedAssetCode(),
+            audit.getPartyCode(),
+            audit.getRoleTypeCode(),
+            audit.getPreviousThruDate(),
+            audit.getCurrentThruDate(),
+            audit.getReason(),
+            audit.getEndedBy(),
+            audit.getEndedAt()
         );
     }
 

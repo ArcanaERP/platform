@@ -323,11 +323,11 @@ Inventory:
 - Inventory items support optional owner metadata through `ownerTenantCode`, `ownerUserId`, and `ownerRoleCode`; supplied owner triples are validated against identity users and roles.
 - Inventory facilities provide a first-class facility catalog for pickup/dropoff traceability.
 - Inventory facility active and metadata changes are audit-trailed with actor attribution.
-- Inventory facility party-role assignments track which parties serve facility-specific roles.
+- Inventory facility party-role assignments track which parties serve facility-specific roles and support end history.
 - Inventory facility `facilityTypeCode` values are validated against `POST /api/inventory/location-types` reference data.
 - Inventory fixed assets provide a first-class asset catalog for pickup/dropoff traceability.
 - Inventory fixed asset active and metadata changes are audit-trailed with actor attribution.
-- Inventory fixed asset party-role assignments track which parties serve asset-specific roles.
+- Inventory fixed asset party-role assignments track which parties serve asset-specific roles and support end history.
 - Inventory fixed asset `fixedAssetTypeCode` values are validated against `POST /api/inventory/fixed-asset-types` reference data.
 - Inventory location `facilityTypeCode` values are validated against `POST /api/inventory/location-types` reference data.
 - Inventory entry relationship and role types are reference data for entry relationship records.
@@ -384,7 +384,9 @@ Inventory:
 - `GET /api/inventory/facilities?page=&size=&active=&query=`
 - `POST /api/inventory/facility-party-role-assignments`
 - `GET /api/inventory/facility-party-role-assignments/{id}`
-- `GET /api/inventory/facility-party-role-assignments?page=&size=&facilityCode=&partyCode=&roleTypeCode=&assignedBy=`
+- `PATCH /api/inventory/facility-party-role-assignments/{id}/end`
+- `GET /api/inventory/facility-party-role-assignments/{id}/end-history?page=&size=&endedBy=&endedAtFrom=&endedAtTo=`
+- `GET /api/inventory/facility-party-role-assignments?page=&size=&facilityCode=&partyCode=&roleTypeCode=&assignedBy=&active=`
 - `POST /api/inventory/fixed-assets`
 - `GET /api/inventory/fixed-assets/{code}`
 - `PATCH /api/inventory/fixed-assets/{code}/active`
@@ -394,7 +396,9 @@ Inventory:
 - `GET /api/inventory/fixed-assets?page=&size=&active=&query=`
 - `POST /api/inventory/fixed-asset-party-role-assignments`
 - `GET /api/inventory/fixed-asset-party-role-assignments/{id}`
-- `GET /api/inventory/fixed-asset-party-role-assignments?page=&size=&fixedAssetCode=&partyCode=&roleTypeCode=&assignedBy=`
+- `PATCH /api/inventory/fixed-asset-party-role-assignments/{id}/end`
+- `GET /api/inventory/fixed-asset-party-role-assignments/{id}/end-history?page=&size=&endedBy=&endedAtFrom=&endedAtTo=`
+- `GET /api/inventory/fixed-asset-party-role-assignments?page=&size=&fixedAssetCode=&partyCode=&roleTypeCode=&assignedBy=&active=`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/pickup-dropoffs`

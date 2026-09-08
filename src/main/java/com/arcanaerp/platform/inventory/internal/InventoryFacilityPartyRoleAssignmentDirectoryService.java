@@ -3,7 +3,9 @@ package com.arcanaerp.platform.inventory.internal;
 import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.inventory.EndInventoryFacilityPartyRoleAssignmentCommand;
 import com.arcanaerp.platform.inventory.InventoryFacilityPartyRoleAssignmentDirectory;
+import com.arcanaerp.platform.inventory.InventoryFacilityPartyRoleAssignmentEndView;
 import com.arcanaerp.platform.inventory.InventoryFacilityPartyRoleAssignmentView;
 import com.arcanaerp.platform.inventory.RegisterInventoryFacilityPartyRoleAssignmentCommand;
 import java.time.Clock;
@@ -23,6 +25,7 @@ class InventoryFacilityPartyRoleAssignmentDirectoryService
     implements InventoryFacilityPartyRoleAssignmentDirectory {
 
     private final InventoryFacilityPartyRoleAssignmentRepository assignmentRepository;
+    private final InventoryFacilityPartyRoleAssignmentEndAuditRepository endAuditRepository;
     private final InventoryFacilityRepository inventoryFacilityRepository;
     private final Clock clock;
 
@@ -74,12 +77,61 @@ class InventoryFacilityPartyRoleAssignmentDirectoryService
     }
 
     @Override
+    public InventoryFacilityPartyRoleAssignmentView endAssignment(
+        UUID id,
+        EndInventoryFacilityPartyRoleAssignmentCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        if (id == null || command.id() == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        if (!id.equals(command.id())) {
+            throw new IllegalArgumentException("id path variable must match command id");
+        }
+        InventoryFacilityPartyRoleAssignment assignment = findAssignment(id);
+        Instant previousThruDate = assignment.getThruDate();
+        Instant endedAt = Instant.now(clock);
+        assignment.end(command.thruDate(), command.reason(), command.endedBy(), endedAt);
+        endAuditRepository.save(InventoryFacilityPartyRoleAssignmentEndAudit.create(
+            assignment,
+            previousThruDate,
+            command.reason(),
+            command.endedBy(),
+            endedAt
+        ));
+        return toView(assignmentRepository.save(assignment));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<InventoryFacilityPartyRoleAssignmentEndView> listEndHistory(
+        UUID id,
+        String endedBy,
+        Instant endedAtFrom,
+        Instant endedAtTo,
+        PageQuery pageQuery
+    ) {
+        InventoryFacilityPartyRoleAssignment assignment = findAssignment(id);
+        Page<InventoryFacilityPartyRoleAssignmentEndAudit> history = endAuditRepository.findHistoryFiltered(
+            assignment.getId(),
+            normalizeOptionalLower(endedBy, "endedBy"),
+            endedAtFrom,
+            endedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "endedAt"))
+        );
+        return PageResult.from(history).map(this::toEndView);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public PageResult<InventoryFacilityPartyRoleAssignmentView> listAssignments(
         String facilityCode,
         String partyCode,
         String roleTypeCode,
         String assignedBy,
+        Boolean active,
         PageQuery pageQuery
     ) {
         Page<InventoryFacilityPartyRoleAssignment> assignments = assignmentRepository.findAssignmentsFiltered(
@@ -87,6 +139,7 @@ class InventoryFacilityPartyRoleAssignmentDirectoryService
             normalizeOptionalUpper(partyCode, "partyCode"),
             normalizeOptionalUpper(roleTypeCode, "roleTypeCode"),
             normalizeOptionalLower(assignedBy, "assignedBy"),
+            active,
             pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "facilityCode").and(Sort.by("partyCode")))
         );
         return PageResult.from(assignments).map(this::toView);
@@ -121,7 +174,29 @@ class InventoryFacilityPartyRoleAssignmentDirectoryService
             assignment.getFromDate(),
             assignment.getThruDate(),
             assignment.getAssignedBy(),
-            assignment.getAssignedAt()
+            assignment.getAssignedAt(),
+            assignment.isActive(),
+            assignment.getEndReason(),
+            assignment.getEndedBy(),
+            assignment.getEndedAt()
+        );
+    }
+
+    private InventoryFacilityPartyRoleAssignmentEndView toEndView(
+        InventoryFacilityPartyRoleAssignmentEndAudit audit
+    ) {
+        return new InventoryFacilityPartyRoleAssignmentEndView(
+            audit.getId(),
+            audit.getAssignmentId(),
+            audit.getInventoryFacilityId(),
+            audit.getFacilityCode(),
+            audit.getPartyCode(),
+            audit.getRoleTypeCode(),
+            audit.getPreviousThruDate(),
+            audit.getCurrentThruDate(),
+            audit.getReason(),
+            audit.getEndedBy(),
+            audit.getEndedAt()
         );
     }
 

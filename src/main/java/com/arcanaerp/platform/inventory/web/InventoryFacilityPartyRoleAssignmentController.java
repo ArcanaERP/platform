@@ -2,7 +2,9 @@ package com.arcanaerp.platform.inventory.web;
 
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.inventory.EndInventoryFacilityPartyRoleAssignmentCommand;
 import com.arcanaerp.platform.inventory.InventoryFacilityPartyRoleAssignmentDirectory;
+import com.arcanaerp.platform.inventory.InventoryFacilityPartyRoleAssignmentEndView;
 import com.arcanaerp.platform.inventory.InventoryFacilityPartyRoleAssignmentView;
 import com.arcanaerp.platform.inventory.RegisterInventoryFacilityPartyRoleAssignmentCommand;
 import jakarta.validation.Valid;
@@ -12,6 +14,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -53,12 +56,51 @@ public class InventoryFacilityPartyRoleAssignmentController {
         return toResponse(assignmentDirectory.assignmentById(id));
     }
 
+    @PatchMapping("/{id}/end")
+    public InventoryFacilityPartyRoleAssignmentResponse endAssignment(
+        @PathVariable UUID id,
+        @Valid @RequestBody EndInventoryFacilityPartyRoleAssignmentRequest request
+    ) {
+        Instant thruDate = parseRequiredInstant(request.thruDate(), "thruDate");
+        return toResponse(assignmentDirectory.endAssignment(
+            id,
+            new EndInventoryFacilityPartyRoleAssignmentCommand(
+                id,
+                thruDate,
+                request.reason(),
+                request.endedBy()
+            )
+        ));
+    }
+
+    @GetMapping("/{id}/end-history")
+    public PageResult<InventoryFacilityPartyRoleAssignmentEndResponse> listEndHistory(
+        @PathVariable UUID id,
+        @RequestParam(required = false) String endedBy,
+        @RequestParam(required = false) String endedAtFrom,
+        @RequestParam(required = false) String endedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedEndedAtFrom = parseOptionalInstant(endedAtFrom, "endedAtFrom");
+        Instant parsedEndedAtTo = parseOptionalInstant(endedAtTo, "endedAtTo");
+        validateDateRange(parsedEndedAtFrom, parsedEndedAtTo, "endedAtFrom", "endedAtTo");
+        return assignmentDirectory.listEndHistory(
+            id,
+            endedBy,
+            parsedEndedAtFrom,
+            parsedEndedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toEndResponse);
+    }
+
     @GetMapping
     public PageResult<InventoryFacilityPartyRoleAssignmentResponse> listAssignments(
         @RequestParam(required = false) String facilityCode,
         @RequestParam(required = false) String partyCode,
         @RequestParam(required = false) String roleTypeCode,
         @RequestParam(required = false) String assignedBy,
+        @RequestParam(required = false) Boolean active,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
@@ -67,6 +109,7 @@ public class InventoryFacilityPartyRoleAssignmentController {
             partyCode,
             roleTypeCode,
             assignedBy,
+            active,
             PageQuery.of(page, size)
         ).map(this::toResponse);
     }
@@ -84,8 +127,34 @@ public class InventoryFacilityPartyRoleAssignmentController {
             assignment.fromDate(),
             assignment.thruDate(),
             assignment.assignedBy(),
-            assignment.assignedAt()
+            assignment.assignedAt(),
+            assignment.active(),
+            assignment.endReason(),
+            assignment.endedBy(),
+            assignment.endedAt()
         );
+    }
+
+    private InventoryFacilityPartyRoleAssignmentEndResponse toEndResponse(
+        InventoryFacilityPartyRoleAssignmentEndView end
+    ) {
+        return new InventoryFacilityPartyRoleAssignmentEndResponse(
+            end.id(),
+            end.assignmentId(),
+            end.inventoryFacilityId(),
+            end.facilityCode(),
+            end.partyCode(),
+            end.roleTypeCode(),
+            end.previousThruDate(),
+            end.currentThruDate(),
+            end.reason(),
+            end.endedBy(),
+            end.endedAt()
+        );
+    }
+
+    private static Instant parseRequiredInstant(String value, String parameterName) {
+        return parseOptionalInstant(value, parameterName);
     }
 
     private static Instant parseOptionalInstant(String value, String parameterName) {
@@ -103,8 +172,17 @@ public class InventoryFacilityPartyRoleAssignmentController {
     }
 
     private static void validateDateRange(Instant fromDate, Instant thruDate) {
+        validateDateRange(fromDate, thruDate, "fromDate", "thruDate");
+    }
+
+    private static void validateDateRange(
+        Instant fromDate,
+        Instant thruDate,
+        String fromParameterName,
+        String thruParameterName
+    ) {
         if (fromDate != null && thruDate != null && fromDate.isAfter(thruDate)) {
-            throw new IllegalArgumentException("fromDate must be before or equal to thruDate");
+            throw new IllegalArgumentException(fromParameterName + " must be before or equal to " + thruParameterName);
         }
     }
 }

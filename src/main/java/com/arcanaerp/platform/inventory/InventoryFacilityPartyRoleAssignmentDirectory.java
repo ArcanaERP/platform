@@ -12,11 +12,25 @@ public interface InventoryFacilityPartyRoleAssignmentDirectory {
 
     InventoryFacilityPartyRoleAssignmentView assignmentById(UUID id);
 
+    InventoryFacilityPartyRoleAssignmentView endAssignment(
+        UUID id,
+        EndInventoryFacilityPartyRoleAssignmentCommand command
+    );
+
+    PageResult<InventoryFacilityPartyRoleAssignmentEndView> listEndHistory(
+        UUID id,
+        String endedBy,
+        java.time.Instant endedAtFrom,
+        java.time.Instant endedAtTo,
+        PageQuery pageQuery
+    );
+
     PageResult<InventoryFacilityPartyRoleAssignmentView> listAssignments(
         String facilityCode,
         String partyCode,
         String roleTypeCode,
         String assignedBy,
+        Boolean active,
         PageQuery pageQuery
     );
 }

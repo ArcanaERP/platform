@@ -24,7 +24,8 @@ import lombok.NoArgsConstructor;
     indexes = {
         @Index(name = "idx_ifapra_asset_code", columnList = "fixedAssetCode"),
         @Index(name = "idx_ifapra_party_role", columnList = "partyCode,roleTypeCode"),
-        @Index(name = "idx_ifapra_assigned_by", columnList = "assignedBy,assignedAt")
+        @Index(name = "idx_ifapra_assigned_by", columnList = "assignedBy,assignedAt"),
+        @Index(name = "idx_ifapra_active", columnList = "active")
     }
 )
 @Getter
@@ -60,6 +61,17 @@ class InventoryFixedAssetPartyRoleAssignment {
     @Column(nullable = false, updatable = false)
     private Instant assignedAt;
 
+    @Column(nullable = false)
+    private boolean active;
+
+    @Column(length = 256)
+    private String endReason;
+
+    @Column(length = 128)
+    private String endedBy;
+
+    private Instant endedAt;
+
     static InventoryFixedAssetPartyRoleAssignment create(
         InventoryFixedAsset fixedAsset,
         String partyCode,
@@ -89,7 +101,28 @@ class InventoryFixedAssetPartyRoleAssignment {
         assignment.thruDate = thruDate;
         assignment.assignedBy = normalizeRequired(assignedBy, "assignedBy").toLowerCase();
         assignment.assignedAt = assignedAt;
+        assignment.active = true;
         return assignment;
+    }
+
+    void end(Instant thruDate, String reason, String endedBy, Instant endedAt) {
+        if (thruDate == null) {
+            throw new IllegalArgumentException("thruDate is required");
+        }
+        if (endedAt == null) {
+            throw new IllegalArgumentException("endedAt is required");
+        }
+        if (!active) {
+            throw new IllegalArgumentException("Inventory fixed asset party role assignment is already ended");
+        }
+        if (fromDate != null && thruDate.isBefore(fromDate)) {
+            throw new IllegalArgumentException("thruDate must be after or equal to fromDate");
+        }
+        this.thruDate = thruDate;
+        active = false;
+        endReason = normalizeRequired(reason, "reason");
+        this.endedBy = normalizeRequired(endedBy, "endedBy").toLowerCase();
+        this.endedAt = endedAt;
     }
 
     private static String normalizeRequired(String value, String fieldName) {
