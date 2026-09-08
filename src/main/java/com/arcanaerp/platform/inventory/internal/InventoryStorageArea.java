@@ -24,7 +24,8 @@ import lombok.NoArgsConstructor;
     indexes = {
         @Index(name = "idx_inventory_storage_areas_facility", columnList = "facilityCode"),
         @Index(name = "idx_inventory_storage_areas_type", columnList = "storageAreaType"),
-        @Index(name = "idx_inventory_storage_areas_parent", columnList = "facilityCode,parentStorageAreaCode")
+        @Index(name = "idx_inventory_storage_areas_parent", columnList = "facilityCode,parentStorageAreaCode"),
+        @Index(name = "idx_inventory_storage_areas_active", columnList = "active,facilityCode")
     }
 )
 @Getter
@@ -52,6 +53,9 @@ class InventoryStorageArea {
 
     @Column(length = 64)
     private String parentStorageAreaCode;
+
+    @Column(nullable = false)
+    private boolean active;
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -82,6 +86,7 @@ class InventoryStorageArea {
         storageArea.name = normalizeRequired(name, "name");
         storageArea.storageAreaType = normalizeStorageAreaType(storageAreaType);
         storageArea.parentStorageAreaCode = normalizedParentCode;
+        storageArea.active = true;
         storageArea.createdAt = createdAt;
         storageArea.updatedAt = createdAt;
         return storageArea;
@@ -115,6 +120,17 @@ class InventoryStorageArea {
         this.name = normalizedName;
         this.storageAreaType = normalizedStorageAreaType;
         this.parentStorageAreaCode = normalizedParentStorageAreaCode;
+        this.updatedAt = updatedAt;
+    }
+
+    void setActive(boolean active, Instant updatedAt) {
+        if (this.active == active) {
+            throw new IllegalArgumentException("Inventory storage area active flag is unchanged");
+        }
+        if (updatedAt == null) {
+            throw new IllegalArgumentException("updatedAt is required");
+        }
+        this.active = active;
         this.updatedAt = updatedAt;
     }
 

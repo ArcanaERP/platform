@@ -98,6 +98,9 @@ class InventoryApiIntegrationTest {
     private InventoryStorageAreaRepository inventoryStorageAreaRepository;
 
     @Autowired
+    private InventoryStorageAreaActiveChangeAuditRepository storageAreaActiveChangeAuditRepository;
+
+    @Autowired
     private InventoryStorageAreaMetadataChangeAuditRepository storageAreaMetadataChangeAuditRepository;
 
     @Autowired
@@ -220,6 +223,7 @@ class InventoryApiIntegrationTest {
         inventoryPostalAddressRepository.deleteAll();
         telecomContactMetadataChangeAuditRepository.deleteAll();
         inventoryTelecomContactRepository.deleteAll();
+        storageAreaActiveChangeAuditRepository.deleteAll();
         storageAreaMetadataChangeAuditRepository.deleteAll();
         inventoryStorageAreaRepository.deleteAll();
         inventoryFacilityRepository.deleteAll();
@@ -1586,6 +1590,61 @@ class InventoryApiIntegrationTest {
                     }
                     """)),
             "Inventory storage area not found for facility: WH-STORAGE-UNKNOWN and code: BIN-A-01",
+            "/api/inventory/item-location-assignments"
+        );
+    }
+
+    @Test
+    void rejectsInventoryItemLocationAssignmentWithInactiveStorageArea() throws Exception {
+        inventoryItemRepository.save(InventoryItem.create(
+            "arc-location-115",
+            "wh-source",
+            new BigDecimal("2"),
+            SEED_INSTANT
+        ));
+        inventoryLocationRepository.save(InventoryLocation.create("bin-storage-inactive", "Bin A", SEED_INSTANT));
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "wh-storage-inactive",
+            "Storage Warehouse",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        InventoryStorageArea storageArea = InventoryStorageArea.create(
+            "wh-storage-inactive",
+            "bin-a-01",
+            "Bin A-01",
+            "BIN",
+            null,
+            SEED_INSTANT
+        );
+        storageArea.setActive(false, SEED_INSTANT.plusSeconds(1));
+        inventoryStorageAreaRepository.save(storageArea);
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/item-location-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "sku": "arc-location-115",
+                      "itemLocationCode": "wh-source",
+                      "assignedLocationCode": "bin-storage-inactive",
+                      "assignedFacilityCode": "wh-storage-inactive",
+                      "assignedStorageAreaCode": "bin-a-01",
+                      "validFrom": "2026-03-02T00:00:00Z",
+                      "assignedBy": "inventory.manager"
+                    }
+                    """)),
+            "Inventory storage area is inactive for facility: WH-STORAGE-INACTIVE and code: BIN-A-01",
             "/api/inventory/item-location-assignments"
         );
     }
@@ -3702,7 +3761,8 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.facilityCode").value("WH-STORAGE"))
             .andExpect(jsonPath("$.code").value("RECEIVING"))
-            .andExpect(jsonPath("$.storageAreaType").value("AREA"));
+            .andExpect(jsonPath("$.storageAreaType").value("AREA"))
+            .andExpect(jsonPath("$.active").value(true));
 
         mockMvc.perform(get("/api/inventory/storage-areas")
             .param("facilityCode", "wh-storage")
@@ -3713,7 +3773,117 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.items[0].facilityCode").value("WH-STORAGE"))
             .andExpect(jsonPath("$.items[0].code").value("BIN-A-01"))
             .andExpect(jsonPath("$.items[0].storageAreaType").value("BIN"))
+            .andExpect(jsonPath("$.items[0].active").value(true))
             .andExpect(jsonPath("$.items[0].parentStorageAreaCode").value("RECEIVING"));
+    }
+
+    @Test
+    void updatesInventoryStorageAreaActiveStateAndListsActiveHistory() throws Exception {
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "wh-storage-active",
+            "Storage Warehouse",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        InventoryStorageArea area = inventoryStorageAreaRepository.save(InventoryStorageArea.create(
+            "wh-storage-active",
+            "receiving",
+            "Receiving Area",
+            "AREA",
+            null,
+            SEED_INSTANT
+        ));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/storage-areas/{id}/active",
+            area.getId()
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "active": false,
+                  "changedBy": " Facilities.Ops@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(area.getId().toString()))
+            .andExpect(jsonPath("$.facilityCode").value("WH-STORAGE-ACTIVE"))
+            .andExpect(jsonPath("$.code").value("RECEIVING"))
+            .andExpect(jsonPath("$.active").value(false));
+
+        mockMvc.perform(get("/api/inventory/storage-areas")
+            .param("active", "false")
+            .param("facilityCode", "wh-storage-active")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(area.getId().toString()))
+            .andExpect(jsonPath("$.items[0].active").value(false));
+
+        mockMvc.perform(get("/api/inventory/storage-areas/{id}/active-history", area.getId())
+            .param("changedBy", "facilities.ops@arcanaerp.com")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].storageAreaId").value(area.getId().toString()))
+            .andExpect(jsonPath("$.items[0].facilityCode").value("WH-STORAGE-ACTIVE"))
+            .andExpect(jsonPath("$.items[0].storageAreaCode").value("RECEIVING"))
+            .andExpect(jsonPath("$.items[0].previousActive").value(true))
+            .andExpect(jsonPath("$.items[0].currentActive").value(false))
+            .andExpect(jsonPath("$.items[0].changedBy").value("facilities.ops@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
+    }
+
+    @Test
+    void rejectsNoOpInventoryStorageAreaActiveStateChange() throws Exception {
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "wh-storage-active-noop",
+            "Storage Warehouse",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        InventoryStorageArea area = inventoryStorageAreaRepository.save(InventoryStorageArea.create(
+            "wh-storage-active-noop",
+            "receiving",
+            "Receiving Area",
+            "AREA",
+            null,
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/storage-areas/{id}/active",
+                area.getId()
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "active": true,
+                      "changedBy": "ops"
+                    }
+                    """)),
+            "Inventory storage area active flag is unchanged",
+            "/api/inventory/storage-areas/" + area.getId() + "/active"
+        );
     }
 
     @Test

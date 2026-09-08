@@ -160,18 +160,23 @@ class InventoryItemLocationAssignmentDirectoryService implements InventoryItemLo
         if (!facility.isActive()) {
             throw new IllegalArgumentException("Inventory facility is inactive: " + assignedFacilityCode);
         }
-        if (
-            assignedStorageAreaCode != null
-                && inventoryStorageAreaRepository
-                    .findByFacilityCodeAndCode(assignedFacilityCode, assignedStorageAreaCode)
-                    .isEmpty()
-        ) {
-            throw new IllegalArgumentException(
-                "Inventory storage area not found for facility: "
-                    + assignedFacilityCode
-                    + " and code: "
-                    + assignedStorageAreaCode
-            );
+        if (assignedStorageAreaCode != null) {
+            InventoryStorageArea storageArea = inventoryStorageAreaRepository
+                .findByFacilityCodeAndCode(assignedFacilityCode, assignedStorageAreaCode)
+                .orElseThrow(() -> new IllegalArgumentException(
+                    "Inventory storage area not found for facility: "
+                        + assignedFacilityCode
+                        + " and code: "
+                        + assignedStorageAreaCode
+                ));
+            if (!storageArea.isActive()) {
+                throw new IllegalArgumentException(
+                    "Inventory storage area is inactive for facility: "
+                        + assignedFacilityCode
+                        + " and code: "
+                        + assignedStorageAreaCode
+                );
+            }
         }
     }
 

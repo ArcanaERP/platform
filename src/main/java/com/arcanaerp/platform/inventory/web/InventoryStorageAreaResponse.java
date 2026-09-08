@@ -10,6 +10,7 @@ public record InventoryStorageAreaResponse(
     String name,
     String storageAreaType,
     String parentStorageAreaCode,
+    boolean active,
     Instant createdAt,
     Instant updatedAt
 ) {

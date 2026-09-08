@@ -3,9 +3,11 @@ package com.arcanaerp.platform.inventory.web;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.InventoryStorageAreaDirectory;
+import com.arcanaerp.platform.inventory.InventoryStorageAreaActiveChangeView;
 import com.arcanaerp.platform.inventory.InventoryStorageAreaMetadataChangeView;
 import com.arcanaerp.platform.inventory.InventoryStorageAreaView;
 import com.arcanaerp.platform.inventory.RegisterInventoryStorageAreaCommand;
+import com.arcanaerp.platform.inventory.UpdateInventoryStorageAreaActiveCommand;
 import com.arcanaerp.platform.inventory.UpdateInventoryStorageAreaMetadataCommand;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -49,6 +51,17 @@ public class InventoryStorageAreaController {
         return toResponse(inventoryStorageAreaDirectory.storageAreaById(id));
     }
 
+    @PatchMapping("/{id}/active")
+    public InventoryStorageAreaResponse updateStorageAreaActive(
+        @PathVariable UUID id,
+        @Valid @RequestBody UpdateInventoryStorageAreaActiveRequest request
+    ) {
+        return toResponse(inventoryStorageAreaDirectory.updateStorageAreaActive(
+            id,
+            new UpdateInventoryStorageAreaActiveCommand(request.active(), request.changedBy())
+        ));
+    }
+
     @PatchMapping("/{id}/metadata")
     public InventoryStorageAreaResponse updateStorageAreaMetadata(
         @PathVariable UUID id,
@@ -63,6 +76,27 @@ public class InventoryStorageAreaController {
                 request.changedBy()
             )
         ));
+    }
+
+    @GetMapping("/{id}/active-history")
+    public PageResult<InventoryStorageAreaActiveChangeResponse> listActiveHistory(
+        @PathVariable UUID id,
+        @RequestParam(required = false) String changedBy,
+        @RequestParam(required = false) String changedAtFrom,
+        @RequestParam(required = false) String changedAtTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedChangedAtFrom = parseOptionalInstant(changedAtFrom, "changedAtFrom");
+        Instant parsedChangedAtTo = parseOptionalInstant(changedAtTo, "changedAtTo");
+        validateChangedAtRange(parsedChangedAtFrom, parsedChangedAtTo);
+        return inventoryStorageAreaDirectory.listActiveHistory(
+            id,
+            normalizeOptionalChangedBy(changedBy),
+            parsedChangedAtFrom,
+            parsedChangedAtTo,
+            PageQuery.of(page, size)
+        ).map(this::toActiveChangeResponse);
     }
 
     @GetMapping("/{id}/metadata-history")
@@ -88,6 +122,7 @@ public class InventoryStorageAreaController {
 
     @GetMapping
     public PageResult<InventoryStorageAreaResponse> listStorageAreas(
+        @RequestParam(required = false) Boolean active,
         @RequestParam(required = false) String facilityCode,
         @RequestParam(required = false) String storageAreaType,
         @RequestParam(required = false) String parentStorageAreaCode,
@@ -95,6 +130,7 @@ public class InventoryStorageAreaController {
         @RequestParam(required = false) Integer size
     ) {
         return inventoryStorageAreaDirectory.listStorageAreas(
+            active,
             facilityCode,
             storageAreaType,
             parentStorageAreaCode,
@@ -110,8 +146,24 @@ public class InventoryStorageAreaController {
             storageArea.name(),
             storageArea.storageAreaType(),
             storageArea.parentStorageAreaCode(),
+            storageArea.active(),
             storageArea.createdAt(),
             storageArea.updatedAt()
+        );
+    }
+
+    private InventoryStorageAreaActiveChangeResponse toActiveChangeResponse(
+        InventoryStorageAreaActiveChangeView change
+    ) {
+        return new InventoryStorageAreaActiveChangeResponse(
+            change.id(),
+            change.storageAreaId(),
+            change.facilityCode(),
+            change.storageAreaCode(),
+            change.previousActive(),
+            change.currentActive(),
+            change.changedBy(),
+            change.changedAt()
         );
     }
 

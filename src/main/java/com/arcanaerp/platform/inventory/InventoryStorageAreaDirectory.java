@@ -11,7 +11,17 @@ public interface InventoryStorageAreaDirectory {
 
     InventoryStorageAreaView storageAreaById(UUID id);
 
+    InventoryStorageAreaView updateStorageAreaActive(UUID id, UpdateInventoryStorageAreaActiveCommand command);
+
     InventoryStorageAreaView updateStorageAreaMetadata(UUID id, UpdateInventoryStorageAreaMetadataCommand command);
+
+    PageResult<InventoryStorageAreaActiveChangeView> listActiveHistory(
+        UUID id,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    );
 
     PageResult<InventoryStorageAreaMetadataChangeView> listMetadataHistory(
         UUID id,
@@ -22,6 +32,7 @@ public interface InventoryStorageAreaDirectory {
     );
 
     PageResult<InventoryStorageAreaView> listStorageAreas(
+        Boolean active,
         String facilityCode,
         String storageAreaType,
         String parentStorageAreaCode,

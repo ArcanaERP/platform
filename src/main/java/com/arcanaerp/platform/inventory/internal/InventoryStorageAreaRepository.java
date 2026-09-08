@@ -16,12 +16,14 @@ interface InventoryStorageAreaRepository extends JpaRepository<InventoryStorageA
         """
         select storageArea
         from InventoryStorageArea storageArea
-        where (:facilityCode is null or storageArea.facilityCode = :facilityCode)
+        where (:active is null or storageArea.active = :active)
+          and (:facilityCode is null or storageArea.facilityCode = :facilityCode)
           and (:storageAreaType is null or storageArea.storageAreaType = :storageAreaType)
           and (:parentStorageAreaCode is null or storageArea.parentStorageAreaCode = :parentStorageAreaCode)
         """
     )
     Page<InventoryStorageArea> findFiltered(
+        @Param("active") Boolean active,
         @Param("facilityCode") String facilityCode,
         @Param("storageAreaType") String storageAreaType,
         @Param("parentStorageAreaCode") String parentStorageAreaCode,

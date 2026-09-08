@@ -4,9 +4,11 @@ import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.InventoryStorageAreaDirectory;
+import com.arcanaerp.platform.inventory.InventoryStorageAreaActiveChangeView;
 import com.arcanaerp.platform.inventory.InventoryStorageAreaMetadataChangeView;
 import com.arcanaerp.platform.inventory.InventoryStorageAreaView;
 import com.arcanaerp.platform.inventory.RegisterInventoryStorageAreaCommand;
+import com.arcanaerp.platform.inventory.UpdateInventoryStorageAreaActiveCommand;
 import com.arcanaerp.platform.inventory.UpdateInventoryStorageAreaMetadataCommand;
 import java.time.Clock;
 import java.time.Instant;
@@ -23,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 class InventoryStorageAreaDirectoryService implements InventoryStorageAreaDirectory {
 
     private final InventoryStorageAreaRepository inventoryStorageAreaRepository;
+    private final InventoryStorageAreaActiveChangeAuditRepository activeChangeAuditRepository;
     private final InventoryStorageAreaMetadataChangeAuditRepository metadataChangeAuditRepository;
     private final InventoryFacilityRepository inventoryFacilityRepository;
     private final Clock clock;
@@ -60,6 +63,28 @@ class InventoryStorageAreaDirectoryService implements InventoryStorageAreaDirect
     }
 
     @Override
+    public InventoryStorageAreaView updateStorageAreaActive(
+        UUID id,
+        UpdateInventoryStorageAreaActiveCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        InventoryStorageArea storageArea = findStorageArea(id);
+        boolean previousActive = storageArea.isActive();
+        Instant changedAt = Instant.now(clock);
+        storageArea.setActive(command.active(), changedAt);
+        activeChangeAuditRepository.save(InventoryStorageAreaActiveChangeAudit.create(
+            storageArea,
+            previousActive,
+            storageArea.isActive(),
+            command.changedBy(),
+            changedAt
+        ));
+        return toView(inventoryStorageAreaRepository.save(storageArea));
+    }
+
+    @Override
     public InventoryStorageAreaView updateStorageAreaMetadata(
         UUID id,
         UpdateInventoryStorageAreaMetadataCommand command
@@ -92,6 +117,25 @@ class InventoryStorageAreaDirectoryService implements InventoryStorageAreaDirect
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<InventoryStorageAreaActiveChangeView> listActiveHistory(
+        UUID id,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        InventoryStorageArea storageArea = findStorageArea(id);
+        return PageResult.from(activeChangeAuditRepository.findHistoryFiltered(
+            storageArea.getId(),
+            normalizeOptionalChangedBy(changedBy),
+            changedAtFrom,
+            changedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
+        )).map(this::toActiveChangeView);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<InventoryStorageAreaMetadataChangeView> listMetadataHistory(
         UUID id,
         String changedBy,
@@ -112,12 +156,14 @@ class InventoryStorageAreaDirectoryService implements InventoryStorageAreaDirect
     @Override
     @Transactional(readOnly = true)
     public PageResult<InventoryStorageAreaView> listStorageAreas(
+        Boolean active,
         String facilityCode,
         String storageAreaType,
         String parentStorageAreaCode,
         PageQuery pageQuery
     ) {
         return PageResult.from(inventoryStorageAreaRepository.findFiltered(
+            active,
             normalizeOptionalUpper(facilityCode),
             normalizeOptionalStorageAreaType(storageAreaType),
             normalizeOptionalUpper(parentStorageAreaCode),
@@ -184,8 +230,22 @@ class InventoryStorageAreaDirectoryService implements InventoryStorageAreaDirect
             storageArea.getName(),
             storageArea.getStorageAreaType(),
             storageArea.getParentStorageAreaCode(),
+            storageArea.isActive(),
             storageArea.getCreatedAt(),
             storageArea.getUpdatedAt()
+        );
+    }
+
+    private InventoryStorageAreaActiveChangeView toActiveChangeView(InventoryStorageAreaActiveChangeAudit audit) {
+        return new InventoryStorageAreaActiveChangeView(
+            audit.getId(),
+            audit.getStorageAreaId(),
+            audit.getFacilityCode(),
+            audit.getStorageAreaCode(),
+            audit.isPreviousActive(),
+            audit.isCurrentActive(),
+            audit.getChangedBy(),
+            audit.getChangedAt()
         );
     }
 

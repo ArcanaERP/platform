@@ -39,6 +39,7 @@ erDiagram
     INVENTORY_FACILITIES ||--o{ INVENTORY_TELECOM_CONTACTS : owns_contacts
     INVENTORY_FACILITIES ||--o{ INVENTORY_STORAGE_AREAS : owns_storage
     INVENTORY_STORAGE_AREAS ||--o{ INVENTORY_STORAGE_AREAS : contains
+    INVENTORY_STORAGE_AREAS ||--o{ INVENTORY_STORAGE_AREA_ACTIVE_CHANGE_AUDITS : records_active_changes
     INVENTORY_STORAGE_AREAS ||--o{ INVENTORY_STORAGE_AREA_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENTS ||--o{ INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENT_END_AUDITS : records_ends
     INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : traces_asset
@@ -153,8 +154,20 @@ erDiagram
       STRING name
       STRING storageAreaType
       STRING parentStorageAreaCode
+      BOOLEAN active
       INSTANT createdAt
       INSTANT updatedAt
+    }
+
+    INVENTORY_STORAGE_AREA_ACTIVE_CHANGE_AUDITS {
+      UUID id PK
+      UUID storageAreaId
+      STRING facilityCode
+      STRING storageAreaCode
+      BOOLEAN previousActive
+      BOOLEAN currentActive
+      STRING changedBy
+      INSTANT changedAt
     }
 
     INVENTORY_STORAGE_AREA_METADATA_CHANGE_AUDITS {
@@ -664,6 +677,7 @@ erDiagram
 - Inventory storage areas are facility-owned physical storage nodes with `AREA` or `BIN` type.
 - Inventory storage areas can reference an optional parent storage area in the same facility.
 - Inventory storage area writes require an active facility and reject missing parent storage-area codes.
+- Inventory storage area active changes are append-only via `inventory_storage_area_active_change_audits`.
 - Inventory storage area metadata changes are append-only via `inventory_storage_area_metadata_change_audits`.
 - Inventory fixed assets are a first-class catalog for legacy fixed-asset traceability; fixed asset codes and type codes normalize to uppercase.
 - Inventory fixed asset `fixedAssetTypeCode` values are optional, but supplied codes must exist in `inventory_fixed_asset_types`.
@@ -776,6 +790,9 @@ erDiagram
   - `inventory_storage_areas(facilityCode)`
   - `inventory_storage_areas(storageAreaType)`
   - `inventory_storage_areas(facilityCode, parentStorageAreaCode)`
+  - `inventory_storage_areas(active, facilityCode)`
+  - `inventory_storage_area_active_change_audits(storageAreaId, changedAt)`
+  - `inventory_storage_area_active_change_audits(facilityCode, storageAreaCode, changedAt)`
   - `inventory_storage_area_metadata_change_audits(storageAreaId, changedAt)`
   - `inventory_storage_area_metadata_change_audits(facilityCode, storageAreaCode, changedAt)`
   - `inventory_fixed_assets(active, code)`
@@ -859,9 +876,11 @@ erDiagram
 - `GET /api/inventory/postal-addresses?page=&size=&ownerType=&ownerCode=&addressPurposeCode=`
 - `POST /api/inventory/storage-areas`
 - `GET /api/inventory/storage-areas/{id}`
+- `PATCH /api/inventory/storage-areas/{id}/active`
+- `GET /api/inventory/storage-areas/{id}/active-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `PATCH /api/inventory/storage-areas/{id}/metadata`
 - `GET /api/inventory/storage-areas/{id}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
-- `GET /api/inventory/storage-areas?page=&size=&facilityCode=&storageAreaType=&parentStorageAreaCode=`
+- `GET /api/inventory/storage-areas?page=&size=&active=&facilityCode=&storageAreaType=&parentStorageAreaCode=`
 - `POST /api/inventory/telecom-contacts`
 - `GET /api/inventory/telecom-contacts/{id}`
 - `PATCH /api/inventory/telecom-contacts/{id}/metadata`
@@ -992,7 +1011,9 @@ erDiagram
 - inventory location metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inventory storage area type, facility, code, and parent codes are normalized to uppercase
 - inventory storage area writes require an active facility and optional parent storage area in the same facility
-- inventory storage area list filters match normalized facility code, storage-area type, and parent storage-area code
+- inventory storage area list filters match active state, normalized facility code, storage-area type, and parent storage-area code
+- inventory storage area active updates require `changedBy`, reject no-op changes, and append audit rows
+- inventory storage area active history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inventory storage area metadata updates require `changedBy`, reject no-op changes, reject hierarchy cycles, and append audit rows
 - inventory storage area metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inventory telecom contact owner, purpose, and type codes are normalized to uppercase
