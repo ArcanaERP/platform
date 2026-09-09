@@ -4,8 +4,10 @@ import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.InventoryFixedAssetTypeDirectory;
+import com.arcanaerp.platform.inventory.InventoryFixedAssetTypeMetadataChangeView;
 import com.arcanaerp.platform.inventory.InventoryFixedAssetTypeView;
 import com.arcanaerp.platform.inventory.RegisterInventoryFixedAssetTypeCommand;
+import com.arcanaerp.platform.inventory.UpdateInventoryFixedAssetTypeMetadataCommand;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.NoSuchElementException;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 class InventoryFixedAssetTypeDirectoryService implements InventoryFixedAssetTypeDirectory {
 
     private final InventoryFixedAssetTypeRepository inventoryFixedAssetTypeRepository;
+    private final InventoryFixedAssetTypeMetadataChangeAuditRepository metadataChangeAuditRepository;
     private final Clock clock;
 
     @Override
@@ -41,8 +44,34 @@ class InventoryFixedAssetTypeDirectoryService implements InventoryFixedAssetType
     @Transactional(readOnly = true)
     public InventoryFixedAssetTypeView fixedAssetTypeByCode(String code) {
         String normalizedCode = normalizeRequired(code, "code").toUpperCase();
-        return toView(inventoryFixedAssetTypeRepository.findByCode(normalizedCode)
-            .orElseThrow(() -> new NoSuchElementException("Inventory fixed asset type not found for code: " + normalizedCode)));
+        return toView(findFixedAssetType(normalizedCode));
+    }
+
+    @Override
+    public InventoryFixedAssetTypeView updateFixedAssetTypeMetadata(
+        String code,
+        UpdateInventoryFixedAssetTypeMetadataCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        String normalizedCode = normalizeRequired(code, "code").toUpperCase();
+        String commandCode = normalizeRequired(command.code(), "code").toUpperCase();
+        if (!normalizedCode.equals(commandCode)) {
+            throw new IllegalArgumentException("code path variable must match command code");
+        }
+        InventoryFixedAssetType type = findFixedAssetType(normalizedCode);
+        InventoryFixedAssetTypeMetadataSnapshot previous = InventoryFixedAssetTypeMetadataSnapshot.from(type);
+        Instant changedAt = Instant.now(clock);
+        type.updateMetadata(command.description(), changedAt);
+        metadataChangeAuditRepository.save(InventoryFixedAssetTypeMetadataChangeAudit.create(
+            type,
+            previous,
+            InventoryFixedAssetTypeMetadataSnapshot.from(type),
+            command.changedBy(),
+            changedAt
+        ));
+        return toView(inventoryFixedAssetTypeRepository.save(type));
     }
 
     @Override
@@ -50,6 +79,25 @@ class InventoryFixedAssetTypeDirectoryService implements InventoryFixedAssetType
     public boolean fixedAssetTypeExists(String code) {
         String normalizedCode = normalizeRequired(code, "code").toUpperCase();
         return inventoryFixedAssetTypeRepository.findByCode(normalizedCode).isPresent();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<InventoryFixedAssetTypeMetadataChangeView> listMetadataHistory(
+        String code,
+        String changedBy,
+        Instant changedAtFrom,
+        Instant changedAtTo,
+        PageQuery pageQuery
+    ) {
+        InventoryFixedAssetType type = findFixedAssetType(code);
+        return PageResult.from(metadataChangeAuditRepository.findHistoryFiltered(
+            type.getCode(),
+            normalizeOptionalChangedBy(changedBy),
+            changedAtFrom,
+            changedAtTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "changedAt"))
+        )).map(this::toMetadataChangeView);
     }
 
     @Override
@@ -65,8 +113,30 @@ class InventoryFixedAssetTypeDirectoryService implements InventoryFixedAssetType
             type.getId(),
             type.getCode(),
             type.getDescription(),
-            type.getCreatedAt()
+            type.getCreatedAt(),
+            type.getUpdatedAt()
         );
+    }
+
+    private InventoryFixedAssetTypeMetadataChangeView toMetadataChangeView(
+        InventoryFixedAssetTypeMetadataChangeAudit audit
+    ) {
+        return new InventoryFixedAssetTypeMetadataChangeView(
+            audit.getId(),
+            audit.getCode(),
+            audit.getPreviousDescription(),
+            audit.getCurrentDescription(),
+            audit.getChangedBy(),
+            audit.getChangedAt()
+        );
+    }
+
+    private InventoryFixedAssetType findFixedAssetType(String code) {
+        String normalizedCode = normalizeRequired(code, "code").toUpperCase();
+        return inventoryFixedAssetTypeRepository.findByCode(normalizedCode)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Inventory fixed asset type not found for code: " + normalizedCode
+            ));
     }
 
     private static String normalizeRequired(String value, String fieldName) {
@@ -74,5 +144,9 @@ class InventoryFixedAssetTypeDirectoryService implements InventoryFixedAssetType
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private static String normalizeOptionalChangedBy(String value) {
+        return value == null ? null : normalizeRequired(value, "changedBy").toLowerCase();
     }
 }

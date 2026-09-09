@@ -1,6 +1,6 @@
 # Inventory Module Data Model (High-Level)
 
-Updated: 2026-09-08
+Updated: 2026-09-09
 
 ## Entity Diagram
 
@@ -24,6 +24,7 @@ erDiagram
     INVENTORY_REGIONS ||--o{ INVENTORY_FACILITIES : addresses
     INVENTORY_REGIONS ||--o{ INVENTORY_POSTAL_ADDRESSES : addresses
     INVENTORY_FIXED_ASSET_TYPES ||--o{ INVENTORY_FIXED_ASSETS : classifies
+    INVENTORY_FIXED_ASSET_TYPES ||--o{ INVENTORY_FIXED_ASSET_TYPE_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_PARTIES ||--o{ INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENTS : participates
     INVENTORY_PARTIES ||--o{ INVENTORY_FIXED_ASSET_PARTY_ROLE_ASSIGNMENTS : participates
     INVENTORY_PARTY_ROLE_TYPES ||--o{ INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENTS : classifies
@@ -96,6 +97,16 @@ erDiagram
       STRING code UK
       STRING description
       INSTANT createdAt
+      INSTANT updatedAt
+    }
+
+    INVENTORY_FIXED_ASSET_TYPE_METADATA_CHANGE_AUDITS {
+      UUID id PK
+      STRING code
+      STRING previousDescription
+      STRING currentDescription
+      STRING changedBy
+      INSTANT changedAt
     }
 
     INVENTORY_ADDRESS_PURPOSES {
@@ -716,6 +727,7 @@ erDiagram
 - Inventory on-hand, available, and sold counters are segmented by `sku + locationCode`.
 - Inventory location types support optional parent type hierarchy through `parentCode`.
 - Inventory location type metadata changes are append-only via `inventory_location_type_metadata_change_audits`.
+- Inventory fixed asset type metadata changes are append-only via `inventory_fixed_asset_type_metadata_change_audits`.
 - Inventory entry relationship and role types are reference data for entry relationship records.
 - Inventory entry relationships link two existing inventory items and preserve normalized item keys for filtering.
 - Inventory entry relationships support optional `fromDate` and `thruDate` validity windows.
@@ -834,6 +846,8 @@ erDiagram
   - `inventory_location_types(parentCode)`
   - `inventory_location_type_metadata_change_audits(code, changedAt)`
   - `inventory_location_type_metadata_change_audits(changedBy, changedAt)`
+  - `inventory_fixed_asset_type_metadata_change_audits(code, changedAt)`
+  - `inventory_fixed_asset_type_metadata_change_audits(changedBy, changedAt)`
   - `inventory_facilities(active, code)`
   - `inventory_regions(countryCode)`
   - `inventory_facility_active_change_audits(inventoryFacilityId, changedAt)`
@@ -935,6 +949,8 @@ erDiagram
 - `GET /api/inventory/location-types?page=&size=&parentCode=`
 - `POST /api/inventory/fixed-asset-types`
 - `GET /api/inventory/fixed-asset-types/{code}`
+- `PATCH /api/inventory/fixed-asset-types/{code}/metadata`
+- `GET /api/inventory/fixed-asset-types/{code}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/fixed-asset-types?page=&size=`
 - `POST /api/inventory/address-purposes`
 - `GET /api/inventory/address-purposes/{code}`
@@ -1085,6 +1101,8 @@ erDiagram
 - inventory location type parent codes must exist, cannot match the child code, and list filters match normalized parent code
 - inventory location type metadata updates require `changedBy`, reject no-op changes, reject hierarchy cycles, and append audit rows
 - inventory location type metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
+- inventory fixed asset type metadata updates require `changedBy`, reject no-op changes, and append audit rows
+- inventory fixed asset type metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inventory location metadata updates require `changedBy`, reject no-op changes, and append audit rows
 - inventory location metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inventory storage area type, facility, code, and parent codes are normalized to uppercase

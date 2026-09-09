@@ -333,6 +333,7 @@ Inventory:
 - Inventory location and facility contact metadata requires a valid `contactPurposeCode` from `POST /api/inventory/contact-purposes`.
 - Inventory telecom contacts are first-class location/facility contact records with contact-purpose validation and metadata history.
 - Inventory fixed assets provide a first-class asset catalog for pickup/dropoff traceability.
+- Inventory fixed asset type reference data supports audited metadata history for description corrections.
 - Inventory fixed asset active and metadata changes are audit-trailed with actor attribution.
 - Inventory fixed asset facility assignments track effective-dated facility placement with end history.
 - Inventory fixed asset party-role assignments track which parties serve asset-specific roles and support end history.
@@ -351,6 +352,8 @@ Inventory:
 - `GET /api/inventory/location-types?page=&size=&parentCode=`
 - `POST /api/inventory/fixed-asset-types`
 - `GET /api/inventory/fixed-asset-types/{code}`
+- `PATCH /api/inventory/fixed-asset-types/{code}/metadata`
+- `GET /api/inventory/fixed-asset-types/{code}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/fixed-asset-types?page=&size=`
 - `POST /api/inventory/address-purposes`
 - `GET /api/inventory/address-purposes/{code}`

@@ -128,6 +128,9 @@ class InventoryApiIntegrationTest {
     private InventoryFixedAssetTypeRepository inventoryFixedAssetTypeRepository;
 
     @Autowired
+    private InventoryFixedAssetTypeMetadataChangeAuditRepository fixedAssetTypeMetadataChangeAuditRepository;
+
+    @Autowired
     private InventoryFixedAssetActiveChangeAuditRepository fixedAssetActiveChangeAuditRepository;
 
     @Autowired
@@ -225,6 +228,7 @@ class InventoryApiIntegrationTest {
         fixedAssetPartyRoleAssignmentEndAuditRepository.deleteAll();
         fixedAssetPartyRoleAssignmentRepository.deleteAll();
         inventoryFixedAssetRepository.deleteAll();
+        fixedAssetTypeMetadataChangeAuditRepository.deleteAll();
         inventoryFixedAssetTypeRepository.deleteAll();
         facilityActiveChangeAuditRepository.deleteAll();
         facilityMetadataChangeAuditRepository.deleteAll();
@@ -870,7 +874,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.id").isNotEmpty())
             .andExpect(jsonPath("$.code").value("FORKLIFT"))
             .andExpect(jsonPath("$.description").value("Forklift"))
-            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andExpect(jsonPath("$.updatedAt").isNotEmpty());
 
         mockMvc.perform(get("/api/inventory/fixed-asset-types/{code}", "forklift"))
             .andExpect(status().isOk())
@@ -905,6 +910,124 @@ class InventoryApiIntegrationTest {
                 .content(payload)),
             "Inventory fixed asset type already exists for code: FORKLIFT",
             "/api/inventory/fixed-asset-types"
+        );
+    }
+
+    @Test
+    void updatesInventoryFixedAssetTypeMetadataAndListsHistory() throws Exception {
+        inventoryFixedAssetTypeRepository.save(InventoryFixedAssetType.create(
+            "trailer",
+            "Trailer",
+            SEED_INSTANT
+        ));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/fixed-asset-types/{code}/metadata",
+            "trailer"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " trailer ",
+                  "description": " Fleet trailer ",
+                  "changedBy": " Fleet.Admin@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("TRAILER"))
+            .andExpect(jsonPath("$.description").value("Fleet trailer"))
+            .andExpect(jsonPath("$.updatedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/fixed-asset-types/{code}/metadata-history", "trailer")
+            .param("changedBy", "fleet.admin@arcanaerp.com")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].code").value("TRAILER"))
+            .andExpect(jsonPath("$.items[0].previousDescription").value("Trailer"))
+            .andExpect(jsonPath("$.items[0].currentDescription").value("Fleet trailer"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("fleet.admin@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
+    }
+
+    @Test
+    void rejectsNoOpInventoryFixedAssetTypeMetadataChange() throws Exception {
+        inventoryFixedAssetTypeRepository.save(InventoryFixedAssetType.create(
+            "crane",
+            "Crane",
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/fixed-asset-types/{code}/metadata",
+                "crane"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "crane",
+                      "description": "Crane",
+                      "changedBy": "ops"
+                    }
+                    """)),
+            "Inventory fixed asset type metadata is unchanged",
+            "/api/inventory/fixed-asset-types/crane/metadata"
+        );
+    }
+
+    @Test
+    void rejectsInventoryFixedAssetTypeMetadataPathMismatch() throws Exception {
+        inventoryFixedAssetTypeRepository.save(InventoryFixedAssetType.create(
+            "cart",
+            "Cart",
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/fixed-asset-types/{code}/metadata",
+                "cart"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "forklift",
+                      "description": "Cart",
+                      "changedBy": "ops"
+                    }
+                    """)),
+            "code path variable must match command code",
+            "/api/inventory/fixed-asset-types/cart/metadata"
+        );
+    }
+
+    @Test
+    void rejectsInvalidInventoryFixedAssetTypeMetadataHistoryFilters() throws Exception {
+        inventoryFixedAssetTypeRepository.save(InventoryFixedAssetType.create(
+            "container",
+            "Container",
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(get("/api/inventory/fixed-asset-types/{code}/metadata-history", "container")
+                .param("changedBy", " ")
+                .param("page", "0")
+                .param("size", "10")),
+            "changedBy query parameter must not be blank",
+            "/api/inventory/fixed-asset-types/container/metadata-history"
+        );
+
+        expectBadRequest(
+            mockMvc.perform(get("/api/inventory/fixed-asset-types/{code}/metadata-history", "container")
+                .param("changedAtFrom", "2026-05-01T00:00:00Z")
+                .param("changedAtTo", "2026-04-01T00:00:00Z")
+                .param("page", "0")
+                .param("size", "10")),
+            "changedAtFrom must be before or equal to changedAtTo",
+            "/api/inventory/fixed-asset-types/container/metadata-history"
         );
     }
 

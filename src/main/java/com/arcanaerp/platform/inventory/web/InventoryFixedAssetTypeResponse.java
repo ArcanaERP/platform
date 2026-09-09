@@ -7,6 +7,7 @@ public record InventoryFixedAssetTypeResponse(
     UUID id,
     String code,
     String description,
-    Instant createdAt
+    Instant createdAt,
+    Instant updatedAt
 ) {
 }

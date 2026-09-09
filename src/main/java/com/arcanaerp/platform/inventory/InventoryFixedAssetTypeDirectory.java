@@ -9,7 +9,20 @@ public interface InventoryFixedAssetTypeDirectory {
 
     InventoryFixedAssetTypeView fixedAssetTypeByCode(String code);
 
+    InventoryFixedAssetTypeView updateFixedAssetTypeMetadata(
+        String code,
+        UpdateInventoryFixedAssetTypeMetadataCommand command
+    );
+
     boolean fixedAssetTypeExists(String code);
+
+    PageResult<InventoryFixedAssetTypeMetadataChangeView> listMetadataHistory(
+        String code,
+        String changedBy,
+        java.time.Instant changedAtFrom,
+        java.time.Instant changedAtTo,
+        PageQuery pageQuery
+    );
 
     PageResult<InventoryFixedAssetTypeView> listFixedAssetTypes(PageQuery pageQuery);
 }
