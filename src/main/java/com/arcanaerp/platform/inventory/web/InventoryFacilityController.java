@@ -2,6 +2,8 @@ package com.arcanaerp.platform.inventory.web;
 
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.inventory.InventoryFixedAssetFacilityAssignmentDirectory;
+import com.arcanaerp.platform.inventory.InventoryFixedAssetFacilityAssignmentView;
 import com.arcanaerp.platform.inventory.InventoryFacilityDirectory;
 import com.arcanaerp.platform.inventory.InventoryFacilityActiveChangeView;
 import com.arcanaerp.platform.inventory.InventoryFacilityMetadataChangeView;
@@ -30,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class InventoryFacilityController {
 
     private final InventoryFacilityDirectory inventoryFacilityDirectory;
+    private final InventoryFixedAssetFacilityAssignmentDirectory fixedAssetFacilityAssignmentDirectory;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -137,6 +140,22 @@ public class InventoryFacilityController {
         ).map(this::toMetadataChangeResponse);
     }
 
+    @GetMapping("/{code}/current-fixed-assets")
+    public PageResult<InventoryFixedAssetFacilityAssignmentResponse> listCurrentFixedAssets(
+        @PathVariable String code,
+        @RequestParam(required = false) String assignmentType,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        inventoryFacilityDirectory.facilityByCode(code);
+        return fixedAssetFacilityAssignmentDirectory.listCurrentAssignments(
+            null,
+            code,
+            assignmentType,
+            PageQuery.of(page, size)
+        ).map(this::toFixedAssetFacilityAssignmentResponse);
+    }
+
     @GetMapping
     public PageResult<InventoryFacilityResponse> listFacilities(
         @RequestParam(required = false) Boolean active,
@@ -166,6 +185,28 @@ public class InventoryFacilityController {
             facility.active(),
             facility.createdAt(),
             facility.updatedAt()
+        );
+    }
+
+    private InventoryFixedAssetFacilityAssignmentResponse toFixedAssetFacilityAssignmentResponse(
+        InventoryFixedAssetFacilityAssignmentView assignment
+    ) {
+        return new InventoryFixedAssetFacilityAssignmentResponse(
+            assignment.id(),
+            assignment.inventoryFixedAssetId(),
+            assignment.inventoryFacilityId(),
+            assignment.fixedAssetCode(),
+            assignment.facilityCode(),
+            assignment.assignmentType(),
+            assignment.comments(),
+            assignment.fromDate(),
+            assignment.thruDate(),
+            assignment.assignedBy(),
+            assignment.assignedAt(),
+            assignment.active(),
+            assignment.endReason(),
+            assignment.endedBy(),
+            assignment.endedAt()
         );
     }
 

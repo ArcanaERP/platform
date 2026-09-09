@@ -3611,6 +3611,28 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.items[0].facilityCode").value("YARD-CURRENT-100"))
             .andExpect(jsonPath("$.items[0].assignmentType").value("STATIONED_AT"))
             .andExpect(jsonPath("$.items[0].active").value(true));
+
+        mockMvc.perform(get("/api/inventory/facilities/{code}/current-fixed-assets", "yard-current-100")
+            .param("assignmentType", "stationed_at")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].fixedAssetCode").value("TRUCK-CURRENT-100"))
+            .andExpect(jsonPath("$.items[0].facilityCode").value("YARD-CURRENT-100"))
+            .andExpect(jsonPath("$.items[0].assignmentType").value("STATIONED_AT"))
+            .andExpect(jsonPath("$.items[0].active").value(true));
+    }
+
+    @Test
+    void rejectsCurrentInventoryFixedAssetRosterForUnknownFacility() throws Exception {
+        expectInventoryFacilityNotFound(
+            mockMvc.perform(get("/api/inventory/facilities/{code}/current-fixed-assets", "unknown")
+                .param("page", "0")
+                .param("size", "10")),
+            "UNKNOWN",
+            "/api/inventory/facilities/unknown/current-fixed-assets"
+        );
     }
 
     @Test

@@ -1056,6 +1056,7 @@ erDiagram
 - `GET /api/inventory/facilities/{code}/active-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `PATCH /api/inventory/facilities/{code}/metadata`
 - `GET /api/inventory/facilities/{code}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/inventory/facilities/{code}/current-fixed-assets?page=&size=&assignmentType=`
 - `GET /api/inventory/facilities?page=&size=&active=&query=`
 - `POST /api/inventory/facility-party-role-assignments`
 - `GET /api/inventory/facility-party-role-assignments/{id}`
@@ -1136,6 +1137,7 @@ erDiagram
 - inventory fixed asset facility assignment type metadata updates require `changedBy`, reject no-op changes, and append audit rows
 - inventory fixed asset facility assignment type metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inventory fixed asset facility assignment current-placement reads return active rows whose validity window contains the service clock instant
+- inventory facility current fixed-asset roster reads reuse current-placement semantics and require the facility to exist
 - inventory location metadata updates require `changedBy`, reject no-op changes, and append audit rows
 - inventory location metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inventory storage area type, facility, code, and parent codes are normalized to uppercase

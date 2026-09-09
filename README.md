@@ -437,6 +437,7 @@ Inventory:
 - `GET /api/inventory/facilities/{code}/active-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `PATCH /api/inventory/facilities/{code}/metadata`
 - `GET /api/inventory/facilities/{code}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
+- `GET /api/inventory/facilities/{code}/current-fixed-assets?page=&size=&assignmentType=`
 - `GET /api/inventory/facilities?page=&size=&active=&query=`
 - `POST /api/inventory/facility-party-role-assignments`
 - `GET /api/inventory/facility-party-role-assignments/{id}`
