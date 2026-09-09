@@ -334,6 +334,7 @@ Inventory:
 - Inventory telecom contacts are first-class location/facility contact records with contact-purpose validation and metadata history.
 - Inventory fixed assets provide a first-class asset catalog for pickup/dropoff traceability.
 - Inventory fixed asset active and metadata changes are audit-trailed with actor attribution.
+- Inventory fixed asset facility assignments track effective-dated facility placement with end history.
 - Inventory fixed asset party-role assignments track which parties serve asset-specific roles and support end history.
 - Inventory fixed asset `fixedAssetTypeCode` values are validated against `POST /api/inventory/fixed-asset-types` reference data.
 - Inventory facility and fixed asset party-role assignments validate party and role codes against inventory-owned party reference data.
@@ -440,6 +441,11 @@ Inventory:
 - `PATCH /api/inventory/fixed-assets/{code}/metadata`
 - `GET /api/inventory/fixed-assets/{code}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/fixed-assets?page=&size=&active=&query=`
+- `POST /api/inventory/fixed-asset-facility-assignments`
+- `GET /api/inventory/fixed-asset-facility-assignments/{id}`
+- `PATCH /api/inventory/fixed-asset-facility-assignments/{id}/end`
+- `GET /api/inventory/fixed-asset-facility-assignments/{id}/end-history?page=&size=&endedBy=&endedAtFrom=&endedAtTo=`
+- `GET /api/inventory/fixed-asset-facility-assignments?page=&size=&fixedAssetCode=&facilityCode=&assignmentType=&assignedBy=&active=`
 - `POST /api/inventory/fixed-asset-party-role-assignments`
 - `GET /api/inventory/fixed-asset-party-role-assignments/{id}`
 - `PATCH /api/inventory/fixed-asset-party-role-assignments/{id}/end`

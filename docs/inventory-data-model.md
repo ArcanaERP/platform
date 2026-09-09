@@ -47,7 +47,10 @@ erDiagram
     INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_PICKUP_DROPOFF_TRANSACTIONS : traces_asset
     INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_FIXED_ASSET_ACTIVE_CHANGE_AUDITS : records_active_changes
     INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_FIXED_ASSET_METADATA_CHANGE_AUDITS : records_metadata_changes
+    INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_FIXED_ASSET_FACILITY_ASSIGNMENTS : assigns_facilities
     INVENTORY_FIXED_ASSETS ||--o{ INVENTORY_FIXED_ASSET_PARTY_ROLE_ASSIGNMENTS : assigns_party_roles
+    INVENTORY_FACILITIES ||--o{ INVENTORY_FIXED_ASSET_FACILITY_ASSIGNMENTS : hosts_assets
+    INVENTORY_FIXED_ASSET_FACILITY_ASSIGNMENTS ||--o{ INVENTORY_FIXED_ASSET_FACILITY_ASSIGNMENT_END_AUDITS : records_ends
     INVENTORY_FIXED_ASSET_PARTY_ROLE_ASSIGNMENTS ||--o{ INVENTORY_FIXED_ASSET_PARTY_ROLE_ASSIGNMENT_END_AUDITS : records_ends
     INVENTORY_ITEMS ||--o{ INVENTORY_PRODUCT_INSTANCE_ASSIGNMENTS : assigns_product_instances
     INVENTORY_PRODUCT_INSTANCE_ASSIGNMENTS ||--o{ INVENTORY_PRODUCT_INSTANCE_ASSIGNMENT_RELEASE_AUDITS : records_releases
@@ -422,6 +425,39 @@ erDiagram
       INSTANT changedAt
     }
 
+    INVENTORY_FIXED_ASSET_FACILITY_ASSIGNMENTS {
+      UUID id PK
+      UUID inventoryFixedAssetId
+      UUID inventoryFacilityId
+      STRING fixedAssetCode
+      STRING facilityCode
+      STRING assignmentType
+      STRING comments
+      INSTANT fromDate
+      INSTANT thruDate
+      STRING assignedBy
+      INSTANT assignedAt
+      BOOLEAN active
+      STRING endReason
+      STRING endedBy
+      INSTANT endedAt
+    }
+
+    INVENTORY_FIXED_ASSET_FACILITY_ASSIGNMENT_END_AUDITS {
+      UUID id PK
+      UUID assignmentId
+      UUID inventoryFixedAssetId
+      UUID inventoryFacilityId
+      STRING fixedAssetCode
+      STRING facilityCode
+      STRING assignmentType
+      INSTANT previousThruDate
+      INSTANT currentThruDate
+      STRING reason
+      STRING endedBy
+      INSTANT endedAt
+    }
+
     INVENTORY_FIXED_ASSET_PARTY_ROLE_ASSIGNMENTS {
       UUID id PK
       UUID inventoryFixedAssetId
@@ -701,6 +737,8 @@ erDiagram
 - Inventory fixed asset `fixedAssetTypeCode` values are optional, but supplied codes must exist in `inventory_fixed_asset_types`.
 - Inventory fixed asset active changes are append-only via `inventory_fixed_asset_active_change_audits`.
 - Inventory fixed asset metadata changes are append-only via `inventory_fixed_asset_metadata_change_audits`.
+- Inventory fixed asset facility assignments link active fixed assets to active facilities with an assignment type and optional validity window.
+- Inventory fixed asset facility assignment end operations mark assignments inactive, set `thruDate`, and append actor-attributed end audit rows.
 - Inventory fixed asset party-role assignments link active fixed assets to normalized party and role type codes.
 - Inventory fixed asset party-role assignments validate `partyCode` against `inventory_parties` and `roleTypeCode` against `inventory_party_role_types`.
 - Inventory fixed asset party-role assignments support optional `fromDate` and `thruDate` validity windows.
@@ -783,6 +821,7 @@ erDiagram
   - `inventory_facility_party_role_assignments(inventoryFacilityId, partyCode, roleTypeCode)`
   - `inventory_storage_areas(facilityCode, code)`
   - `inventory_fixed_assets(code)`
+  - `inventory_fixed_asset_facility_assignments(inventoryFixedAssetId, inventoryFacilityId, assignmentType)`
   - `inventory_fixed_asset_party_role_assignments(inventoryFixedAssetId, partyCode, roleTypeCode)`
   - `inventory_product_instance_assignments(inventoryItemId, productInstanceCode)`
   - `inventory_locations(code)`
@@ -821,6 +860,14 @@ erDiagram
   - `inventory_fixed_asset_active_change_audits(fixedAssetCode, changedAt)`
   - `inventory_fixed_asset_metadata_change_audits(inventoryFixedAssetId, changedAt)`
   - `inventory_fixed_asset_metadata_change_audits(fixedAssetCode, changedAt)`
+  - `inventory_fixed_asset_facility_assignments(fixedAssetCode)`
+  - `inventory_fixed_asset_facility_assignments(facilityCode)`
+  - `inventory_fixed_asset_facility_assignments(assignmentType)`
+  - `inventory_fixed_asset_facility_assignments(assignedBy, assignedAt)`
+  - `inventory_fixed_asset_facility_assignments(active)`
+  - `inventory_fixed_asset_facility_assignment_end_audits(assignmentId, endedAt)`
+  - `inventory_fixed_asset_facility_assignment_end_audits(fixedAssetCode, facilityCode, assignmentType, endedAt)`
+  - `inventory_fixed_asset_facility_assignment_end_audits(endedBy, endedAt)`
   - `inventory_fixed_asset_party_role_assignments(fixedAssetCode)`
   - `inventory_fixed_asset_party_role_assignments(partyCode, roleTypeCode)`
   - `inventory_fixed_asset_party_role_assignments(assignedBy, assignedAt)`
@@ -978,6 +1025,11 @@ erDiagram
 - `PATCH /api/inventory/fixed-assets/{code}/metadata`
 - `GET /api/inventory/fixed-assets/{code}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/fixed-assets?page=&size=&active=&query=`
+- `POST /api/inventory/fixed-asset-facility-assignments`
+- `GET /api/inventory/fixed-asset-facility-assignments/{id}`
+- `PATCH /api/inventory/fixed-asset-facility-assignments/{id}/end`
+- `GET /api/inventory/fixed-asset-facility-assignments/{id}/end-history?page=&size=&endedBy=&endedAtFrom=&endedAtTo=`
+- `GET /api/inventory/fixed-asset-facility-assignments?page=&size=&fixedAssetCode=&facilityCode=&assignmentType=&assignedBy=&active=`
 - `POST /api/inventory/fixed-asset-party-role-assignments`
 - `GET /api/inventory/fixed-asset-party-role-assignments/{id}`
 - `PATCH /api/inventory/fixed-asset-party-role-assignments/{id}/end`
@@ -1042,6 +1094,9 @@ erDiagram
 - inventory storage area active history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inventory storage area metadata updates require `changedBy`, reject no-op changes, inactive parents, hierarchy cycles, and append audit rows
 - inventory storage area metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
+- inventory fixed asset facility assignment writes validate active fixed assets and active facilities
+- inventory fixed asset facility assignment ends require `thruDate >= fromDate` when `fromDate` is supplied and append end audit rows
+- inventory fixed asset facility assignment list filters match normalized fixed asset code, facility code, assignment type, assignedBy, and active state
 - inventory telecom contact owner, purpose, and type codes are normalized to uppercase
 - inventory telecom contact email values are normalized to lowercase
 - inventory telecom contact writes validate owner existence and contact purpose

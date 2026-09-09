@@ -140,6 +140,12 @@ class InventoryApiIntegrationTest {
     private InventoryFixedAssetPartyRoleAssignmentEndAuditRepository fixedAssetPartyRoleAssignmentEndAuditRepository;
 
     @Autowired
+    private InventoryFixedAssetFacilityAssignmentRepository fixedAssetFacilityAssignmentRepository;
+
+    @Autowired
+    private InventoryFixedAssetFacilityAssignmentEndAuditRepository fixedAssetFacilityAssignmentEndAuditRepository;
+
+    @Autowired
     private InventoryPartyRepository inventoryPartyRepository;
 
     @Autowired
@@ -214,6 +220,8 @@ class InventoryApiIntegrationTest {
         inventoryItemRepository.deleteAll();
         fixedAssetActiveChangeAuditRepository.deleteAll();
         fixedAssetMetadataChangeAuditRepository.deleteAll();
+        fixedAssetFacilityAssignmentEndAuditRepository.deleteAll();
+        fixedAssetFacilityAssignmentRepository.deleteAll();
         fixedAssetPartyRoleAssignmentEndAuditRepository.deleteAll();
         fixedAssetPartyRoleAssignmentRepository.deleteAll();
         inventoryFixedAssetRepository.deleteAll();
@@ -3086,6 +3094,219 @@ class InventoryApiIntegrationTest {
                     """)),
             "TRAILER",
             "/api/inventory/fixed-assets/truck-105/metadata"
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryFixedAssetFacilityAssignments() throws Exception {
+        inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
+            "truck-facility-100",
+            "Yard Truck 100",
+            "vehicle",
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "yard-100",
+            "North Yard",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+
+        String response = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-facility-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fixedAssetCode": " truck-facility-100 ",
+                  "facilityCode": " yard-100 ",
+                  "assignmentType": " stationed_at ",
+                  "comments": " Primary yard truck ",
+                  "fromDate": "2026-04-01T00:00:00Z",
+                  "assignedBy": " Fleet.Dispatch@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.inventoryFixedAssetId").isNotEmpty())
+            .andExpect(jsonPath("$.inventoryFacilityId").isNotEmpty())
+            .andExpect(jsonPath("$.fixedAssetCode").value("TRUCK-FACILITY-100"))
+            .andExpect(jsonPath("$.facilityCode").value("YARD-100"))
+            .andExpect(jsonPath("$.assignmentType").value("STATIONED_AT"))
+            .andExpect(jsonPath("$.comments").value("Primary yard truck"))
+            .andExpect(jsonPath("$.fromDate").value("2026-04-01T00:00:00Z"))
+            .andExpect(jsonPath("$.thruDate").doesNotExist())
+            .andExpect(jsonPath("$.assignedBy").value("fleet.dispatch@arcanaerp.com"))
+            .andExpect(jsonPath("$.assignedAt").isNotEmpty())
+            .andExpect(jsonPath("$.active").value(true))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        String assignmentId = response.replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(get("/api/inventory/fixed-asset-facility-assignments/{id}", assignmentId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(assignmentId))
+            .andExpect(jsonPath("$.fixedAssetCode").value("TRUCK-FACILITY-100"))
+            .andExpect(jsonPath("$.facilityCode").value("YARD-100"));
+
+        mockMvc.perform(get("/api/inventory/fixed-asset-facility-assignments")
+            .param("fixedAssetCode", "truck-facility-100")
+            .param("facilityCode", "yard-100")
+            .param("assignmentType", "stationed_at")
+            .param("assignedBy", "fleet.dispatch@arcanaerp.com")
+            .param("active", "true")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(assignmentId))
+            .andExpect(jsonPath("$.items[0].fixedAssetCode").value("TRUCK-FACILITY-100"))
+            .andExpect(jsonPath("$.items[0].facilityCode").value("YARD-100"))
+            .andExpect(jsonPath("$.items[0].assignmentType").value("STATIONED_AT"))
+            .andExpect(jsonPath("$.items[0].active").value(true));
+    }
+
+    @Test
+    void endsInventoryFixedAssetFacilityAssignmentAndListsEndHistory() throws Exception {
+        inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
+            "truck-facility-101",
+            "Yard Truck 101",
+            "vehicle",
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "yard-101",
+            "North Yard",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        String response = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-facility-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fixedAssetCode": "truck-facility-101",
+                  "facilityCode": "yard-101",
+                  "assignmentType": "stationed_at",
+                  "fromDate": "2026-04-01T00:00:00Z",
+                  "assignedBy": "fleet.dispatch@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        String assignmentId = response.replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/fixed-asset-facility-assignments/{id}/end",
+            assignmentId
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "thruDate": "2026-04-15T00:00:00Z",
+                  "reason": "Moved to south yard",
+                  "endedBy": " Fleet.Dispatch@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(assignmentId))
+            .andExpect(jsonPath("$.active").value(false))
+            .andExpect(jsonPath("$.thruDate").value("2026-04-15T00:00:00Z"))
+            .andExpect(jsonPath("$.endReason").value("Moved to south yard"))
+            .andExpect(jsonPath("$.endedBy").value("fleet.dispatch@arcanaerp.com"))
+            .andExpect(jsonPath("$.endedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/fixed-asset-facility-assignments/{id}/end-history", assignmentId)
+            .param("endedBy", "fleet.dispatch@arcanaerp.com")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].assignmentId").value(assignmentId))
+            .andExpect(jsonPath("$.items[0].fixedAssetCode").value("TRUCK-FACILITY-101"))
+            .andExpect(jsonPath("$.items[0].facilityCode").value("YARD-101"))
+            .andExpect(jsonPath("$.items[0].assignmentType").value("STATIONED_AT"))
+            .andExpect(jsonPath("$.items[0].previousThruDate").doesNotExist())
+            .andExpect(jsonPath("$.items[0].currentThruDate").value("2026-04-15T00:00:00Z"))
+            .andExpect(jsonPath("$.items[0].reason").value("Moved to south yard"))
+            .andExpect(jsonPath("$.items[0].endedBy").value("fleet.dispatch@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].endedAt").isNotEmpty());
+    }
+
+    @Test
+    void rejectsDuplicateInventoryFixedAssetFacilityAssignment() throws Exception {
+        inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
+            "truck-facility-102",
+            "Yard Truck 102",
+            "vehicle",
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "yard-102",
+            "North Yard",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        String payload = """
+            {
+              "fixedAssetCode": "truck-facility-102",
+              "facilityCode": "yard-102",
+              "assignmentType": "stationed_at",
+              "assignedBy": "fleet.dispatch@arcanaerp.com"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-facility-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/fixed-asset-facility-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory fixed asset facility assignment already exists for fixed asset: TRUCK-FACILITY-102, facility: YARD-102, assignment type: STATIONED_AT",
+            "/api/inventory/fixed-asset-facility-assignments"
         );
     }
 
