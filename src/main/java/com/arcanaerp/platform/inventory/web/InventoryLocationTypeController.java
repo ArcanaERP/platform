@@ -28,7 +28,7 @@ public class InventoryLocationTypeController {
     @ResponseStatus(HttpStatus.CREATED)
     public InventoryLocationTypeResponse createLocationType(@Valid @RequestBody CreateInventoryLocationTypeRequest request) {
         return toResponse(inventoryLocationTypeDirectory.registerLocationType(
-            new RegisterInventoryLocationTypeCommand(request.code(), request.description())
+            new RegisterInventoryLocationTypeCommand(request.code(), request.description(), request.parentCode())
         ));
     }
 
@@ -39,10 +39,12 @@ public class InventoryLocationTypeController {
 
     @GetMapping
     public PageResult<InventoryLocationTypeResponse> listLocationTypes(
+        @RequestParam(required = false) String parentCode,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
-        return inventoryLocationTypeDirectory.listLocationTypes(PageQuery.of(page, size)).map(this::toResponse);
+        return inventoryLocationTypeDirectory.listLocationTypes(parentCode, PageQuery.of(page, size))
+            .map(this::toResponse);
     }
 
     private InventoryLocationTypeResponse toResponse(InventoryLocationTypeView type) {
@@ -50,6 +52,7 @@ public class InventoryLocationTypeController {
             type.id(),
             type.code(),
             type.description(),
+            type.parentCode(),
             type.createdAt()
         );
     }

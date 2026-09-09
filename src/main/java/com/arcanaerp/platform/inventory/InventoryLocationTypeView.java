@@ -7,6 +7,7 @@ public record InventoryLocationTypeView(
     UUID id,
     String code,
     String description,
+    String parentCode,
     Instant createdAt
 ) {
 }

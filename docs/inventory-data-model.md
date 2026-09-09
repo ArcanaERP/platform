@@ -8,6 +8,7 @@ Updated: 2026-09-08
 erDiagram
     INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_LOCATIONS : classifies
     INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_FACILITIES : classifies
+    INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_LOCATION_TYPES : contains
     INVENTORY_ADDRESS_PURPOSES ||--o{ INVENTORY_LOCATIONS : classifies_address
     INVENTORY_ADDRESS_PURPOSES ||--o{ INVENTORY_FACILITIES : classifies_address
     INVENTORY_ADDRESS_PURPOSES ||--o{ INVENTORY_POSTAL_ADDRESSES : classifies
@@ -70,6 +71,7 @@ erDiagram
       UUID id PK
       STRING code UK
       STRING description
+      STRING parentCode
       INSTANT createdAt
     }
 
@@ -663,6 +665,7 @@ erDiagram
 ## Relationship Notes
 
 - Inventory on-hand, available, and sold counters are segmented by `sku + locationCode`.
+- Inventory location types support optional parent type hierarchy through `parentCode`.
 - Inventory entry relationship and role types are reference data for entry relationship records.
 - Inventory entry relationships link two existing inventory items and preserve normalized item keys for filtering.
 - Inventory entry relationships support optional `fromDate` and `thruDate` validity windows.
@@ -775,6 +778,7 @@ erDiagram
   - `inventory_items(sourceSystemCode, externalReference)`
   - `inventory_transfer_reversal_idempotency(transferId, idempotencyKey)`
 - Indexes:
+  - `inventory_location_types(parentCode)`
   - `inventory_facilities(active, code)`
   - `inventory_regions(countryCode)`
   - `inventory_facility_active_change_audits(inventoryFacilityId, changedAt)`
@@ -863,7 +867,7 @@ erDiagram
 
 - `POST /api/inventory/location-types`
 - `GET /api/inventory/location-types/{code}`
-- `GET /api/inventory/location-types?page=&size=`
+- `GET /api/inventory/location-types?page=&size=&parentCode=`
 - `POST /api/inventory/fixed-asset-types`
 - `GET /api/inventory/fixed-asset-types/{code}`
 - `GET /api/inventory/fixed-asset-types?page=&size=`
@@ -1008,6 +1012,7 @@ erDiagram
 - inventory location and facility address metadata requires a supplied address purpose code
 - inventory location and facility contact name/email metadata requires a supplied contact purpose code
 - inventory location facility type codes must exist in the inventory location type catalog when supplied
+- inventory location type parent codes must exist, cannot match the child code, and list filters match normalized parent code
 - inventory location metadata updates require `changedBy`, reject no-op changes, and append audit rows
 - inventory location metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inventory storage area type, facility, code, and parent codes are normalized to uppercase

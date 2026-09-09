@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 
 public record CreateInventoryLocationTypeRequest(
     @NotBlank String code,
-    @NotBlank String description
+    @NotBlank String description,
+    String parentCode
 ) {
 }

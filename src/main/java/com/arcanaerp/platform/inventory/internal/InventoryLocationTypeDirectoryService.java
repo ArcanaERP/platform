@@ -29,11 +29,13 @@ class InventoryLocationTypeDirectoryService implements InventoryLocationTypeDire
         }
         String code = normalizeRequired(command.code(), "code").toUpperCase();
         String description = normalizeRequired(command.description(), "description");
+        String parentCode = normalizeOptionalUpper(command.parentCode());
+        ensureParentExists(code, parentCode);
         if (inventoryLocationTypeRepository.findByCode(code).isPresent()) {
             throw new ConflictException("Inventory location type already exists for code: " + code);
         }
         return toView(inventoryLocationTypeRepository.save(
-            InventoryLocationType.create(code, description, Instant.now(clock))
+            InventoryLocationType.create(code, description, parentCode, Instant.now(clock))
         ));
     }
 
@@ -54,7 +56,16 @@ class InventoryLocationTypeDirectoryService implements InventoryLocationTypeDire
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<InventoryLocationTypeView> listLocationTypes(PageQuery pageQuery) {
+    public PageResult<InventoryLocationTypeView> listLocationTypes(String parentCode, PageQuery pageQuery) {
+        String normalizedParentCode = normalizeOptionalUpper(parentCode);
+        if (normalizedParentCode != null) {
+            return PageResult.from(
+                inventoryLocationTypeRepository.findByParentCode(
+                    normalizedParentCode,
+                    pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "code"))
+                )
+            ).map(this::toView);
+        }
         return PageResult.from(
             inventoryLocationTypeRepository.findAll(pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "code")))
         ).map(this::toView);
@@ -65,8 +76,21 @@ class InventoryLocationTypeDirectoryService implements InventoryLocationTypeDire
             type.getId(),
             type.getCode(),
             type.getDescription(),
+            type.getParentCode(),
             type.getCreatedAt()
         );
+    }
+
+    private void ensureParentExists(String code, String parentCode) {
+        if (parentCode == null) {
+            return;
+        }
+        if (code.equals(parentCode)) {
+            throw new IllegalArgumentException("parentCode must not match code");
+        }
+        if (inventoryLocationTypeRepository.findByCode(parentCode).isEmpty()) {
+            throw new IllegalArgumentException("Inventory location type not found for parentCode: " + parentCode);
+        }
     }
 
     private static String normalizeRequired(String value, String fieldName) {
@@ -74,5 +98,12 @@ class InventoryLocationTypeDirectoryService implements InventoryLocationTypeDire
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private static String normalizeOptionalUpper(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim().toUpperCase();
     }
 }

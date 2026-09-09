@@ -11,5 +11,9 @@ public interface InventoryLocationTypeDirectory {
 
     boolean locationTypeExists(String code);
 
-    PageResult<InventoryLocationTypeView> listLocationTypes(PageQuery pageQuery);
+    PageResult<InventoryLocationTypeView> listLocationTypes(String parentCode, PageQuery pageQuery);
+
+    default PageResult<InventoryLocationTypeView> listLocationTypes(PageQuery pageQuery) {
+        return listLocationTypes(null, pageQuery);
+    }
 }

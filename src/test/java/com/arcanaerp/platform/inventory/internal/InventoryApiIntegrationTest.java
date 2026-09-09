@@ -353,12 +353,14 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.id").isNotEmpty())
             .andExpect(jsonPath("$.code").value("CROSS_DOCK"))
             .andExpect(jsonPath("$.description").value("Cross-dock facility"))
+            .andExpect(jsonPath("$.parentCode").doesNotExist())
             .andExpect(jsonPath("$.createdAt").isNotEmpty());
 
         mockMvc.perform(get("/api/inventory/location-types/{code}", "cross_dock"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.code").value("CROSS_DOCK"))
-            .andExpect(jsonPath("$.description").value("Cross-dock facility"));
+            .andExpect(jsonPath("$.description").value("Cross-dock facility"))
+            .andExpect(jsonPath("$.parentCode").doesNotExist());
 
         mockMvc.perform(get("/api/inventory/location-types")
             .param("page", "0")
@@ -366,8 +368,74 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.totalItems").value(3))
             .andExpect(jsonPath("$.items[0].code").value("CROSS_DOCK"))
+            .andExpect(jsonPath("$.items[0].parentCode").doesNotExist())
             .andExpect(jsonPath("$.items[1].code").value("STORE"))
             .andExpect(jsonPath("$.items[2].code").value("WAREHOUSE"));
+    }
+
+    @Test
+    void createsAndListsInventoryLocationTypeHierarchy() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/location-types")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " micro_fulfillment ",
+                  "description": " Micro fulfillment center ",
+                  "parentCode": " warehouse "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.code").value("MICRO_FULFILLMENT"))
+            .andExpect(jsonPath("$.description").value("Micro fulfillment center"))
+            .andExpect(jsonPath("$.parentCode").value("WAREHOUSE"));
+
+        mockMvc.perform(get("/api/inventory/location-types/{code}", "micro_fulfillment"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("MICRO_FULFILLMENT"))
+            .andExpect(jsonPath("$.parentCode").value("WAREHOUSE"));
+
+        mockMvc.perform(get("/api/inventory/location-types")
+            .param("parentCode", "warehouse")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].code").value("MICRO_FULFILLMENT"))
+            .andExpect(jsonPath("$.items[0].parentCode").value("WAREHOUSE"));
+    }
+
+    @Test
+    void rejectsInventoryLocationTypeWithMissingParent() throws Exception {
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/location-types")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "micro_fulfillment",
+                      "description": "Micro fulfillment center",
+                      "parentCode": "unknown"
+                    }
+                    """)),
+            "Inventory location type not found for parentCode: UNKNOWN",
+            "/api/inventory/location-types"
+        );
+    }
+
+    @Test
+    void rejectsInventoryLocationTypeSelfParent() throws Exception {
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/inventory/location-types")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "warehouse",
+                      "description": "Warehouse child",
+                      "parentCode": "warehouse"
+                    }
+                    """)),
+            "parentCode must not match code",
+            "/api/inventory/location-types"
+        );
     }
 
     @Test

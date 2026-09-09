@@ -316,6 +316,7 @@ Agreements:
 
 Inventory:
 
+- Inventory location/facility type reference data supports optional parent type hierarchy for legacy facility-type nested-set parity.
 - Inventory item UOM codes are validated against `POST /api/core/units-of-measurement` reference data.
 - Inventory item registration accepts optional `availableQuantity` and `soldQuantity`; available defaults to on-hand, sold defaults to zero.
 - Inventory items support optional external reference and source-system metadata for legacy inventory-entry traceability.
@@ -344,7 +345,7 @@ Inventory:
 - Item-location assignment records track valid-from/valid-thru placement history for inventory items and can target facility storage areas/bins.
 - `POST /api/inventory/location-types`
 - `GET /api/inventory/location-types/{code}`
-- `GET /api/inventory/location-types?page=&size=`
+- `GET /api/inventory/location-types?page=&size=&parentCode=`
 - `POST /api/inventory/fixed-asset-types`
 - `GET /api/inventory/fixed-asset-types/{code}`
 - `GET /api/inventory/fixed-asset-types?page=&size=`
