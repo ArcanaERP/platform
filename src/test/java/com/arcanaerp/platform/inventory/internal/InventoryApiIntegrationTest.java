@@ -3311,6 +3311,270 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void rejectsInventoryFixedAssetFacilityAssignmentForInactiveFixedAsset() throws Exception {
+        InventoryFixedAsset fixedAsset = InventoryFixedAsset.create(
+            "truck-facility-103",
+            "Yard Truck 103",
+            "vehicle",
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        );
+        fixedAsset.setActive(false, SEED_INSTANT.plusSeconds(1));
+        inventoryFixedAssetRepository.save(fixedAsset);
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "yard-103",
+            "North Yard",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/fixed-asset-facility-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fixedAssetCode": "truck-facility-103",
+                      "facilityCode": "yard-103",
+                      "assignmentType": "stationed_at",
+                      "assignedBy": "fleet.dispatch@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory fixed asset is inactive: TRUCK-FACILITY-103",
+            "/api/inventory/fixed-asset-facility-assignments"
+        );
+    }
+
+    @Test
+    void rejectsInventoryFixedAssetFacilityAssignmentForInactiveFacility() throws Exception {
+        inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
+            "truck-facility-104",
+            "Yard Truck 104",
+            "vehicle",
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        InventoryFacility facility = InventoryFacility.create(
+            "yard-104",
+            "North Yard",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        );
+        facility.setActive(false, SEED_INSTANT.plusSeconds(1));
+        inventoryFacilityRepository.save(facility);
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/fixed-asset-facility-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fixedAssetCode": "truck-facility-104",
+                      "facilityCode": "yard-104",
+                      "assignmentType": "stationed_at",
+                      "assignedBy": "fleet.dispatch@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory facility is inactive: YARD-104",
+            "/api/inventory/fixed-asset-facility-assignments"
+        );
+    }
+
+    @Test
+    void rejectsInvalidInventoryFixedAssetFacilityAssignmentDateWindow() throws Exception {
+        inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
+            "truck-facility-105",
+            "Yard Truck 105",
+            "vehicle",
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "yard-105",
+            "North Yard",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/fixed-asset-facility-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fixedAssetCode": "truck-facility-105",
+                      "facilityCode": "yard-105",
+                      "assignmentType": "stationed_at",
+                      "fromDate": "2026-04-15T00:00:00Z",
+                      "thruDate": "2026-04-01T00:00:00Z",
+                      "assignedBy": "fleet.dispatch@arcanaerp.com"
+                    }
+                    """)),
+            "fromDate must be before or equal to thruDate",
+            "/api/inventory/fixed-asset-facility-assignments"
+        );
+    }
+
+    @Test
+    void rejectsInvalidInventoryFixedAssetFacilityAssignmentEndDate() throws Exception {
+        inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
+            "truck-facility-106",
+            "Yard Truck 106",
+            "vehicle",
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "yard-106",
+            "North Yard",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        String response = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-facility-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fixedAssetCode": "truck-facility-106",
+                  "facilityCode": "yard-106",
+                  "assignmentType": "stationed_at",
+                  "fromDate": "2026-04-15T00:00:00Z",
+                  "assignedBy": "fleet.dispatch@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        String assignmentId = response.replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+        String path = "/api/inventory/fixed-asset-facility-assignments/" + assignmentId + "/end";
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(path)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "thruDate": "2026-04-01T00:00:00Z",
+                      "reason": "Backdated move",
+                      "endedBy": "fleet.dispatch@arcanaerp.com"
+                    }
+                    """)),
+            "thruDate must be after or equal to fromDate",
+            path
+        );
+    }
+
+    @Test
+    void rejectsEndingAlreadyEndedInventoryFixedAssetFacilityAssignment() throws Exception {
+        inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
+            "truck-facility-107",
+            "Yard Truck 107",
+            "vehicle",
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "yard-107",
+            "North Yard",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        String response = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-facility-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fixedAssetCode": "truck-facility-107",
+                  "facilityCode": "yard-107",
+                  "assignmentType": "stationed_at",
+                  "fromDate": "2026-04-01T00:00:00Z",
+                  "assignedBy": "fleet.dispatch@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        String assignmentId = response.replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+        String path = "/api/inventory/fixed-asset-facility-assignments/" + assignmentId + "/end";
+        String endPayload = """
+            {
+              "thruDate": "2026-04-15T00:00:00Z",
+              "reason": "Moved to south yard",
+              "endedBy": "fleet.dispatch@arcanaerp.com"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(path)
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(endPayload))
+            .andExpect(status().isOk());
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(path)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(endPayload)),
+            "Inventory fixed asset facility assignment is already ended",
+            path
+        );
+    }
+
+    @Test
     void createsReadsAndListsInventoryFixedAssetPartyRoleAssignments() throws Exception {
         inventoryFixedAssetRepository.save(
             InventoryFixedAsset.create(
