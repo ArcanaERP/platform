@@ -325,6 +325,7 @@ Inventory:
 - Inventory facilities provide a first-class facility catalog for pickup/dropoff traceability.
 - Inventory facility active and metadata changes are audit-trailed with actor attribution.
 - Inventory facility party-role assignments track which parties serve facility-specific roles and support end history.
+- Inventory facility party-role assignments reject overlapping active validity windows for the same facility, party, and role type.
 - Inventory facility `facilityTypeCode` values are validated against `POST /api/inventory/location-types` reference data.
 - Inventory location and facility address metadata requires a valid `addressPurposeCode` from `POST /api/inventory/address-purposes`.
 - Inventory postal addresses are first-class location/facility address records with address-purpose and country/region validation plus metadata history.

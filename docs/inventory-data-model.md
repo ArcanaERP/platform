@@ -758,6 +758,7 @@ erDiagram
 - Inventory facility party-role assignments link active facilities to normalized party and role type codes.
 - Inventory facility party-role assignments validate `partyCode` against `inventory_parties` and `roleTypeCode` against `inventory_party_role_types`.
 - Inventory facility party-role assignments support optional `fromDate` and `thruDate` validity windows.
+- Inventory facility party-role assignment writes reject overlapping active validity windows for the same facility, party, and role type.
 - Inventory facility party-role assignment end operations mark assignments inactive, set `thruDate`, and append actor-attributed end audit rows.
 - Inventory storage areas are facility-owned physical storage nodes with `AREA` or `BIN` type.
 - Inventory storage areas can reference an optional parent storage area in the same facility.
@@ -851,7 +852,6 @@ erDiagram
   - `inventory_entry_relationship_types(code)`
   - `inventory_entry_role_types(code)`
   - `inventory_facilities(code)`
-  - `inventory_facility_party_role_assignments(inventoryFacilityId, partyCode, roleTypeCode)`
   - `inventory_storage_areas(facilityCode, code)`
   - `inventory_fixed_assets(code)`
   - `inventory_fixed_asset_facility_assignments(inventoryFixedAssetId, inventoryFacilityId, assignmentType)`
@@ -880,6 +880,7 @@ erDiagram
   - `inventory_facility_party_role_assignments(partyCode, roleTypeCode)`
   - `inventory_facility_party_role_assignments(assignedBy, assignedAt)`
   - `inventory_facility_party_role_assignments(active)`
+  - `inventory_facility_party_role_assignments(inventoryFacilityId, partyCode, roleTypeCode, active, fromDate, thruDate)`
   - `inventory_facility_party_role_assignment_end_audits(assignmentId, endedAt)`
   - `inventory_facility_party_role_assignment_end_audits(facilityCode, partyCode, roleTypeCode, endedAt)`
   - `inventory_facility_party_role_assignment_end_audits(endedBy, endedAt)`

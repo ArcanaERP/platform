@@ -2979,6 +2979,113 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void rejectsOverlappingActiveInventoryFacilityPartyRoleAssignment() throws Exception {
+        inventoryFacilityRepository.save(
+            InventoryFacility.create(
+                "dc-role-overlap-100",
+                "Overlap Role Distribution Center 100",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/facility-party-role-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "facilityCode": "dc-role-overlap-100",
+                  "partyCode": "west-operator",
+                  "roleTypeCode": "manager",
+                  "fromDate": "2026-04-01T00:00:00Z",
+                  "thruDate": "2026-04-30T00:00:00Z",
+                  "assignedBy": "facilities.ops@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/facility-party-role-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "facilityCode": "dc-role-overlap-100",
+                      "partyCode": "west-operator",
+                      "roleTypeCode": "manager",
+                      "fromDate": "2026-04-15T00:00:00Z",
+                      "thruDate": "2026-05-15T00:00:00Z",
+                      "assignedBy": "facilities.ops@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory facility party role assignment overlaps an active assignment for facility: DC-ROLE-OVERLAP-100, party: WEST-OPERATOR, role type: MANAGER",
+            "/api/inventory/facility-party-role-assignments"
+        );
+    }
+
+    @Test
+    void allowsNonOverlappingActiveInventoryFacilityPartyRoleAssignments() throws Exception {
+        inventoryFacilityRepository.save(
+            InventoryFacility.create(
+                "dc-role-overlap-101",
+                "Overlap Role Distribution Center 101",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/facility-party-role-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "facilityCode": "dc-role-overlap-101",
+                  "partyCode": "west-operator",
+                  "roleTypeCode": "manager",
+                  "fromDate": "2026-04-01T00:00:00Z",
+                  "thruDate": "2026-04-30T00:00:00Z",
+                  "assignedBy": "facilities.ops@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/facility-party-role-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "facilityCode": "dc-role-overlap-101",
+                  "partyCode": "west-operator",
+                  "roleTypeCode": "manager",
+                  "fromDate": "2026-05-01T00:00:00Z",
+                  "thruDate": "2026-05-31T00:00:00Z",
+                  "assignedBy": "facilities.ops@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated());
+    }
+
+    @Test
     void rejectsUnknownFacilityForPartyRoleAssignment() throws Exception {
         expectInventoryFacilityNotFound(
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(

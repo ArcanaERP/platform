@@ -7,7 +7,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -17,15 +16,12 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
     name = "inventory_facility_party_role_assignments",
-    uniqueConstraints = @UniqueConstraint(
-        name = "uk_ifpra_facility_party_role",
-        columnNames = {"inventoryFacilityId", "partyCode", "roleTypeCode"}
-    ),
     indexes = {
         @Index(name = "idx_ifpra_facility_code", columnList = "facilityCode"),
         @Index(name = "idx_ifpra_party_role", columnList = "partyCode,roleTypeCode"),
         @Index(name = "idx_ifpra_assigned_by", columnList = "assignedBy,assignedAt"),
-        @Index(name = "idx_ifpra_active", columnList = "active")
+        @Index(name = "idx_ifpra_active", columnList = "active"),
+        @Index(name = "idx_ifpra_overlap_role", columnList = "inventoryFacilityId,partyCode,roleTypeCode,active,fromDate,thruDate")
     }
 )
 @Getter

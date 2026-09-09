@@ -49,11 +49,13 @@ class InventoryFacilityPartyRoleAssignmentDirectoryService
         ensurePartyExists(partyCode);
         ensureRoleTypeExists(roleTypeCode);
         if (
-            assignmentRepository.findByInventoryFacilityIdAndPartyCodeAndRoleTypeCode(
+            assignmentRepository.existsExactAssignment(
                 facility.getId(),
                 partyCode,
-                roleTypeCode
-            ).isPresent()
+                roleTypeCode,
+                command.fromDate(),
+                command.thruDate()
+            )
         ) {
             throw new ConflictException(
                 "Inventory facility party role assignment already exists for facility: "
@@ -64,6 +66,13 @@ class InventoryFacilityPartyRoleAssignmentDirectoryService
                     + roleTypeCode
             );
         }
+        ensureNoOverlappingActiveAssignment(
+            facility,
+            partyCode,
+            roleTypeCode,
+            command.fromDate(),
+            command.thruDate()
+        );
         return toView(assignmentRepository.save(InventoryFacilityPartyRoleAssignment.create(
             facility,
             partyCode,
@@ -167,6 +176,31 @@ class InventoryFacilityPartyRoleAssignmentDirectoryService
             .orElseThrow(() -> new NoSuchElementException(
                 "Inventory facility party role assignment not found for id: " + id
             ));
+    }
+
+    private void ensureNoOverlappingActiveAssignment(
+        InventoryFacility facility,
+        String partyCode,
+        String roleTypeCode,
+        Instant fromDate,
+        Instant thruDate
+    ) {
+        if (assignmentRepository.existsOverlappingActiveAssignment(
+            facility.getId(),
+            partyCode,
+            roleTypeCode,
+            fromDate,
+            thruDate
+        )) {
+            throw new ConflictException(
+                "Inventory facility party role assignment overlaps an active assignment for facility: "
+                    + facility.getCode()
+                    + ", party: "
+                    + partyCode
+                    + ", role type: "
+                    + roleTypeCode
+            );
+        }
     }
 
     private InventoryFacilityPartyRoleAssignmentView toView(InventoryFacilityPartyRoleAssignment assignment) {
