@@ -335,7 +335,8 @@ Inventory:
 - Inventory fixed assets provide a first-class asset catalog for pickup/dropoff traceability.
 - Inventory fixed asset type reference data supports audited metadata history for description corrections.
 - Inventory fixed asset active and metadata changes are audit-trailed with actor attribution.
-- Inventory fixed asset facility assignments track effective-dated facility placement with end history.
+- Inventory fixed asset facility assignment types are inventory-owned reference data and are required for facility placement assignments.
+- Inventory fixed asset facility assignments track effective-dated facility placement with assignment-type validation and end history.
 - Inventory fixed asset party-role assignments track which parties serve asset-specific roles and support end history.
 - Inventory fixed asset `fixedAssetTypeCode` values are validated against `POST /api/inventory/fixed-asset-types` reference data.
 - Inventory facility and fixed asset party-role assignments validate party and role codes against inventory-owned party reference data.
@@ -355,6 +356,9 @@ Inventory:
 - `PATCH /api/inventory/fixed-asset-types/{code}/metadata`
 - `GET /api/inventory/fixed-asset-types/{code}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/fixed-asset-types?page=&size=`
+- `POST /api/inventory/fixed-asset-facility-assignment-types`
+- `GET /api/inventory/fixed-asset-facility-assignment-types/{code}`
+- `GET /api/inventory/fixed-asset-facility-assignment-types?page=&size=`
 - `POST /api/inventory/address-purposes`
 - `GET /api/inventory/address-purposes/{code}`
 - `GET /api/inventory/address-purposes?page=&size=`

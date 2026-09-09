@@ -149,6 +149,9 @@ class InventoryApiIntegrationTest {
     private InventoryFixedAssetFacilityAssignmentEndAuditRepository fixedAssetFacilityAssignmentEndAuditRepository;
 
     @Autowired
+    private InventoryFixedAssetFacilityAssignmentTypeRepository fixedAssetFacilityAssignmentTypeRepository;
+
+    @Autowired
     private InventoryPartyRepository inventoryPartyRepository;
 
     @Autowired
@@ -225,6 +228,7 @@ class InventoryApiIntegrationTest {
         fixedAssetMetadataChangeAuditRepository.deleteAll();
         fixedAssetFacilityAssignmentEndAuditRepository.deleteAll();
         fixedAssetFacilityAssignmentRepository.deleteAll();
+        fixedAssetFacilityAssignmentTypeRepository.deleteAll();
         fixedAssetPartyRoleAssignmentEndAuditRepository.deleteAll();
         fixedAssetPartyRoleAssignmentRepository.deleteAll();
         inventoryFixedAssetRepository.deleteAll();
@@ -262,6 +266,7 @@ class InventoryApiIntegrationTest {
         seedInventoryRegion("US", "OR", "Oregon");
         seedInventoryRegion("US", "NV", "Nevada");
         seedFixedAssetType("VEHICLE", "Vehicle");
+        seedFixedAssetFacilityAssignmentType("STATIONED_AT", "Stationed at");
         seedInventoryParty("WEST-OPERATOR", "West operator");
         seedInventoryParty("WEST-CARRIER", "West carrier");
         seedInventoryPartyRoleType("MANAGER", "Manager");
@@ -1028,6 +1033,64 @@ class InventoryApiIntegrationTest {
                 .param("size", "10")),
             "changedAtFrom must be before or equal to changedAtTo",
             "/api/inventory/fixed-asset-types/container/metadata-history"
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryFixedAssetFacilityAssignmentTypes() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-facility-assignment-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " leased_to ",
+                  "description": " Leased to facility "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.code").value("LEASED_TO"))
+            .andExpect(jsonPath("$.description").value("Leased to facility"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/fixed-asset-facility-assignment-types/{code}", "leased_to"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("LEASED_TO"))
+            .andExpect(jsonPath("$.description").value("Leased to facility"));
+
+        mockMvc.perform(get("/api/inventory/fixed-asset-facility-assignment-types")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2))
+            .andExpect(jsonPath("$.items[0].code").value("LEASED_TO"))
+            .andExpect(jsonPath("$.items[1].code").value("STATIONED_AT"));
+    }
+
+    @Test
+    void rejectsDuplicateInventoryFixedAssetFacilityAssignmentTypeCode() throws Exception {
+        String payload = """
+            {
+              "code": "leased_to",
+              "description": "Leased to facility"
+            }
+            """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-facility-assignment-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/fixed-asset-facility-assignment-types"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(payload)),
+            "Inventory fixed asset facility assignment type already exists for code: LEASED_TO",
+            "/api/inventory/fixed-asset-facility-assignment-types"
         );
     }
 
@@ -3567,6 +3630,50 @@ class InventoryApiIntegrationTest {
                     }
                     """)),
             "fromDate must be before or equal to thruDate",
+            "/api/inventory/fixed-asset-facility-assignments"
+        );
+    }
+
+    @Test
+    void rejectsUnknownInventoryFixedAssetFacilityAssignmentType() throws Exception {
+        inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
+            "truck-facility-108",
+            "Yard Truck 108",
+            "vehicle",
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "yard-108",
+            "North Yard",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/fixed-asset-facility-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fixedAssetCode": "truck-facility-108",
+                      "facilityCode": "yard-108",
+                      "assignmentType": "unknown",
+                      "assignedBy": "fleet.dispatch@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory fixed asset facility assignment type not found for code: UNKNOWN",
             "/api/inventory/fixed-asset-facility-assignments"
         );
     }
@@ -8557,6 +8664,12 @@ class InventoryApiIntegrationTest {
     private void seedFixedAssetType(String code, String description) {
         inventoryFixedAssetTypeRepository.save(
             InventoryFixedAssetType.create(code, description, SEED_INSTANT)
+        );
+    }
+
+    private void seedFixedAssetFacilityAssignmentType(String code, String description) {
+        fixedAssetFacilityAssignmentTypeRepository.save(
+            InventoryFixedAssetFacilityAssignmentType.create(code, description, SEED_INSTANT)
         );
     }
 

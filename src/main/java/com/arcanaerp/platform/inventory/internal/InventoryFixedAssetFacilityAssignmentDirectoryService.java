@@ -6,6 +6,7 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.inventory.EndInventoryFixedAssetFacilityAssignmentCommand;
 import com.arcanaerp.platform.inventory.InventoryFixedAssetFacilityAssignmentDirectory;
 import com.arcanaerp.platform.inventory.InventoryFixedAssetFacilityAssignmentEndView;
+import com.arcanaerp.platform.inventory.InventoryFixedAssetFacilityAssignmentTypeDirectory;
 import com.arcanaerp.platform.inventory.InventoryFixedAssetFacilityAssignmentView;
 import com.arcanaerp.platform.inventory.RegisterInventoryFixedAssetFacilityAssignmentCommand;
 import java.time.Clock;
@@ -28,6 +29,7 @@ class InventoryFixedAssetFacilityAssignmentDirectoryService
     private final InventoryFixedAssetFacilityAssignmentEndAuditRepository endAuditRepository;
     private final InventoryFixedAssetRepository inventoryFixedAssetRepository;
     private final InventoryFacilityRepository inventoryFacilityRepository;
+    private final InventoryFixedAssetFacilityAssignmentTypeDirectory assignmentTypeDirectory;
     private final Clock clock;
 
     @Override
@@ -46,6 +48,7 @@ class InventoryFixedAssetFacilityAssignmentDirectoryService
             throw new IllegalArgumentException("Inventory facility is inactive: " + facility.getCode());
         }
         String assignmentType = normalizeRequired(command.assignmentType(), "assignmentType").toUpperCase();
+        ensureAssignmentTypeExists(assignmentType);
         if (
             assignmentRepository.findByInventoryFixedAssetIdAndInventoryFacilityIdAndAssignmentType(
                 fixedAsset.getId(),
@@ -173,6 +176,14 @@ class InventoryFixedAssetFacilityAssignmentDirectoryService
             .orElseThrow(() -> new NoSuchElementException(
                 "Inventory fixed asset facility assignment not found for id: " + id
             ));
+    }
+
+    private void ensureAssignmentTypeExists(String assignmentType) {
+        if (!assignmentTypeDirectory.assignmentTypeExists(assignmentType)) {
+            throw new IllegalArgumentException(
+                "Inventory fixed asset facility assignment type not found for code: " + assignmentType
+            );
+        }
     }
 
     private InventoryFixedAssetFacilityAssignmentView toView(InventoryFixedAssetFacilityAssignment assignment) {

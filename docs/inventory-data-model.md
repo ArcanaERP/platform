@@ -25,6 +25,7 @@ erDiagram
     INVENTORY_REGIONS ||--o{ INVENTORY_POSTAL_ADDRESSES : addresses
     INVENTORY_FIXED_ASSET_TYPES ||--o{ INVENTORY_FIXED_ASSETS : classifies
     INVENTORY_FIXED_ASSET_TYPES ||--o{ INVENTORY_FIXED_ASSET_TYPE_METADATA_CHANGE_AUDITS : records_metadata_changes
+    INVENTORY_FIXED_ASSET_FACILITY_ASSIGNMENT_TYPES ||--o{ INVENTORY_FIXED_ASSET_FACILITY_ASSIGNMENTS : classifies
     INVENTORY_PARTIES ||--o{ INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENTS : participates
     INVENTORY_PARTIES ||--o{ INVENTORY_FIXED_ASSET_PARTY_ROLE_ASSIGNMENTS : participates
     INVENTORY_PARTY_ROLE_TYPES ||--o{ INVENTORY_FACILITY_PARTY_ROLE_ASSIGNMENTS : classifies
@@ -107,6 +108,13 @@ erDiagram
       STRING currentDescription
       STRING changedBy
       INSTANT changedAt
+    }
+
+    INVENTORY_FIXED_ASSET_FACILITY_ASSIGNMENT_TYPES {
+      UUID id PK
+      STRING code UK
+      STRING description
+      INSTANT createdAt
     }
 
     INVENTORY_ADDRESS_PURPOSES {
@@ -952,6 +960,9 @@ erDiagram
 - `PATCH /api/inventory/fixed-asset-types/{code}/metadata`
 - `GET /api/inventory/fixed-asset-types/{code}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/fixed-asset-types?page=&size=`
+- `POST /api/inventory/fixed-asset-facility-assignment-types`
+- `GET /api/inventory/fixed-asset-facility-assignment-types/{code}`
+- `GET /api/inventory/fixed-asset-facility-assignment-types?page=&size=`
 - `POST /api/inventory/address-purposes`
 - `GET /api/inventory/address-purposes/{code}`
 - `GET /api/inventory/address-purposes?page=&size=`
@@ -1103,6 +1114,7 @@ erDiagram
 - inventory location type metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inventory fixed asset type metadata updates require `changedBy`, reject no-op changes, and append audit rows
 - inventory fixed asset type metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
+- inventory fixed asset facility assignment types are normalized to uppercase and required by fixed-asset facility assignment writes
 - inventory location metadata updates require `changedBy`, reject no-op changes, and append audit rows
 - inventory location metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inventory storage area type, facility, code, and parent codes are normalized to uppercase
