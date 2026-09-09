@@ -3498,6 +3498,122 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void listsCurrentInventoryFixedAssetFacilityAssignments() throws Exception {
+        inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
+            "truck-current-100",
+            "Current Placement Truck 100",
+            "vehicle",
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        for (int facilityNumber = 100; facilityNumber <= 103; facilityNumber++) {
+            inventoryFacilityRepository.save(InventoryFacility.create(
+                "yard-current-" + facilityNumber,
+                "Current Yard " + facilityNumber,
+                "WAREHOUSE",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            ));
+        }
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-facility-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fixedAssetCode": "truck-current-100",
+                  "facilityCode": "yard-current-100",
+                  "assignmentType": "stationed_at",
+                  "fromDate": "2000-01-01T00:00:00Z",
+                  "assignedBy": "fleet.dispatch@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-facility-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fixedAssetCode": "truck-current-100",
+                  "facilityCode": "yard-current-101",
+                  "assignmentType": "stationed_at",
+                  "fromDate": "2999-01-01T00:00:00Z",
+                  "assignedBy": "fleet.dispatch@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-facility-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fixedAssetCode": "truck-current-100",
+                  "facilityCode": "yard-current-102",
+                  "assignmentType": "stationed_at",
+                  "fromDate": "2000-01-01T00:00:00Z",
+                  "thruDate": "2001-01-01T00:00:00Z",
+                  "assignedBy": "fleet.dispatch@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated());
+        String endedResponse = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-facility-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fixedAssetCode": "truck-current-100",
+                  "facilityCode": "yard-current-103",
+                  "assignmentType": "stationed_at",
+                  "fromDate": "2000-01-01T00:00:00Z",
+                  "assignedBy": "fleet.dispatch@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        String endedAssignmentId = endedResponse.replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/fixed-asset-facility-assignments/{id}/end",
+            endedAssignmentId
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "thruDate": "2002-01-01T00:00:00Z",
+                  "reason": "Moved off site",
+                  "endedBy": "fleet.dispatch@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/inventory/fixed-asset-facility-assignments/current")
+            .param("fixedAssetCode", "truck-current-100")
+            .param("assignmentType", "stationed_at")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].fixedAssetCode").value("TRUCK-CURRENT-100"))
+            .andExpect(jsonPath("$.items[0].facilityCode").value("YARD-CURRENT-100"))
+            .andExpect(jsonPath("$.items[0].assignmentType").value("STATIONED_AT"))
+            .andExpect(jsonPath("$.items[0].active").value(true));
+    }
+
+    @Test
     void endsInventoryFixedAssetFacilityAssignmentAndListsEndHistory() throws Exception {
         inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
             "truck-facility-101",

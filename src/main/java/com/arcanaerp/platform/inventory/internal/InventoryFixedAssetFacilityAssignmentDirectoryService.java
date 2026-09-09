@@ -152,6 +152,25 @@ class InventoryFixedAssetFacilityAssignmentDirectoryService
         return PageResult.from(assignments).map(this::toView);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<InventoryFixedAssetFacilityAssignmentView> listCurrentAssignments(
+        String fixedAssetCode,
+        String facilityCode,
+        String assignmentType,
+        PageQuery pageQuery
+    ) {
+        Page<InventoryFixedAssetFacilityAssignment> assignments =
+            assignmentRepository.findCurrentAssignmentsFiltered(
+                normalizeOptionalUpper(fixedAssetCode, "fixedAssetCode"),
+                normalizeOptionalUpper(facilityCode, "facilityCode"),
+                normalizeOptionalUpper(assignmentType, "assignmentType"),
+                Instant.now(clock),
+                pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "fixedAssetCode").and(Sort.by("facilityCode")))
+            );
+        return PageResult.from(assignments).map(this::toView);
+    }
+
     private InventoryFixedAsset findFixedAsset(String fixedAssetCode) {
         String normalizedFixedAssetCode = normalizeRequired(fixedAssetCode, "fixedAssetCode").toUpperCase();
         return inventoryFixedAssetRepository.findByCode(normalizedFixedAssetCode)

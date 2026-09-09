@@ -899,6 +899,7 @@ erDiagram
   - `inventory_fixed_asset_facility_assignments(fixedAssetCode)`
   - `inventory_fixed_asset_facility_assignments(facilityCode)`
   - `inventory_fixed_asset_facility_assignments(assignmentType)`
+  - `inventory_fixed_asset_facility_assignments(fixedAssetCode, active, fromDate, thruDate)`
   - `inventory_fixed_asset_facility_assignments(assignedBy, assignedAt)`
   - `inventory_fixed_asset_facility_assignments(active)`
   - `inventory_fixed_asset_facility_assignment_end_audits(assignmentId, endedAt)`
@@ -1070,6 +1071,7 @@ erDiagram
 - `GET /api/inventory/fixed-assets?page=&size=&active=&query=`
 - `POST /api/inventory/fixed-asset-facility-assignments`
 - `GET /api/inventory/fixed-asset-facility-assignments/{id}`
+- `GET /api/inventory/fixed-asset-facility-assignments/current?page=&size=&fixedAssetCode=&facilityCode=&assignmentType=`
 - `PATCH /api/inventory/fixed-asset-facility-assignments/{id}/end`
 - `GET /api/inventory/fixed-asset-facility-assignments/{id}/end-history?page=&size=&endedBy=&endedAtFrom=&endedAtTo=`
 - `GET /api/inventory/fixed-asset-facility-assignments?page=&size=&fixedAssetCode=&facilityCode=&assignmentType=&assignedBy=&active=`
@@ -1133,6 +1135,7 @@ erDiagram
 - inventory fixed asset facility assignment types are normalized to uppercase and required by fixed-asset facility assignment writes
 - inventory fixed asset facility assignment type metadata updates require `changedBy`, reject no-op changes, and append audit rows
 - inventory fixed asset facility assignment type metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
+- inventory fixed asset facility assignment current-placement reads return active rows whose validity window contains the service clock instant
 - inventory location metadata updates require `changedBy`, reject no-op changes, and append audit rows
 - inventory location metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inventory storage area type, facility, code, and parent codes are normalized to uppercase

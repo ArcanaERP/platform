@@ -1,5 +1,6 @@
 package com.arcanaerp.platform.inventory.internal;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -34,6 +35,26 @@ interface InventoryFixedAssetFacilityAssignmentRepository
         @Param("assignmentType") String assignmentType,
         @Param("assignedBy") String assignedBy,
         @Param("active") Boolean active,
+        Pageable pageable
+    );
+
+    @Query(
+        """
+        select assignment
+        from InventoryFixedAssetFacilityAssignment assignment
+        where assignment.active = true
+          and (:fixedAssetCode is null or assignment.fixedAssetCode = :fixedAssetCode)
+          and (:facilityCode is null or assignment.facilityCode = :facilityCode)
+          and (:assignmentType is null or assignment.assignmentType = :assignmentType)
+          and (assignment.fromDate is null or assignment.fromDate <= :effectiveAt)
+          and (assignment.thruDate is null or assignment.thruDate >= :effectiveAt)
+        """
+    )
+    Page<InventoryFixedAssetFacilityAssignment> findCurrentAssignmentsFiltered(
+        @Param("fixedAssetCode") String fixedAssetCode,
+        @Param("facilityCode") String facilityCode,
+        @Param("assignmentType") String assignmentType,
+        @Param("effectiveAt") Instant effectiveAt,
         Pageable pageable
     );
 }

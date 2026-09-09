@@ -56,6 +56,22 @@ public class InventoryFixedAssetFacilityAssignmentController {
         return toResponse(assignmentDirectory.assignmentById(id));
     }
 
+    @GetMapping("/current")
+    public PageResult<InventoryFixedAssetFacilityAssignmentResponse> listCurrentAssignments(
+        @RequestParam(required = false) String fixedAssetCode,
+        @RequestParam(required = false) String facilityCode,
+        @RequestParam(required = false) String assignmentType,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return assignmentDirectory.listCurrentAssignments(
+            fixedAssetCode,
+            facilityCode,
+            assignmentType,
+            PageQuery.of(page, size)
+        ).map(this::toResponse);
+    }
+
     @PatchMapping("/{id}/end")
     public InventoryFixedAssetFacilityAssignmentResponse endAssignment(
         @PathVariable UUID id,

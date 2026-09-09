@@ -34,4 +34,11 @@ public interface InventoryFixedAssetFacilityAssignmentDirectory {
         Boolean active,
         PageQuery pageQuery
     );
+
+    PageResult<InventoryFixedAssetFacilityAssignmentView> listCurrentAssignments(
+        String fixedAssetCode,
+        String facilityCode,
+        String assignmentType,
+        PageQuery pageQuery
+    );
 }
