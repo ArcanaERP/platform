@@ -337,6 +337,7 @@ Inventory:
 - Inventory fixed asset active and metadata changes are audit-trailed with actor attribution.
 - Inventory fixed asset facility assignment types are inventory-owned reference data and are required for facility placement assignments.
 - Inventory fixed asset facility assignments track effective-dated facility placement with assignment-type validation and end history.
+- Inventory fixed asset facility assignments reject overlapping active validity windows for the same fixed asset and assignment type.
 - Inventory fixed asset party-role assignments track which parties serve asset-specific roles and support end history.
 - Inventory fixed asset `fixedAssetTypeCode` values are validated against `POST /api/inventory/fixed-asset-types` reference data.
 - Inventory facility and fixed asset party-role assignments validate party and role codes against inventory-owned party reference data.

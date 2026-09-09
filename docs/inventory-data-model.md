@@ -900,6 +900,7 @@ erDiagram
   - `inventory_fixed_asset_facility_assignments(facilityCode)`
   - `inventory_fixed_asset_facility_assignments(assignmentType)`
   - `inventory_fixed_asset_facility_assignments(fixedAssetCode, active, fromDate, thruDate)`
+  - `inventory_fixed_asset_facility_assignments(inventoryFixedAssetId, assignmentType, active, fromDate, thruDate)`
   - `inventory_fixed_asset_facility_assignments(assignedBy, assignedAt)`
   - `inventory_fixed_asset_facility_assignments(active)`
   - `inventory_fixed_asset_facility_assignment_end_audits(assignmentId, endedAt)`
@@ -1136,6 +1137,7 @@ erDiagram
 - inventory fixed asset facility assignment types are normalized to uppercase and required by fixed-asset facility assignment writes
 - inventory fixed asset facility assignment type metadata updates require `changedBy`, reject no-op changes, and append audit rows
 - inventory fixed asset facility assignment type metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
+- inventory fixed asset facility assignment writes reject overlapping active validity windows for the same fixed asset and assignment type
 - inventory fixed asset facility assignment current-placement reads return active rows whose validity window contains the service clock instant
 - inventory facility current fixed-asset roster reads reuse current-placement semantics and require the facility to exist
 - inventory location metadata updates require `changedBy`, reject no-op changes, and append audit rows

@@ -27,7 +27,8 @@ import lombok.NoArgsConstructor;
         @Index(name = "idx_ifafa_assignment_type", columnList = "assignmentType"),
         @Index(name = "idx_ifafa_assigned_by", columnList = "assignedBy,assignedAt"),
         @Index(name = "idx_ifafa_active", columnList = "active"),
-        @Index(name = "idx_ifafa_current_asset", columnList = "fixedAssetCode,active,fromDate,thruDate")
+        @Index(name = "idx_ifafa_current_asset", columnList = "fixedAssetCode,active,fromDate,thruDate"),
+        @Index(name = "idx_ifafa_overlap_asset", columnList = "inventoryFixedAssetId,assignmentType,active,fromDate,thruDate")
     }
 )
 @Getter

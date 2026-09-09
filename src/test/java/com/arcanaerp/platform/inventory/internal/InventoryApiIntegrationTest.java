@@ -3499,15 +3499,17 @@ class InventoryApiIntegrationTest {
 
     @Test
     void listsCurrentInventoryFixedAssetFacilityAssignments() throws Exception {
-        inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
-            "truck-current-100",
-            "Current Placement Truck 100",
-            "vehicle",
-            null,
-            null,
-            null,
-            SEED_INSTANT
-        ));
+        for (int assetNumber = 100; assetNumber <= 103; assetNumber++) {
+            inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
+                "truck-current-" + assetNumber,
+                "Current Placement Truck " + assetNumber,
+                "vehicle",
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            ));
+        }
         for (int facilityNumber = 100; facilityNumber <= 103; facilityNumber++) {
             inventoryFacilityRepository.save(InventoryFacility.create(
                 "yard-current-" + facilityNumber,
@@ -3545,7 +3547,7 @@ class InventoryApiIntegrationTest {
             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
             .content("""
                 {
-                  "fixedAssetCode": "truck-current-100",
+                  "fixedAssetCode": "truck-current-101",
                   "facilityCode": "yard-current-101",
                   "assignmentType": "stationed_at",
                   "fromDate": "2999-01-01T00:00:00Z",
@@ -3559,7 +3561,7 @@ class InventoryApiIntegrationTest {
             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
             .content("""
                 {
-                  "fixedAssetCode": "truck-current-100",
+                  "fixedAssetCode": "truck-current-102",
                   "facilityCode": "yard-current-102",
                   "assignmentType": "stationed_at",
                   "fromDate": "2000-01-01T00:00:00Z",
@@ -3574,7 +3576,7 @@ class InventoryApiIntegrationTest {
             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
             .content("""
                 {
-                  "fixedAssetCode": "truck-current-100",
+                  "fixedAssetCode": "truck-current-103",
                   "facilityCode": "yard-current-103",
                   "assignmentType": "stationed_at",
                   "fromDate": "2000-01-01T00:00:00Z",
@@ -3601,7 +3603,6 @@ class InventoryApiIntegrationTest {
             .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/inventory/fixed-asset-facility-assignments/current")
-            .param("fixedAssetCode", "truck-current-100")
             .param("assignmentType", "stationed_at")
             .param("page", "0")
             .param("size", "10"))
@@ -3633,6 +3634,155 @@ class InventoryApiIntegrationTest {
             "UNKNOWN",
             "/api/inventory/facilities/unknown/current-fixed-assets"
         );
+    }
+
+    @Test
+    void rejectsOverlappingActiveInventoryFixedAssetFacilityAssignment() throws Exception {
+        inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
+            "truck-overlap-100",
+            "Overlap Truck 100",
+            "vehicle",
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "yard-overlap-100",
+            "Overlap Yard 100",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "yard-overlap-101",
+            "Overlap Yard 101",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-facility-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fixedAssetCode": "truck-overlap-100",
+                  "facilityCode": "yard-overlap-100",
+                  "assignmentType": "stationed_at",
+                  "fromDate": "2026-04-01T00:00:00Z",
+                  "thruDate": "2026-04-30T00:00:00Z",
+                  "assignedBy": "fleet.dispatch@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/fixed-asset-facility-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fixedAssetCode": "truck-overlap-100",
+                      "facilityCode": "yard-overlap-101",
+                      "assignmentType": "stationed_at",
+                      "fromDate": "2026-04-15T00:00:00Z",
+                      "thruDate": "2026-05-15T00:00:00Z",
+                      "assignedBy": "fleet.dispatch@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory fixed asset facility assignment overlaps an active assignment for fixed asset: TRUCK-OVERLAP-100, assignment type: STATIONED_AT",
+            "/api/inventory/fixed-asset-facility-assignments"
+        );
+    }
+
+    @Test
+    void allowsNonOverlappingActiveInventoryFixedAssetFacilityAssignments() throws Exception {
+        inventoryFixedAssetRepository.save(InventoryFixedAsset.create(
+            "truck-overlap-101",
+            "Overlap Truck 101",
+            "vehicle",
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "yard-overlap-102",
+            "Overlap Yard 102",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "yard-overlap-103",
+            "Overlap Yard 103",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-facility-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fixedAssetCode": "truck-overlap-101",
+                  "facilityCode": "yard-overlap-102",
+                  "assignmentType": "stationed_at",
+                  "fromDate": "2026-04-01T00:00:00Z",
+                  "thruDate": "2026-04-30T00:00:00Z",
+                  "assignedBy": "fleet.dispatch@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-facility-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fixedAssetCode": "truck-overlap-101",
+                  "facilityCode": "yard-overlap-103",
+                  "assignmentType": "stationed_at",
+                  "fromDate": "2026-05-01T00:00:00Z",
+                  "thruDate": "2026-05-31T00:00:00Z",
+                  "assignedBy": "fleet.dispatch@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated());
     }
 
     @Test

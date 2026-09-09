@@ -20,6 +20,24 @@ interface InventoryFixedAssetFacilityAssignmentRepository
 
     @Query(
         """
+        select count(assignment) > 0
+        from InventoryFixedAssetFacilityAssignment assignment
+        where assignment.inventoryFixedAssetId = :inventoryFixedAssetId
+          and assignment.assignmentType = :assignmentType
+          and assignment.active = true
+          and (:thruDate is null or assignment.fromDate is null or assignment.fromDate <= :thruDate)
+          and (:fromDate is null or assignment.thruDate is null or assignment.thruDate >= :fromDate)
+        """
+    )
+    boolean existsOverlappingActiveAssignment(
+        @Param("inventoryFixedAssetId") UUID inventoryFixedAssetId,
+        @Param("assignmentType") String assignmentType,
+        @Param("fromDate") Instant fromDate,
+        @Param("thruDate") Instant thruDate
+    );
+
+    @Query(
+        """
         select assignment
         from InventoryFixedAssetFacilityAssignment assignment
         where (:fixedAssetCode is null or assignment.fixedAssetCode = :fixedAssetCode)

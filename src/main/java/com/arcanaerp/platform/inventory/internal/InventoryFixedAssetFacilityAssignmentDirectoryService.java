@@ -65,6 +65,7 @@ class InventoryFixedAssetFacilityAssignmentDirectoryService
                     + assignmentType
             );
         }
+        ensureNoOverlappingActiveAssignment(fixedAsset, assignmentType, command.fromDate(), command.thruDate());
         return toView(assignmentRepository.save(InventoryFixedAssetFacilityAssignment.create(
             fixedAsset,
             facility,
@@ -201,6 +202,27 @@ class InventoryFixedAssetFacilityAssignmentDirectoryService
         if (!assignmentTypeDirectory.assignmentTypeExists(assignmentType)) {
             throw new IllegalArgumentException(
                 "Inventory fixed asset facility assignment type not found for code: " + assignmentType
+            );
+        }
+    }
+
+    private void ensureNoOverlappingActiveAssignment(
+        InventoryFixedAsset fixedAsset,
+        String assignmentType,
+        Instant fromDate,
+        Instant thruDate
+    ) {
+        if (assignmentRepository.existsOverlappingActiveAssignment(
+            fixedAsset.getId(),
+            assignmentType,
+            fromDate,
+            thruDate
+        )) {
+            throw new ConflictException(
+                "Inventory fixed asset facility assignment overlaps an active assignment for fixed asset: "
+                    + fixedAsset.getCode()
+                    + ", assignment type: "
+                    + assignmentType
             );
         }
     }
