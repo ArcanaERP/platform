@@ -7,6 +7,7 @@ public record InventoryFixedAssetFacilityAssignmentTypeView(
     UUID id,
     String code,
     String description,
-    Instant createdAt
+    Instant createdAt,
+    Instant updatedAt
 ) {
 }

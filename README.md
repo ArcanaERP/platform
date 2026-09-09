@@ -358,6 +358,8 @@ Inventory:
 - `GET /api/inventory/fixed-asset-types?page=&size=`
 - `POST /api/inventory/fixed-asset-facility-assignment-types`
 - `GET /api/inventory/fixed-asset-facility-assignment-types/{code}`
+- `PATCH /api/inventory/fixed-asset-facility-assignment-types/{code}/metadata`
+- `GET /api/inventory/fixed-asset-facility-assignment-types/{code}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/fixed-asset-facility-assignment-types?page=&size=`
 - `POST /api/inventory/address-purposes`
 - `GET /api/inventory/address-purposes/{code}`

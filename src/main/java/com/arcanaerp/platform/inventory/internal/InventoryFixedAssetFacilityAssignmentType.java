@@ -38,6 +38,9 @@ class InventoryFixedAssetFacilityAssignmentType {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(nullable = false)
+    private Instant updatedAt;
+
     static InventoryFixedAssetFacilityAssignmentType create(String code, String description, Instant createdAt) {
         if (createdAt == null) {
             throw new IllegalArgumentException("createdAt is required");
@@ -46,7 +49,22 @@ class InventoryFixedAssetFacilityAssignmentType {
         type.code = normalizeRequired(code, "code").toUpperCase();
         type.description = normalizeRequired(description, "description");
         type.createdAt = createdAt;
+        type.updatedAt = createdAt;
         return type;
+    }
+
+    void updateMetadata(String description, Instant updatedAt) {
+        if (updatedAt == null) {
+            throw new IllegalArgumentException("updatedAt is required");
+        }
+        String normalizedDescription = normalizeRequired(description, "description");
+        if (this.description.equals(normalizedDescription)) {
+            throw new IllegalArgumentException(
+                "Inventory fixed asset facility assignment type metadata is unchanged"
+            );
+        }
+        this.description = normalizedDescription;
+        this.updatedAt = updatedAt;
     }
 
     private static String normalizeRequired(String value, String fieldName) {

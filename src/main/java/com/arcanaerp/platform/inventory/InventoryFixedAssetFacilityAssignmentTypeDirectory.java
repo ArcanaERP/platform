@@ -11,7 +11,20 @@ public interface InventoryFixedAssetFacilityAssignmentTypeDirectory {
 
     InventoryFixedAssetFacilityAssignmentTypeView assignmentTypeByCode(String code);
 
+    InventoryFixedAssetFacilityAssignmentTypeView updateAssignmentTypeMetadata(
+        String code,
+        UpdateInventoryFixedAssetFacilityAssignmentTypeMetadataCommand command
+    );
+
     boolean assignmentTypeExists(String code);
+
+    PageResult<InventoryFixedAssetFacilityAssignmentTypeMetadataChangeView> listMetadataHistory(
+        String code,
+        String changedBy,
+        java.time.Instant changedAtFrom,
+        java.time.Instant changedAtTo,
+        PageQuery pageQuery
+    );
 
     PageResult<InventoryFixedAssetFacilityAssignmentTypeView> listAssignmentTypes(PageQuery pageQuery);
 }

@@ -152,6 +152,10 @@ class InventoryApiIntegrationTest {
     private InventoryFixedAssetFacilityAssignmentTypeRepository fixedAssetFacilityAssignmentTypeRepository;
 
     @Autowired
+    private InventoryFixedAssetFacilityAssignmentTypeMetadataChangeAuditRepository
+        fixedAssetFacilityAssignmentTypeMetadataChangeAuditRepository;
+
+    @Autowired
     private InventoryPartyRepository inventoryPartyRepository;
 
     @Autowired
@@ -228,6 +232,7 @@ class InventoryApiIntegrationTest {
         fixedAssetMetadataChangeAuditRepository.deleteAll();
         fixedAssetFacilityAssignmentEndAuditRepository.deleteAll();
         fixedAssetFacilityAssignmentRepository.deleteAll();
+        fixedAssetFacilityAssignmentTypeMetadataChangeAuditRepository.deleteAll();
         fixedAssetFacilityAssignmentTypeRepository.deleteAll();
         fixedAssetPartyRoleAssignmentEndAuditRepository.deleteAll();
         fixedAssetPartyRoleAssignmentRepository.deleteAll();
@@ -1052,7 +1057,8 @@ class InventoryApiIntegrationTest {
             .andExpect(jsonPath("$.id").isNotEmpty())
             .andExpect(jsonPath("$.code").value("LEASED_TO"))
             .andExpect(jsonPath("$.description").value("Leased to facility"))
-            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andExpect(jsonPath("$.updatedAt").isNotEmpty());
 
         mockMvc.perform(get("/api/inventory/fixed-asset-facility-assignment-types/{code}", "leased_to"))
             .andExpect(status().isOk())
@@ -1091,6 +1097,133 @@ class InventoryApiIntegrationTest {
                 .content(payload)),
             "Inventory fixed asset facility assignment type already exists for code: LEASED_TO",
             "/api/inventory/fixed-asset-facility-assignment-types"
+        );
+    }
+
+    @Test
+    void updatesInventoryFixedAssetFacilityAssignmentTypeMetadataAndListsHistory() throws Exception {
+        fixedAssetFacilityAssignmentTypeRepository.save(InventoryFixedAssetFacilityAssignmentType.create(
+            "leased_to",
+            "Leased to facility",
+            SEED_INSTANT
+        ));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/fixed-asset-facility-assignment-types/{code}/metadata",
+            "leased_to"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " leased_to ",
+                  "description": " Leased to operating facility ",
+                  "changedBy": " Fleet.Admin@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("LEASED_TO"))
+            .andExpect(jsonPath("$.description").value("Leased to operating facility"))
+            .andExpect(jsonPath("$.updatedAt").isNotEmpty());
+
+        mockMvc.perform(get(
+            "/api/inventory/fixed-asset-facility-assignment-types/{code}/metadata-history",
+            "leased_to"
+        )
+            .param("changedBy", "fleet.admin@arcanaerp.com")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].code").value("LEASED_TO"))
+            .andExpect(jsonPath("$.items[0].previousDescription").value("Leased to facility"))
+            .andExpect(jsonPath("$.items[0].currentDescription").value("Leased to operating facility"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("fleet.admin@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
+    }
+
+    @Test
+    void rejectsNoOpInventoryFixedAssetFacilityAssignmentTypeMetadataChange() throws Exception {
+        fixedAssetFacilityAssignmentTypeRepository.save(InventoryFixedAssetFacilityAssignmentType.create(
+            "leased_to",
+            "Leased to facility",
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/fixed-asset-facility-assignment-types/{code}/metadata",
+                "leased_to"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "leased_to",
+                      "description": "Leased to facility",
+                      "changedBy": "ops"
+                    }
+                    """)),
+            "Inventory fixed asset facility assignment type metadata is unchanged",
+            "/api/inventory/fixed-asset-facility-assignment-types/leased_to/metadata"
+        );
+    }
+
+    @Test
+    void rejectsInventoryFixedAssetFacilityAssignmentTypeMetadataPathMismatch() throws Exception {
+        fixedAssetFacilityAssignmentTypeRepository.save(InventoryFixedAssetFacilityAssignmentType.create(
+            "leased_to",
+            "Leased to facility",
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/fixed-asset-facility-assignment-types/{code}/metadata",
+                "leased_to"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "stationed_at",
+                      "description": "Leased to facility",
+                      "changedBy": "ops"
+                    }
+                    """)),
+            "code path variable must match command code",
+            "/api/inventory/fixed-asset-facility-assignment-types/leased_to/metadata"
+        );
+    }
+
+    @Test
+    void rejectsInvalidInventoryFixedAssetFacilityAssignmentTypeMetadataHistoryFilters() throws Exception {
+        fixedAssetFacilityAssignmentTypeRepository.save(InventoryFixedAssetFacilityAssignmentType.create(
+            "leased_to",
+            "Leased to facility",
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(get(
+                "/api/inventory/fixed-asset-facility-assignment-types/{code}/metadata-history",
+                "leased_to"
+            )
+                .param("changedBy", " ")
+                .param("page", "0")
+                .param("size", "10")),
+            "changedBy query parameter must not be blank",
+            "/api/inventory/fixed-asset-facility-assignment-types/leased_to/metadata-history"
+        );
+
+        expectBadRequest(
+            mockMvc.perform(get(
+                "/api/inventory/fixed-asset-facility-assignment-types/{code}/metadata-history",
+                "leased_to"
+            )
+                .param("changedAtFrom", "2026-05-01T00:00:00Z")
+                .param("changedAtTo", "2026-04-01T00:00:00Z")
+                .param("page", "0")
+                .param("size", "10")),
+            "changedAtFrom must be before or equal to changedAtTo",
+            "/api/inventory/fixed-asset-facility-assignment-types/leased_to/metadata-history"
         );
     }
 
