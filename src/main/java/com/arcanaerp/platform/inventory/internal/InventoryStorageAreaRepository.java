@@ -12,6 +12,8 @@ interface InventoryStorageAreaRepository extends JpaRepository<InventoryStorageA
 
     Optional<InventoryStorageArea> findByFacilityCodeAndCode(String facilityCode, String code);
 
+    boolean existsByFacilityCodeAndParentStorageAreaCodeAndActiveTrue(String facilityCode, String parentStorageAreaCode);
+
     @Query(
         """
         select storageArea

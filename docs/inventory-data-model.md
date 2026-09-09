@@ -676,7 +676,8 @@ erDiagram
 - Inventory facility party-role assignment end operations mark assignments inactive, set `thruDate`, and append actor-attributed end audit rows.
 - Inventory storage areas are facility-owned physical storage nodes with `AREA` or `BIN` type.
 - Inventory storage areas can reference an optional parent storage area in the same facility.
-- Inventory storage area writes require an active facility and reject missing parent storage-area codes.
+- Inventory storage area writes require an active facility and reject missing or inactive parent storage-area codes.
+- Inventory storage area active changes reject deactivation while active child storage areas exist.
 - Inventory storage area active changes are append-only via `inventory_storage_area_active_change_audits`.
 - Inventory storage area metadata changes are append-only via `inventory_storage_area_metadata_change_audits`.
 - Inventory fixed assets are a first-class catalog for legacy fixed-asset traceability; fixed asset codes and type codes normalize to uppercase.
@@ -1010,11 +1011,11 @@ erDiagram
 - inventory location metadata updates require `changedBy`, reject no-op changes, and append audit rows
 - inventory location metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inventory storage area type, facility, code, and parent codes are normalized to uppercase
-- inventory storage area writes require an active facility and optional parent storage area in the same facility
+- inventory storage area writes require an active facility and optional active parent storage area in the same facility
 - inventory storage area list filters match active state, normalized facility code, storage-area type, and parent storage-area code
-- inventory storage area active updates require `changedBy`, reject no-op changes, and append audit rows
+- inventory storage area active updates require `changedBy`, reject no-op changes, reject deactivation with active children, and append audit rows
 - inventory storage area active history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
-- inventory storage area metadata updates require `changedBy`, reject no-op changes, reject hierarchy cycles, and append audit rows
+- inventory storage area metadata updates require `changedBy`, reject no-op changes, inactive parents, hierarchy cycles, and append audit rows
 - inventory storage area metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inventory telecom contact owner, purpose, and type codes are normalized to uppercase
 - inventory telecom contact email values are normalized to lowercase

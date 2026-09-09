@@ -40,7 +40,7 @@ class InventoryStorageAreaDirectoryService implements InventoryStorageAreaDirect
         String parentStorageAreaCode = normalizeOptionalUpper(command.parentStorageAreaCode());
         InventoryStorageArea.normalizeStorageAreaType(command.storageAreaType());
         ensureFacilityExistsAndActive(facilityCode);
-        ensureParentStorageAreaExists(facilityCode, code, parentStorageAreaCode);
+        ensureParentStorageAreaExists(facilityCode, code, parentStorageAreaCode, true);
         if (inventoryStorageAreaRepository.findByFacilityCodeAndCode(facilityCode, code).isPresent()) {
             throw new ConflictException(
                 "Inventory storage area already exists for facility: " + facilityCode + " and code: " + code
@@ -71,6 +71,15 @@ class InventoryStorageAreaDirectoryService implements InventoryStorageAreaDirect
             throw new IllegalArgumentException("command is required");
         }
         InventoryStorageArea storageArea = findStorageArea(id);
+        if (
+            !command.active()
+                && inventoryStorageAreaRepository.existsByFacilityCodeAndParentStorageAreaCodeAndActiveTrue(
+                    storageArea.getFacilityCode(),
+                    storageArea.getCode()
+                )
+        ) {
+            throw new IllegalArgumentException("Inventory storage area has active child storage areas");
+        }
         boolean previousActive = storageArea.isActive();
         Instant changedAt = Instant.now(clock);
         storageArea.setActive(command.active(), changedAt);
@@ -95,7 +104,12 @@ class InventoryStorageAreaDirectoryService implements InventoryStorageAreaDirect
         InventoryStorageArea storageArea = findStorageArea(id);
         String storageAreaType = InventoryStorageArea.normalizeStorageAreaType(command.storageAreaType());
         String parentStorageAreaCode = normalizeOptionalUpper(command.parentStorageAreaCode());
-        ensureParentStorageAreaExists(storageArea.getFacilityCode(), storageArea.getCode(), parentStorageAreaCode);
+        ensureParentStorageAreaExists(
+            storageArea.getFacilityCode(),
+            storageArea.getCode(),
+            parentStorageAreaCode,
+            storageArea.isActive()
+        );
         ensureParentChangeDoesNotCreateCycle(storageArea.getFacilityCode(), storageArea.getCode(), parentStorageAreaCode);
         InventoryStorageAreaMetadataSnapshot previous = InventoryStorageAreaMetadataSnapshot.from(storageArea);
         Instant changedAt = Instant.now(clock);
@@ -191,16 +205,26 @@ class InventoryStorageAreaDirectoryService implements InventoryStorageAreaDirect
         }
     }
 
-    private void ensureParentStorageAreaExists(String facilityCode, String code, String parentStorageAreaCode) {
+    private void ensureParentStorageAreaExists(
+        String facilityCode,
+        String code,
+        String parentStorageAreaCode,
+        boolean childWillBeActive
+    ) {
         if (parentStorageAreaCode == null) {
             return;
         }
         if (code.equals(parentStorageAreaCode)) {
             throw new IllegalArgumentException("parentStorageAreaCode must not match code");
         }
-        if (inventoryStorageAreaRepository.findByFacilityCodeAndCode(facilityCode, parentStorageAreaCode).isEmpty()) {
-            throw new IllegalArgumentException(
+        InventoryStorageArea parent = inventoryStorageAreaRepository
+            .findByFacilityCodeAndCode(facilityCode, parentStorageAreaCode)
+            .orElseThrow(() -> new IllegalArgumentException(
                 "Inventory storage area not found for facility: " + facilityCode + " and code: " + parentStorageAreaCode
+            ));
+        if (childWillBeActive && !parent.isActive()) {
+            throw new IllegalArgumentException(
+                "parentStorageAreaCode must reference an active storage area: " + parentStorageAreaCode
             );
         }
     }

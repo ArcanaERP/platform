@@ -328,6 +328,7 @@ Inventory:
 - Inventory location and facility address metadata requires a valid `addressPurposeCode` from `POST /api/inventory/address-purposes`.
 - Inventory postal addresses are first-class location/facility address records with address-purpose and country/region validation plus metadata history.
 - Inventory storage areas model facility-owned areas and bins with optional same-facility parent hierarchy, active lifecycle history, and metadata history.
+- Active inventory storage areas require active parent storage areas; deactivating a storage area with active children is rejected.
 - Inventory location and facility contact metadata requires a valid `contactPurposeCode` from `POST /api/inventory/contact-purposes`.
 - Inventory telecom contacts are first-class location/facility contact records with contact-purpose validation and metadata history.
 - Inventory fixed assets provide a first-class asset catalog for pickup/dropoff traceability.

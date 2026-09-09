@@ -3887,6 +3887,102 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void rejectsDeactivatingStorageAreaWithActiveChildren() throws Exception {
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "wh-storage-parent-active",
+            "Storage Warehouse",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        InventoryStorageArea parent = inventoryStorageAreaRepository.save(InventoryStorageArea.create(
+            "wh-storage-parent-active",
+            "receiving",
+            "Receiving Area",
+            "AREA",
+            null,
+            SEED_INSTANT
+        ));
+        inventoryStorageAreaRepository.save(InventoryStorageArea.create(
+            "wh-storage-parent-active",
+            "bin-a-01",
+            "Bin A-01",
+            "BIN",
+            "receiving",
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/storage-areas/{id}/active",
+                parent.getId()
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "active": false,
+                      "changedBy": "ops"
+                    }
+                    """)),
+            "Inventory storage area has active child storage areas",
+            "/api/inventory/storage-areas/" + parent.getId() + "/active"
+        );
+    }
+
+    @Test
+    void rejectsInventoryStorageAreaWithInactiveParent() throws Exception {
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "wh-storage-inactive-parent",
+            "Storage Warehouse",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        InventoryStorageArea parent = InventoryStorageArea.create(
+            "wh-storage-inactive-parent",
+            "receiving",
+            "Receiving Area",
+            "AREA",
+            null,
+            SEED_INSTANT
+        );
+        parent.setActive(false, SEED_INSTANT.plusSeconds(1));
+        inventoryStorageAreaRepository.save(parent);
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/storage-areas"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "facilityCode": "wh-storage-inactive-parent",
+                      "code": "bin-a-01",
+                      "name": "Bin A-01",
+                      "storageAreaType": "BIN",
+                      "parentStorageAreaCode": "receiving"
+                    }
+                    """)),
+            "parentStorageAreaCode must reference an active storage area: RECEIVING",
+            "/api/inventory/storage-areas"
+        );
+    }
+
+    @Test
     void updatesInventoryStorageAreaMetadataAndListsHistory() throws Exception {
         inventoryFacilityRepository.save(InventoryFacility.create(
             "wh-storage-metadata",
@@ -4045,6 +4141,60 @@ class InventoryApiIntegrationTest {
                     }
                     """)),
             "Inventory storage area not found for facility: WH-STORAGE-MISSING-PARENT and code: MISSING",
+            "/api/inventory/storage-areas/" + area.getId() + "/metadata"
+        );
+    }
+
+    @Test
+    void rejectsInventoryStorageAreaMetadataWithInactiveParent() throws Exception {
+        inventoryFacilityRepository.save(InventoryFacility.create(
+            "wh-storage-metadata-inactive-parent",
+            "Storage Warehouse",
+            "WAREHOUSE",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            SEED_INSTANT
+        ));
+        InventoryStorageArea area = inventoryStorageAreaRepository.save(InventoryStorageArea.create(
+            "wh-storage-metadata-inactive-parent",
+            "receiving",
+            "Receiving Area",
+            "AREA",
+            null,
+            SEED_INSTANT
+        ));
+        InventoryStorageArea parent = InventoryStorageArea.create(
+            "wh-storage-metadata-inactive-parent",
+            "overflow",
+            "Overflow Area",
+            "AREA",
+            null,
+            SEED_INSTANT
+        );
+        parent.setActive(false, SEED_INSTANT.plusSeconds(1));
+        inventoryStorageAreaRepository.save(parent);
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/storage-areas/{id}/metadata",
+                area.getId()
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "Receiving Area East",
+                      "storageAreaType": "area",
+                      "parentStorageAreaCode": "overflow",
+                      "changedBy": "ops"
+                    }
+                    """)),
+            "parentStorageAreaCode must reference an active storage area: OVERFLOW",
             "/api/inventory/storage-areas/" + area.getId() + "/metadata"
         );
     }
