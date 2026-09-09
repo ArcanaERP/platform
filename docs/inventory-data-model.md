@@ -9,6 +9,7 @@ erDiagram
     INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_LOCATIONS : classifies
     INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_FACILITIES : classifies
     INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_LOCATION_TYPES : contains
+    INVENTORY_LOCATION_TYPES ||--o{ INVENTORY_LOCATION_TYPE_METADATA_CHANGE_AUDITS : records_metadata_changes
     INVENTORY_ADDRESS_PURPOSES ||--o{ INVENTORY_LOCATIONS : classifies_address
     INVENTORY_ADDRESS_PURPOSES ||--o{ INVENTORY_FACILITIES : classifies_address
     INVENTORY_ADDRESS_PURPOSES ||--o{ INVENTORY_POSTAL_ADDRESSES : classifies
@@ -73,6 +74,18 @@ erDiagram
       STRING description
       STRING parentCode
       INSTANT createdAt
+      INSTANT updatedAt
+    }
+
+    INVENTORY_LOCATION_TYPE_METADATA_CHANGE_AUDITS {
+      UUID id PK
+      STRING code
+      STRING previousDescription
+      STRING currentDescription
+      STRING previousParentCode
+      STRING currentParentCode
+      STRING changedBy
+      INSTANT changedAt
     }
 
     INVENTORY_FIXED_ASSET_TYPES {
@@ -666,6 +679,7 @@ erDiagram
 
 - Inventory on-hand, available, and sold counters are segmented by `sku + locationCode`.
 - Inventory location types support optional parent type hierarchy through `parentCode`.
+- Inventory location type metadata changes are append-only via `inventory_location_type_metadata_change_audits`.
 - Inventory entry relationship and role types are reference data for entry relationship records.
 - Inventory entry relationships link two existing inventory items and preserve normalized item keys for filtering.
 - Inventory entry relationships support optional `fromDate` and `thruDate` validity windows.
@@ -779,6 +793,8 @@ erDiagram
   - `inventory_transfer_reversal_idempotency(transferId, idempotencyKey)`
 - Indexes:
   - `inventory_location_types(parentCode)`
+  - `inventory_location_type_metadata_change_audits(code, changedAt)`
+  - `inventory_location_type_metadata_change_audits(changedBy, changedAt)`
   - `inventory_facilities(active, code)`
   - `inventory_regions(countryCode)`
   - `inventory_facility_active_change_audits(inventoryFacilityId, changedAt)`
@@ -867,6 +883,8 @@ erDiagram
 
 - `POST /api/inventory/location-types`
 - `GET /api/inventory/location-types/{code}`
+- `PATCH /api/inventory/location-types/{code}/metadata`
+- `GET /api/inventory/location-types/{code}/metadata-history?page=&size=&changedBy=&changedAtFrom=&changedAtTo=`
 - `GET /api/inventory/location-types?page=&size=&parentCode=`
 - `POST /api/inventory/fixed-asset-types`
 - `GET /api/inventory/fixed-asset-types/{code}`
@@ -1013,6 +1031,8 @@ erDiagram
 - inventory location and facility contact name/email metadata requires a supplied contact purpose code
 - inventory location facility type codes must exist in the inventory location type catalog when supplied
 - inventory location type parent codes must exist, cannot match the child code, and list filters match normalized parent code
+- inventory location type metadata updates require `changedBy`, reject no-op changes, reject hierarchy cycles, and append audit rows
+- inventory location type metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inventory location metadata updates require `changedBy`, reject no-op changes, and append audit rows
 - inventory location metadata history filters match lowercase `changedBy` and inclusive UTC `changedAt` ranges
 - inventory storage area type, facility, code, and parent codes are normalized to uppercase

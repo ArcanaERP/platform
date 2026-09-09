@@ -40,6 +40,9 @@ class InventoryLocationType {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(nullable = false)
+    private Instant updatedAt;
+
     static InventoryLocationType create(String code, String description, Instant createdAt) {
         return create(code, description, null, createdAt);
     }
@@ -58,7 +61,25 @@ class InventoryLocationType {
         type.description = normalizeRequired(description, "description");
         type.parentCode = normalizedParentCode;
         type.createdAt = createdAt;
+        type.updatedAt = createdAt;
         return type;
+    }
+
+    void updateMetadata(String description, String parentCode, Instant updatedAt) {
+        if (updatedAt == null) {
+            throw new IllegalArgumentException("updatedAt is required");
+        }
+        String normalizedDescription = normalizeRequired(description, "description");
+        String normalizedParentCode = normalizeOptionalUpper(parentCode);
+        if (code.equals(normalizedParentCode)) {
+            throw new IllegalArgumentException("parentCode must not match code");
+        }
+        if (this.description.equals(normalizedDescription) && equalsNullable(this.parentCode, normalizedParentCode)) {
+            throw new IllegalArgumentException("Inventory location type metadata is unchanged");
+        }
+        this.description = normalizedDescription;
+        this.parentCode = normalizedParentCode;
+        this.updatedAt = updatedAt;
     }
 
     private static String normalizeRequired(String value, String fieldName) {
@@ -73,5 +94,9 @@ class InventoryLocationType {
             return null;
         }
         return value.trim().toUpperCase();
+    }
+
+    private static boolean equalsNullable(String left, String right) {
+        return left == null ? right == null : left.equals(right);
     }
 }

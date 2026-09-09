@@ -152,6 +152,9 @@ class InventoryApiIntegrationTest {
     private InventoryLocationTypeRepository inventoryLocationTypeRepository;
 
     @Autowired
+    private InventoryLocationTypeMetadataChangeAuditRepository locationTypeMetadataChangeAuditRepository;
+
+    @Autowired
     private InventoryAddressPurposeRepository inventoryAddressPurposeRepository;
 
     @Autowired
@@ -231,6 +234,7 @@ class InventoryApiIntegrationTest {
         inventoryPartyRepository.deleteAll();
         locationMetadataChangeAuditRepository.deleteAll();
         inventoryLocationRepository.deleteAll();
+        locationTypeMetadataChangeAuditRepository.deleteAll();
         inventoryLocationTypeRepository.deleteAll();
         inventoryAddressPurposeRepository.deleteAll();
         inventoryContactPurposeRepository.deleteAll();
@@ -435,6 +439,176 @@ class InventoryApiIntegrationTest {
                     """)),
             "parentCode must not match code",
             "/api/inventory/location-types"
+        );
+    }
+
+    @Test
+    void updatesInventoryLocationTypeMetadataAndListsHistory() throws Exception {
+        inventoryLocationTypeRepository.save(InventoryLocationType.create(
+            "distribution",
+            "Distribution node",
+            SEED_INSTANT
+        ));
+        inventoryLocationTypeRepository.save(InventoryLocationType.create(
+            "regional_dc",
+            "Regional distribution center",
+            "warehouse",
+            SEED_INSTANT
+        ));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+            "/api/inventory/location-types/{code}/metadata",
+            "regional_dc"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " regional_dc ",
+                  "description": " Regional DC ",
+                  "parentCode": " distribution ",
+                  "changedBy": " Facilities.Admin@ArcanaERP.com "
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("REGIONAL_DC"))
+            .andExpect(jsonPath("$.description").value("Regional DC"))
+            .andExpect(jsonPath("$.parentCode").value("DISTRIBUTION"))
+            .andExpect(jsonPath("$.updatedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/inventory/location-types/{code}/metadata-history", "regional_dc")
+            .param("changedBy", "facilities.admin@arcanaerp.com")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].code").value("REGIONAL_DC"))
+            .andExpect(jsonPath("$.items[0].previousDescription").value("Regional distribution center"))
+            .andExpect(jsonPath("$.items[0].currentDescription").value("Regional DC"))
+            .andExpect(jsonPath("$.items[0].previousParentCode").value("WAREHOUSE"))
+            .andExpect(jsonPath("$.items[0].currentParentCode").value("DISTRIBUTION"))
+            .andExpect(jsonPath("$.items[0].changedBy").value("facilities.admin@arcanaerp.com"))
+            .andExpect(jsonPath("$.items[0].changedAt").isNotEmpty());
+    }
+
+    @Test
+    void rejectsNoOpInventoryLocationTypeMetadataChange() throws Exception {
+        inventoryLocationTypeRepository.save(InventoryLocationType.create(
+            "regional_dc",
+            "Regional distribution center",
+            "warehouse",
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/location-types/{code}/metadata",
+                "regional_dc"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "regional_dc",
+                      "description": "Regional distribution center",
+                      "parentCode": "warehouse",
+                      "changedBy": "ops"
+                    }
+                    """)),
+            "Inventory location type metadata is unchanged",
+            "/api/inventory/location-types/regional_dc/metadata"
+        );
+    }
+
+    @Test
+    void rejectsInventoryLocationTypeMetadataPathMismatch() throws Exception {
+        inventoryLocationTypeRepository.save(InventoryLocationType.create(
+            "regional_dc",
+            "Regional distribution center",
+            "warehouse",
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/location-types/{code}/metadata",
+                "regional_dc"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "warehouse",
+                      "description": "Regional distribution center",
+                      "changedBy": "ops"
+                    }
+                    """)),
+            "code path variable must match command code",
+            "/api/inventory/location-types/regional_dc/metadata"
+        );
+    }
+
+    @Test
+    void rejectsInventoryLocationTypeMetadataWithMissingParent() throws Exception {
+        inventoryLocationTypeRepository.save(InventoryLocationType.create(
+            "regional_dc",
+            "Regional distribution center",
+            "warehouse",
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/location-types/{code}/metadata",
+                "regional_dc"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "regional_dc",
+                      "description": "Regional distribution center",
+                      "parentCode": "unknown",
+                      "changedBy": "ops"
+                    }
+                    """)),
+            "Inventory location type not found for parentCode: UNKNOWN",
+            "/api/inventory/location-types/regional_dc/metadata"
+        );
+    }
+
+    @Test
+    void rejectsInventoryLocationTypeMetadataCycle() throws Exception {
+        inventoryLocationTypeRepository.save(InventoryLocationType.create(
+            "distribution",
+            "Distribution node",
+            SEED_INSTANT
+        ));
+        inventoryLocationTypeRepository.save(InventoryLocationType.create(
+            "regional_dc",
+            "Regional distribution center",
+            "distribution",
+            SEED_INSTANT
+        ));
+        inventoryLocationTypeRepository.save(InventoryLocationType.create(
+            "urban_dc",
+            "Urban distribution center",
+            "regional_dc",
+            SEED_INSTANT
+        ));
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                "/api/inventory/location-types/{code}/metadata",
+                "distribution"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "code": "distribution",
+                      "description": "Distribution node",
+                      "parentCode": "urban_dc",
+                      "changedBy": "ops"
+                    }
+                    """)),
+            "parentCode must not create a cycle",
+            "/api/inventory/location-types/distribution/metadata"
         );
     }
 

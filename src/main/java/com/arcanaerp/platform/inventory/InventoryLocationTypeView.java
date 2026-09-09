@@ -8,6 +8,7 @@ public record InventoryLocationTypeView(
     String code,
     String description,
     String parentCode,
-    Instant createdAt
+    Instant createdAt,
+    Instant updatedAt
 ) {
 }

@@ -8,6 +8,7 @@ public record InventoryLocationTypeResponse(
     String code,
     String description,
     String parentCode,
-    Instant createdAt
+    Instant createdAt,
+    Instant updatedAt
 ) {
 }
