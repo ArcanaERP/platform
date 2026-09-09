@@ -774,6 +774,7 @@ erDiagram
 - Inventory fixed asset party-role assignments link active fixed assets to normalized party and role type codes.
 - Inventory fixed asset party-role assignments validate `partyCode` against `inventory_parties` and `roleTypeCode` against `inventory_party_role_types`.
 - Inventory fixed asset party-role assignments support optional `fromDate` and `thruDate` validity windows.
+- Inventory fixed asset party-role assignment writes reject overlapping active validity windows for the same fixed asset, party, and role type.
 - Inventory fixed asset party-role assignment end operations mark assignments inactive, set `thruDate`, and append actor-attributed end audit rows.
 - Inventory product-instance assignments are explicit cross-reference rows from inventory items to product instance codes.
 - Inventory product-instance assignment releases are append-only via `inventory_product_instance_assignment_release_audits`.
@@ -854,7 +855,6 @@ erDiagram
   - `inventory_storage_areas(facilityCode, code)`
   - `inventory_fixed_assets(code)`
   - `inventory_fixed_asset_facility_assignments(inventoryFixedAssetId, inventoryFacilityId, assignmentType)`
-  - `inventory_fixed_asset_party_role_assignments(inventoryFixedAssetId, partyCode, roleTypeCode)`
   - `inventory_product_instance_assignments(inventoryItemId, productInstanceCode)`
   - `inventory_locations(code)`
   - `inventory_postal_addresses(ownerType, ownerCode, addressPurposeCode)`
@@ -910,6 +910,7 @@ erDiagram
   - `inventory_fixed_asset_party_role_assignments(partyCode, roleTypeCode)`
   - `inventory_fixed_asset_party_role_assignments(assignedBy, assignedAt)`
   - `inventory_fixed_asset_party_role_assignments(active)`
+  - `inventory_fixed_asset_party_role_assignments(inventoryFixedAssetId, partyCode, roleTypeCode, active, fromDate, thruDate)`
   - `inventory_fixed_asset_party_role_assignment_end_audits(assignmentId, endedAt)`
   - `inventory_fixed_asset_party_role_assignment_end_audits(fixedAssetCode, partyCode, roleTypeCode, endedAt)`
   - `inventory_fixed_asset_party_role_assignment_end_audits(endedBy, endedAt)`

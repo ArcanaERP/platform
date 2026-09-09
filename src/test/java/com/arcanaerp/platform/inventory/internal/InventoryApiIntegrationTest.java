@@ -4414,6 +4414,103 @@ class InventoryApiIntegrationTest {
     }
 
     @Test
+    void rejectsOverlappingActiveInventoryFixedAssetPartyRoleAssignment() throws Exception {
+        inventoryFixedAssetRepository.save(
+            InventoryFixedAsset.create(
+                "truck-role-overlap-100",
+                "Role Overlap Truck 100",
+                "vehicle",
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-party-role-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fixedAssetCode": "truck-role-overlap-100",
+                  "partyCode": "west-carrier",
+                  "roleTypeCode": "operator",
+                  "fromDate": "2026-04-01T00:00:00Z",
+                  "thruDate": "2026-04-30T00:00:00Z",
+                  "assignedBy": "fleet.manager@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated());
+
+        expectConflict(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/fixed-asset-party-role-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "fixedAssetCode": "truck-role-overlap-100",
+                      "partyCode": "west-carrier",
+                      "roleTypeCode": "operator",
+                      "fromDate": "2026-04-15T00:00:00Z",
+                      "thruDate": "2026-05-15T00:00:00Z",
+                      "assignedBy": "fleet.manager@arcanaerp.com"
+                    }
+                    """)),
+            "Inventory fixed asset party role assignment overlaps an active assignment for fixed asset: TRUCK-ROLE-OVERLAP-100, party: WEST-CARRIER, role type: OPERATOR",
+            "/api/inventory/fixed-asset-party-role-assignments"
+        );
+    }
+
+    @Test
+    void allowsNonOverlappingActiveInventoryFixedAssetPartyRoleAssignments() throws Exception {
+        inventoryFixedAssetRepository.save(
+            InventoryFixedAsset.create(
+                "truck-role-overlap-101",
+                "Role Overlap Truck 101",
+                "vehicle",
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-party-role-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fixedAssetCode": "truck-role-overlap-101",
+                  "partyCode": "west-carrier",
+                  "roleTypeCode": "operator",
+                  "fromDate": "2026-04-01T00:00:00Z",
+                  "thruDate": "2026-04-30T00:00:00Z",
+                  "assignedBy": "fleet.manager@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/fixed-asset-party-role-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fixedAssetCode": "truck-role-overlap-101",
+                  "partyCode": "west-carrier",
+                  "roleTypeCode": "operator",
+                  "fromDate": "2026-05-01T00:00:00Z",
+                  "thruDate": "2026-05-31T00:00:00Z",
+                  "assignedBy": "fleet.manager@arcanaerp.com"
+                }
+                """))
+            .andExpect(status().isCreated());
+    }
+
+    @Test
     void rejectsUnknownFixedAssetForPartyRoleAssignment() throws Exception {
         expectInventoryFixedAssetNotFound(
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(

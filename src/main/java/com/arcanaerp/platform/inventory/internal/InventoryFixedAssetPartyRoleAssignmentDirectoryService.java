@@ -49,11 +49,13 @@ class InventoryFixedAssetPartyRoleAssignmentDirectoryService
         ensurePartyExists(partyCode);
         ensureRoleTypeExists(roleTypeCode);
         if (
-            assignmentRepository.findByInventoryFixedAssetIdAndPartyCodeAndRoleTypeCode(
+            assignmentRepository.existsExactAssignment(
                 fixedAsset.getId(),
                 partyCode,
-                roleTypeCode
-            ).isPresent()
+                roleTypeCode,
+                command.fromDate(),
+                command.thruDate()
+            )
         ) {
             throw new ConflictException(
                 "Inventory fixed asset party role assignment already exists for fixed asset: "
@@ -64,6 +66,13 @@ class InventoryFixedAssetPartyRoleAssignmentDirectoryService
                     + roleTypeCode
             );
         }
+        ensureNoOverlappingActiveAssignment(
+            fixedAsset,
+            partyCode,
+            roleTypeCode,
+            command.fromDate(),
+            command.thruDate()
+        );
         return toView(assignmentRepository.save(InventoryFixedAssetPartyRoleAssignment.create(
             fixedAsset,
             partyCode,
@@ -167,6 +176,31 @@ class InventoryFixedAssetPartyRoleAssignmentDirectoryService
             .orElseThrow(() -> new NoSuchElementException(
                 "Inventory fixed asset party role assignment not found for id: " + id
             ));
+    }
+
+    private void ensureNoOverlappingActiveAssignment(
+        InventoryFixedAsset fixedAsset,
+        String partyCode,
+        String roleTypeCode,
+        Instant fromDate,
+        Instant thruDate
+    ) {
+        if (assignmentRepository.existsOverlappingActiveAssignment(
+            fixedAsset.getId(),
+            partyCode,
+            roleTypeCode,
+            fromDate,
+            thruDate
+        )) {
+            throw new ConflictException(
+                "Inventory fixed asset party role assignment overlaps an active assignment for fixed asset: "
+                    + fixedAsset.getCode()
+                    + ", party: "
+                    + partyCode
+                    + ", role type: "
+                    + roleTypeCode
+            );
+        }
     }
 
     private InventoryFixedAssetPartyRoleAssignmentView toView(InventoryFixedAssetPartyRoleAssignment assignment) {
