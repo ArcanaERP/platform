@@ -160,6 +160,9 @@ Search:
 Work Effort:
 
 - `POST /api/work-efforts`
+- `POST /api/work-efforts/fixed-asset-assignments`
+- `GET /api/work-efforts/fixed-asset-assignments/{id}`
+- `GET /api/work-efforts/fixed-asset-assignments?tenantCode=&effortNumber=&fixedAssetCode=&page=&size=`
 - `GET /api/work-efforts/{effortNumber}?tenantCode=`
 - `GET /api/work-efforts?tenantCode=&status=&assignedTo=&page=&size=`
 - `GET /api/work-efforts/assignment-activity-summary?tenantCode=&assignedTo=&assignedAtFrom=&assignedAtTo=&page=&size=`

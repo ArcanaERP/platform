@@ -19,10 +19,12 @@ import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivityByAss
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryView;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
+import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
@@ -55,6 +57,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final WorkEffortRepository workEffortRepository;
     private final WorkEffortStatusChangeAuditRepository workEffortStatusChangeAuditRepository;
     private final WorkEffortAssignmentChangeAuditRepository workEffortAssignmentChangeAuditRepository;
+    private final WorkEffortFixedAssetAssignmentRepository workEffortFixedAssetAssignmentRepository;
     private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
 
@@ -88,15 +91,49 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     }
 
     @Override
+    public WorkEffortFixedAssetAssignmentView registerFixedAssetAssignment(
+        RegisterWorkEffortFixedAssetAssignmentCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        WorkEffort workEffort = findWorkEffort(command.tenantCode(), command.effortNumber());
+        return toFixedAssetAssignmentView(workEffortFixedAssetAssignmentRepository.save(
+            WorkEffortFixedAssetAssignment.create(workEffort, command.fixedAssetCode(), Instant.now(clock))
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkEffortFixedAssetAssignmentView fixedAssetAssignmentById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toFixedAssetAssignmentView(workEffortFixedAssetAssignmentRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Work effort fixed asset assignment not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkEffortFixedAssetAssignmentView> listFixedAssetAssignments(
+        String tenantCode,
+        String effortNumber,
+        String fixedAssetCode,
+        PageQuery pageQuery
+    ) {
+        Page<WorkEffortFixedAssetAssignment> page = workEffortFixedAssetAssignmentRepository.findAssignmentsFiltered(
+            normalizeOptionalUpper(tenantCode, "tenantCode"),
+            normalizeOptionalUpper(effortNumber, "effortNumber"),
+            normalizeOptionalUpper(fixedAssetCode, "fixedAssetCode"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toFixedAssetAssignmentView);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public WorkEffortView getWorkEffort(String tenantCode, String effortNumber) {
-        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
-        String normalizedEffortNumber = normalizeRequired(effortNumber, "effortNumber").toUpperCase();
-        WorkEffort workEffort = workEffortRepository.findByTenantCodeAndEffortNumber(normalizedTenantCode, normalizedEffortNumber)
-            .orElseThrow(() -> new NoSuchElementException(
-                "Work effort not found for tenant/effortNumber: " + normalizedTenantCode + "/" + normalizedEffortNumber
-            ));
-        return toView(workEffort);
+        return toView(findWorkEffort(tenantCode, effortNumber));
     }
 
     @Override
@@ -626,6 +663,28 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
         );
     }
 
+    private WorkEffortFixedAssetAssignmentView toFixedAssetAssignmentView(
+        WorkEffortFixedAssetAssignment assignment
+    ) {
+        return new WorkEffortFixedAssetAssignmentView(
+            assignment.getId(),
+            assignment.getWorkEffortId(),
+            assignment.getTenantCode(),
+            assignment.getEffortNumber(),
+            assignment.getFixedAssetCode(),
+            assignment.getCreatedAt()
+        );
+    }
+
+    private WorkEffort findWorkEffort(String tenantCode, String effortNumber) {
+        String normalizedTenantCode = normalizeRequired(tenantCode, "tenantCode").toUpperCase();
+        String normalizedEffortNumber = normalizeRequired(effortNumber, "effortNumber").toUpperCase();
+        return workEffortRepository.findByTenantCodeAndEffortNumber(normalizedTenantCode, normalizedEffortNumber)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Work effort not found for tenant/effortNumber: " + normalizedTenantCode + "/" + normalizedEffortNumber
+            ));
+    }
+
     private <B extends Comparable<? super B>, T> PageResult<T> summarizeAssignmentActivityByBucket(
         String tenantCode,
         String assignedTo,
@@ -860,6 +919,10 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             throw new IllegalArgumentException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private static String normalizeOptionalUpper(String value, String fieldName) {
+        return value == null ? null : normalizeRequired(value, fieldName).toUpperCase();
     }
 
     private static String normalizeAssignedTo(String assignedTo) {

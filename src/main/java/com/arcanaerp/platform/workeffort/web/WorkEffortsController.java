@@ -17,10 +17,12 @@ import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivityByAss
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryView;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
+import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
@@ -61,6 +63,41 @@ public class WorkEffortsController {
             )
         );
         return toResponse(created);
+    }
+
+    @PostMapping("/fixed-asset-assignments")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkEffortFixedAssetAssignmentResponse createFixedAssetAssignment(
+        @Valid @RequestBody CreateWorkEffortFixedAssetAssignmentRequest request
+    ) {
+        return toFixedAssetAssignmentResponse(workEffortCatalog.registerFixedAssetAssignment(
+            new RegisterWorkEffortFixedAssetAssignmentCommand(
+                request.tenantCode(),
+                request.effortNumber(),
+                request.fixedAssetCode()
+            )
+        ));
+    }
+
+    @GetMapping("/fixed-asset-assignments/{id}")
+    public WorkEffortFixedAssetAssignmentResponse fixedAssetAssignmentById(@PathVariable java.util.UUID id) {
+        return toFixedAssetAssignmentResponse(workEffortCatalog.fixedAssetAssignmentById(id));
+    }
+
+    @GetMapping("/fixed-asset-assignments")
+    public PageResult<WorkEffortFixedAssetAssignmentResponse> listFixedAssetAssignments(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String effortNumber,
+        @RequestParam(required = false) String fixedAssetCode,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listFixedAssetAssignments(
+            tenantCode,
+            effortNumber,
+            fixedAssetCode,
+            PageQuery.of(page, size)
+        ).map(this::toFixedAssetAssignmentResponse);
     }
 
     @GetMapping("/{effortNumber}")
@@ -482,6 +519,19 @@ public class WorkEffortsController {
             view.status(),
             view.assignedTo(),
             view.dueAt(),
+            view.createdAt()
+        );
+    }
+
+    private WorkEffortFixedAssetAssignmentResponse toFixedAssetAssignmentResponse(
+        WorkEffortFixedAssetAssignmentView view
+    ) {
+        return new WorkEffortFixedAssetAssignmentResponse(
+            view.id(),
+            view.workEffortId(),
+            view.tenantCode(),
+            view.effortNumber(),
+            view.fixedAssetCode(),
             view.createdAt()
         );
     }

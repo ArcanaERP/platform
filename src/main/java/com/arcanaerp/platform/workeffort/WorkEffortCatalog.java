@@ -8,6 +8,19 @@ public interface WorkEffortCatalog {
 
     WorkEffortView createWorkEffort(CreateWorkEffortCommand command);
 
+    WorkEffortFixedAssetAssignmentView registerFixedAssetAssignment(
+        RegisterWorkEffortFixedAssetAssignmentCommand command
+    );
+
+    WorkEffortFixedAssetAssignmentView fixedAssetAssignmentById(java.util.UUID id);
+
+    PageResult<WorkEffortFixedAssetAssignmentView> listFixedAssetAssignments(
+        String tenantCode,
+        String effortNumber,
+        String fixedAssetCode,
+        PageQuery pageQuery
+    );
+
     WorkEffortView getWorkEffort(String tenantCode, String effortNumber);
 
     WorkEffortAssignmentSummaryView getWorkEffortAssignment(String tenantCode, String effortNumber);

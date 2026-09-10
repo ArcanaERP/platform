@@ -4,7 +4,7 @@ Updated: 2026-08-30
 
 ## Scope
 
-Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, and status activity summaries.
+Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, and legacy-compatible fixed-asset assignment joins.
 
 ## Aggregate
 
@@ -77,14 +77,38 @@ Rules:
 - history reads are newest-first by `assignedAt`
 - optional history filters support exact `tenantCode`, exact current `assignedTo`, exact `assignedBy`, and `assignedAtFrom` / `assignedAtTo`
 
+### WorkEffortFixedAssetAssignment
+
+Purpose:
+- mirror legacy `work_effort_fixed_asset_assignments` join records between work efforts and fixed assets
+- track fixed assets used to execute a work effort without adding lifecycle behavior not present in the legacy table
+
+Core fields:
+- `id` (`UUID`)
+- `workEffortId`
+- `tenantCode`
+- `effortNumber`
+- `fixedAssetCode`
+- `createdAt`
+
+Rules:
+- `tenantCode`, `effortNumber`, and `fixedAssetCode` are normalized to uppercase
+- writes require an existing work effort by `tenantCode + effortNumber`
+- `fixedAssetCode` is a logical cross-module reference while Work Effort has no Inventory dependency
+- duplicate `workEffort + fixedAsset` assignment rows are allowed for parity with the legacy non-unique index
+
 ## Cross-Module Dependency
 
 - `workeffort` validates assignees, status actors, and assignment actors through public `IdentityActorLookup`
+- fixed-asset assignment records store fixed-asset codes as logical cross-module references; this slice does not add an Inventory dependency
 - no dependency on `identity.internal`
 
 ## Minimal HTTP Surface
 
 - `POST /api/work-efforts`
+- `POST /api/work-efforts/fixed-asset-assignments`
+- `GET /api/work-efforts/fixed-asset-assignments/{id}`
+- `GET /api/work-efforts/fixed-asset-assignments?tenantCode=&effortNumber=&fixedAssetCode=&page=&size=`
 - `GET /api/work-efforts/{effortNumber}?tenantCode=`
 - `GET /api/work-efforts?tenantCode=&status=&assignedTo=&page=&size=`
 - `GET /api/work-efforts/assignment-activity-summary?tenantCode=&assignedTo=&assignedAtFrom=&assignedAtTo=&page=&size=`
@@ -109,6 +133,7 @@ Rules:
 ## Query Notes
 
 - work-effort listing is paged through the shared `PageQuery` contract
+- work-effort fixed-asset assignment listing supports optional exact `tenantCode`, `effortNumber`, and `fixedAssetCode` filters
 - blank query values are rejected at the HTTP boundary
 - status-history ranges require `changedAtFrom <= changedAtTo`
 - assignment-history ranges require `assignedAtFrom <= assignedAtTo`
