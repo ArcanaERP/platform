@@ -21,6 +21,7 @@ import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.RegisterOrderRequirementCommitmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementPartyRoleCommand;
+import com.arcanaerp.platform.workeffort.RegisterRequirementTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
@@ -48,6 +49,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
 import com.arcanaerp.platform.workeffort.WorkRequirementFulfillmentView;
 import com.arcanaerp.platform.workeffort.WorkOrderItemFulfillmentView;
+import com.arcanaerp.platform.workeffort.RequirementTypeView;
 import com.arcanaerp.platform.workeffort.RequirementView;
 import com.arcanaerp.platform.workeffort.RequirementPartyRoleView;
 import java.time.DayOfWeek;
@@ -83,6 +85,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final WorkRequirementFulfillmentRepository workRequirementFulfillmentRepository;
     private final RequirementPartyRoleRepository requirementPartyRoleRepository;
     private final RequirementRepository requirementRepository;
+    private final RequirementTypeRepository requirementTypeRepository;
     private final WorkEffortAssociationTypeRepository workEffortAssociationTypeRepository;
     private final WorkEffortAssociationRepository workEffortAssociationRepository;
     private final WorkEffortStatusChangeAuditRepository workEffortStatusChangeAuditRepository;
@@ -411,6 +414,55 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toRequirementView);
+    }
+
+    @Override
+    public RequirementTypeView registerRequirementType(RegisterRequirementTypeCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toRequirementTypeView(requirementTypeRepository.save(
+            RequirementType.create(
+                command.parentId(),
+                command.left(),
+                command.right(),
+                command.description(),
+                command.comments(),
+                command.internalIdentifier(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RequirementTypeView requirementTypeById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toRequirementTypeView(requirementTypeRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Requirement type not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<RequirementTypeView> listRequirementTypes(
+        Long parentId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    ) {
+        Page<RequirementType> page = requirementTypeRepository.findTypesFiltered(
+            parentId,
+            normalizeOptional(internalIdentifier, "internalIdentifier"),
+            normalizeOptional(externalIdentifier, "externalIdentifier"),
+            normalizeOptional(externalIdSource, "externalIdSource"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toRequirementTypeView);
     }
 
     @Override
@@ -1302,6 +1354,21 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             requirement.getProductId(),
             requirement.getDeliverableId(),
             requirement.getCreatedAt()
+        );
+    }
+
+    private RequirementTypeView toRequirementTypeView(RequirementType type) {
+        return new RequirementTypeView(
+            type.getId(),
+            type.getParentId(),
+            type.getLeft(),
+            type.getRight(),
+            type.getDescription(),
+            type.getComments(),
+            type.getInternalIdentifier(),
+            type.getExternalIdentifier(),
+            type.getExternalIdSource(),
+            type.getCreatedAt()
         );
     }
 

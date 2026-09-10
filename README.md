@@ -175,6 +175,9 @@ Work Effort:
 - `POST /api/work-efforts/requirements`
 - `GET /api/work-efforts/requirements/{id}`
 - `GET /api/work-efforts/requirements?parentId=&type=&requirementTypeId=&requirementRecordId=&requirementRecordType=&fixedAssetId=&productId=&deliverableId=&page=&size=`
+- `POST /api/work-efforts/requirement-types`
+- `GET /api/work-efforts/requirement-types/{id}`
+- `GET /api/work-efforts/requirement-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
 - `POST /api/work-efforts/requirement-party-roles`
 - `GET /api/work-efforts/requirement-party-roles/{id}`
 - `GET /api/work-efforts/requirement-party-roles?requirementId=&partyId=&roleTypeId=&validFrom=&validTo=&page=&size=`

@@ -817,6 +817,100 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsRequirementTypes() throws Exception {
+        String typeId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/requirement-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "parentId": 7,
+                  "left": 10,
+                  "right": 11,
+                  "description": " Material requirement ",
+                  "comments": " Used for material planning ",
+                  "internalIdentifier": " REQ-MATERIAL ",
+                  "externalIdentifier": " EXT-REQ-MATERIAL ",
+                  "externalIdSource": " Legacy "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.parentId").value(7))
+            .andExpect(jsonPath("$.left").value(10))
+            .andExpect(jsonPath("$.right").value(11))
+            .andExpect(jsonPath("$.description").value("Material requirement"))
+            .andExpect(jsonPath("$.comments").value("Used for material planning"))
+            .andExpect(jsonPath("$.internalIdentifier").value("REQ-MATERIAL"))
+            .andExpect(jsonPath("$.externalIdentifier").value("EXT-REQ-MATERIAL"))
+            .andExpect(jsonPath("$.externalIdSource").value("Legacy"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/requirement-types/{id}",
+            typeId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(typeId))
+            .andExpect(jsonPath("$.internalIdentifier").value("REQ-MATERIAL"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/requirement-types"
+        )
+            .param("parentId", "7")
+            .param("internalIdentifier", "REQ-MATERIAL")
+            .param("externalIdentifier", "EXT-REQ-MATERIAL")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(typeId))
+            .andExpect(jsonPath("$.items[0].internalIdentifier").value("REQ-MATERIAL"));
+    }
+
+    @Test
+    void allowsDuplicateRequirementTypesForLegacyParity() throws Exception {
+        String payload = """
+            {
+              "description": "Material requirement",
+              "internalIdentifier": "REQ-MATERIAL-DUP",
+              "externalIdentifier": "EXT-REQ-MATERIAL-DUP",
+              "externalIdSource": "Legacy"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/requirement-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/requirement-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/requirement-types"
+        )
+            .param("internalIdentifier", "REQ-MATERIAL-DUP")
+            .param("externalIdentifier", "EXT-REQ-MATERIAL-DUP")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
     void createsReadsAndListsRequirementPartyRoles() throws Exception {
         String partyRoleId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
             "/api/work-efforts/requirement-party-roles"

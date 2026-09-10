@@ -19,6 +19,7 @@ import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.RegisterOrderRequirementCommitmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementPartyRoleCommand;
+import com.arcanaerp.platform.workeffort.RegisterRequirementTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
@@ -46,6 +47,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
 import com.arcanaerp.platform.workeffort.WorkRequirementFulfillmentView;
 import com.arcanaerp.platform.workeffort.WorkOrderItemFulfillmentView;
+import com.arcanaerp.platform.workeffort.RequirementTypeView;
 import com.arcanaerp.platform.workeffort.RequirementView;
 import com.arcanaerp.platform.workeffort.RequirementPartyRoleView;
 import jakarta.validation.Valid;
@@ -326,6 +328,46 @@ public class WorkEffortsController {
             deliverableId,
             PageQuery.of(page, size)
         ).map(this::toRequirementResponse);
+    }
+
+    @PostMapping("/requirement-types")
+    @ResponseStatus(HttpStatus.CREATED)
+    public RequirementTypeResponse createRequirementType(@Valid @RequestBody CreateRequirementTypeRequest request) {
+        return toRequirementTypeResponse(workEffortCatalog.registerRequirementType(
+            new RegisterRequirementTypeCommand(
+                request.parentId(),
+                request.left(),
+                request.right(),
+                request.description(),
+                request.comments(),
+                request.internalIdentifier(),
+                request.externalIdentifier(),
+                request.externalIdSource()
+            )
+        ));
+    }
+
+    @GetMapping("/requirement-types/{id}")
+    public RequirementTypeResponse requirementTypeById(@PathVariable java.util.UUID id) {
+        return toRequirementTypeResponse(workEffortCatalog.requirementTypeById(id));
+    }
+
+    @GetMapping("/requirement-types")
+    public PageResult<RequirementTypeResponse> listRequirementTypes(
+        @RequestParam(required = false) Long parentId,
+        @RequestParam(required = false) String internalIdentifier,
+        @RequestParam(required = false) String externalIdentifier,
+        @RequestParam(required = false) String externalIdSource,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listRequirementTypes(
+            parentId,
+            internalIdentifier,
+            externalIdentifier,
+            externalIdSource,
+            PageQuery.of(page, size)
+        ).map(this::toRequirementTypeResponse);
     }
 
     @PostMapping("/association-types")
@@ -1078,6 +1120,21 @@ public class WorkEffortsController {
             view.fixedAssetId(),
             view.productId(),
             view.deliverableId(),
+            view.createdAt()
+        );
+    }
+
+    private RequirementTypeResponse toRequirementTypeResponse(RequirementTypeView view) {
+        return new RequirementTypeResponse(
+            view.id(),
+            view.parentId(),
+            view.left(),
+            view.right(),
+            view.description(),
+            view.comments(),
+            view.internalIdentifier(),
+            view.externalIdentifier(),
+            view.externalIdSource(),
             view.createdAt()
         );
     }

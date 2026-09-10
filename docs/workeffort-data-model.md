@@ -4,7 +4,7 @@ Updated: 2026-08-30
 
 ## Scope
 
-Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible requirements, legacy-compatible associated-record joins, legacy-compatible work-order item fulfillment joins, legacy-compatible order requirement commitments, legacy-compatible work requirement fulfillment joins, legacy-compatible requirement party-role joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
+Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible requirements, legacy-compatible requirement types, legacy-compatible associated-record joins, legacy-compatible work-order item fulfillment joins, legacy-compatible order requirement commitments, legacy-compatible work requirement fulfillment joins, legacy-compatible requirement party-role joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
 
 ## Aggregate
 
@@ -104,6 +104,29 @@ Rules:
 - all legacy columns are optional in this slice except generated `id` and `createdAt`
 - `description`, `type`, and `requirementRecordType` are trimmed when present
 - numeric relationship columns are stored as logical references
+- duplicate rows are allowed because the legacy table has no uniqueness constraint
+
+### RequirementType
+
+Purpose:
+- mirror legacy `requirement_types` records for requirement classification
+- store nested-set metadata and external identifiers without adding tree mutation behavior
+
+Core fields:
+- `id` (`UUID`)
+- `parentId`
+- `left` mapped to legacy column `lft`
+- `right` mapped to legacy column `rgt`
+- `description`
+- `comments`
+- `internalIdentifier`
+- `externalIdentifier`
+- `externalIdSource`
+- `createdAt`
+
+Rules:
+- all legacy columns are optional in this slice except generated `id` and `createdAt`
+- `description`, `comments`, `internalIdentifier`, `externalIdentifier`, and `externalIdSource` are trimmed when present
 - duplicate rows are allowed because the legacy table has no uniqueness constraint
 
 ### AssociatedWorkEffort
@@ -361,6 +384,7 @@ Rules:
 - work requirement fulfillments store requirement ids as logical references without depending on Requirement
 - requirement party roles store requirement, party, and role-type ids as logical references without depending on Requirement, Party, or Role
 - requirements store type, money, polymorphic record, fixed-asset, product, and deliverable references as logical values without adding module dependencies
+- requirement types store parent ids as logical nested-set references without adding tree mutation behavior
 - no dependency on `identity.internal`
 
 ## Minimal HTTP Surface
@@ -381,6 +405,9 @@ Rules:
 - `POST /api/work-efforts/requirements`
 - `GET /api/work-efforts/requirements/{id}`
 - `GET /api/work-efforts/requirements?parentId=&type=&requirementTypeId=&requirementRecordId=&requirementRecordType=&fixedAssetId=&productId=&deliverableId=&page=&size=`
+- `POST /api/work-efforts/requirement-types`
+- `GET /api/work-efforts/requirement-types/{id}`
+- `GET /api/work-efforts/requirement-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
 - `POST /api/work-efforts/requirement-party-roles`
 - `GET /api/work-efforts/requirement-party-roles/{id}`
 - `GET /api/work-efforts/requirement-party-roles?requirementId=&partyId=&roleTypeId=&validFrom=&validTo=&page=&size=`
@@ -431,6 +458,7 @@ Rules:
 - order requirement commitment listing supports optional exact `orderLineItemId` and `requirementId` filters
 - work requirement fulfillment listing supports optional exact `tenantCode`, `effortNumber`, and `requirementId` filters
 - requirement listing supports optional exact `parentId`, `type`, `requirementTypeId`, `requirementRecordId`, `requirementRecordType`, `fixedAssetId`, `productId`, and `deliverableId` filters
+- requirement type listing supports optional exact `parentId`, `internalIdentifier`, `externalIdentifier`, and `externalIdSource` filters
 - requirement party-role listing supports optional exact `requirementId`, `partyId`, and `roleTypeId` filters plus optional valid date bounds
 - work-effort association type listing supports optional exact `parentTypeCode` filtering
 - work-effort association listing supports optional exact tenant, association type, from effort, to effort, and relationship type filters plus optional effective date bounds
