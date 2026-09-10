@@ -172,6 +172,9 @@ Work Effort:
 - `POST /api/work-efforts/work-requirement-fulfillments`
 - `GET /api/work-efforts/work-requirement-fulfillments/{id}`
 - `GET /api/work-efforts/work-requirement-fulfillments?tenantCode=&effortNumber=&requirementId=&page=&size=`
+- `POST /api/work-efforts/requirement-party-roles`
+- `GET /api/work-efforts/requirement-party-roles/{id}`
+- `GET /api/work-efforts/requirement-party-roles?requirementId=&partyId=&roleTypeId=&validFrom=&validTo=&page=&size=`
 - `POST /api/work-efforts/association-types`
 - `GET /api/work-efforts/association-types/{code}`
 - `GET /api/work-efforts/association-types?parentTypeCode=&page=&size=`

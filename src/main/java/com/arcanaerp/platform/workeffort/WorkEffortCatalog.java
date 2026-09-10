@@ -56,6 +56,19 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    RequirementPartyRoleView registerRequirementPartyRole(RegisterRequirementPartyRoleCommand command);
+
+    RequirementPartyRoleView requirementPartyRoleById(java.util.UUID id);
+
+    PageResult<RequirementPartyRoleView> listRequirementPartyRoles(
+        Long requirementId,
+        Long partyId,
+        Long roleTypeId,
+        Instant validFrom,
+        Instant validTo,
+        PageQuery pageQuery
+    );
+
     WorkEffortAssociationTypeView registerAssociationType(RegisterWorkEffortAssociationTypeCommand command);
 
     WorkEffortAssociationTypeView associationTypeByCode(String code);

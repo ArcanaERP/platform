@@ -17,6 +17,7 @@ import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivitySummaryV
 import com.arcanaerp.platform.workeffort.OrderRequirementCommitmentView;
 import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.RegisterOrderRequirementCommitmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterRequirementPartyRoleCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
@@ -44,6 +45,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
 import com.arcanaerp.platform.workeffort.WorkRequirementFulfillmentView;
 import com.arcanaerp.platform.workeffort.WorkOrderItemFulfillmentView;
+import com.arcanaerp.platform.workeffort.RequirementPartyRoleView;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -225,6 +227,50 @@ public class WorkEffortsController {
             requirementId,
             PageQuery.of(page, size)
         ).map(this::toWorkRequirementFulfillmentResponse);
+    }
+
+    @PostMapping("/requirement-party-roles")
+    @ResponseStatus(HttpStatus.CREATED)
+    public RequirementPartyRoleResponse createRequirementPartyRole(
+        @Valid @RequestBody CreateRequirementPartyRoleRequest request
+    ) {
+        return toRequirementPartyRoleResponse(workEffortCatalog.registerRequirementPartyRole(
+            new RegisterRequirementPartyRoleCommand(
+                request.requirementId(),
+                request.partyId(),
+                request.roleTypeId(),
+                request.description(),
+                request.externalIdentifier(),
+                request.externalIdSource(),
+                parseOptionalInstant(request.validFrom(), "validFrom"),
+                parseOptionalInstant(request.validTo(), "validTo")
+            )
+        ));
+    }
+
+    @GetMapping("/requirement-party-roles/{id}")
+    public RequirementPartyRoleResponse requirementPartyRoleById(@PathVariable java.util.UUID id) {
+        return toRequirementPartyRoleResponse(workEffortCatalog.requirementPartyRoleById(id));
+    }
+
+    @GetMapping("/requirement-party-roles")
+    public PageResult<RequirementPartyRoleResponse> listRequirementPartyRoles(
+        @RequestParam(required = false) Long requirementId,
+        @RequestParam(required = false) Long partyId,
+        @RequestParam(required = false) Long roleTypeId,
+        @RequestParam(required = false) String validFrom,
+        @RequestParam(required = false) String validTo,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listRequirementPartyRoles(
+            requirementId,
+            partyId,
+            roleTypeId,
+            parseOptionalInstant(validFrom, "validFrom"),
+            parseOptionalInstant(validTo, "validTo"),
+            PageQuery.of(page, size)
+        ).map(this::toRequirementPartyRoleResponse);
     }
 
     @PostMapping("/association-types")
@@ -942,6 +988,21 @@ public class WorkEffortsController {
             view.effortNumber(),
             view.requirementId(),
             view.description(),
+            view.createdAt()
+        );
+    }
+
+    private RequirementPartyRoleResponse toRequirementPartyRoleResponse(RequirementPartyRoleView view) {
+        return new RequirementPartyRoleResponse(
+            view.id(),
+            view.requirementId(),
+            view.partyId(),
+            view.roleTypeId(),
+            view.description(),
+            view.externalIdentifier(),
+            view.externalIdSource(),
+            view.validFrom(),
+            view.validTo(),
             view.createdAt()
         );
     }

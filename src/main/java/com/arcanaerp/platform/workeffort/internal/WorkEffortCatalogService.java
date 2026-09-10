@@ -19,6 +19,7 @@ import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivitySummaryV
 import com.arcanaerp.platform.workeffort.OrderRequirementCommitmentView;
 import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.RegisterOrderRequirementCommitmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterRequirementPartyRoleCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
@@ -46,6 +47,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
 import com.arcanaerp.platform.workeffort.WorkRequirementFulfillmentView;
 import com.arcanaerp.platform.workeffort.WorkOrderItemFulfillmentView;
+import com.arcanaerp.platform.workeffort.RequirementPartyRoleView;
 import java.time.DayOfWeek;
 import java.time.Clock;
 import java.time.Instant;
@@ -77,6 +79,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final WorkOrderItemFulfillmentRepository workOrderItemFulfillmentRepository;
     private final OrderRequirementCommitmentRepository orderRequirementCommitmentRepository;
     private final WorkRequirementFulfillmentRepository workRequirementFulfillmentRepository;
+    private final RequirementPartyRoleRepository requirementPartyRoleRepository;
     private final WorkEffortAssociationTypeRepository workEffortAssociationTypeRepository;
     private final WorkEffortAssociationRepository workEffortAssociationRepository;
     private final WorkEffortStatusChangeAuditRepository workEffortStatusChangeAuditRepository;
@@ -292,6 +295,57 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toWorkRequirementFulfillmentView);
+    }
+
+    @Override
+    public RequirementPartyRoleView registerRequirementPartyRole(RegisterRequirementPartyRoleCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toRequirementPartyRoleView(requirementPartyRoleRepository.save(
+            RequirementPartyRole.create(
+                command.requirementId(),
+                command.partyId(),
+                command.roleTypeId(),
+                command.description(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
+                command.validFrom(),
+                command.validTo(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RequirementPartyRoleView requirementPartyRoleById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toRequirementPartyRoleView(requirementPartyRoleRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Requirement party role not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<RequirementPartyRoleView> listRequirementPartyRoles(
+        Long requirementId,
+        Long partyId,
+        Long roleTypeId,
+        Instant validFrom,
+        Instant validTo,
+        PageQuery pageQuery
+    ) {
+        Page<RequirementPartyRole> page = requirementPartyRoleRepository.findPartyRolesFiltered(
+            requirementId,
+            partyId,
+            roleTypeId,
+            validFrom,
+            validTo,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toRequirementPartyRoleView);
     }
 
     @Override
@@ -1148,6 +1202,21 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             fulfillment.getRequirementId(),
             fulfillment.getDescription(),
             fulfillment.getCreatedAt()
+        );
+    }
+
+    private RequirementPartyRoleView toRequirementPartyRoleView(RequirementPartyRole partyRole) {
+        return new RequirementPartyRoleView(
+            partyRole.getId(),
+            partyRole.getRequirementId(),
+            partyRole.getPartyId(),
+            partyRole.getRoleTypeId(),
+            partyRole.getDescription(),
+            partyRole.getExternalIdentifier(),
+            partyRole.getExternalIdSource(),
+            partyRole.getValidFrom(),
+            partyRole.getValidTo(),
+            partyRole.getCreatedAt()
         );
     }
 

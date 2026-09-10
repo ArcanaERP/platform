@@ -705,6 +705,105 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsRequirementPartyRoles() throws Exception {
+        String partyRoleId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/requirement-party-roles"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "requirementId": 88,
+                  "partyId": 99,
+                  "roleTypeId": 111,
+                  "description": " Responsible party ",
+                  "externalIdentifier": " RPR-001 ",
+                  "externalIdSource": " Legacy ",
+                  "validFrom": "2026-04-22T10:00:00Z",
+                  "validTo": "2026-04-22T12:00:00Z"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.requirementId").value(88))
+            .andExpect(jsonPath("$.partyId").value(99))
+            .andExpect(jsonPath("$.roleTypeId").value(111))
+            .andExpect(jsonPath("$.description").value("Responsible party"))
+            .andExpect(jsonPath("$.externalIdentifier").value("RPR-001"))
+            .andExpect(jsonPath("$.externalIdSource").value("Legacy"))
+            .andExpect(jsonPath("$.validFrom").value("2026-04-22T10:00:00Z"))
+            .andExpect(jsonPath("$.validTo").value("2026-04-22T12:00:00Z"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/requirement-party-roles/{id}",
+            partyRoleId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(partyRoleId))
+            .andExpect(jsonPath("$.requirementId").value(88))
+            .andExpect(jsonPath("$.partyId").value(99))
+            .andExpect(jsonPath("$.roleTypeId").value(111));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/requirement-party-roles"
+        )
+            .param("requirementId", "88")
+            .param("partyId", "99")
+            .param("roleTypeId", "111")
+            .param("validFrom", "2026-04-22T09:00:00Z")
+            .param("validTo", "2026-04-22T13:00:00Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(partyRoleId))
+            .andExpect(jsonPath("$.items[0].requirementId").value(88))
+            .andExpect(jsonPath("$.items[0].partyId").value(99))
+            .andExpect(jsonPath("$.items[0].roleTypeId").value(111));
+    }
+
+    @Test
+    void allowsDuplicateRequirementPartyRolesForLegacyParity() throws Exception {
+        String payload = """
+            {
+              "requirementId": 188,
+              "partyId": 199,
+              "roleTypeId": 211,
+              "description": "Responsible party"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/requirement-party-roles"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/requirement-party-roles"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/requirement-party-roles"
+        )
+            .param("requirementId", "188")
+            .param("partyId", "199")
+            .param("roleTypeId", "211")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
     void createsReadsAndListsWorkEffortAssociationTypes() throws Exception {
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
             "/api/work-efforts/association-types"
