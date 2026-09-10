@@ -4,7 +4,7 @@ Updated: 2026-08-30
 
 ## Scope
 
-Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
+Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible associated-record joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
 
 ## Aggregate
 
@@ -76,6 +76,26 @@ Rules:
 - no-op assignment changes return the current work effort without appending history
 - history reads are newest-first by `assignedAt`
 - optional history filters support exact `tenantCode`, exact current `assignedTo`, exact `assignedBy`, and `assignedAtFrom` / `assignedAtTo`
+
+### AssociatedWorkEffort
+
+Purpose:
+- mirror legacy `associated_work_efforts` records linking a work effort to a polymorphic associated record
+- support the legacy `has_many_polymorphic` association shape without adding target-module dependencies
+
+Core fields:
+- `id` (`UUID`)
+- `workEffortId`
+- `tenantCode`
+- `effortNumber`
+- `associatedRecordId`
+- `associatedRecordType`
+
+Rules:
+- writes require an existing work effort by `tenantCode + effortNumber`
+- `tenantCode` and `effortNumber` are normalized to uppercase
+- `associatedRecordType` is trimmed but preserves case because the legacy value is a Rails class/type discriminator
+- duplicate rows are allowed for parity with the legacy non-unique indexes
 
 ### WorkEffortAssociationType
 
@@ -221,11 +241,15 @@ Rules:
 - role-type assignment records store role-type codes as logical cross-module references; this slice does not add a Role catalog dependency
 - association type records store role-type references as logical codes; this slice does not add a Role catalog dependency
 - association records store relationship-type references as logical codes; this slice does not add a Relationship Type catalog dependency
+- associated-record links store polymorphic record id/type values without depending on target modules
 - no dependency on `identity.internal`
 
 ## Minimal HTTP Surface
 
 - `POST /api/work-efforts`
+- `POST /api/work-efforts/associated-records`
+- `GET /api/work-efforts/associated-records/{id}`
+- `GET /api/work-efforts/associated-records?tenantCode=&effortNumber=&associatedRecordId=&associatedRecordType=&page=&size=`
 - `POST /api/work-efforts/association-types`
 - `GET /api/work-efforts/association-types/{code}`
 - `GET /api/work-efforts/association-types?parentTypeCode=&page=&size=`
@@ -268,6 +292,7 @@ Rules:
 ## Query Notes
 
 - work-effort listing is paged through the shared `PageQuery` contract
+- associated work-effort listing supports optional exact `tenantCode`, `effortNumber`, `associatedRecordId`, and `associatedRecordType` filters
 - work-effort association type listing supports optional exact `parentTypeCode` filtering
 - work-effort association listing supports optional exact tenant, association type, from effort, to effort, and relationship type filters plus optional effective date bounds
 - work-effort fixed-asset assignment listing supports optional exact `tenantCode`, `effortNumber`, and `fixedAssetCode` filters

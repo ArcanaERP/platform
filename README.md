@@ -160,6 +160,9 @@ Search:
 Work Effort:
 
 - `POST /api/work-efforts`
+- `POST /api/work-efforts/associated-records`
+- `GET /api/work-efforts/associated-records/{id}`
+- `GET /api/work-efforts/associated-records?tenantCode=&effortNumber=&associatedRecordId=&associatedRecordType=&page=&size=`
 - `POST /api/work-efforts/association-types`
 - `GET /api/work-efforts/association-types/{code}`
 - `GET /api/work-efforts/association-types?parentTypeCode=&page=&size=`

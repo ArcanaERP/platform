@@ -23,6 +23,8 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentC
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
+import com.arcanaerp.platform.workeffort.AssociatedWorkEffortView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssociationTypeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssociationView;
@@ -73,6 +75,44 @@ public class WorkEffortsController {
             )
         );
         return toResponse(created);
+    }
+
+    @PostMapping("/associated-records")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AssociatedWorkEffortResponse createAssociatedWorkEffort(
+        @Valid @RequestBody CreateAssociatedWorkEffortRequest request
+    ) {
+        return toAssociatedWorkEffortResponse(workEffortCatalog.registerAssociatedWorkEffort(
+            new RegisterAssociatedWorkEffortCommand(
+                request.tenantCode(),
+                request.effortNumber(),
+                request.associatedRecordId(),
+                request.associatedRecordType()
+            )
+        ));
+    }
+
+    @GetMapping("/associated-records/{id}")
+    public AssociatedWorkEffortResponse associatedWorkEffortById(@PathVariable java.util.UUID id) {
+        return toAssociatedWorkEffortResponse(workEffortCatalog.associatedWorkEffortById(id));
+    }
+
+    @GetMapping("/associated-records")
+    public PageResult<AssociatedWorkEffortResponse> listAssociatedWorkEfforts(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String effortNumber,
+        @RequestParam(required = false) Long associatedRecordId,
+        @RequestParam(required = false) String associatedRecordType,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listAssociatedWorkEfforts(
+            tenantCode,
+            effortNumber,
+            associatedRecordId,
+            associatedRecordType,
+            PageQuery.of(page, size)
+        ).map(this::toAssociatedWorkEffortResponse);
     }
 
     @PostMapping("/association-types")
@@ -741,6 +781,17 @@ public class WorkEffortsController {
             view.assignedTo(),
             view.dueAt(),
             view.createdAt()
+        );
+    }
+
+    private AssociatedWorkEffortResponse toAssociatedWorkEffortResponse(AssociatedWorkEffortView view) {
+        return new AssociatedWorkEffortResponse(
+            view.id(),
+            view.workEffortId(),
+            view.tenantCode(),
+            view.effortNumber(),
+            view.associatedRecordId(),
+            view.associatedRecordType()
         );
     }
 

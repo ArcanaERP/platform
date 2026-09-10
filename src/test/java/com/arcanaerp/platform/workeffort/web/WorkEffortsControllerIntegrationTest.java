@@ -174,6 +174,155 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsAssociatedWorkEfforts() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebassocrec01",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebassocrec01",
+            "we-record-001",
+            "Stage outbound shipment",
+            "Stage outbound shipment for pickup",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        String associatedWorkEffortId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/associated-records"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": " workwebassocrec01 ",
+                  "effortNumber": " we-record-001 ",
+                  "associatedRecordId": 44,
+                  "associatedRecordType": "ShipmentItem"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.workEffortId").isNotEmpty())
+            .andExpect(jsonPath("$.tenantCode").value("WORKWEBASSOCREC01"))
+            .andExpect(jsonPath("$.effortNumber").value("WE-RECORD-001"))
+            .andExpect(jsonPath("$.associatedRecordId").value(44))
+            .andExpect(jsonPath("$.associatedRecordType").value("ShipmentItem"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/associated-records/{id}",
+            associatedWorkEffortId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(associatedWorkEffortId))
+            .andExpect(jsonPath("$.associatedRecordType").value("ShipmentItem"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/associated-records"
+        )
+            .param("tenantCode", "workwebassocrec01")
+            .param("effortNumber", "we-record-001")
+            .param("associatedRecordId", "44")
+            .param("associatedRecordType", "ShipmentItem")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(associatedWorkEffortId))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("WORKWEBASSOCREC01"))
+            .andExpect(jsonPath("$.items[0].effortNumber").value("WE-RECORD-001"))
+            .andExpect(jsonPath("$.items[0].associatedRecordId").value(44))
+            .andExpect(jsonPath("$.items[0].associatedRecordType").value("ShipmentItem"));
+    }
+
+    @Test
+    void allowsDuplicateAssociatedWorkEffortsForLegacyParity() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebassocrec02",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebassocrec02",
+            "we-record-001",
+            "Pick shipment",
+            "Pick shipment items",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+        String payload = """
+            {
+              "tenantCode": "workwebassocrec02",
+              "effortNumber": "we-record-001",
+              "associatedRecordId": 44,
+              "associatedRecordType": "ShipmentItem"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/associated-records"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/associated-records"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/associated-records"
+        )
+            .param("tenantCode", "workwebassocrec02")
+            .param("effortNumber", "we-record-001")
+            .param("associatedRecordId", "44")
+            .param("associatedRecordType", "ShipmentItem")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void rejectsAssociatedWorkEffortForMissingWorkEffort() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/associated-records"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "workwebassocrec03",
+                  "effortNumber": "missing",
+                  "associatedRecordId": 44,
+                  "associatedRecordType": "ShipmentItem"
+                }
+                """))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value(
+                "Work effort not found for tenant/effortNumber: WORKWEBASSOCREC03/MISSING"
+            ))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/associated-records"));
+    }
+
+    @Test
     void createsReadsAndListsWorkEffortAssociationTypes() throws Exception {
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
             "/api/work-efforts/association-types"

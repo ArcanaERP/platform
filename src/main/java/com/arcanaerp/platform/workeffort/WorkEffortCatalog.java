@@ -8,6 +8,18 @@ public interface WorkEffortCatalog {
 
     WorkEffortView createWorkEffort(CreateWorkEffortCommand command);
 
+    AssociatedWorkEffortView registerAssociatedWorkEffort(RegisterAssociatedWorkEffortCommand command);
+
+    AssociatedWorkEffortView associatedWorkEffortById(java.util.UUID id);
+
+    PageResult<AssociatedWorkEffortView> listAssociatedWorkEfforts(
+        String tenantCode,
+        String effortNumber,
+        Long associatedRecordId,
+        String associatedRecordType,
+        PageQuery pageQuery
+    );
+
     WorkEffortAssociationTypeView registerAssociationType(RegisterWorkEffortAssociationTypeCommand command);
 
     WorkEffortAssociationTypeView associationTypeByCode(String code);

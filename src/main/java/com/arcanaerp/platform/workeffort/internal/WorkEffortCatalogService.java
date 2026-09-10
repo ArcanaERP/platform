@@ -4,6 +4,7 @@ import com.arcanaerp.platform.core.api.ConflictException;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.IdentityActorLookup;
+import com.arcanaerp.platform.workeffort.AssociatedWorkEffortView;
 import com.arcanaerp.platform.workeffort.AssignWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.ChangeWorkEffortStatusCommand;
 import com.arcanaerp.platform.workeffort.CreateWorkEffortCommand;
@@ -25,6 +26,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentC
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.WorkEffortAssociationTypeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssociationView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
@@ -65,6 +67,7 @@ import org.springframework.transaction.annotation.Transactional;
 class WorkEffortCatalogService implements WorkEffortCatalog {
 
     private final WorkEffortRepository workEffortRepository;
+    private final AssociatedWorkEffortRepository associatedWorkEffortRepository;
     private final WorkEffortAssociationTypeRepository workEffortAssociationTypeRepository;
     private final WorkEffortAssociationRepository workEffortAssociationRepository;
     private final WorkEffortStatusChangeAuditRepository workEffortStatusChangeAuditRepository;
@@ -103,6 +106,50 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             )
         );
         return toView(created);
+    }
+
+    @Override
+    public AssociatedWorkEffortView registerAssociatedWorkEffort(RegisterAssociatedWorkEffortCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        WorkEffort workEffort = findWorkEffort(command.tenantCode(), command.effortNumber());
+        return toAssociatedWorkEffortView(associatedWorkEffortRepository.save(
+            AssociatedWorkEffort.create(
+                workEffort,
+                command.associatedRecordId(),
+                command.associatedRecordType()
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AssociatedWorkEffortView associatedWorkEffortById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toAssociatedWorkEffortView(associatedWorkEffortRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Associated work effort not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<AssociatedWorkEffortView> listAssociatedWorkEfforts(
+        String tenantCode,
+        String effortNumber,
+        Long associatedRecordId,
+        String associatedRecordType,
+        PageQuery pageQuery
+    ) {
+        Page<AssociatedWorkEffort> page = associatedWorkEffortRepository.findAssociatedWorkEffortsFiltered(
+            normalizeOptionalUpper(tenantCode, "tenantCode"),
+            normalizeOptionalUpper(effortNumber, "effortNumber"),
+            associatedRecordId,
+            normalizeOptional(associatedRecordType, "associatedRecordType"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "associatedRecordType"))
+        );
+        return PageResult.from(page).map(this::toAssociatedWorkEffortView);
     }
 
     @Override
@@ -916,6 +963,17 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
         );
     }
 
+    private AssociatedWorkEffortView toAssociatedWorkEffortView(AssociatedWorkEffort associatedWorkEffort) {
+        return new AssociatedWorkEffortView(
+            associatedWorkEffort.getId(),
+            associatedWorkEffort.getWorkEffortId(),
+            associatedWorkEffort.getTenantCode(),
+            associatedWorkEffort.getEffortNumber(),
+            associatedWorkEffort.getAssociatedRecordId(),
+            associatedWorkEffort.getAssociatedRecordType()
+        );
+    }
+
     private WorkEffortAssociationTypeView toAssociationTypeView(WorkEffortAssociationType type) {
         return new WorkEffortAssociationTypeView(
             type.getId(),
@@ -1252,6 +1310,10 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
 
     private static String normalizeOptionalUpper(String value, String fieldName) {
         return value == null ? null : normalizeRequired(value, fieldName).toUpperCase();
+    }
+
+    private static String normalizeOptional(String value, String fieldName) {
+        return value == null ? null : normalizeRequired(value, fieldName);
     }
 
     private static String normalizeAssignedTo(String assignedTo) {
