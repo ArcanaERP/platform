@@ -4,7 +4,7 @@ Updated: 2026-08-30
 
 ## Scope
 
-Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
+Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
 
 ## Aggregate
 
@@ -76,6 +76,57 @@ Rules:
 - no-op assignment changes return the current work effort without appending history
 - history reads are newest-first by `assignedAt`
 - optional history filters support exact `tenantCode`, exact current `assignedTo`, exact `assignedBy`, and `assignedAtFrom` / `assignedAtTo`
+
+### WorkEffortAssociationType
+
+Purpose:
+- mirror legacy `work_effort_association_types` records for dependency, concurrence, and breakdown association classifications
+- retain role-type metadata without adding a direct Role catalog dependency
+
+Core fields:
+- `id` (`UUID`)
+- `code`
+- `name`
+- `description`
+- `parentTypeCode`
+- `validFromRoleTypeCode`
+- `validToRoleTypeCode`
+- `externalIdentifier`
+- `externalIdSource`
+- `createdAt`
+
+Rules:
+- `code`, `parentTypeCode`, `validFromRoleTypeCode`, and `validToRoleTypeCode` are normalized to uppercase
+- `code` is unique in the Java slice as the stable replacement for the legacy internal identifier
+- parent and role-type references are logical code references in this slice
+
+### WorkEffortAssociation
+
+Purpose:
+- mirror legacy `work_effort_associations` records connecting two work efforts
+- support precedence, concurrence, and breakdown links without adding graph traversal behavior not present in the current Java slice
+
+Core fields:
+- `id` (`UUID`)
+- `tenantCode`
+- `associationTypeCode`
+- `description`
+- `fromWorkEffortId`
+- `fromEffortNumber`
+- `toWorkEffortId`
+- `toEffortNumber`
+- `fromRoleTypeCode`
+- `toRoleTypeCode`
+- `relationshipTypeCode`
+- `effectiveFrom`
+- `effectiveThru`
+- `createdAt`
+
+Rules:
+- writes require an existing association type and existing from/to work efforts in the same tenant
+- `tenantCode`, work-effort numbers, association type, role-type references, and relationship type are normalized to uppercase
+- `effectiveFrom` and `effectiveThru` are optional, but `effectiveFrom` must be before or equal to `effectiveThru` when both are present
+- duplicate rows are allowed for parity with the legacy table, which has no unique association constraint
 
 ### WorkEffortFixedAssetAssignment
 
@@ -168,11 +219,19 @@ Rules:
 - inventory assignment records store inventory-entry codes as logical cross-module references; this slice does not add an Inventory dependency
 - party assignment records store party and role-type codes as logical cross-module references; this slice does not add a Party or Role catalog dependency
 - role-type assignment records store role-type codes as logical cross-module references; this slice does not add a Role catalog dependency
+- association type records store role-type references as logical codes; this slice does not add a Role catalog dependency
+- association records store relationship-type references as logical codes; this slice does not add a Relationship Type catalog dependency
 - no dependency on `identity.internal`
 
 ## Minimal HTTP Surface
 
 - `POST /api/work-efforts`
+- `POST /api/work-efforts/association-types`
+- `GET /api/work-efforts/association-types/{code}`
+- `GET /api/work-efforts/association-types?parentTypeCode=&page=&size=`
+- `POST /api/work-efforts/associations`
+- `GET /api/work-efforts/associations/{id}`
+- `GET /api/work-efforts/associations?tenantCode=&associationTypeCode=&fromEffortNumber=&toEffortNumber=&relationshipTypeCode=&effectiveFrom=&effectiveThru=&page=&size=`
 - `POST /api/work-efforts/fixed-asset-assignments`
 - `GET /api/work-efforts/fixed-asset-assignments/{id}`
 - `GET /api/work-efforts/fixed-asset-assignments?tenantCode=&effortNumber=&fixedAssetCode=&page=&size=`
@@ -209,6 +268,8 @@ Rules:
 ## Query Notes
 
 - work-effort listing is paged through the shared `PageQuery` contract
+- work-effort association type listing supports optional exact `parentTypeCode` filtering
+- work-effort association listing supports optional exact tenant, association type, from effort, to effort, and relationship type filters plus optional effective date bounds
 - work-effort fixed-asset assignment listing supports optional exact `tenantCode`, `effortNumber`, and `fixedAssetCode` filters
 - work-effort inventory assignment listing supports optional exact `tenantCode`, `effortNumber`, and `inventoryEntryCode` filters
 - work-effort party assignment listing supports optional exact `tenantCode`, `effortNumber`, `partyCode`, and `roleTypeCode` filters plus optional assignment date bounds

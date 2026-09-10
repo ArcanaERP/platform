@@ -8,6 +8,27 @@ public interface WorkEffortCatalog {
 
     WorkEffortView createWorkEffort(CreateWorkEffortCommand command);
 
+    WorkEffortAssociationTypeView registerAssociationType(RegisterWorkEffortAssociationTypeCommand command);
+
+    WorkEffortAssociationTypeView associationTypeByCode(String code);
+
+    PageResult<WorkEffortAssociationTypeView> listAssociationTypes(String parentTypeCode, PageQuery pageQuery);
+
+    WorkEffortAssociationView registerAssociation(RegisterWorkEffortAssociationCommand command);
+
+    WorkEffortAssociationView associationById(java.util.UUID id);
+
+    PageResult<WorkEffortAssociationView> listAssociations(
+        String tenantCode,
+        String associationTypeCode,
+        String fromEffortNumber,
+        String toEffortNumber,
+        String relationshipTypeCode,
+        Instant effectiveFrom,
+        Instant effectiveThru,
+        PageQuery pageQuery
+    );
+
     WorkEffortFixedAssetAssignmentView registerFixedAssetAssignment(
         RegisterWorkEffortFixedAssetAssignmentCommand command
     );

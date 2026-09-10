@@ -19,10 +19,14 @@ import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivityByAss
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryView;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
+import com.arcanaerp.platform.workeffort.WorkEffortAssociationTypeView;
+import com.arcanaerp.platform.workeffort.WorkEffortAssociationView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
@@ -61,6 +65,8 @@ import org.springframework.transaction.annotation.Transactional;
 class WorkEffortCatalogService implements WorkEffortCatalog {
 
     private final WorkEffortRepository workEffortRepository;
+    private final WorkEffortAssociationTypeRepository workEffortAssociationTypeRepository;
+    private final WorkEffortAssociationRepository workEffortAssociationRepository;
     private final WorkEffortStatusChangeAuditRepository workEffortStatusChangeAuditRepository;
     private final WorkEffortAssignmentChangeAuditRepository workEffortAssignmentChangeAuditRepository;
     private final WorkEffortFixedAssetAssignmentRepository workEffortFixedAssetAssignmentRepository;
@@ -97,6 +103,110 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             )
         );
         return toView(created);
+    }
+
+    @Override
+    public WorkEffortAssociationTypeView registerAssociationType(RegisterWorkEffortAssociationTypeCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        String code = normalizeRequired(command.code(), "code").toUpperCase();
+        if (workEffortAssociationTypeRepository.findByCode(code).isPresent()) {
+            throw new ConflictException("Work effort association type already exists: " + code);
+        }
+        return toAssociationTypeView(workEffortAssociationTypeRepository.save(
+            WorkEffortAssociationType.create(
+                code,
+                command.name(),
+                command.description(),
+                command.parentTypeCode(),
+                command.validFromRoleTypeCode(),
+                command.validToRoleTypeCode(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkEffortAssociationTypeView associationTypeByCode(String code) {
+        String normalizedCode = normalizeRequired(code, "code").toUpperCase();
+        return toAssociationTypeView(workEffortAssociationTypeRepository.findByCode(normalizedCode)
+            .orElseThrow(() -> new NoSuchElementException("Work effort association type not found: " + normalizedCode)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkEffortAssociationTypeView> listAssociationTypes(String parentTypeCode, PageQuery pageQuery) {
+        Page<WorkEffortAssociationType> page = workEffortAssociationTypeRepository.findTypesFiltered(
+            normalizeOptionalUpper(parentTypeCode, "parentTypeCode"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "code"))
+        );
+        return PageResult.from(page).map(this::toAssociationTypeView);
+    }
+
+    @Override
+    public WorkEffortAssociationView registerAssociation(RegisterWorkEffortAssociationCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        String tenantCode = normalizeRequired(command.tenantCode(), "tenantCode").toUpperCase();
+        String associationTypeCode = normalizeRequired(command.associationTypeCode(), "associationTypeCode").toUpperCase();
+        WorkEffortAssociationType associationType = workEffortAssociationTypeRepository.findByCode(associationTypeCode)
+            .orElseThrow(() -> new NoSuchElementException("Work effort association type not found: " + associationTypeCode));
+        WorkEffort fromWorkEffort = findWorkEffort(tenantCode, command.fromEffortNumber());
+        WorkEffort toWorkEffort = findWorkEffort(tenantCode, command.toEffortNumber());
+        return toAssociationView(workEffortAssociationRepository.save(
+            WorkEffortAssociation.create(
+                associationType,
+                command.description(),
+                fromWorkEffort,
+                toWorkEffort,
+                command.fromRoleTypeCode(),
+                command.toRoleTypeCode(),
+                command.relationshipTypeCode(),
+                command.effectiveFrom(),
+                command.effectiveThru(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkEffortAssociationView associationById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toAssociationView(workEffortAssociationRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Work effort association not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkEffortAssociationView> listAssociations(
+        String tenantCode,
+        String associationTypeCode,
+        String fromEffortNumber,
+        String toEffortNumber,
+        String relationshipTypeCode,
+        Instant effectiveFrom,
+        Instant effectiveThru,
+        PageQuery pageQuery
+    ) {
+        Page<WorkEffortAssociation> page = workEffortAssociationRepository.findAssociationsFiltered(
+            normalizeOptionalUpper(tenantCode, "tenantCode"),
+            normalizeOptionalUpper(associationTypeCode, "associationTypeCode"),
+            normalizeOptionalUpper(fromEffortNumber, "fromEffortNumber"),
+            normalizeOptionalUpper(toEffortNumber, "toEffortNumber"),
+            normalizeOptionalUpper(relationshipTypeCode, "relationshipTypeCode"),
+            effectiveFrom,
+            effectiveThru,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toAssociationView);
     }
 
     @Override
@@ -803,6 +913,40 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             workEffort.getTenantCode(),
             workEffort.getEffortNumber(),
             workEffort.getAssignedTo()
+        );
+    }
+
+    private WorkEffortAssociationTypeView toAssociationTypeView(WorkEffortAssociationType type) {
+        return new WorkEffortAssociationTypeView(
+            type.getId(),
+            type.getCode(),
+            type.getName(),
+            type.getDescription(),
+            type.getParentTypeCode(),
+            type.getValidFromRoleTypeCode(),
+            type.getValidToRoleTypeCode(),
+            type.getExternalIdentifier(),
+            type.getExternalIdSource(),
+            type.getCreatedAt()
+        );
+    }
+
+    private WorkEffortAssociationView toAssociationView(WorkEffortAssociation association) {
+        return new WorkEffortAssociationView(
+            association.getId(),
+            association.getTenantCode(),
+            association.getAssociationTypeCode(),
+            association.getDescription(),
+            association.getFromWorkEffortId(),
+            association.getFromEffortNumber(),
+            association.getToWorkEffortId(),
+            association.getToEffortNumber(),
+            association.getFromRoleTypeCode(),
+            association.getToRoleTypeCode(),
+            association.getRelationshipTypeCode(),
+            association.getEffectiveFrom(),
+            association.getEffectiveThru(),
+            association.getCreatedAt()
         );
     }
 

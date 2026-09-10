@@ -17,11 +17,15 @@ import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivityByAss
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryView;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
+import com.arcanaerp.platform.workeffort.WorkEffortAssociationTypeView;
+import com.arcanaerp.platform.workeffort.WorkEffortAssociationView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
@@ -69,6 +73,96 @@ public class WorkEffortsController {
             )
         );
         return toResponse(created);
+    }
+
+    @PostMapping("/association-types")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkEffortAssociationTypeResponse createAssociationType(
+        @Valid @RequestBody CreateWorkEffortAssociationTypeRequest request
+    ) {
+        return toAssociationTypeResponse(workEffortCatalog.registerAssociationType(
+            new RegisterWorkEffortAssociationTypeCommand(
+                request.code(),
+                request.name(),
+                request.description(),
+                request.parentTypeCode(),
+                request.validFromRoleTypeCode(),
+                request.validToRoleTypeCode(),
+                request.externalIdentifier(),
+                request.externalIdSource()
+            )
+        ));
+    }
+
+    @GetMapping("/association-types/{code}")
+    public WorkEffortAssociationTypeResponse associationTypeByCode(@PathVariable String code) {
+        return toAssociationTypeResponse(workEffortCatalog.associationTypeByCode(code));
+    }
+
+    @GetMapping("/association-types")
+    public PageResult<WorkEffortAssociationTypeResponse> listAssociationTypes(
+        @RequestParam(required = false) String parentTypeCode,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listAssociationTypes(parentTypeCode, PageQuery.of(page, size))
+            .map(this::toAssociationTypeResponse);
+    }
+
+    @PostMapping("/associations")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkEffortAssociationResponse createAssociation(
+        @Valid @RequestBody CreateWorkEffortAssociationRequest request
+    ) {
+        Instant effectiveFrom = parseOptionalInstant(request.effectiveFrom(), "effectiveFrom");
+        Instant effectiveThru = parseOptionalInstant(request.effectiveThru(), "effectiveThru");
+        validateInstantRange(effectiveFrom, effectiveThru, "effectiveFrom", "effectiveThru");
+        return toAssociationResponse(workEffortCatalog.registerAssociation(
+            new RegisterWorkEffortAssociationCommand(
+                request.tenantCode(),
+                request.associationTypeCode(),
+                request.description(),
+                request.fromEffortNumber(),
+                request.toEffortNumber(),
+                request.fromRoleTypeCode(),
+                request.toRoleTypeCode(),
+                request.relationshipTypeCode(),
+                effectiveFrom,
+                effectiveThru
+            )
+        ));
+    }
+
+    @GetMapping("/associations/{id}")
+    public WorkEffortAssociationResponse associationById(@PathVariable java.util.UUID id) {
+        return toAssociationResponse(workEffortCatalog.associationById(id));
+    }
+
+    @GetMapping("/associations")
+    public PageResult<WorkEffortAssociationResponse> listAssociations(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String associationTypeCode,
+        @RequestParam(required = false) String fromEffortNumber,
+        @RequestParam(required = false) String toEffortNumber,
+        @RequestParam(required = false) String relationshipTypeCode,
+        @RequestParam(required = false) String effectiveFrom,
+        @RequestParam(required = false) String effectiveThru,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedEffectiveFrom = parseOptionalInstant(effectiveFrom, "effectiveFrom");
+        Instant parsedEffectiveThru = parseOptionalInstant(effectiveThru, "effectiveThru");
+        validateInstantRange(parsedEffectiveFrom, parsedEffectiveThru, "effectiveFrom", "effectiveThru");
+        return workEffortCatalog.listAssociations(
+            tenantCode,
+            associationTypeCode,
+            fromEffortNumber,
+            toEffortNumber,
+            relationshipTypeCode,
+            parsedEffectiveFrom,
+            parsedEffectiveThru,
+            PageQuery.of(page, size)
+        ).map(this::toAssociationResponse);
     }
 
     @PostMapping("/fixed-asset-assignments")
@@ -646,6 +740,40 @@ public class WorkEffortsController {
             view.status(),
             view.assignedTo(),
             view.dueAt(),
+            view.createdAt()
+        );
+    }
+
+    private WorkEffortAssociationTypeResponse toAssociationTypeResponse(WorkEffortAssociationTypeView view) {
+        return new WorkEffortAssociationTypeResponse(
+            view.id(),
+            view.code(),
+            view.name(),
+            view.description(),
+            view.parentTypeCode(),
+            view.validFromRoleTypeCode(),
+            view.validToRoleTypeCode(),
+            view.externalIdentifier(),
+            view.externalIdSource(),
+            view.createdAt()
+        );
+    }
+
+    private WorkEffortAssociationResponse toAssociationResponse(WorkEffortAssociationView view) {
+        return new WorkEffortAssociationResponse(
+            view.id(),
+            view.tenantCode(),
+            view.associationTypeCode(),
+            view.description(),
+            view.fromWorkEffortId(),
+            view.fromEffortNumber(),
+            view.toWorkEffortId(),
+            view.toEffortNumber(),
+            view.fromRoleTypeCode(),
+            view.toRoleTypeCode(),
+            view.relationshipTypeCode(),
+            view.effectiveFrom(),
+            view.effectiveThru(),
             view.createdAt()
         );
     }

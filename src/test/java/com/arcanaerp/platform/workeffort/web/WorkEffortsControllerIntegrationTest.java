@@ -174,6 +174,320 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsWorkEffortAssociationTypes() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/association-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": " dependency ",
+                  "name": " Dependency ",
+                  "description": "One work effort depends on another",
+                  "parentTypeCode": " schedule ",
+                  "validFromRoleTypeCode": " predecessor ",
+                  "validToRoleTypeCode": " successor ",
+                  "externalIdentifier": "legacy-dependency",
+                  "externalIdSource": "erp_work_effort"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.code").value("DEPENDENCY"))
+            .andExpect(jsonPath("$.name").value("Dependency"))
+            .andExpect(jsonPath("$.parentTypeCode").value("SCHEDULE"))
+            .andExpect(jsonPath("$.validFromRoleTypeCode").value("PREDECESSOR"))
+            .andExpect(jsonPath("$.validToRoleTypeCode").value("SUCCESSOR"))
+            .andExpect(jsonPath("$.externalIdentifier").value("legacy-dependency"))
+            .andExpect(jsonPath("$.externalIdSource").value("erp_work_effort"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/association-types/{code}",
+            "dependency"
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("DEPENDENCY"))
+            .andExpect(jsonPath("$.name").value("Dependency"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/association-types"
+        )
+            .param("parentTypeCode", "schedule")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].code").value("DEPENDENCY"));
+    }
+
+    @Test
+    void rejectsDuplicateWorkEffortAssociationTypes() throws Exception {
+        String payload = """
+            {
+              "code": "breakdown",
+              "name": "Breakdown"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/association-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/association-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.status").value(409))
+            .andExpect(jsonPath("$.message").value("Work effort association type already exists: BREAKDOWN"));
+    }
+
+    @Test
+    void createsReadsAndListsWorkEffortAssociations() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/association-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": "precedence",
+                  "name": "Precedence"
+                }
+                """))
+            .andExpect(status().isCreated());
+
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebassoc01",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebassoc01",
+            "we-assoc-from",
+            "Pick order",
+            "Pick order lines",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebassoc01",
+            "we-assoc-to",
+            "Pack order",
+            "Pack order lines",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        String associationId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/associations"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": " workwebassoc01 ",
+                  "associationTypeCode": " precedence ",
+                  "description": " Pick before pack ",
+                  "fromEffortNumber": " we-assoc-from ",
+                  "toEffortNumber": " we-assoc-to ",
+                  "fromRoleTypeCode": " predecessor ",
+                  "toRoleTypeCode": " successor ",
+                  "relationshipTypeCode": " depends-on ",
+                  "effectiveFrom": "2026-04-22T10:00:00Z",
+                  "effectiveThru": "2026-04-23T10:00:00Z"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.tenantCode").value("WORKWEBASSOC01"))
+            .andExpect(jsonPath("$.associationTypeCode").value("PRECEDENCE"))
+            .andExpect(jsonPath("$.description").value("Pick before pack"))
+            .andExpect(jsonPath("$.fromWorkEffortId").isNotEmpty())
+            .andExpect(jsonPath("$.fromEffortNumber").value("WE-ASSOC-FROM"))
+            .andExpect(jsonPath("$.toWorkEffortId").isNotEmpty())
+            .andExpect(jsonPath("$.toEffortNumber").value("WE-ASSOC-TO"))
+            .andExpect(jsonPath("$.fromRoleTypeCode").value("PREDECESSOR"))
+            .andExpect(jsonPath("$.toRoleTypeCode").value("SUCCESSOR"))
+            .andExpect(jsonPath("$.relationshipTypeCode").value("DEPENDS-ON"))
+            .andExpect(jsonPath("$.effectiveFrom").value("2026-04-22T10:00:00Z"))
+            .andExpect(jsonPath("$.effectiveThru").value("2026-04-23T10:00:00Z"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/associations/{id}",
+            associationId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(associationId))
+            .andExpect(jsonPath("$.associationTypeCode").value("PRECEDENCE"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/associations"
+        )
+            .param("tenantCode", "workwebassoc01")
+            .param("associationTypeCode", "precedence")
+            .param("fromEffortNumber", "we-assoc-from")
+            .param("toEffortNumber", "we-assoc-to")
+            .param("relationshipTypeCode", "depends-on")
+            .param("effectiveFrom", "2026-04-22T09:00:00Z")
+            .param("effectiveThru", "2026-04-23T11:00:00Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(associationId))
+            .andExpect(jsonPath("$.items[0].fromEffortNumber").value("WE-ASSOC-FROM"))
+            .andExpect(jsonPath("$.items[0].toEffortNumber").value("WE-ASSOC-TO"));
+    }
+
+    @Test
+    void allowsDuplicateWorkEffortAssociationsForLegacyParity() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/association-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": "concurrence",
+                  "name": "Concurrence"
+                }
+                """))
+            .andExpect(status().isCreated());
+
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebassoc02",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebassoc02",
+            "we-assoc-from",
+            "Load truck",
+            "Load truck",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebassoc02",
+            "we-assoc-to",
+            "Seal truck",
+            "Seal truck",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+        String payload = """
+            {
+              "tenantCode": "workwebassoc02",
+              "associationTypeCode": "concurrence",
+              "fromEffortNumber": "we-assoc-from",
+              "toEffortNumber": "we-assoc-to"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/associations"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/associations"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/associations"
+        )
+            .param("tenantCode", "workwebassoc02")
+            .param("associationTypeCode", "concurrence")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void rejectsWorkEffortAssociationForMissingAssociationType() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/associations"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "workwebassoc03",
+                  "associationTypeCode": "missing",
+                  "fromEffortNumber": "we-assoc-from",
+                  "toEffortNumber": "we-assoc-to"
+                }
+                """))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value("Work effort association type not found: MISSING"))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/associations"));
+    }
+
+    @Test
+    void rejectsWorkEffortAssociationWhenEffectiveFromIsAfterEffectiveThru() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/association-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "code": "invalid-window",
+                  "name": "Invalid Window"
+                }
+                """))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/associations"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "workwebassoc04",
+                  "associationTypeCode": "invalid-window",
+                  "fromEffortNumber": "from",
+                  "toEffortNumber": "to",
+                  "effectiveFrom": "2026-04-23T10:00:00Z",
+                  "effectiveThru": "2026-04-22T10:00:00Z"
+                }
+                """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.message").value("effectiveFrom must be before or equal to effectiveThru"))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/associations"));
+    }
+
+    @Test
     void createsReadsAndListsWorkEffortFixedAssetAssignments() throws Exception {
         ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
             mockMvc,

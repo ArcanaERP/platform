@@ -160,6 +160,12 @@ Search:
 Work Effort:
 
 - `POST /api/work-efforts`
+- `POST /api/work-efforts/association-types`
+- `GET /api/work-efforts/association-types/{code}`
+- `GET /api/work-efforts/association-types?parentTypeCode=&page=&size=`
+- `POST /api/work-efforts/associations`
+- `GET /api/work-efforts/associations/{id}`
+- `GET /api/work-efforts/associations?tenantCode=&associationTypeCode=&fromEffortNumber=&toEffortNumber=&relationshipTypeCode=&effectiveFrom=&effectiveThru=&page=&size=`
 - `POST /api/work-efforts/fixed-asset-assignments`
 - `GET /api/work-efforts/fixed-asset-assignments/{id}`
 - `GET /api/work-efforts/fixed-asset-assignments?tenantCode=&effortNumber=&fixedAssetCode=&page=&size=`
