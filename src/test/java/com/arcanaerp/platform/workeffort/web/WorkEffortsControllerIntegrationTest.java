@@ -460,6 +460,209 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsWorkEffortPartyAssignments() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebparty01",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebparty01",
+            "we-party-001",
+            "Inspect loading dock",
+            "Inspect loading dock doors",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        String assignmentId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/party-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": " workwebparty01 ",
+                  "effortNumber": " we-party-001 ",
+                  "partyCode": " vendor-17 ",
+                  "roleTypeCode": " worker ",
+                  "assignedFrom": "2026-04-22T10:00:00Z",
+                  "assignedThru": "2026-04-22T12:00:00Z",
+                  "comments": " Door inspection "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.workEffortId").isNotEmpty())
+            .andExpect(jsonPath("$.tenantCode").value("WORKWEBPARTY01"))
+            .andExpect(jsonPath("$.effortNumber").value("WE-PARTY-001"))
+            .andExpect(jsonPath("$.partyCode").value("VENDOR-17"))
+            .andExpect(jsonPath("$.roleTypeCode").value("WORKER"))
+            .andExpect(jsonPath("$.assignedFrom").value("2026-04-22T10:00:00Z"))
+            .andExpect(jsonPath("$.assignedThru").value("2026-04-22T12:00:00Z"))
+            .andExpect(jsonPath("$.comments").value("Door inspection"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/party-assignments/{id}",
+            assignmentId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(assignmentId))
+            .andExpect(jsonPath("$.partyCode").value("VENDOR-17"))
+            .andExpect(jsonPath("$.roleTypeCode").value("WORKER"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/party-assignments"
+        )
+            .param("tenantCode", "workwebparty01")
+            .param("effortNumber", "we-party-001")
+            .param("partyCode", "vendor-17")
+            .param("roleTypeCode", "worker")
+            .param("assignedFrom", "2026-04-22T09:00:00Z")
+            .param("assignedThru", "2026-04-22T13:00:00Z")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(assignmentId))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("WORKWEBPARTY01"))
+            .andExpect(jsonPath("$.items[0].effortNumber").value("WE-PARTY-001"))
+            .andExpect(jsonPath("$.items[0].partyCode").value("VENDOR-17"))
+            .andExpect(jsonPath("$.items[0].roleTypeCode").value("WORKER"));
+    }
+
+    @Test
+    void allowsDuplicateWorkEffortPartyAssignmentsForLegacyParity() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebparty02",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebparty02",
+            "we-party-001",
+            "Clean loading dock",
+            "Clean loading dock floor",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+        String payload = """
+            {
+              "tenantCode": "workwebparty02",
+              "effortNumber": "we-party-001",
+              "partyCode": "vendor-17",
+              "roleTypeCode": "worker",
+              "assignedFrom": "2026-04-22T10:00:00Z",
+              "assignedThru": "2026-04-22T12:00:00Z",
+              "comments": "Clean dock"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/party-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/party-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/party-assignments"
+        )
+            .param("tenantCode", "workwebparty02")
+            .param("effortNumber", "we-party-001")
+            .param("partyCode", "vendor-17")
+            .param("roleTypeCode", "worker")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void rejectsWorkEffortPartyAssignmentForMissingWorkEffort() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/party-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "workwebparty03",
+                  "effortNumber": "missing",
+                  "partyCode": "vendor-17",
+                  "roleTypeCode": "worker"
+                }
+                """))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value(
+                "Work effort not found for tenant/effortNumber: WORKWEBPARTY03/MISSING"
+            ))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/party-assignments"));
+    }
+
+    @Test
+    void rejectsWorkEffortPartyAssignmentWhenAssignedFromIsAfterAssignedThru() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebparty04",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebparty04",
+            "we-party-001",
+            "Inspect compressor",
+            "Inspect compressor room",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/party-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "workwebparty04",
+                  "effortNumber": "we-party-001",
+                  "partyCode": "vendor-17",
+                  "roleTypeCode": "worker",
+                  "assignedFrom": "2026-04-22T13:00:00Z",
+                  "assignedThru": "2026-04-22T12:00:00Z"
+                }
+                """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.message").value("assignedFrom must be before or equal to assignedThru"))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/party-assignments"));
+    }
+
+    @Test
     void rejectsUnknownAssignee() throws Exception {
         WorkEffortsWebIntegrationTestSupport.createWorkEffort(
             mockMvc,

@@ -19,12 +19,14 @@ import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivityByCurrent
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortInventoryAssignmentView;
+import com.arcanaerp.platform.workeffort.WorkEffortPartyAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
@@ -135,6 +137,57 @@ public class WorkEffortsController {
             inventoryEntryCode,
             PageQuery.of(page, size)
         ).map(this::toInventoryAssignmentResponse);
+    }
+
+    @PostMapping("/party-assignments")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkEffortPartyAssignmentResponse createPartyAssignment(
+        @Valid @RequestBody CreateWorkEffortPartyAssignmentRequest request
+    ) {
+        Instant assignedFrom = parseOptionalInstant(request.assignedFrom(), "assignedFrom");
+        Instant assignedThru = parseOptionalInstant(request.assignedThru(), "assignedThru");
+        validateInstantRange(assignedFrom, assignedThru, "assignedFrom", "assignedThru");
+        return toPartyAssignmentResponse(workEffortCatalog.registerPartyAssignment(
+            new RegisterWorkEffortPartyAssignmentCommand(
+                request.tenantCode(),
+                request.effortNumber(),
+                request.partyCode(),
+                request.roleTypeCode(),
+                assignedFrom,
+                assignedThru,
+                request.comments()
+            )
+        ));
+    }
+
+    @GetMapping("/party-assignments/{id}")
+    public WorkEffortPartyAssignmentResponse partyAssignmentById(@PathVariable java.util.UUID id) {
+        return toPartyAssignmentResponse(workEffortCatalog.partyAssignmentById(id));
+    }
+
+    @GetMapping("/party-assignments")
+    public PageResult<WorkEffortPartyAssignmentResponse> listPartyAssignments(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String effortNumber,
+        @RequestParam(required = false) String partyCode,
+        @RequestParam(required = false) String roleTypeCode,
+        @RequestParam(required = false) String assignedFrom,
+        @RequestParam(required = false) String assignedThru,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        Instant parsedAssignedFrom = parseOptionalInstant(assignedFrom, "assignedFrom");
+        Instant parsedAssignedThru = parseOptionalInstant(assignedThru, "assignedThru");
+        validateInstantRange(parsedAssignedFrom, parsedAssignedThru, "assignedFrom", "assignedThru");
+        return workEffortCatalog.listPartyAssignments(
+            tenantCode,
+            effortNumber,
+            partyCode,
+            roleTypeCode,
+            parsedAssignedFrom,
+            parsedAssignedThru,
+            PageQuery.of(page, size)
+        ).map(this::toPartyAssignmentResponse);
     }
 
     @GetMapping("/{effortNumber}")
@@ -582,6 +635,23 @@ public class WorkEffortsController {
             view.tenantCode(),
             view.effortNumber(),
             view.inventoryEntryCode(),
+            view.createdAt()
+        );
+    }
+
+    private WorkEffortPartyAssignmentResponse toPartyAssignmentResponse(
+        WorkEffortPartyAssignmentView view
+    ) {
+        return new WorkEffortPartyAssignmentResponse(
+            view.id(),
+            view.workEffortId(),
+            view.tenantCode(),
+            view.effortNumber(),
+            view.partyCode(),
+            view.roleTypeCode(),
+            view.assignedFrom(),
+            view.assignedThru(),
+            view.comments(),
             view.createdAt()
         );
     }

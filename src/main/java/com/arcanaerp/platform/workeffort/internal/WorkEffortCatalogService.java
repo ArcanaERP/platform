@@ -21,12 +21,14 @@ import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivityByCurrent
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortInventoryAssignmentView;
+import com.arcanaerp.platform.workeffort.WorkEffortPartyAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
@@ -61,6 +63,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final WorkEffortAssignmentChangeAuditRepository workEffortAssignmentChangeAuditRepository;
     private final WorkEffortFixedAssetAssignmentRepository workEffortFixedAssetAssignmentRepository;
     private final WorkEffortInventoryAssignmentRepository workEffortInventoryAssignmentRepository;
+    private final WorkEffortPartyAssignmentRepository workEffortPartyAssignmentRepository;
     private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
 
@@ -171,6 +174,60 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toInventoryAssignmentView);
+    }
+
+    @Override
+    public WorkEffortPartyAssignmentView registerPartyAssignment(
+        RegisterWorkEffortPartyAssignmentCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        WorkEffort workEffort = findWorkEffort(command.tenantCode(), command.effortNumber());
+        return toPartyAssignmentView(workEffortPartyAssignmentRepository.save(
+            WorkEffortPartyAssignment.create(
+                workEffort,
+                command.partyCode(),
+                command.roleTypeCode(),
+                command.assignedFrom(),
+                command.assignedThru(),
+                command.comments(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkEffortPartyAssignmentView partyAssignmentById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toPartyAssignmentView(workEffortPartyAssignmentRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Work effort party assignment not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkEffortPartyAssignmentView> listPartyAssignments(
+        String tenantCode,
+        String effortNumber,
+        String partyCode,
+        String roleTypeCode,
+        Instant assignedFrom,
+        Instant assignedThru,
+        PageQuery pageQuery
+    ) {
+        Page<WorkEffortPartyAssignment> page = workEffortPartyAssignmentRepository.findAssignmentsFiltered(
+            normalizeOptionalUpper(tenantCode, "tenantCode"),
+            normalizeOptionalUpper(effortNumber, "effortNumber"),
+            normalizeOptionalUpper(partyCode, "partyCode"),
+            normalizeOptionalUpper(roleTypeCode, "roleTypeCode"),
+            assignedFrom,
+            assignedThru,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toPartyAssignmentView);
     }
 
     @Override
@@ -728,6 +785,23 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             assignment.getTenantCode(),
             assignment.getEffortNumber(),
             assignment.getInventoryEntryCode(),
+            assignment.getCreatedAt()
+        );
+    }
+
+    private WorkEffortPartyAssignmentView toPartyAssignmentView(
+        WorkEffortPartyAssignment assignment
+    ) {
+        return new WorkEffortPartyAssignmentView(
+            assignment.getId(),
+            assignment.getWorkEffortId(),
+            assignment.getTenantCode(),
+            assignment.getEffortNumber(),
+            assignment.getPartyCode(),
+            assignment.getRoleTypeCode(),
+            assignment.getAssignedFrom(),
+            assignment.getAssignedThru(),
+            assignment.getComments(),
             assignment.getCreatedAt()
         );
     }

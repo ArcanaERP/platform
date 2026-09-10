@@ -34,6 +34,22 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    WorkEffortPartyAssignmentView registerPartyAssignment(
+        RegisterWorkEffortPartyAssignmentCommand command
+    );
+
+    WorkEffortPartyAssignmentView partyAssignmentById(java.util.UUID id);
+
+    PageResult<WorkEffortPartyAssignmentView> listPartyAssignments(
+        String tenantCode,
+        String effortNumber,
+        String partyCode,
+        String roleTypeCode,
+        Instant assignedFrom,
+        Instant assignedThru,
+        PageQuery pageQuery
+    );
+
     WorkEffortView getWorkEffort(String tenantCode, String effortNumber);
 
     WorkEffortAssignmentSummaryView getWorkEffortAssignment(String tenantCode, String effortNumber);
