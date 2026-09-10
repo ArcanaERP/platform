@@ -19,6 +19,7 @@ import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivitySummaryV
 import com.arcanaerp.platform.workeffort.OrderRequirementCommitmentView;
 import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.RegisterOrderRequirementCommitmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterRequirementCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementPartyRoleCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
@@ -47,6 +48,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
 import com.arcanaerp.platform.workeffort.WorkRequirementFulfillmentView;
 import com.arcanaerp.platform.workeffort.WorkOrderItemFulfillmentView;
+import com.arcanaerp.platform.workeffort.RequirementView;
 import com.arcanaerp.platform.workeffort.RequirementPartyRoleView;
 import java.time.DayOfWeek;
 import java.time.Clock;
@@ -80,6 +82,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final OrderRequirementCommitmentRepository orderRequirementCommitmentRepository;
     private final WorkRequirementFulfillmentRepository workRequirementFulfillmentRepository;
     private final RequirementPartyRoleRepository requirementPartyRoleRepository;
+    private final RequirementRepository requirementRepository;
     private final WorkEffortAssociationTypeRepository workEffortAssociationTypeRepository;
     private final WorkEffortAssociationRepository workEffortAssociationRepository;
     private final WorkEffortStatusChangeAuditRepository workEffortStatusChangeAuditRepository;
@@ -346,6 +349,68 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toRequirementPartyRoleView);
+    }
+
+    @Override
+    public RequirementView registerRequirement(RegisterRequirementCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toRequirementView(requirementRepository.save(
+            Requirement.create(
+                command.parentId(),
+                command.left(),
+                command.right(),
+                command.description(),
+                command.type(),
+                command.projectedCompletionTime(),
+                command.estimatedBudgetMoneyId(),
+                command.requirementTypeId(),
+                command.requirementRecordId(),
+                command.requirementRecordType(),
+                command.fixedAssetId(),
+                command.productId(),
+                command.deliverableId(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RequirementView requirementById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toRequirementView(requirementRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Requirement not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<RequirementView> listRequirements(
+        Long parentId,
+        String type,
+        Long requirementTypeId,
+        Long requirementRecordId,
+        String requirementRecordType,
+        Long fixedAssetId,
+        Long productId,
+        Long deliverableId,
+        PageQuery pageQuery
+    ) {
+        Page<Requirement> page = requirementRepository.findRequirementsFiltered(
+            parentId,
+            normalizeOptional(type, "type"),
+            requirementTypeId,
+            requirementRecordId,
+            normalizeOptional(requirementRecordType, "requirementRecordType"),
+            fixedAssetId,
+            productId,
+            deliverableId,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toRequirementView);
     }
 
     @Override
@@ -1217,6 +1282,26 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             partyRole.getValidFrom(),
             partyRole.getValidTo(),
             partyRole.getCreatedAt()
+        );
+    }
+
+    private RequirementView toRequirementView(Requirement requirement) {
+        return new RequirementView(
+            requirement.getId(),
+            requirement.getParentId(),
+            requirement.getLeft(),
+            requirement.getRight(),
+            requirement.getDescription(),
+            requirement.getRequirementSubtype(),
+            requirement.getProjectedCompletionTime(),
+            requirement.getEstimatedBudgetMoneyId(),
+            requirement.getRequirementTypeId(),
+            requirement.getRequirementRecordId(),
+            requirement.getRequirementRecordType(),
+            requirement.getFixedAssetId(),
+            requirement.getProductId(),
+            requirement.getDeliverableId(),
+            requirement.getCreatedAt()
         );
     }
 

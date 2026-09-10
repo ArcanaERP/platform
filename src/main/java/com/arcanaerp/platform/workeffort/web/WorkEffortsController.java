@@ -17,6 +17,7 @@ import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivitySummaryV
 import com.arcanaerp.platform.workeffort.OrderRequirementCommitmentView;
 import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.RegisterOrderRequirementCommitmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterRequirementCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementPartyRoleCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
@@ -45,6 +46,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
 import com.arcanaerp.platform.workeffort.WorkRequirementFulfillmentView;
 import com.arcanaerp.platform.workeffort.WorkOrderItemFulfillmentView;
+import com.arcanaerp.platform.workeffort.RequirementView;
 import com.arcanaerp.platform.workeffort.RequirementPartyRoleView;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -271,6 +273,59 @@ public class WorkEffortsController {
             parseOptionalInstant(validTo, "validTo"),
             PageQuery.of(page, size)
         ).map(this::toRequirementPartyRoleResponse);
+    }
+
+    @PostMapping("/requirements")
+    @ResponseStatus(HttpStatus.CREATED)
+    public RequirementResponse createRequirement(@Valid @RequestBody CreateRequirementRequest request) {
+        return toRequirementResponse(workEffortCatalog.registerRequirement(
+            new RegisterRequirementCommand(
+                request.parentId(),
+                request.left(),
+                request.right(),
+                request.description(),
+                request.type(),
+                request.projectedCompletionTime(),
+                request.estimatedBudgetMoneyId(),
+                request.requirementTypeId(),
+                request.requirementRecordId(),
+                request.requirementRecordType(),
+                request.fixedAssetId(),
+                request.productId(),
+                request.deliverableId()
+            )
+        ));
+    }
+
+    @GetMapping("/requirements/{id}")
+    public RequirementResponse requirementById(@PathVariable java.util.UUID id) {
+        return toRequirementResponse(workEffortCatalog.requirementById(id));
+    }
+
+    @GetMapping("/requirements")
+    public PageResult<RequirementResponse> listRequirements(
+        @RequestParam(required = false) Long parentId,
+        @RequestParam(required = false) String type,
+        @RequestParam(required = false) Long requirementTypeId,
+        @RequestParam(required = false) Long requirementRecordId,
+        @RequestParam(required = false) String requirementRecordType,
+        @RequestParam(required = false) Long fixedAssetId,
+        @RequestParam(required = false) Long productId,
+        @RequestParam(required = false) Long deliverableId,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listRequirements(
+            parentId,
+            type,
+            requirementTypeId,
+            requirementRecordId,
+            requirementRecordType,
+            fixedAssetId,
+            productId,
+            deliverableId,
+            PageQuery.of(page, size)
+        ).map(this::toRequirementResponse);
     }
 
     @PostMapping("/association-types")
@@ -1003,6 +1058,26 @@ public class WorkEffortsController {
             view.externalIdSource(),
             view.validFrom(),
             view.validTo(),
+            view.createdAt()
+        );
+    }
+
+    private RequirementResponse toRequirementResponse(RequirementView view) {
+        return new RequirementResponse(
+            view.id(),
+            view.parentId(),
+            view.left(),
+            view.right(),
+            view.description(),
+            view.type(),
+            view.projectedCompletionTime(),
+            view.estimatedBudgetMoneyId(),
+            view.requirementTypeId(),
+            view.requirementRecordId(),
+            view.requirementRecordType(),
+            view.fixedAssetId(),
+            view.productId(),
+            view.deliverableId(),
             view.createdAt()
         );
     }

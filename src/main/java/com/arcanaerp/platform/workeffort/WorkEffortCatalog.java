@@ -69,6 +69,22 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    RequirementView registerRequirement(RegisterRequirementCommand command);
+
+    RequirementView requirementById(java.util.UUID id);
+
+    PageResult<RequirementView> listRequirements(
+        Long parentId,
+        String type,
+        Long requirementTypeId,
+        Long requirementRecordId,
+        String requirementRecordType,
+        Long fixedAssetId,
+        Long productId,
+        Long deliverableId,
+        PageQuery pageQuery
+    );
+
     WorkEffortAssociationTypeView registerAssociationType(RegisterWorkEffortAssociationTypeCommand command);
 
     WorkEffortAssociationTypeView associationTypeByCode(String code);

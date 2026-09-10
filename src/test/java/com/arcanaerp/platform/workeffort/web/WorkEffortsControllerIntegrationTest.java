@@ -705,6 +705,118 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsRequirements() throws Exception {
+        String requirementId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/requirements"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "parentId": 7,
+                  "left": 10,
+                  "right": 11,
+                  "description": " Raw material needed ",
+                  "type": " MaterialRequirement ",
+                  "projectedCompletionTime": 4,
+                  "estimatedBudgetMoneyId": 55,
+                  "requirementTypeId": 66,
+                  "requirementRecordId": 77,
+                  "requirementRecordType": " SalesOrder ",
+                  "fixedAssetId": 88,
+                  "productId": 99,
+                  "deliverableId": 111
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.parentId").value(7))
+            .andExpect(jsonPath("$.left").value(10))
+            .andExpect(jsonPath("$.right").value(11))
+            .andExpect(jsonPath("$.description").value("Raw material needed"))
+            .andExpect(jsonPath("$.type").value("MaterialRequirement"))
+            .andExpect(jsonPath("$.projectedCompletionTime").value(4))
+            .andExpect(jsonPath("$.estimatedBudgetMoneyId").value(55))
+            .andExpect(jsonPath("$.requirementTypeId").value(66))
+            .andExpect(jsonPath("$.requirementRecordId").value(77))
+            .andExpect(jsonPath("$.requirementRecordType").value("SalesOrder"))
+            .andExpect(jsonPath("$.fixedAssetId").value(88))
+            .andExpect(jsonPath("$.productId").value(99))
+            .andExpect(jsonPath("$.deliverableId").value(111))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/requirements/{id}",
+            requirementId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(requirementId))
+            .andExpect(jsonPath("$.type").value("MaterialRequirement"))
+            .andExpect(jsonPath("$.requirementRecordType").value("SalesOrder"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/requirements"
+        )
+            .param("parentId", "7")
+            .param("type", "MaterialRequirement")
+            .param("requirementTypeId", "66")
+            .param("requirementRecordId", "77")
+            .param("requirementRecordType", "SalesOrder")
+            .param("fixedAssetId", "88")
+            .param("productId", "99")
+            .param("deliverableId", "111")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(requirementId))
+            .andExpect(jsonPath("$.items[0].type").value("MaterialRequirement"))
+            .andExpect(jsonPath("$.items[0].requirementRecordType").value("SalesOrder"));
+    }
+
+    @Test
+    void allowsDuplicateRequirementsForLegacyParity() throws Exception {
+        String payload = """
+            {
+              "description": "Raw material needed",
+              "type": "MaterialRequirement",
+              "requirementTypeId": 166,
+              "requirementRecordId": 177,
+              "requirementRecordType": "SalesOrder"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/requirements"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/requirements"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/requirements"
+        )
+            .param("type", "MaterialRequirement")
+            .param("requirementTypeId", "166")
+            .param("requirementRecordId", "177")
+            .param("requirementRecordType", "SalesOrder")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
     void createsReadsAndListsRequirementPartyRoles() throws Exception {
         String partyRoleId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
             "/api/work-efforts/requirement-party-roles"
