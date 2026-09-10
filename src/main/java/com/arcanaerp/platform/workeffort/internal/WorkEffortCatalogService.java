@@ -16,18 +16,20 @@ import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivityByAs
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivitySummaryView;
-import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivityByAssigneeSummaryView;
-import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySummaryView;
-import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivityByCurrentStatusSummaryView;
-import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryView;
+import com.arcanaerp.platform.workeffort.OrderRequirementCommitmentView;
+import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
+import com.arcanaerp.platform.workeffort.RegisterOrderRequirementCommitmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
-import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkOrderItemFulfillmentCommand;
+import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivityByAssigneeSummaryView;
+import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySummaryView;
+import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivityByCurrentStatusSummaryView;
+import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssociationTypeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssociationView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
@@ -71,6 +73,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final WorkEffortRepository workEffortRepository;
     private final AssociatedWorkEffortRepository associatedWorkEffortRepository;
     private final WorkOrderItemFulfillmentRepository workOrderItemFulfillmentRepository;
+    private final OrderRequirementCommitmentRepository orderRequirementCommitmentRepository;
     private final WorkEffortAssociationTypeRepository workEffortAssociationTypeRepository;
     private final WorkEffortAssociationRepository workEffortAssociationRepository;
     private final WorkEffortStatusChangeAuditRepository workEffortStatusChangeAuditRepository;
@@ -198,6 +201,49 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toWorkOrderItemFulfillmentView);
+    }
+
+    @Override
+    public OrderRequirementCommitmentView registerOrderRequirementCommitment(
+        RegisterOrderRequirementCommitmentCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toOrderRequirementCommitmentView(orderRequirementCommitmentRepository.save(
+            OrderRequirementCommitment.create(
+                command.orderLineItemId(),
+                command.requirementId(),
+                command.description(),
+                command.quantity(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderRequirementCommitmentView orderRequirementCommitmentById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toOrderRequirementCommitmentView(orderRequirementCommitmentRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Order requirement commitment not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<OrderRequirementCommitmentView> listOrderRequirementCommitments(
+        Long orderLineItemId,
+        Long requirementId,
+        PageQuery pageQuery
+    ) {
+        Page<OrderRequirementCommitment> page = orderRequirementCommitmentRepository.findCommitmentsFiltered(
+            orderLineItemId,
+            requirementId,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toOrderRequirementCommitmentView);
     }
 
     @Override
@@ -1031,6 +1077,17 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             fulfillment.getOrderLineItemId(),
             fulfillment.getDescription(),
             fulfillment.getCreatedAt()
+        );
+    }
+
+    private OrderRequirementCommitmentView toOrderRequirementCommitmentView(OrderRequirementCommitment commitment) {
+        return new OrderRequirementCommitmentView(
+            commitment.getId(),
+            commitment.getOrderLineItemId(),
+            commitment.getRequirementId(),
+            commitment.getDescription(),
+            commitment.getQuantity(),
+            commitment.getCreatedAt()
         );
     }
 

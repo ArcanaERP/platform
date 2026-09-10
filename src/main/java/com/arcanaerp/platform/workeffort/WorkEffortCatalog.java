@@ -31,6 +31,18 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    OrderRequirementCommitmentView registerOrderRequirementCommitment(
+        RegisterOrderRequirementCommitmentCommand command
+    );
+
+    OrderRequirementCommitmentView orderRequirementCommitmentById(java.util.UUID id);
+
+    PageResult<OrderRequirementCommitmentView> listOrderRequirementCommitments(
+        Long orderLineItemId,
+        Long requirementId,
+        PageQuery pageQuery
+    );
+
     WorkEffortAssociationTypeView registerAssociationType(RegisterWorkEffortAssociationTypeCommand command);
 
     WorkEffortAssociationTypeView associationTypeByCode(String code);

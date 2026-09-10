@@ -2,6 +2,7 @@ package com.arcanaerp.platform.workeffort.web;
 
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
+import com.arcanaerp.platform.workeffort.AssociatedWorkEffortView;
 import com.arcanaerp.platform.workeffort.AssignWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.ChangeWorkEffortStatusCommand;
 import com.arcanaerp.platform.workeffort.CreateWorkEffortCommand;
@@ -13,19 +14,20 @@ import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivityByAs
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivitySummaryView;
-import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivityByAssigneeSummaryView;
-import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySummaryView;
-import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivityByCurrentStatusSummaryView;
-import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryView;
+import com.arcanaerp.platform.workeffort.OrderRequirementCommitmentView;
+import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
+import com.arcanaerp.platform.workeffort.RegisterOrderRequirementCommitmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
-import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkOrderItemFulfillmentCommand;
-import com.arcanaerp.platform.workeffort.AssociatedWorkEffortView;
+import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivityByAssigneeSummaryView;
+import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySummaryView;
+import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivityByCurrentStatusSummaryView;
+import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssociationTypeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssociationView;
@@ -151,6 +153,40 @@ public class WorkEffortsController {
             orderLineItemId,
             PageQuery.of(page, size)
         ).map(this::toWorkOrderItemFulfillmentResponse);
+    }
+
+    @PostMapping("/order-requirement-commitments")
+    @ResponseStatus(HttpStatus.CREATED)
+    public OrderRequirementCommitmentResponse createOrderRequirementCommitment(
+        @Valid @RequestBody CreateOrderRequirementCommitmentRequest request
+    ) {
+        return toOrderRequirementCommitmentResponse(workEffortCatalog.registerOrderRequirementCommitment(
+            new RegisterOrderRequirementCommitmentCommand(
+                request.orderLineItemId(),
+                request.requirementId(),
+                request.description(),
+                request.quantity()
+            )
+        ));
+    }
+
+    @GetMapping("/order-requirement-commitments/{id}")
+    public OrderRequirementCommitmentResponse orderRequirementCommitmentById(@PathVariable java.util.UUID id) {
+        return toOrderRequirementCommitmentResponse(workEffortCatalog.orderRequirementCommitmentById(id));
+    }
+
+    @GetMapping("/order-requirement-commitments")
+    public PageResult<OrderRequirementCommitmentResponse> listOrderRequirementCommitments(
+        @RequestParam(required = false) Long orderLineItemId,
+        @RequestParam(required = false) Long requirementId,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listOrderRequirementCommitments(
+            orderLineItemId,
+            requirementId,
+            PageQuery.of(page, size)
+        ).map(this::toOrderRequirementCommitmentResponse);
     }
 
     @PostMapping("/association-types")
@@ -841,6 +877,19 @@ public class WorkEffortsController {
             view.effortNumber(),
             view.orderLineItemId(),
             view.description(),
+            view.createdAt()
+        );
+    }
+
+    private OrderRequirementCommitmentResponse toOrderRequirementCommitmentResponse(
+        OrderRequirementCommitmentView view
+    ) {
+        return new OrderRequirementCommitmentResponse(
+            view.id(),
+            view.orderLineItemId(),
+            view.requirementId(),
+            view.description(),
+            view.quantity(),
             view.createdAt()
         );
     }

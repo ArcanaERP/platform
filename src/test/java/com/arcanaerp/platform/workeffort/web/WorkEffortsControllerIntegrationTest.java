@@ -470,6 +470,91 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsOrderRequirementCommitments() throws Exception {
+        String commitmentId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/order-requirement-commitments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "orderLineItemId": 77,
+                  "requirementId": 88,
+                  "description": " Reserve material ",
+                  "quantity": 3
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.orderLineItemId").value(77))
+            .andExpect(jsonPath("$.requirementId").value(88))
+            .andExpect(jsonPath("$.description").value("Reserve material"))
+            .andExpect(jsonPath("$.quantity").value(3))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/order-requirement-commitments/{id}",
+            commitmentId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(commitmentId))
+            .andExpect(jsonPath("$.orderLineItemId").value(77))
+            .andExpect(jsonPath("$.requirementId").value(88));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/order-requirement-commitments"
+        )
+            .param("orderLineItemId", "77")
+            .param("requirementId", "88")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(commitmentId))
+            .andExpect(jsonPath("$.items[0].orderLineItemId").value(77))
+            .andExpect(jsonPath("$.items[0].requirementId").value(88));
+    }
+
+    @Test
+    void allowsDuplicateOrderRequirementCommitmentsForLegacyParity() throws Exception {
+        String payload = """
+            {
+              "orderLineItemId": 177,
+              "requirementId": 188,
+              "description": "Reserve material",
+              "quantity": 3
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/order-requirement-commitments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/order-requirement-commitments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/order-requirement-commitments"
+        )
+            .param("orderLineItemId", "177")
+            .param("requirementId", "188")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
     void createsReadsAndListsWorkEffortAssociationTypes() throws Exception {
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
             "/api/work-efforts/association-types"
