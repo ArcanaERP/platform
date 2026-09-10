@@ -143,6 +143,9 @@ class InventoryApiIntegrationTest {
     private InventoryFixedAssetPartyRoleAssignmentEndAuditRepository fixedAssetPartyRoleAssignmentEndAuditRepository;
 
     @Autowired
+    private InventoryPartyFixedAssetAssignmentRepository partyFixedAssetAssignmentRepository;
+
+    @Autowired
     private InventoryFixedAssetFacilityAssignmentRepository fixedAssetFacilityAssignmentRepository;
 
     @Autowired
@@ -236,6 +239,7 @@ class InventoryApiIntegrationTest {
         fixedAssetFacilityAssignmentTypeRepository.deleteAll();
         fixedAssetPartyRoleAssignmentEndAuditRepository.deleteAll();
         fixedAssetPartyRoleAssignmentRepository.deleteAll();
+        partyFixedAssetAssignmentRepository.deleteAll();
         inventoryFixedAssetRepository.deleteAll();
         fixedAssetTypeMetadataChangeAuditRepository.deleteAll();
         inventoryFixedAssetTypeRepository.deleteAll();
@@ -4329,6 +4333,193 @@ class InventoryApiIntegrationTest {
                 .content(endPayload)),
             "Inventory fixed asset facility assignment is already ended",
             path
+        );
+    }
+
+    @Test
+    void createsReadsAndListsInventoryPartyFixedAssetAssignments() throws Exception {
+        inventoryFixedAssetRepository.save(
+            InventoryFixedAsset.create(
+                "truck-checkout-100",
+                "Checkout Truck 100",
+                "vehicle",
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        String assignmentId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/party-fixed-asset-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "partyCode": " west-carrier ",
+                  "fixedAssetCode": " truck-checkout-100 ",
+                  "assignedFrom": "2026-04-01T00:00:00Z",
+                  "assignedThru": "2026-04-30T00:00:00Z",
+                  "allocatedCostMoneyId": 42
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.inventoryPartyId").isNotEmpty())
+            .andExpect(jsonPath("$.partyCode").value("WEST-CARRIER"))
+            .andExpect(jsonPath("$.inventoryFixedAssetId").isNotEmpty())
+            .andExpect(jsonPath("$.fixedAssetCode").value("TRUCK-CHECKOUT-100"))
+            .andExpect(jsonPath("$.assignedFrom").value("2026-04-01T00:00:00Z"))
+            .andExpect(jsonPath("$.assignedThru").value("2026-04-30T00:00:00Z"))
+            .andExpect(jsonPath("$.allocatedCostMoneyId").value(42))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(get("/api/inventory/party-fixed-asset-assignments/{id}", assignmentId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(assignmentId))
+            .andExpect(jsonPath("$.partyCode").value("WEST-CARRIER"))
+            .andExpect(jsonPath("$.fixedAssetCode").value("TRUCK-CHECKOUT-100"));
+
+        mockMvc.perform(get("/api/inventory/party-fixed-asset-assignments")
+            .param("partyCode", "west-carrier")
+            .param("fixedAssetCode", "truck-checkout-100")
+            .param("allocatedCostMoneyId", "42")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(assignmentId))
+            .andExpect(jsonPath("$.items[0].partyCode").value("WEST-CARRIER"))
+            .andExpect(jsonPath("$.items[0].fixedAssetCode").value("TRUCK-CHECKOUT-100"));
+    }
+
+    @Test
+    void allowsDuplicateInventoryPartyFixedAssetAssignmentsForLegacyParity() throws Exception {
+        inventoryFixedAssetRepository.save(
+            InventoryFixedAsset.create(
+                "truck-checkout-dup",
+                "Checkout Truck Duplicate",
+                "vehicle",
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+        String payload = """
+            {
+              "partyCode": "west-carrier",
+              "fixedAssetCode": "truck-checkout-dup",
+              "assignedFrom": "2026-04-01T00:00:00Z",
+              "assignedThru": "2026-04-30T00:00:00Z"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/party-fixed-asset-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/inventory/party-fixed-asset-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/inventory/party-fixed-asset-assignments")
+            .param("partyCode", "west-carrier")
+            .param("fixedAssetCode", "truck-checkout-dup")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void rejectsUnknownPartyForInventoryPartyFixedAssetAssignment() throws Exception {
+        inventoryFixedAssetRepository.save(
+            InventoryFixedAsset.create(
+                "truck-checkout-party-missing",
+                "Checkout Truck Missing Party",
+                "vehicle",
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/party-fixed-asset-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "partyCode": "unknown-party",
+                      "fixedAssetCode": "truck-checkout-party-missing"
+                    }
+                    """))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.error").value("Not Found"))
+            .andExpect(jsonPath("$.message").value("Inventory party not found for code: UNKNOWN-PARTY"))
+            .andExpect(jsonPath("$.path").value("/api/inventory/party-fixed-asset-assignments"));
+    }
+
+    @Test
+    void rejectsUnknownFixedAssetForInventoryPartyFixedAssetAssignment() throws Exception {
+        expectInventoryFixedAssetNotFound(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/party-fixed-asset-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "partyCode": "west-carrier",
+                      "fixedAssetCode": "missing-truck"
+                    }
+                    """)),
+            "MISSING-TRUCK",
+            "/api/inventory/party-fixed-asset-assignments"
+        );
+    }
+
+    @Test
+    void rejectsInvalidInventoryPartyFixedAssetAssignmentWindow() throws Exception {
+        inventoryFixedAssetRepository.save(
+            InventoryFixedAsset.create(
+                "truck-checkout-window",
+                "Checkout Truck Window",
+                "vehicle",
+                null,
+                null,
+                null,
+                SEED_INSTANT
+            )
+        );
+
+        expectBadRequest(
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/inventory/party-fixed-asset-assignments"
+            )
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "partyCode": "west-carrier",
+                      "fixedAssetCode": "truck-checkout-window",
+                      "assignedFrom": "2026-04-30T00:00:00Z",
+                      "assignedThru": "2026-04-01T00:00:00Z"
+                    }
+                    """)),
+            "assignedFrom must be before or equal to assignedThru",
+            "/api/inventory/party-fixed-asset-assignments"
         );
     }
 

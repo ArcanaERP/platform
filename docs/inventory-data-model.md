@@ -777,6 +777,7 @@ erDiagram
 - Inventory fixed asset party-role assignments support optional `fromDate` and `thruDate` validity windows.
 - Inventory fixed asset party-role assignment writes reject overlapping active validity windows for the same fixed asset, party, and role type.
 - Inventory fixed asset party-role assignment end operations mark assignments inactive, set `thruDate`, and append actor-attributed end audit rows.
+- Inventory party fixed-asset assignments mirror legacy asset check-out records with `assignedFrom`, `assignedThru`, and optional `allocatedCostMoneyId`.
 - Inventory product-instance assignments are explicit cross-reference rows from inventory items to product instance codes.
 - Inventory product-instance assignment releases are append-only via `inventory_product_instance_assignment_release_audits`.
 - Inventory item-location assignments track valid-from/valid-thru placement history without mutating the stock row key.
@@ -915,6 +916,12 @@ erDiagram
   - `inventory_fixed_asset_party_role_assignment_end_audits(assignmentId, endedAt)`
   - `inventory_fixed_asset_party_role_assignment_end_audits(fixedAssetCode, partyCode, roleTypeCode, endedAt)`
   - `inventory_fixed_asset_party_role_assignment_end_audits(endedBy, endedAt)`
+  - `inventory_party_fixed_asset_assignments(inventoryPartyId, inventoryFixedAssetId)`
+  - `inventory_party_fixed_asset_assignments(partyCode)`
+  - `inventory_party_fixed_asset_assignments(fixedAssetCode)`
+  - `inventory_party_fixed_asset_assignments(assignedFrom)`
+  - `inventory_party_fixed_asset_assignments(assignedThru)`
+  - `inventory_party_fixed_asset_assignments(allocatedCostMoneyId)`
   - `inventory_adjustments(inventoryItemId, adjustedAt)`
   - `inventory_adjustments(inventoryItemId, adjustedBy, adjustedAt)`
   - `inventory_adjustments(transferId)`
@@ -1084,6 +1091,9 @@ erDiagram
 - `PATCH /api/inventory/fixed-asset-party-role-assignments/{id}/end`
 - `GET /api/inventory/fixed-asset-party-role-assignments/{id}/end-history?page=&size=&endedBy=&endedAtFrom=&endedAtTo=`
 - `GET /api/inventory/fixed-asset-party-role-assignments?page=&size=&fixedAssetCode=&partyCode=&roleTypeCode=&assignedBy=&active=`
+- `POST /api/inventory/party-fixed-asset-assignments`
+- `GET /api/inventory/party-fixed-asset-assignments/{id}`
+- `GET /api/inventory/party-fixed-asset-assignments?page=&size=&partyCode=&fixedAssetCode=&allocatedCostMoneyId=`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
 - `GET /api/inventory/{sku}/adjustments?page=&size=&locationCode=&adjustedBy=&adjustedAtFrom=&adjustedAtTo=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)

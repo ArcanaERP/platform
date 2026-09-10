@@ -59,6 +59,9 @@ class ModulithDocumentationParityTest {
     private static final Path INVENTORY_FIXED_ASSET_PARTY_ROLE_ASSIGNMENT_CONTROLLER = Path.of(
         "src/main/java/com/arcanaerp/platform/inventory/web/InventoryFixedAssetPartyRoleAssignmentController.java"
     );
+    private static final Path INVENTORY_PARTY_FIXED_ASSET_ASSIGNMENT_CONTROLLER = Path.of(
+        "src/main/java/com/arcanaerp/platform/inventory/web/InventoryPartyFixedAssetAssignmentController.java"
+    );
     private static final Path INVENTORY_FIXED_ASSET_FACILITY_ASSIGNMENT_CONTROLLER = Path.of(
         "src/main/java/com/arcanaerp/platform/inventory/web/InventoryFixedAssetFacilityAssignmentController.java"
     );
@@ -166,6 +169,7 @@ class ModulithDocumentationParityTest {
             INVENTORY_FIXED_ASSET_CONTROLLER,
             INVENTORY_FIXED_ASSET_TYPE_CONTROLLER,
             INVENTORY_FIXED_ASSET_PARTY_ROLE_ASSIGNMENT_CONTROLLER,
+            INVENTORY_PARTY_FIXED_ASSET_ASSIGNMENT_CONTROLLER,
             INVENTORY_FIXED_ASSET_FACILITY_ASSIGNMENT_CONTROLLER,
             INVENTORY_FIXED_ASSET_FACILITY_ASSIGNMENT_TYPE_CONTROLLER,
             INVENTORY_ADDRESS_PURPOSE_CONTROLLER,

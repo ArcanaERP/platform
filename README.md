@@ -341,6 +341,7 @@ Inventory:
 - Inventory fixed asset facility assignments reject overlapping active validity windows for the same fixed asset and assignment type.
 - Inventory fixed asset party-role assignments track which parties serve asset-specific roles and support end history.
 - Inventory fixed asset party-role assignments reject overlapping active validity windows for the same fixed asset, party, and role type.
+- Inventory party fixed-asset assignments model legacy asset check-out records with assigned-from/assigned-thru windows and optional allocated cost money references.
 - Inventory fixed asset `fixedAssetTypeCode` values are validated against `POST /api/inventory/fixed-asset-types` reference data.
 - Inventory facility and fixed asset party-role assignments validate party and role codes against inventory-owned party reference data.
 - Inventory location and facility country/region metadata is validated against inventory-owned country and region reference data.
@@ -465,6 +466,9 @@ Inventory:
 - `PATCH /api/inventory/fixed-asset-party-role-assignments/{id}/end`
 - `GET /api/inventory/fixed-asset-party-role-assignments/{id}/end-history?page=&size=&endedBy=&endedAtFrom=&endedAtTo=`
 - `GET /api/inventory/fixed-asset-party-role-assignments?page=&size=&fixedAssetCode=&partyCode=&roleTypeCode=&assignedBy=&active=`
+- `POST /api/inventory/party-fixed-asset-assignments`
+- `GET /api/inventory/party-fixed-asset-assignments/{id}`
+- `GET /api/inventory/party-fixed-asset-assignments?page=&size=&partyCode=&fixedAssetCode=&allocatedCostMoneyId=`
 - `GET /api/inventory/{sku}?locationCode=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/adjustments?locationCode=` (`locationCode` defaults to `MAIN`)
 - `POST /api/inventory/{sku}/pickup-dropoffs`
