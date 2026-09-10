@@ -23,6 +23,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentC
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkRequirementFulfillmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkOrderItemFulfillmentCommand;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivityByAssigneeSummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySummaryView;
@@ -41,6 +42,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortRoleTypeAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
+import com.arcanaerp.platform.workeffort.WorkRequirementFulfillmentView;
 import com.arcanaerp.platform.workeffort.WorkOrderItemFulfillmentView;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -187,6 +189,42 @@ public class WorkEffortsController {
             requirementId,
             PageQuery.of(page, size)
         ).map(this::toOrderRequirementCommitmentResponse);
+    }
+
+    @PostMapping("/work-requirement-fulfillments")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkRequirementFulfillmentResponse createWorkRequirementFulfillment(
+        @Valid @RequestBody CreateWorkRequirementFulfillmentRequest request
+    ) {
+        return toWorkRequirementFulfillmentResponse(workEffortCatalog.registerWorkRequirementFulfillment(
+            new RegisterWorkRequirementFulfillmentCommand(
+                request.tenantCode(),
+                request.effortNumber(),
+                request.requirementId(),
+                request.description()
+            )
+        ));
+    }
+
+    @GetMapping("/work-requirement-fulfillments/{id}")
+    public WorkRequirementFulfillmentResponse workRequirementFulfillmentById(@PathVariable java.util.UUID id) {
+        return toWorkRequirementFulfillmentResponse(workEffortCatalog.workRequirementFulfillmentById(id));
+    }
+
+    @GetMapping("/work-requirement-fulfillments")
+    public PageResult<WorkRequirementFulfillmentResponse> listWorkRequirementFulfillments(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String effortNumber,
+        @RequestParam(required = false) Long requirementId,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listWorkRequirementFulfillments(
+            tenantCode,
+            effortNumber,
+            requirementId,
+            PageQuery.of(page, size)
+        ).map(this::toWorkRequirementFulfillmentResponse);
     }
 
     @PostMapping("/association-types")
@@ -890,6 +928,20 @@ public class WorkEffortsController {
             view.requirementId(),
             view.description(),
             view.quantity(),
+            view.createdAt()
+        );
+    }
+
+    private WorkRequirementFulfillmentResponse toWorkRequirementFulfillmentResponse(
+        WorkRequirementFulfillmentView view
+    ) {
+        return new WorkRequirementFulfillmentResponse(
+            view.id(),
+            view.workEffortId(),
+            view.tenantCode(),
+            view.effortNumber(),
+            view.requirementId(),
+            view.description(),
             view.createdAt()
         );
     }

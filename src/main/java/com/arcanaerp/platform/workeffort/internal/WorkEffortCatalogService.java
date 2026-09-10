@@ -25,6 +25,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentC
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkRequirementFulfillmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkOrderItemFulfillmentCommand;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivityByAssigneeSummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySummaryView;
@@ -43,6 +44,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortRoleTypeAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
+import com.arcanaerp.platform.workeffort.WorkRequirementFulfillmentView;
 import com.arcanaerp.platform.workeffort.WorkOrderItemFulfillmentView;
 import java.time.DayOfWeek;
 import java.time.Clock;
@@ -74,6 +76,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final AssociatedWorkEffortRepository associatedWorkEffortRepository;
     private final WorkOrderItemFulfillmentRepository workOrderItemFulfillmentRepository;
     private final OrderRequirementCommitmentRepository orderRequirementCommitmentRepository;
+    private final WorkRequirementFulfillmentRepository workRequirementFulfillmentRepository;
     private final WorkEffortAssociationTypeRepository workEffortAssociationTypeRepository;
     private final WorkEffortAssociationRepository workEffortAssociationRepository;
     private final WorkEffortStatusChangeAuditRepository workEffortStatusChangeAuditRepository;
@@ -244,6 +247,51 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toOrderRequirementCommitmentView);
+    }
+
+    @Override
+    public WorkRequirementFulfillmentView registerWorkRequirementFulfillment(
+        RegisterWorkRequirementFulfillmentCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        WorkEffort workEffort = findWorkEffort(command.tenantCode(), command.effortNumber());
+        return toWorkRequirementFulfillmentView(workRequirementFulfillmentRepository.save(
+            WorkRequirementFulfillment.create(
+                workEffort,
+                command.requirementId(),
+                command.description(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkRequirementFulfillmentView workRequirementFulfillmentById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toWorkRequirementFulfillmentView(workRequirementFulfillmentRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Work requirement fulfillment not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkRequirementFulfillmentView> listWorkRequirementFulfillments(
+        String tenantCode,
+        String effortNumber,
+        Long requirementId,
+        PageQuery pageQuery
+    ) {
+        Page<WorkRequirementFulfillment> page = workRequirementFulfillmentRepository.findFulfillmentsFiltered(
+            normalizeOptionalUpper(tenantCode, "tenantCode"),
+            normalizeOptionalUpper(effortNumber, "effortNumber"),
+            requirementId,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toWorkRequirementFulfillmentView);
     }
 
     @Override
@@ -1088,6 +1136,18 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             commitment.getDescription(),
             commitment.getQuantity(),
             commitment.getCreatedAt()
+        );
+    }
+
+    private WorkRequirementFulfillmentView toWorkRequirementFulfillmentView(WorkRequirementFulfillment fulfillment) {
+        return new WorkRequirementFulfillmentView(
+            fulfillment.getId(),
+            fulfillment.getWorkEffortId(),
+            fulfillment.getTenantCode(),
+            fulfillment.getEffortNumber(),
+            fulfillment.getRequirementId(),
+            fulfillment.getDescription(),
+            fulfillment.getCreatedAt()
         );
     }
 

@@ -169,6 +169,9 @@ Work Effort:
 - `POST /api/work-efforts/order-requirement-commitments`
 - `GET /api/work-efforts/order-requirement-commitments/{id}`
 - `GET /api/work-efforts/order-requirement-commitments?orderLineItemId=&requirementId=&page=&size=`
+- `POST /api/work-efforts/work-requirement-fulfillments`
+- `GET /api/work-efforts/work-requirement-fulfillments/{id}`
+- `GET /api/work-efforts/work-requirement-fulfillments?tenantCode=&effortNumber=&requirementId=&page=&size=`
 - `POST /api/work-efforts/association-types`
 - `GET /api/work-efforts/association-types/{code}`
 - `GET /api/work-efforts/association-types?parentTypeCode=&page=&size=`

@@ -555,6 +555,156 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsWorkRequirementFulfillments() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebreqfulfill01",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebreqfulfill01",
+            "we-req-fulfill-001",
+            "Build kit",
+            "Build kit for requirement",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        String fulfillmentId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/work-requirement-fulfillments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": " workwebreqfulfill01 ",
+                  "effortNumber": " we-req-fulfill-001 ",
+                  "requirementId": 88,
+                  "description": " Assemble kit "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.workEffortId").isNotEmpty())
+            .andExpect(jsonPath("$.tenantCode").value("WORKWEBREQFULFILL01"))
+            .andExpect(jsonPath("$.effortNumber").value("WE-REQ-FULFILL-001"))
+            .andExpect(jsonPath("$.requirementId").value(88))
+            .andExpect(jsonPath("$.description").value("Assemble kit"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/work-requirement-fulfillments/{id}",
+            fulfillmentId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(fulfillmentId))
+            .andExpect(jsonPath("$.tenantCode").value("WORKWEBREQFULFILL01"))
+            .andExpect(jsonPath("$.effortNumber").value("WE-REQ-FULFILL-001"))
+            .andExpect(jsonPath("$.requirementId").value(88));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/work-requirement-fulfillments"
+        )
+            .param("tenantCode", "workwebreqfulfill01")
+            .param("effortNumber", "we-req-fulfill-001")
+            .param("requirementId", "88")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(fulfillmentId))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("WORKWEBREQFULFILL01"))
+            .andExpect(jsonPath("$.items[0].effortNumber").value("WE-REQ-FULFILL-001"))
+            .andExpect(jsonPath("$.items[0].requirementId").value(88));
+    }
+
+    @Test
+    void allowsDuplicateWorkRequirementFulfillmentsForLegacyParity() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebreqfulfill02",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebreqfulfill02",
+            "we-req-fulfill-001",
+            "Build kit",
+            "Build kit for requirement",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        String payload = """
+            {
+              "tenantCode": "workwebreqfulfill02",
+              "effortNumber": "we-req-fulfill-001",
+              "requirementId": 188,
+              "description": "Assemble kit"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/work-requirement-fulfillments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/work-requirement-fulfillments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/work-requirement-fulfillments"
+        )
+            .param("tenantCode", "workwebreqfulfill02")
+            .param("effortNumber", "we-req-fulfill-001")
+            .param("requirementId", "188")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void rejectsWorkRequirementFulfillmentForMissingWorkEffort() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/work-requirement-fulfillments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "workwebreqfulfill03",
+                  "effortNumber": "missing",
+                  "requirementId": 88,
+                  "description": "Assemble kit"
+                }
+                """))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value(
+                "Work effort not found for tenant/effortNumber: WORKWEBREQFULFILL03/MISSING"
+            ))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/work-requirement-fulfillments"));
+    }
+
+    @Test
     void createsReadsAndListsWorkEffortAssociationTypes() throws Exception {
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
             "/api/work-efforts/association-types"

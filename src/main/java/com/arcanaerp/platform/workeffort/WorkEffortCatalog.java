@@ -43,6 +43,19 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    WorkRequirementFulfillmentView registerWorkRequirementFulfillment(
+        RegisterWorkRequirementFulfillmentCommand command
+    );
+
+    WorkRequirementFulfillmentView workRequirementFulfillmentById(java.util.UUID id);
+
+    PageResult<WorkRequirementFulfillmentView> listWorkRequirementFulfillments(
+        String tenantCode,
+        String effortNumber,
+        Long requirementId,
+        PageQuery pageQuery
+    );
+
     WorkEffortAssociationTypeView registerAssociationType(RegisterWorkEffortAssociationTypeCommand command);
 
     WorkEffortAssociationTypeView associationTypeByCode(String code);
