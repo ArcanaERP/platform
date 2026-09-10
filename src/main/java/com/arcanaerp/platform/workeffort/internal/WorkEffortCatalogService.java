@@ -22,6 +22,7 @@ import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryVi
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
@@ -29,6 +30,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortInventoryAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortPartyAssignmentView;
+import com.arcanaerp.platform.workeffort.WorkEffortRoleTypeAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
@@ -64,6 +66,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final WorkEffortFixedAssetAssignmentRepository workEffortFixedAssetAssignmentRepository;
     private final WorkEffortInventoryAssignmentRepository workEffortInventoryAssignmentRepository;
     private final WorkEffortPartyAssignmentRepository workEffortPartyAssignmentRepository;
+    private final WorkEffortRoleTypeAssignmentRepository workEffortRoleTypeAssignmentRepository;
     private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
 
@@ -228,6 +231,46 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toPartyAssignmentView);
+    }
+
+    @Override
+    public WorkEffortRoleTypeAssignmentView registerRoleTypeAssignment(
+        RegisterWorkEffortRoleTypeAssignmentCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        WorkEffort workEffort = findWorkEffort(command.tenantCode(), command.effortNumber());
+        return toRoleTypeAssignmentView(workEffortRoleTypeAssignmentRepository.save(
+            WorkEffortRoleTypeAssignment.create(workEffort, command.roleTypeCode())
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkEffortRoleTypeAssignmentView roleTypeAssignmentById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toRoleTypeAssignmentView(workEffortRoleTypeAssignmentRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Work effort role type assignment not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkEffortRoleTypeAssignmentView> listRoleTypeAssignments(
+        String tenantCode,
+        String effortNumber,
+        String roleTypeCode,
+        PageQuery pageQuery
+    ) {
+        Page<WorkEffortRoleTypeAssignment> page = workEffortRoleTypeAssignmentRepository.findAssignmentsFiltered(
+            normalizeOptionalUpper(tenantCode, "tenantCode"),
+            normalizeOptionalUpper(effortNumber, "effortNumber"),
+            normalizeOptionalUpper(roleTypeCode, "roleTypeCode"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "roleTypeCode"))
+        );
+        return PageResult.from(page).map(this::toRoleTypeAssignmentView);
     }
 
     @Override
@@ -803,6 +846,18 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             assignment.getAssignedThru(),
             assignment.getComments(),
             assignment.getCreatedAt()
+        );
+    }
+
+    private WorkEffortRoleTypeAssignmentView toRoleTypeAssignmentView(
+        WorkEffortRoleTypeAssignment assignment
+    ) {
+        return new WorkEffortRoleTypeAssignmentView(
+            assignment.getId(),
+            assignment.getWorkEffortId(),
+            assignment.getTenantCode(),
+            assignment.getEffortNumber(),
+            assignment.getRoleTypeCode()
         );
     }
 

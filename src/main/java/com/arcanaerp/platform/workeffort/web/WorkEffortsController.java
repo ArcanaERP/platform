@@ -20,6 +20,7 @@ import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryVi
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
@@ -27,6 +28,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortInventoryAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortPartyAssignmentView;
+import com.arcanaerp.platform.workeffort.WorkEffortRoleTypeAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
@@ -188,6 +190,41 @@ public class WorkEffortsController {
             parsedAssignedThru,
             PageQuery.of(page, size)
         ).map(this::toPartyAssignmentResponse);
+    }
+
+    @PostMapping("/role-type-assignments")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkEffortRoleTypeAssignmentResponse createRoleTypeAssignment(
+        @Valid @RequestBody CreateWorkEffortRoleTypeAssignmentRequest request
+    ) {
+        return toRoleTypeAssignmentResponse(workEffortCatalog.registerRoleTypeAssignment(
+            new RegisterWorkEffortRoleTypeAssignmentCommand(
+                request.tenantCode(),
+                request.effortNumber(),
+                request.roleTypeCode()
+            )
+        ));
+    }
+
+    @GetMapping("/role-type-assignments/{id}")
+    public WorkEffortRoleTypeAssignmentResponse roleTypeAssignmentById(@PathVariable java.util.UUID id) {
+        return toRoleTypeAssignmentResponse(workEffortCatalog.roleTypeAssignmentById(id));
+    }
+
+    @GetMapping("/role-type-assignments")
+    public PageResult<WorkEffortRoleTypeAssignmentResponse> listRoleTypeAssignments(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String effortNumber,
+        @RequestParam(required = false) String roleTypeCode,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listRoleTypeAssignments(
+            tenantCode,
+            effortNumber,
+            roleTypeCode,
+            PageQuery.of(page, size)
+        ).map(this::toRoleTypeAssignmentResponse);
     }
 
     @GetMapping("/{effortNumber}")
@@ -653,6 +690,18 @@ public class WorkEffortsController {
             view.assignedThru(),
             view.comments(),
             view.createdAt()
+        );
+    }
+
+    private WorkEffortRoleTypeAssignmentResponse toRoleTypeAssignmentResponse(
+        WorkEffortRoleTypeAssignmentView view
+    ) {
+        return new WorkEffortRoleTypeAssignmentResponse(
+            view.id(),
+            view.workEffortId(),
+            view.tenantCode(),
+            view.effortNumber(),
+            view.roleTypeCode()
         );
     }
 

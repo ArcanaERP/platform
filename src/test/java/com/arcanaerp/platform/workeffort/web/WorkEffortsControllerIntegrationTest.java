@@ -663,6 +663,148 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsWorkEffortRoleTypeAssignments() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebrole01",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebrole01",
+            "we-role-001",
+            "Coordinate receiving",
+            "Coordinate receiving work",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        String assignmentId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/role-type-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": " workwebrole01 ",
+                  "effortNumber": " we-role-001 ",
+                  "roleTypeCode": " task-master "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.workEffortId").isNotEmpty())
+            .andExpect(jsonPath("$.tenantCode").value("WORKWEBROLE01"))
+            .andExpect(jsonPath("$.effortNumber").value("WE-ROLE-001"))
+            .andExpect(jsonPath("$.roleTypeCode").value("TASK-MASTER"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/role-type-assignments/{id}",
+            assignmentId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(assignmentId))
+            .andExpect(jsonPath("$.roleTypeCode").value("TASK-MASTER"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/role-type-assignments"
+        )
+            .param("tenantCode", "workwebrole01")
+            .param("effortNumber", "we-role-001")
+            .param("roleTypeCode", "task-master")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(assignmentId))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("WORKWEBROLE01"))
+            .andExpect(jsonPath("$.items[0].effortNumber").value("WE-ROLE-001"))
+            .andExpect(jsonPath("$.items[0].roleTypeCode").value("TASK-MASTER"));
+    }
+
+    @Test
+    void allowsDuplicateWorkEffortRoleTypeAssignmentsForLegacyParity() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebrole02",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebrole02",
+            "we-role-001",
+            "Coordinate picking",
+            "Coordinate picking work",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+        String payload = """
+            {
+              "tenantCode": "workwebrole02",
+              "effortNumber": "we-role-001",
+              "roleTypeCode": "task-master"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/role-type-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/role-type-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/role-type-assignments"
+        )
+            .param("tenantCode", "workwebrole02")
+            .param("effortNumber", "we-role-001")
+            .param("roleTypeCode", "task-master")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void rejectsWorkEffortRoleTypeAssignmentForMissingWorkEffort() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/role-type-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "workwebrole03",
+                  "effortNumber": "missing",
+                  "roleTypeCode": "task-master"
+                }
+                """))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value(
+                "Work effort not found for tenant/effortNumber: WORKWEBROLE03/MISSING"
+            ))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/role-type-assignments"));
+    }
+
+    @Test
     void rejectsUnknownAssignee() throws Exception {
         WorkEffortsWebIntegrationTestSupport.createWorkEffort(
             mockMvc,

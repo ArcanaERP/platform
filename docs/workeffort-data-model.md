@@ -4,7 +4,7 @@ Updated: 2026-08-30
 
 ## Scope
 
-Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, and legacy-compatible party assignment joins.
+Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
 
 ## Aggregate
 
@@ -142,12 +142,32 @@ Rules:
 - `partyCode` and `roleTypeCode` are logical cross-module references while Work Effort has no direct Party/Role catalog dependency
 - duplicate rows are allowed for parity with the legacy non-unique indexes
 
+### WorkEffortRoleTypeAssignment
+
+Purpose:
+- mirror legacy `role_types_work_efforts` HABTM join records between work efforts and role types
+- represent role-type assignment to a work effort without adding fields not present in the legacy table
+
+Core fields:
+- `id` (`UUID`)
+- `workEffortId`
+- `tenantCode`
+- `effortNumber`
+- `roleTypeCode`
+
+Rules:
+- `tenantCode`, `effortNumber`, and `roleTypeCode` are normalized to uppercase
+- writes require an existing work effort by `tenantCode + effortNumber`
+- `roleTypeCode` is a logical cross-module reference while Work Effort has no direct Role catalog dependency
+- duplicate rows are allowed for parity with the legacy non-unique composite index
+
 ## Cross-Module Dependency
 
 - `workeffort` validates assignees, status actors, and assignment actors through public `IdentityActorLookup`
 - fixed-asset assignment records store fixed-asset codes as logical cross-module references; this slice does not add an Inventory dependency
 - inventory assignment records store inventory-entry codes as logical cross-module references; this slice does not add an Inventory dependency
 - party assignment records store party and role-type codes as logical cross-module references; this slice does not add a Party or Role catalog dependency
+- role-type assignment records store role-type codes as logical cross-module references; this slice does not add a Role catalog dependency
 - no dependency on `identity.internal`
 
 ## Minimal HTTP Surface
@@ -162,6 +182,9 @@ Rules:
 - `POST /api/work-efforts/party-assignments`
 - `GET /api/work-efforts/party-assignments/{id}`
 - `GET /api/work-efforts/party-assignments?tenantCode=&effortNumber=&partyCode=&roleTypeCode=&assignedFrom=&assignedThru=&page=&size=`
+- `POST /api/work-efforts/role-type-assignments`
+- `GET /api/work-efforts/role-type-assignments/{id}`
+- `GET /api/work-efforts/role-type-assignments?tenantCode=&effortNumber=&roleTypeCode=&page=&size=`
 - `GET /api/work-efforts/{effortNumber}?tenantCode=`
 - `GET /api/work-efforts?tenantCode=&status=&assignedTo=&page=&size=`
 - `GET /api/work-efforts/assignment-activity-summary?tenantCode=&assignedTo=&assignedAtFrom=&assignedAtTo=&page=&size=`
@@ -189,6 +212,7 @@ Rules:
 - work-effort fixed-asset assignment listing supports optional exact `tenantCode`, `effortNumber`, and `fixedAssetCode` filters
 - work-effort inventory assignment listing supports optional exact `tenantCode`, `effortNumber`, and `inventoryEntryCode` filters
 - work-effort party assignment listing supports optional exact `tenantCode`, `effortNumber`, `partyCode`, and `roleTypeCode` filters plus optional assignment date bounds
+- work-effort role-type assignment listing supports optional exact `tenantCode`, `effortNumber`, and `roleTypeCode` filters
 - blank query values are rejected at the HTTP boundary
 - status-history ranges require `changedAtFrom <= changedAtTo`
 - assignment-history ranges require `assignedAtFrom <= assignedAtTo`

@@ -50,6 +50,19 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    WorkEffortRoleTypeAssignmentView registerRoleTypeAssignment(
+        RegisterWorkEffortRoleTypeAssignmentCommand command
+    );
+
+    WorkEffortRoleTypeAssignmentView roleTypeAssignmentById(java.util.UUID id);
+
+    PageResult<WorkEffortRoleTypeAssignmentView> listRoleTypeAssignments(
+        String tenantCode,
+        String effortNumber,
+        String roleTypeCode,
+        PageQuery pageQuery
+    );
+
     WorkEffortView getWorkEffort(String tenantCode, String effortNumber);
 
     WorkEffortAssignmentSummaryView getWorkEffortAssignment(String tenantCode, String effortNumber);
