@@ -323,6 +323,153 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsWorkOrderItemFulfillments() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebfulfill01",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebfulfill01",
+            "we-fulfill-001",
+            "Build customer kit",
+            "Build kit for sales order line",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        String fulfillmentId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/work-order-item-fulfillments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": " workwebfulfill01 ",
+                  "effortNumber": " we-fulfill-001 ",
+                  "orderLineItemId": 77,
+                  "description": " Kit build "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.workEffortId").isNotEmpty())
+            .andExpect(jsonPath("$.tenantCode").value("WORKWEBFULFILL01"))
+            .andExpect(jsonPath("$.effortNumber").value("WE-FULFILL-001"))
+            .andExpect(jsonPath("$.orderLineItemId").value(77))
+            .andExpect(jsonPath("$.description").value("Kit build"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/work-order-item-fulfillments/{id}",
+            fulfillmentId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(fulfillmentId))
+            .andExpect(jsonPath("$.orderLineItemId").value(77));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/work-order-item-fulfillments"
+        )
+            .param("tenantCode", "workwebfulfill01")
+            .param("effortNumber", "we-fulfill-001")
+            .param("orderLineItemId", "77")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(fulfillmentId))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("WORKWEBFULFILL01"))
+            .andExpect(jsonPath("$.items[0].effortNumber").value("WE-FULFILL-001"))
+            .andExpect(jsonPath("$.items[0].orderLineItemId").value(77));
+    }
+
+    @Test
+    void allowsDuplicateWorkOrderItemFulfillmentsForLegacyParity() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebfulfill02",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebfulfill02",
+            "we-fulfill-001",
+            "Reserve custom item",
+            "Reserve custom item for order line",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+        String payload = """
+            {
+              "tenantCode": "workwebfulfill02",
+              "effortNumber": "we-fulfill-001",
+              "orderLineItemId": 77,
+              "description": "Reserve item"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/work-order-item-fulfillments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/work-order-item-fulfillments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/work-order-item-fulfillments"
+        )
+            .param("tenantCode", "workwebfulfill02")
+            .param("effortNumber", "we-fulfill-001")
+            .param("orderLineItemId", "77")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void rejectsWorkOrderItemFulfillmentForMissingWorkEffort() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/work-order-item-fulfillments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "workwebfulfill03",
+                  "effortNumber": "missing",
+                  "orderLineItemId": 77,
+                  "description": "Reserve item"
+                }
+                """))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value(
+                "Work effort not found for tenant/effortNumber: WORKWEBFULFILL03/MISSING"
+            ))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/work-order-item-fulfillments"));
+    }
+
+    @Test
     void createsReadsAndListsWorkEffortAssociationTypes() throws Exception {
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
             "/api/work-efforts/association-types"

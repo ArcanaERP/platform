@@ -20,6 +20,17 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    WorkOrderItemFulfillmentView registerWorkOrderItemFulfillment(RegisterWorkOrderItemFulfillmentCommand command);
+
+    WorkOrderItemFulfillmentView workOrderItemFulfillmentById(java.util.UUID id);
+
+    PageResult<WorkOrderItemFulfillmentView> listWorkOrderItemFulfillments(
+        String tenantCode,
+        String effortNumber,
+        Long orderLineItemId,
+        PageQuery pageQuery
+    );
+
     WorkEffortAssociationTypeView registerAssociationType(RegisterWorkEffortAssociationTypeCommand command);
 
     WorkEffortAssociationTypeView associationTypeByCode(String code);

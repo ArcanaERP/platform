@@ -4,7 +4,7 @@ Updated: 2026-08-30
 
 ## Scope
 
-Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible associated-record joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
+Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible associated-record joins, legacy-compatible work-order item fulfillment joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
 
 ## Aggregate
 
@@ -96,6 +96,27 @@ Rules:
 - `tenantCode` and `effortNumber` are normalized to uppercase
 - `associatedRecordType` is trimmed but preserves case because the legacy value is a Rails class/type discriminator
 - duplicate rows are allowed for parity with the legacy non-unique indexes
+
+### WorkOrderItemFulfillment
+
+Purpose:
+- mirror legacy `work_order_item_fulfillments` records linking work efforts to order line items
+- track the work effort by which an order line item is fulfilled without adding Orders module behavior
+
+Core fields:
+- `id` (`UUID`)
+- `workEffortId`
+- `tenantCode`
+- `effortNumber`
+- `orderLineItemId`
+- `description`
+- `createdAt`
+
+Rules:
+- writes require an existing work effort by `tenantCode + effortNumber`
+- `tenantCode` and `effortNumber` are normalized to uppercase
+- `orderLineItemId` is stored as a logical cross-module reference while Work Effort has no Orders dependency
+- duplicate rows are allowed for parity with the legacy non-unique composite index
 
 ### WorkEffortAssociationType
 
@@ -242,6 +263,7 @@ Rules:
 - association type records store role-type references as logical codes; this slice does not add a Role catalog dependency
 - association records store relationship-type references as logical codes; this slice does not add a Relationship Type catalog dependency
 - associated-record links store polymorphic record id/type values without depending on target modules
+- work-order item fulfillments store order-line-item ids as logical references without depending on Orders
 - no dependency on `identity.internal`
 
 ## Minimal HTTP Surface
@@ -250,6 +272,9 @@ Rules:
 - `POST /api/work-efforts/associated-records`
 - `GET /api/work-efforts/associated-records/{id}`
 - `GET /api/work-efforts/associated-records?tenantCode=&effortNumber=&associatedRecordId=&associatedRecordType=&page=&size=`
+- `POST /api/work-efforts/work-order-item-fulfillments`
+- `GET /api/work-efforts/work-order-item-fulfillments/{id}`
+- `GET /api/work-efforts/work-order-item-fulfillments?tenantCode=&effortNumber=&orderLineItemId=&page=&size=`
 - `POST /api/work-efforts/association-types`
 - `GET /api/work-efforts/association-types/{code}`
 - `GET /api/work-efforts/association-types?parentTypeCode=&page=&size=`
@@ -293,6 +318,7 @@ Rules:
 
 - work-effort listing is paged through the shared `PageQuery` contract
 - associated work-effort listing supports optional exact `tenantCode`, `effortNumber`, `associatedRecordId`, and `associatedRecordType` filters
+- work-order item fulfillment listing supports optional exact `tenantCode`, `effortNumber`, and `orderLineItemId` filters
 - work-effort association type listing supports optional exact `parentTypeCode` filtering
 - work-effort association listing supports optional exact tenant, association type, from effort, to effort, and relationship type filters plus optional effective date bounds
 - work-effort fixed-asset assignment listing supports optional exact `tenantCode`, `effortNumber`, and `fixedAssetCode` filters

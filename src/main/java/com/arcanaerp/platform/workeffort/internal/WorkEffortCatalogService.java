@@ -27,6 +27,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCo
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkOrderItemFulfillmentCommand;
 import com.arcanaerp.platform.workeffort.WorkEffortAssociationTypeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssociationView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
@@ -40,6 +41,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortRoleTypeAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
+import com.arcanaerp.platform.workeffort.WorkOrderItemFulfillmentView;
 import java.time.DayOfWeek;
 import java.time.Clock;
 import java.time.Instant;
@@ -68,6 +70,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
 
     private final WorkEffortRepository workEffortRepository;
     private final AssociatedWorkEffortRepository associatedWorkEffortRepository;
+    private final WorkOrderItemFulfillmentRepository workOrderItemFulfillmentRepository;
     private final WorkEffortAssociationTypeRepository workEffortAssociationTypeRepository;
     private final WorkEffortAssociationRepository workEffortAssociationRepository;
     private final WorkEffortStatusChangeAuditRepository workEffortStatusChangeAuditRepository;
@@ -150,6 +153,51 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "associatedRecordType"))
         );
         return PageResult.from(page).map(this::toAssociatedWorkEffortView);
+    }
+
+    @Override
+    public WorkOrderItemFulfillmentView registerWorkOrderItemFulfillment(
+        RegisterWorkOrderItemFulfillmentCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        WorkEffort workEffort = findWorkEffort(command.tenantCode(), command.effortNumber());
+        return toWorkOrderItemFulfillmentView(workOrderItemFulfillmentRepository.save(
+            WorkOrderItemFulfillment.create(
+                workEffort,
+                command.orderLineItemId(),
+                command.description(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkOrderItemFulfillmentView workOrderItemFulfillmentById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toWorkOrderItemFulfillmentView(workOrderItemFulfillmentRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Work order item fulfillment not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkOrderItemFulfillmentView> listWorkOrderItemFulfillments(
+        String tenantCode,
+        String effortNumber,
+        Long orderLineItemId,
+        PageQuery pageQuery
+    ) {
+        Page<WorkOrderItemFulfillment> page = workOrderItemFulfillmentRepository.findFulfillmentsFiltered(
+            normalizeOptionalUpper(tenantCode, "tenantCode"),
+            normalizeOptionalUpper(effortNumber, "effortNumber"),
+            orderLineItemId,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toWorkOrderItemFulfillmentView);
     }
 
     @Override
@@ -971,6 +1019,18 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             associatedWorkEffort.getEffortNumber(),
             associatedWorkEffort.getAssociatedRecordId(),
             associatedWorkEffort.getAssociatedRecordType()
+        );
+    }
+
+    private WorkOrderItemFulfillmentView toWorkOrderItemFulfillmentView(WorkOrderItemFulfillment fulfillment) {
+        return new WorkOrderItemFulfillmentView(
+            fulfillment.getId(),
+            fulfillment.getWorkEffortId(),
+            fulfillment.getTenantCode(),
+            fulfillment.getEffortNumber(),
+            fulfillment.getOrderLineItemId(),
+            fulfillment.getDescription(),
+            fulfillment.getCreatedAt()
         );
     }
 

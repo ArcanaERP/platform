@@ -24,6 +24,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCo
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkOrderItemFulfillmentCommand;
 import com.arcanaerp.platform.workeffort.AssociatedWorkEffortView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssociationTypeView;
@@ -38,6 +39,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortRoleTypeAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
+import com.arcanaerp.platform.workeffort.WorkOrderItemFulfillmentView;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -113,6 +115,42 @@ public class WorkEffortsController {
             associatedRecordType,
             PageQuery.of(page, size)
         ).map(this::toAssociatedWorkEffortResponse);
+    }
+
+    @PostMapping("/work-order-item-fulfillments")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkOrderItemFulfillmentResponse createWorkOrderItemFulfillment(
+        @Valid @RequestBody CreateWorkOrderItemFulfillmentRequest request
+    ) {
+        return toWorkOrderItemFulfillmentResponse(workEffortCatalog.registerWorkOrderItemFulfillment(
+            new RegisterWorkOrderItemFulfillmentCommand(
+                request.tenantCode(),
+                request.effortNumber(),
+                request.orderLineItemId(),
+                request.description()
+            )
+        ));
+    }
+
+    @GetMapping("/work-order-item-fulfillments/{id}")
+    public WorkOrderItemFulfillmentResponse workOrderItemFulfillmentById(@PathVariable java.util.UUID id) {
+        return toWorkOrderItemFulfillmentResponse(workEffortCatalog.workOrderItemFulfillmentById(id));
+    }
+
+    @GetMapping("/work-order-item-fulfillments")
+    public PageResult<WorkOrderItemFulfillmentResponse> listWorkOrderItemFulfillments(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String effortNumber,
+        @RequestParam(required = false) Long orderLineItemId,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listWorkOrderItemFulfillments(
+            tenantCode,
+            effortNumber,
+            orderLineItemId,
+            PageQuery.of(page, size)
+        ).map(this::toWorkOrderItemFulfillmentResponse);
     }
 
     @PostMapping("/association-types")
@@ -792,6 +830,18 @@ public class WorkEffortsController {
             view.effortNumber(),
             view.associatedRecordId(),
             view.associatedRecordType()
+        );
+    }
+
+    private WorkOrderItemFulfillmentResponse toWorkOrderItemFulfillmentResponse(WorkOrderItemFulfillmentView view) {
+        return new WorkOrderItemFulfillmentResponse(
+            view.id(),
+            view.workEffortId(),
+            view.tenantCode(),
+            view.effortNumber(),
+            view.orderLineItemId(),
+            view.description(),
+            view.createdAt()
         );
     }
 
