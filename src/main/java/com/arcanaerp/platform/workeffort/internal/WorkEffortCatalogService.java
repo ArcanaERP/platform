@@ -20,11 +20,13 @@ import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySumma
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetAssignmentView;
+import com.arcanaerp.platform.workeffort.WorkEffortInventoryAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
@@ -58,6 +60,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final WorkEffortStatusChangeAuditRepository workEffortStatusChangeAuditRepository;
     private final WorkEffortAssignmentChangeAuditRepository workEffortAssignmentChangeAuditRepository;
     private final WorkEffortFixedAssetAssignmentRepository workEffortFixedAssetAssignmentRepository;
+    private final WorkEffortInventoryAssignmentRepository workEffortInventoryAssignmentRepository;
     private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
 
@@ -128,6 +131,46 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toFixedAssetAssignmentView);
+    }
+
+    @Override
+    public WorkEffortInventoryAssignmentView registerInventoryAssignment(
+        RegisterWorkEffortInventoryAssignmentCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        WorkEffort workEffort = findWorkEffort(command.tenantCode(), command.effortNumber());
+        return toInventoryAssignmentView(workEffortInventoryAssignmentRepository.save(
+            WorkEffortInventoryAssignment.create(workEffort, command.inventoryEntryCode(), Instant.now(clock))
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkEffortInventoryAssignmentView inventoryAssignmentById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toInventoryAssignmentView(workEffortInventoryAssignmentRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Work effort inventory assignment not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkEffortInventoryAssignmentView> listInventoryAssignments(
+        String tenantCode,
+        String effortNumber,
+        String inventoryEntryCode,
+        PageQuery pageQuery
+    ) {
+        Page<WorkEffortInventoryAssignment> page = workEffortInventoryAssignmentRepository.findAssignmentsFiltered(
+            normalizeOptionalUpper(tenantCode, "tenantCode"),
+            normalizeOptionalUpper(effortNumber, "effortNumber"),
+            normalizeOptionalUpper(inventoryEntryCode, "inventoryEntryCode"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toInventoryAssignmentView);
     }
 
     @Override
@@ -672,6 +715,19 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             assignment.getTenantCode(),
             assignment.getEffortNumber(),
             assignment.getFixedAssetCode(),
+            assignment.getCreatedAt()
+        );
+    }
+
+    private WorkEffortInventoryAssignmentView toInventoryAssignmentView(
+        WorkEffortInventoryAssignment assignment
+    ) {
+        return new WorkEffortInventoryAssignmentView(
+            assignment.getId(),
+            assignment.getWorkEffortId(),
+            assignment.getTenantCode(),
+            assignment.getEffortNumber(),
+            assignment.getInventoryEntryCode(),
             assignment.getCreatedAt()
         );
     }

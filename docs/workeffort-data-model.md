@@ -4,7 +4,7 @@ Updated: 2026-08-30
 
 ## Scope
 
-Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, and legacy-compatible fixed-asset assignment joins.
+Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible fixed-asset assignment joins, and legacy-compatible inventory assignment joins.
 
 ## Aggregate
 
@@ -97,10 +97,31 @@ Rules:
 - `fixedAssetCode` is a logical cross-module reference while Work Effort has no Inventory dependency
 - duplicate `workEffort + fixedAsset` assignment rows are allowed for parity with the legacy non-unique index
 
+### WorkEffortInventoryAssignment
+
+Purpose:
+- mirror legacy `work_effort_inventory_assignments` join records between work efforts and inventory entries
+- track inventory entries used in the execution of a work effort without adding lifecycle behavior not present in the legacy table
+
+Core fields:
+- `id` (`UUID`)
+- `workEffortId`
+- `tenantCode`
+- `effortNumber`
+- `inventoryEntryCode`
+- `createdAt`
+
+Rules:
+- `tenantCode`, `effortNumber`, and `inventoryEntryCode` are normalized to uppercase
+- writes require an existing work effort by `tenantCode + effortNumber`
+- `inventoryEntryCode` is a logical cross-module reference while Work Effort has no Inventory dependency
+- duplicate `workEffort + inventoryEntry` assignment rows are allowed for parity with the legacy non-unique index
+
 ## Cross-Module Dependency
 
 - `workeffort` validates assignees, status actors, and assignment actors through public `IdentityActorLookup`
 - fixed-asset assignment records store fixed-asset codes as logical cross-module references; this slice does not add an Inventory dependency
+- inventory assignment records store inventory-entry codes as logical cross-module references; this slice does not add an Inventory dependency
 - no dependency on `identity.internal`
 
 ## Minimal HTTP Surface
@@ -109,6 +130,9 @@ Rules:
 - `POST /api/work-efforts/fixed-asset-assignments`
 - `GET /api/work-efforts/fixed-asset-assignments/{id}`
 - `GET /api/work-efforts/fixed-asset-assignments?tenantCode=&effortNumber=&fixedAssetCode=&page=&size=`
+- `POST /api/work-efforts/inventory-assignments`
+- `GET /api/work-efforts/inventory-assignments/{id}`
+- `GET /api/work-efforts/inventory-assignments?tenantCode=&effortNumber=&inventoryEntryCode=&page=&size=`
 - `GET /api/work-efforts/{effortNumber}?tenantCode=`
 - `GET /api/work-efforts?tenantCode=&status=&assignedTo=&page=&size=`
 - `GET /api/work-efforts/assignment-activity-summary?tenantCode=&assignedTo=&assignedAtFrom=&assignedAtTo=&page=&size=`
@@ -134,6 +158,7 @@ Rules:
 
 - work-effort listing is paged through the shared `PageQuery` contract
 - work-effort fixed-asset assignment listing supports optional exact `tenantCode`, `effortNumber`, and `fixedAssetCode` filters
+- work-effort inventory assignment listing supports optional exact `tenantCode`, `effortNumber`, and `inventoryEntryCode` filters
 - blank query values are rejected at the HTTP boundary
 - status-history ranges require `changedAtFrom <= changedAtTo`
 - assignment-history ranges require `assignedAtFrom <= assignedAtTo`

@@ -21,6 +21,19 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    WorkEffortInventoryAssignmentView registerInventoryAssignment(
+        RegisterWorkEffortInventoryAssignmentCommand command
+    );
+
+    WorkEffortInventoryAssignmentView inventoryAssignmentById(java.util.UUID id);
+
+    PageResult<WorkEffortInventoryAssignmentView> listInventoryAssignments(
+        String tenantCode,
+        String effortNumber,
+        String inventoryEntryCode,
+        PageQuery pageQuery
+    );
+
     WorkEffortView getWorkEffort(String tenantCode, String effortNumber);
 
     WorkEffortAssignmentSummaryView getWorkEffortAssignment(String tenantCode, String effortNumber);

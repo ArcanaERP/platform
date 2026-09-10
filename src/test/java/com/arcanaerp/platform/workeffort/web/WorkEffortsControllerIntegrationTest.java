@@ -317,6 +317,149 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsWorkEffortInventoryAssignments() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebinv01",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebinv01",
+            "we-inv-001",
+            "Assemble repair kit",
+            "Assemble repair kit for field work",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        String assignmentId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/inventory-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": " workwebinv01 ",
+                  "effortNumber": " we-inv-001 ",
+                  "inventoryEntryCode": " filter-44 "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.workEffortId").isNotEmpty())
+            .andExpect(jsonPath("$.tenantCode").value("WORKWEBINV01"))
+            .andExpect(jsonPath("$.effortNumber").value("WE-INV-001"))
+            .andExpect(jsonPath("$.inventoryEntryCode").value("FILTER-44"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/inventory-assignments/{id}",
+            assignmentId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(assignmentId))
+            .andExpect(jsonPath("$.inventoryEntryCode").value("FILTER-44"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/inventory-assignments"
+        )
+            .param("tenantCode", "workwebinv01")
+            .param("effortNumber", "we-inv-001")
+            .param("inventoryEntryCode", "filter-44")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(assignmentId))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("WORKWEBINV01"))
+            .andExpect(jsonPath("$.items[0].effortNumber").value("WE-INV-001"))
+            .andExpect(jsonPath("$.items[0].inventoryEntryCode").value("FILTER-44"));
+    }
+
+    @Test
+    void allowsDuplicateWorkEffortInventoryAssignmentsForLegacyParity() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebinv02",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebinv02",
+            "we-inv-001",
+            "Consume repair kit",
+            "Consume repair kit on work effort",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+        String payload = """
+            {
+              "tenantCode": "workwebinv02",
+              "effortNumber": "we-inv-001",
+              "inventoryEntryCode": "filter-44"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/inventory-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/inventory-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/inventory-assignments"
+        )
+            .param("tenantCode", "workwebinv02")
+            .param("effortNumber", "we-inv-001")
+            .param("inventoryEntryCode", "filter-44")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void rejectsWorkEffortInventoryAssignmentForMissingWorkEffort() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/inventory-assignments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "workwebinv03",
+                  "effortNumber": "missing",
+                  "inventoryEntryCode": "filter-44"
+                }
+                """))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value(
+                "Work effort not found for tenant/effortNumber: WORKWEBINV03/MISSING"
+            ))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/inventory-assignments"));
+    }
+
+    @Test
     void rejectsUnknownAssignee() throws Exception {
         WorkEffortsWebIntegrationTestSupport.createWorkEffort(
             mockMvc,

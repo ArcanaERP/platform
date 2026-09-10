@@ -18,11 +18,13 @@ import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySumma
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetAssignmentView;
+import com.arcanaerp.platform.workeffort.WorkEffortInventoryAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
@@ -98,6 +100,41 @@ public class WorkEffortsController {
             fixedAssetCode,
             PageQuery.of(page, size)
         ).map(this::toFixedAssetAssignmentResponse);
+    }
+
+    @PostMapping("/inventory-assignments")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkEffortInventoryAssignmentResponse createInventoryAssignment(
+        @Valid @RequestBody CreateWorkEffortInventoryAssignmentRequest request
+    ) {
+        return toInventoryAssignmentResponse(workEffortCatalog.registerInventoryAssignment(
+            new RegisterWorkEffortInventoryAssignmentCommand(
+                request.tenantCode(),
+                request.effortNumber(),
+                request.inventoryEntryCode()
+            )
+        ));
+    }
+
+    @GetMapping("/inventory-assignments/{id}")
+    public WorkEffortInventoryAssignmentResponse inventoryAssignmentById(@PathVariable java.util.UUID id) {
+        return toInventoryAssignmentResponse(workEffortCatalog.inventoryAssignmentById(id));
+    }
+
+    @GetMapping("/inventory-assignments")
+    public PageResult<WorkEffortInventoryAssignmentResponse> listInventoryAssignments(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String effortNumber,
+        @RequestParam(required = false) String inventoryEntryCode,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listInventoryAssignments(
+            tenantCode,
+            effortNumber,
+            inventoryEntryCode,
+            PageQuery.of(page, size)
+        ).map(this::toInventoryAssignmentResponse);
     }
 
     @GetMapping("/{effortNumber}")
@@ -532,6 +569,19 @@ public class WorkEffortsController {
             view.tenantCode(),
             view.effortNumber(),
             view.fixedAssetCode(),
+            view.createdAt()
+        );
+    }
+
+    private WorkEffortInventoryAssignmentResponse toInventoryAssignmentResponse(
+        WorkEffortInventoryAssignmentView view
+    ) {
+        return new WorkEffortInventoryAssignmentResponse(
+            view.id(),
+            view.workEffortId(),
+            view.tenantCode(),
+            view.effortNumber(),
+            view.inventoryEntryCode(),
             view.createdAt()
         );
     }

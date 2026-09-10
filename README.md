@@ -163,6 +163,9 @@ Work Effort:
 - `POST /api/work-efforts/fixed-asset-assignments`
 - `GET /api/work-efforts/fixed-asset-assignments/{id}`
 - `GET /api/work-efforts/fixed-asset-assignments?tenantCode=&effortNumber=&fixedAssetCode=&page=&size=`
+- `POST /api/work-efforts/inventory-assignments`
+- `GET /api/work-efforts/inventory-assignments/{id}`
+- `GET /api/work-efforts/inventory-assignments?tenantCode=&effortNumber=&inventoryEntryCode=&page=&size=`
 - `GET /api/work-efforts/{effortNumber}?tenantCode=`
 - `GET /api/work-efforts?tenantCode=&status=&assignedTo=&page=&size=`
 - `GET /api/work-efforts/assignment-activity-summary?tenantCode=&assignedTo=&assignedAtFrom=&assignedAtTo=&page=&size=`
