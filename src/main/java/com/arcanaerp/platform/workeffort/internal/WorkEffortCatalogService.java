@@ -28,6 +28,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentC
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkRequirementFulfillmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkOrderItemFulfillmentCommand;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivityByAssigneeSummaryView;
@@ -46,6 +47,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortPartyAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortRoleTypeAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
+import com.arcanaerp.platform.workeffort.WorkEffortTypeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
 import com.arcanaerp.platform.workeffort.WorkRequirementFulfillmentView;
 import com.arcanaerp.platform.workeffort.WorkOrderItemFulfillmentView;
@@ -86,6 +88,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final RequirementPartyRoleRepository requirementPartyRoleRepository;
     private final RequirementRepository requirementRepository;
     private final RequirementTypeRepository requirementTypeRepository;
+    private final WorkEffortTypeRepository workEffortTypeRepository;
     private final WorkEffortAssociationTypeRepository workEffortAssociationTypeRepository;
     private final WorkEffortAssociationRepository workEffortAssociationRepository;
     private final WorkEffortStatusChangeAuditRepository workEffortStatusChangeAuditRepository;
@@ -463,6 +466,55 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toRequirementTypeView);
+    }
+
+    @Override
+    public WorkEffortTypeView registerWorkEffortType(RegisterWorkEffortTypeCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toWorkEffortTypeView(workEffortTypeRepository.save(
+            WorkEffortType.create(
+                command.parentId(),
+                command.left(),
+                command.right(),
+                command.description(),
+                command.comments(),
+                command.internalIdentifier(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkEffortTypeView workEffortTypeById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toWorkEffortTypeView(workEffortTypeRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Work effort type not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkEffortTypeView> listWorkEffortTypes(
+        Long parentId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    ) {
+        Page<WorkEffortType> page = workEffortTypeRepository.findTypesFiltered(
+            parentId,
+            normalizeOptional(internalIdentifier, "internalIdentifier"),
+            normalizeOptional(externalIdentifier, "externalIdentifier"),
+            normalizeOptional(externalIdSource, "externalIdSource"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toWorkEffortTypeView);
     }
 
     @Override
@@ -1359,6 +1411,21 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
 
     private RequirementTypeView toRequirementTypeView(RequirementType type) {
         return new RequirementTypeView(
+            type.getId(),
+            type.getParentId(),
+            type.getLeft(),
+            type.getRight(),
+            type.getDescription(),
+            type.getComments(),
+            type.getInternalIdentifier(),
+            type.getExternalIdentifier(),
+            type.getExternalIdSource(),
+            type.getCreatedAt()
+        );
+    }
+
+    private WorkEffortTypeView toWorkEffortTypeView(WorkEffortType type) {
+        return new WorkEffortTypeView(
             type.getId(),
             type.getParentId(),
             type.getLeft(),

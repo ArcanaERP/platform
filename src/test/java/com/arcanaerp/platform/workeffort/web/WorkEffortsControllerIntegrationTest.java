@@ -911,6 +911,100 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsWorkEffortTypes() throws Exception {
+        String typeId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/work-effort-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "parentId": 7,
+                  "left": 10,
+                  "right": 11,
+                  "description": " Production work ",
+                  "comments": " Used for production execution ",
+                  "internalIdentifier": " WE-PRODUCTION ",
+                  "externalIdentifier": " EXT-WE-PRODUCTION ",
+                  "externalIdSource": " Legacy "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.parentId").value(7))
+            .andExpect(jsonPath("$.left").value(10))
+            .andExpect(jsonPath("$.right").value(11))
+            .andExpect(jsonPath("$.description").value("Production work"))
+            .andExpect(jsonPath("$.comments").value("Used for production execution"))
+            .andExpect(jsonPath("$.internalIdentifier").value("WE-PRODUCTION"))
+            .andExpect(jsonPath("$.externalIdentifier").value("EXT-WE-PRODUCTION"))
+            .andExpect(jsonPath("$.externalIdSource").value("Legacy"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/work-effort-types/{id}",
+            typeId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(typeId))
+            .andExpect(jsonPath("$.internalIdentifier").value("WE-PRODUCTION"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/work-effort-types"
+        )
+            .param("parentId", "7")
+            .param("internalIdentifier", "WE-PRODUCTION")
+            .param("externalIdentifier", "EXT-WE-PRODUCTION")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(typeId))
+            .andExpect(jsonPath("$.items[0].internalIdentifier").value("WE-PRODUCTION"));
+    }
+
+    @Test
+    void allowsDuplicateWorkEffortTypesForLegacyParity() throws Exception {
+        String payload = """
+            {
+              "description": "Production work",
+              "internalIdentifier": "WE-PRODUCTION-DUP",
+              "externalIdentifier": "EXT-WE-PRODUCTION-DUP",
+              "externalIdSource": "Legacy"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/work-effort-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/work-effort-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/work-effort-types"
+        )
+            .param("internalIdentifier", "WE-PRODUCTION-DUP")
+            .param("externalIdentifier", "EXT-WE-PRODUCTION-DUP")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
     void createsReadsAndListsRequirementPartyRoles() throws Exception {
         String partyRoleId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
             "/api/work-efforts/requirement-party-roles"

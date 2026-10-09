@@ -178,6 +178,9 @@ Work Effort:
 - `POST /api/work-efforts/requirement-types`
 - `GET /api/work-efforts/requirement-types/{id}`
 - `GET /api/work-efforts/requirement-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
+- `POST /api/work-efforts/work-effort-types`
+- `GET /api/work-efforts/work-effort-types/{id}`
+- `GET /api/work-efforts/work-effort-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
 - `POST /api/work-efforts/requirement-party-roles`
 - `GET /api/work-efforts/requirement-party-roles/{id}`
 - `GET /api/work-efforts/requirement-party-roles?requirementId=&partyId=&roleTypeId=&validFrom=&validTo=&page=&size=`
