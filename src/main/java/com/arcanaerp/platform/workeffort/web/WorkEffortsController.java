@@ -25,6 +25,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeComman
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortPurposeTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkRequirementFulfillmentCommand;
@@ -42,6 +43,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortInventoryAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortPartyAssignmentView;
+import com.arcanaerp.platform.workeffort.WorkEffortPurposeTypeView;
 import com.arcanaerp.platform.workeffort.WorkEffortRoleTypeAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
@@ -410,6 +412,48 @@ public class WorkEffortsController {
             externalIdSource,
             PageQuery.of(page, size)
         ).map(this::toWorkEffortTypeResponse);
+    }
+
+    @PostMapping("/work-effort-purpose-types")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkEffortPurposeTypeResponse createWorkEffortPurposeType(
+        @Valid @RequestBody CreateWorkEffortPurposeTypeRequest request
+    ) {
+        return toWorkEffortPurposeTypeResponse(workEffortCatalog.registerWorkEffortPurposeType(
+            new RegisterWorkEffortPurposeTypeCommand(
+                request.parentId(),
+                request.left(),
+                request.right(),
+                request.description(),
+                request.comments(),
+                request.internalIdentifier(),
+                request.externalIdentifier(),
+                request.externalIdSource()
+            )
+        ));
+    }
+
+    @GetMapping("/work-effort-purpose-types/{id}")
+    public WorkEffortPurposeTypeResponse workEffortPurposeTypeById(@PathVariable java.util.UUID id) {
+        return toWorkEffortPurposeTypeResponse(workEffortCatalog.workEffortPurposeTypeById(id));
+    }
+
+    @GetMapping("/work-effort-purpose-types")
+    public PageResult<WorkEffortPurposeTypeResponse> listWorkEffortPurposeTypes(
+        @RequestParam(required = false) Long parentId,
+        @RequestParam(required = false) String internalIdentifier,
+        @RequestParam(required = false) String externalIdentifier,
+        @RequestParam(required = false) String externalIdSource,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listWorkEffortPurposeTypes(
+            parentId,
+            internalIdentifier,
+            externalIdentifier,
+            externalIdSource,
+            PageQuery.of(page, size)
+        ).map(this::toWorkEffortPurposeTypeResponse);
     }
 
     @PostMapping("/association-types")
@@ -1183,6 +1227,21 @@ public class WorkEffortsController {
 
     private WorkEffortTypeResponse toWorkEffortTypeResponse(WorkEffortTypeView view) {
         return new WorkEffortTypeResponse(
+            view.id(),
+            view.parentId(),
+            view.left(),
+            view.right(),
+            view.description(),
+            view.comments(),
+            view.internalIdentifier(),
+            view.externalIdentifier(),
+            view.externalIdSource(),
+            view.createdAt()
+        );
+    }
+
+    private WorkEffortPurposeTypeResponse toWorkEffortPurposeTypeResponse(WorkEffortPurposeTypeView view) {
+        return new WorkEffortPurposeTypeResponse(
             view.id(),
             view.parentId(),
             view.left(),

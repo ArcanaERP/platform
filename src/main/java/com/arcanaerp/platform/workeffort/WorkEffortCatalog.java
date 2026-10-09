@@ -109,6 +109,18 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    WorkEffortPurposeTypeView registerWorkEffortPurposeType(RegisterWorkEffortPurposeTypeCommand command);
+
+    WorkEffortPurposeTypeView workEffortPurposeTypeById(java.util.UUID id);
+
+    PageResult<WorkEffortPurposeTypeView> listWorkEffortPurposeTypes(
+        Long parentId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    );
+
     WorkEffortAssociationTypeView registerAssociationType(RegisterWorkEffortAssociationTypeCommand command);
 
     WorkEffortAssociationTypeView associationTypeByCode(String code);
