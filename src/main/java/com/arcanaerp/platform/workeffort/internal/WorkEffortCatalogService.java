@@ -30,6 +30,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCo
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPurposeTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortSkillStandardCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortTypeAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkRequirementFulfillmentCommand;
@@ -50,6 +51,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortInventoryAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortPartyAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortPurposeTypeView;
 import com.arcanaerp.platform.workeffort.WorkEffortRoleTypeAssignmentView;
+import com.arcanaerp.platform.workeffort.WorkEffortSkillStandardView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortTypeAssociationView;
@@ -102,6 +104,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final WorkEffortStatusChangeAuditRepository workEffortStatusChangeAuditRepository;
     private final WorkEffortAssignmentChangeAuditRepository workEffortAssignmentChangeAuditRepository;
     private final WorkEffortFixedAssetStandardRepository workEffortFixedAssetStandardRepository;
+    private final WorkEffortSkillStandardRepository workEffortSkillStandardRepository;
     private final WorkEffortFixedAssetAssignmentRepository workEffortFixedAssetAssignmentRepository;
     private final WorkEffortInventoryAssignmentRepository workEffortInventoryAssignmentRepository;
     private final WorkEffortPartyAssignmentRepository workEffortPartyAssignmentRepository;
@@ -781,6 +784,53 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toFixedAssetStandardView);
+    }
+
+    @Override
+    public WorkEffortSkillStandardView registerSkillStandard(RegisterWorkEffortSkillStandardCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        WorkEffort workEffort = findWorkEffort(command.tenantCode(), command.effortNumber());
+        return toSkillStandardView(workEffortSkillStandardRepository.save(
+            WorkEffortSkillStandard.create(
+                workEffort,
+                command.skillTypeId(),
+                command.estimatedNumPeople(),
+                command.estimatedDuration(),
+                command.estimatedCostMoneyId(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkEffortSkillStandardView skillStandardById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toSkillStandardView(workEffortSkillStandardRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Work effort skill standard not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkEffortSkillStandardView> listSkillStandards(
+        String tenantCode,
+        String effortNumber,
+        Long skillTypeId,
+        Long estimatedCostMoneyId,
+        PageQuery pageQuery
+    ) {
+        Page<WorkEffortSkillStandard> page = workEffortSkillStandardRepository.findStandardsFiltered(
+            normalizeOptionalUpper(tenantCode, "tenantCode"),
+            normalizeOptionalUpper(effortNumber, "effortNumber"),
+            skillTypeId,
+            estimatedCostMoneyId,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toSkillStandardView);
     }
 
     @Override
@@ -1688,6 +1738,20 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             standard.getEffortNumber(),
             standard.getFixedAssetTypeId(),
             standard.getEstimatedQuantity(),
+            standard.getEstimatedDuration(),
+            standard.getEstimatedCostMoneyId(),
+            standard.getCreatedAt()
+        );
+    }
+
+    private WorkEffortSkillStandardView toSkillStandardView(WorkEffortSkillStandard standard) {
+        return new WorkEffortSkillStandardView(
+            standard.getId(),
+            standard.getWorkEffortId(),
+            standard.getTenantCode(),
+            standard.getEffortNumber(),
+            standard.getSkillTypeId(),
+            standard.getEstimatedNumPeople(),
             standard.getEstimatedDuration(),
             standard.getEstimatedCostMoneyId(),
             standard.getCreatedAt()

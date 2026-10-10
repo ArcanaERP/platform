@@ -1768,6 +1768,160 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsWorkEffortSkillStandards() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebskill01",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebskill01",
+            "we-skill-001",
+            "Repair forklift",
+            "Repair forklift hydraulic line",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        String standardId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/skill-standards"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": " workwebskill01 ",
+                  "effortNumber": " we-skill-001 ",
+                  "skillTypeId": 33,
+                  "estimatedNumPeople": 2.50,
+                  "estimatedDuration": 3.75,
+                  "estimatedCostMoneyId": 8800
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.workEffortId").isNotEmpty())
+            .andExpect(jsonPath("$.tenantCode").value("WORKWEBSKILL01"))
+            .andExpect(jsonPath("$.effortNumber").value("WE-SKILL-001"))
+            .andExpect(jsonPath("$.skillTypeId").value(33))
+            .andExpect(jsonPath("$.estimatedNumPeople").value(2.5))
+            .andExpect(jsonPath("$.estimatedDuration").value(3.75))
+            .andExpect(jsonPath("$.estimatedCostMoneyId").value(8800))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/skill-standards/{id}",
+            standardId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(standardId))
+            .andExpect(jsonPath("$.skillTypeId").value(33));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/skill-standards"
+        )
+            .param("tenantCode", "workwebskill01")
+            .param("effortNumber", "we-skill-001")
+            .param("skillTypeId", "33")
+            .param("estimatedCostMoneyId", "8800")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(standardId))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("WORKWEBSKILL01"))
+            .andExpect(jsonPath("$.items[0].effortNumber").value("WE-SKILL-001"))
+            .andExpect(jsonPath("$.items[0].skillTypeId").value(33));
+    }
+
+    @Test
+    void allowsDuplicateWorkEffortSkillStandardsForLegacyParity() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebskill02",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebskill02",
+            "we-skill-001",
+            "Repair conveyor",
+            "Repair conveyor belt",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+        String payload = """
+            {
+              "tenantCode": "workwebskill02",
+              "effortNumber": "we-skill-001",
+              "skillTypeId": 44,
+              "estimatedNumPeople": 1.00,
+              "estimatedDuration": 4.00,
+              "estimatedCostMoneyId": 9900
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/skill-standards"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/skill-standards"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/skill-standards"
+        )
+            .param("tenantCode", "workwebskill02")
+            .param("effortNumber", "we-skill-001")
+            .param("skillTypeId", "44")
+            .param("estimatedCostMoneyId", "9900")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void rejectsWorkEffortSkillStandardForMissingWorkEffort() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/skill-standards"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "workwebskill03",
+                  "effortNumber": "missing",
+                  "skillTypeId": 33
+                }
+                """))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value(
+                "Work effort not found for tenant/effortNumber: WORKWEBSKILL03/MISSING"
+            ))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/skill-standards"));
+    }
+
+    @Test
     void createsReadsAndListsWorkEffortFixedAssetAssignments() throws Exception {
         ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
             mockMvc,

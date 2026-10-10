@@ -28,6 +28,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCo
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPurposeTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortSkillStandardCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortTypeAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkRequirementFulfillmentCommand;
@@ -48,6 +49,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortInventoryAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortPartyAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortPurposeTypeView;
 import com.arcanaerp.platform.workeffort.WorkEffortRoleTypeAssignmentView;
+import com.arcanaerp.platform.workeffort.WorkEffortSkillStandardView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortTypeAssociationView;
@@ -634,6 +636,46 @@ public class WorkEffortsController {
             estimatedCostMoneyId,
             PageQuery.of(page, size)
         ).map(this::toFixedAssetStandardResponse);
+    }
+
+    @PostMapping("/skill-standards")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkEffortSkillStandardResponse createSkillStandard(
+        @Valid @RequestBody CreateWorkEffortSkillStandardRequest request
+    ) {
+        return toSkillStandardResponse(workEffortCatalog.registerSkillStandard(
+            new RegisterWorkEffortSkillStandardCommand(
+                request.tenantCode(),
+                request.effortNumber(),
+                request.skillTypeId(),
+                request.estimatedNumPeople(),
+                request.estimatedDuration(),
+                request.estimatedCostMoneyId()
+            )
+        ));
+    }
+
+    @GetMapping("/skill-standards/{id}")
+    public WorkEffortSkillStandardResponse skillStandardById(@PathVariable java.util.UUID id) {
+        return toSkillStandardResponse(workEffortCatalog.skillStandardById(id));
+    }
+
+    @GetMapping("/skill-standards")
+    public PageResult<WorkEffortSkillStandardResponse> listSkillStandards(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String effortNumber,
+        @RequestParam(required = false) Long skillTypeId,
+        @RequestParam(required = false) Long estimatedCostMoneyId,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listSkillStandards(
+            tenantCode,
+            effortNumber,
+            skillTypeId,
+            estimatedCostMoneyId,
+            PageQuery.of(page, size)
+        ).map(this::toSkillStandardResponse);
     }
 
     @PostMapping("/fixed-asset-assignments")
@@ -1419,6 +1461,20 @@ public class WorkEffortsController {
             view.effortNumber(),
             view.fixedAssetTypeId(),
             view.estimatedQuantity(),
+            view.estimatedDuration(),
+            view.estimatedCostMoneyId(),
+            view.createdAt()
+        );
+    }
+
+    private WorkEffortSkillStandardResponse toSkillStandardResponse(WorkEffortSkillStandardView view) {
+        return new WorkEffortSkillStandardResponse(
+            view.id(),
+            view.workEffortId(),
+            view.tenantCode(),
+            view.effortNumber(),
+            view.skillTypeId(),
+            view.estimatedNumPeople(),
             view.estimatedDuration(),
             view.estimatedCostMoneyId(),
             view.createdAt()

@@ -172,6 +172,18 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    WorkEffortSkillStandardView registerSkillStandard(RegisterWorkEffortSkillStandardCommand command);
+
+    WorkEffortSkillStandardView skillStandardById(java.util.UUID id);
+
+    PageResult<WorkEffortSkillStandardView> listSkillStandards(
+        String tenantCode,
+        String effortNumber,
+        Long skillTypeId,
+        Long estimatedCostMoneyId,
+        PageQuery pageQuery
+    );
+
     WorkEffortFixedAssetAssignmentView registerFixedAssetAssignment(
         RegisterWorkEffortFixedAssetAssignmentCommand command
     );
