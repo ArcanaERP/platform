@@ -24,6 +24,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetStandardCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortGoodStandardCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPurposeTypeCommand;
@@ -45,6 +46,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetStandardView;
+import com.arcanaerp.platform.workeffort.WorkEffortGoodStandardView;
 import com.arcanaerp.platform.workeffort.WorkEffortInventoryAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortPartyAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortPurposeTypeView;
@@ -676,6 +678,45 @@ public class WorkEffortsController {
             estimatedCostMoneyId,
             PageQuery.of(page, size)
         ).map(this::toSkillStandardResponse);
+    }
+
+    @PostMapping("/good-standards")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkEffortGoodStandardResponse createGoodStandard(
+        @Valid @RequestBody CreateWorkEffortGoodStandardRequest request
+    ) {
+        return toGoodStandardResponse(workEffortCatalog.registerGoodStandard(
+            new RegisterWorkEffortGoodStandardCommand(
+                request.tenantCode(),
+                request.effortNumber(),
+                request.goodTypeId(),
+                request.estimatedQuantity(),
+                request.estimatedCostMoneyId()
+            )
+        ));
+    }
+
+    @GetMapping("/good-standards/{id}")
+    public WorkEffortGoodStandardResponse goodStandardById(@PathVariable java.util.UUID id) {
+        return toGoodStandardResponse(workEffortCatalog.goodStandardById(id));
+    }
+
+    @GetMapping("/good-standards")
+    public PageResult<WorkEffortGoodStandardResponse> listGoodStandards(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String effortNumber,
+        @RequestParam(required = false) Long goodTypeId,
+        @RequestParam(required = false) Long estimatedCostMoneyId,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listGoodStandards(
+            tenantCode,
+            effortNumber,
+            goodTypeId,
+            estimatedCostMoneyId,
+            PageQuery.of(page, size)
+        ).map(this::toGoodStandardResponse);
     }
 
     @PostMapping("/fixed-asset-assignments")
@@ -1476,6 +1517,19 @@ public class WorkEffortsController {
             view.skillTypeId(),
             view.estimatedNumPeople(),
             view.estimatedDuration(),
+            view.estimatedCostMoneyId(),
+            view.createdAt()
+        );
+    }
+
+    private WorkEffortGoodStandardResponse toGoodStandardResponse(WorkEffortGoodStandardView view) {
+        return new WorkEffortGoodStandardResponse(
+            view.id(),
+            view.workEffortId(),
+            view.tenantCode(),
+            view.effortNumber(),
+            view.goodTypeId(),
+            view.estimatedQuantity(),
             view.estimatedCostMoneyId(),
             view.createdAt()
         );

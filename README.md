@@ -202,6 +202,9 @@ Work Effort:
 - `POST /api/work-efforts/skill-standards`
 - `GET /api/work-efforts/skill-standards/{id}`
 - `GET /api/work-efforts/skill-standards?tenantCode=&effortNumber=&skillTypeId=&estimatedCostMoneyId=&page=&size=`
+- `POST /api/work-efforts/good-standards`
+- `GET /api/work-efforts/good-standards/{id}`
+- `GET /api/work-efforts/good-standards?tenantCode=&effortNumber=&goodTypeId=&estimatedCostMoneyId=&page=&size=`
 - `POST /api/work-efforts/fixed-asset-assignments`
 - `GET /api/work-efforts/fixed-asset-assignments/{id}`
 - `GET /api/work-efforts/fixed-asset-assignments?tenantCode=&effortNumber=&fixedAssetCode=&page=&size=`

@@ -26,6 +26,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetStandardCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortGoodStandardCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPurposeTypeCommand;
@@ -47,6 +48,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetStandardView;
+import com.arcanaerp.platform.workeffort.WorkEffortGoodStandardView;
 import com.arcanaerp.platform.workeffort.WorkEffortInventoryAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortPartyAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortPurposeTypeView;
@@ -105,6 +107,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final WorkEffortAssignmentChangeAuditRepository workEffortAssignmentChangeAuditRepository;
     private final WorkEffortFixedAssetStandardRepository workEffortFixedAssetStandardRepository;
     private final WorkEffortSkillStandardRepository workEffortSkillStandardRepository;
+    private final WorkEffortGoodStandardRepository workEffortGoodStandardRepository;
     private final WorkEffortFixedAssetAssignmentRepository workEffortFixedAssetAssignmentRepository;
     private final WorkEffortInventoryAssignmentRepository workEffortInventoryAssignmentRepository;
     private final WorkEffortPartyAssignmentRepository workEffortPartyAssignmentRepository;
@@ -831,6 +834,52 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toSkillStandardView);
+    }
+
+    @Override
+    public WorkEffortGoodStandardView registerGoodStandard(RegisterWorkEffortGoodStandardCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        WorkEffort workEffort = findWorkEffort(command.tenantCode(), command.effortNumber());
+        return toGoodStandardView(workEffortGoodStandardRepository.save(
+            WorkEffortGoodStandard.create(
+                workEffort,
+                command.goodTypeId(),
+                command.estimatedQuantity(),
+                command.estimatedCostMoneyId(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkEffortGoodStandardView goodStandardById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toGoodStandardView(workEffortGoodStandardRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Work effort good standard not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkEffortGoodStandardView> listGoodStandards(
+        String tenantCode,
+        String effortNumber,
+        Long goodTypeId,
+        Long estimatedCostMoneyId,
+        PageQuery pageQuery
+    ) {
+        Page<WorkEffortGoodStandard> page = workEffortGoodStandardRepository.findStandardsFiltered(
+            normalizeOptionalUpper(tenantCode, "tenantCode"),
+            normalizeOptionalUpper(effortNumber, "effortNumber"),
+            goodTypeId,
+            estimatedCostMoneyId,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toGoodStandardView);
     }
 
     @Override
@@ -1753,6 +1802,19 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             standard.getSkillTypeId(),
             standard.getEstimatedNumPeople(),
             standard.getEstimatedDuration(),
+            standard.getEstimatedCostMoneyId(),
+            standard.getCreatedAt()
+        );
+    }
+
+    private WorkEffortGoodStandardView toGoodStandardView(WorkEffortGoodStandard standard) {
+        return new WorkEffortGoodStandardView(
+            standard.getId(),
+            standard.getWorkEffortId(),
+            standard.getTenantCode(),
+            standard.getEffortNumber(),
+            standard.getGoodTypeId(),
+            standard.getEstimatedQuantity(),
             standard.getEstimatedCostMoneyId(),
             standard.getCreatedAt()
         );

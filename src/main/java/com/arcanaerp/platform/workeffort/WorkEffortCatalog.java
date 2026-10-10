@@ -184,6 +184,18 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    WorkEffortGoodStandardView registerGoodStandard(RegisterWorkEffortGoodStandardCommand command);
+
+    WorkEffortGoodStandardView goodStandardById(java.util.UUID id);
+
+    PageResult<WorkEffortGoodStandardView> listGoodStandards(
+        String tenantCode,
+        String effortNumber,
+        Long goodTypeId,
+        Long estimatedCostMoneyId,
+        PageQuery pageQuery
+    );
+
     WorkEffortFixedAssetAssignmentView registerFixedAssetAssignment(
         RegisterWorkEffortFixedAssetAssignmentCommand command
     );

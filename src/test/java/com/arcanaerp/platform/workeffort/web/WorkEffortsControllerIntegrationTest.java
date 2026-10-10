@@ -1922,6 +1922,157 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsWorkEffortGoodStandards() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebgood01",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebgood01",
+            "we-good-001",
+            "Repair forklift",
+            "Repair forklift hydraulic line",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        String standardId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/good-standards"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": " workwebgood01 ",
+                  "effortNumber": " we-good-001 ",
+                  "goodTypeId": 55,
+                  "estimatedQuantity": 12.50,
+                  "estimatedCostMoneyId": 8800
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.workEffortId").isNotEmpty())
+            .andExpect(jsonPath("$.tenantCode").value("WORKWEBGOOD01"))
+            .andExpect(jsonPath("$.effortNumber").value("WE-GOOD-001"))
+            .andExpect(jsonPath("$.goodTypeId").value(55))
+            .andExpect(jsonPath("$.estimatedQuantity").value(12.5))
+            .andExpect(jsonPath("$.estimatedCostMoneyId").value(8800))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/good-standards/{id}",
+            standardId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(standardId))
+            .andExpect(jsonPath("$.goodTypeId").value(55));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/good-standards"
+        )
+            .param("tenantCode", "workwebgood01")
+            .param("effortNumber", "we-good-001")
+            .param("goodTypeId", "55")
+            .param("estimatedCostMoneyId", "8800")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(standardId))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("WORKWEBGOOD01"))
+            .andExpect(jsonPath("$.items[0].effortNumber").value("WE-GOOD-001"))
+            .andExpect(jsonPath("$.items[0].goodTypeId").value(55));
+    }
+
+    @Test
+    void allowsDuplicateWorkEffortGoodStandardsForLegacyParity() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebgood02",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebgood02",
+            "we-good-001",
+            "Repair conveyor",
+            "Repair conveyor belt",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+        String payload = """
+            {
+              "tenantCode": "workwebgood02",
+              "effortNumber": "we-good-001",
+              "goodTypeId": 66,
+              "estimatedQuantity": 4.00,
+              "estimatedCostMoneyId": 9900
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/good-standards"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/good-standards"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/good-standards"
+        )
+            .param("tenantCode", "workwebgood02")
+            .param("effortNumber", "we-good-001")
+            .param("goodTypeId", "66")
+            .param("estimatedCostMoneyId", "9900")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void rejectsWorkEffortGoodStandardForMissingWorkEffort() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/good-standards"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "workwebgood03",
+                  "effortNumber": "missing",
+                  "goodTypeId": 55
+                }
+                """))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value(
+                "Work effort not found for tenant/effortNumber: WORKWEBGOOD03/MISSING"
+            ))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/good-standards"));
+    }
+
+    @Test
     void createsReadsAndListsWorkEffortFixedAssetAssignments() throws Exception {
         ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
             mockMvc,

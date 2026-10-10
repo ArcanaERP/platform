@@ -4,7 +4,7 @@ Updated: 2026-08-30
 
 ## Scope
 
-Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible requirements, legacy-compatible requirement types, legacy-compatible work-effort types, legacy-compatible work-effort purpose types, legacy-compatible work-effort type associations, legacy-compatible associated-record joins, legacy-compatible work-order item fulfillment joins, legacy-compatible order requirement commitments, legacy-compatible work requirement fulfillment joins, legacy-compatible requirement party-role joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset standards, legacy-compatible skill standards, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
+Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible requirements, legacy-compatible requirement types, legacy-compatible work-effort types, legacy-compatible work-effort purpose types, legacy-compatible work-effort type associations, legacy-compatible associated-record joins, legacy-compatible work-order item fulfillment joins, legacy-compatible order requirement commitments, legacy-compatible work requirement fulfillment joins, legacy-compatible requirement party-role joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset standards, legacy-compatible skill standards, legacy-compatible good standards, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
 
 ## Aggregate
 
@@ -403,6 +403,29 @@ Rules:
 - `estimatedCostMoneyId` is stored as a numeric logical reference
 - duplicate rows are allowed for parity with the legacy non-unique indexes
 
+### WorkEffortGoodStandard
+
+Purpose:
+- mirror legacy `work_effort_good_standards` records between work efforts and good types
+- capture estimated quantity and cost-money references for good type standards
+
+Core fields:
+- `id` (`UUID`)
+- `workEffortId`
+- `tenantCode`
+- `effortNumber`
+- `goodTypeId`
+- `estimatedQuantity`
+- `estimatedCostMoneyId`
+- `createdAt`
+
+Rules:
+- writes require an existing work effort by `tenantCode + effortNumber`
+- `tenantCode` and `effortNumber` are normalized to uppercase
+- `goodTypeId` is required and stored as a numeric logical reference
+- `estimatedCostMoneyId` is stored as a numeric logical reference
+- duplicate rows are allowed for parity with the legacy non-unique index
+
 ### WorkEffortFixedAssetAssignment
 
 Purpose:
@@ -498,6 +521,7 @@ Rules:
 - association records store relationship-type references as logical codes; this slice does not add a Relationship Type catalog dependency
 - fixed-asset standards store fixed-asset type and money ids as numeric logical references without depending on Inventory or Money catalogs
 - skill standards store skill type and money ids as numeric logical references without depending on Skill or Money catalogs
+- good standards store good type and money ids as numeric logical references without depending on Product or Money catalogs
 - associated-record links store polymorphic record id/type values without depending on target modules
 - work-order item fulfillments store order-line-item ids as logical references without depending on Orders
 - order requirement commitments store order-line-item and requirement ids as logical references without depending on Orders or Requirement
@@ -555,6 +579,9 @@ Rules:
 - `POST /api/work-efforts/skill-standards`
 - `GET /api/work-efforts/skill-standards/{id}`
 - `GET /api/work-efforts/skill-standards?tenantCode=&effortNumber=&skillTypeId=&estimatedCostMoneyId=&page=&size=`
+- `POST /api/work-efforts/good-standards`
+- `GET /api/work-efforts/good-standards/{id}`
+- `GET /api/work-efforts/good-standards?tenantCode=&effortNumber=&goodTypeId=&estimatedCostMoneyId=&page=&size=`
 - `POST /api/work-efforts/fixed-asset-assignments`
 - `GET /api/work-efforts/fixed-asset-assignments/{id}`
 - `GET /api/work-efforts/fixed-asset-assignments?tenantCode=&effortNumber=&fixedAssetCode=&page=&size=`
