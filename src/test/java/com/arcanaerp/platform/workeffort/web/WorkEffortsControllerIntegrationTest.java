@@ -1099,6 +1099,108 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsWorkEffortTypeAssociations() throws Exception {
+        String associationId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/work-effort-type-associations"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "workEffortTypeAssociationTypeId": 5,
+                  "fromWorkEffortTypeId": 11,
+                  "toWorkEffortTypeId": 12,
+                  "description": " Dependency standard ",
+                  "comments": " Used for valid type pairs ",
+                  "internalIdentifier": " WE-TYPE-DEP ",
+                  "externalIdentifier": " EXT-WE-TYPE-DEP ",
+                  "externalIdSource": " Legacy "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.workEffortTypeAssociationTypeId").value(5))
+            .andExpect(jsonPath("$.fromWorkEffortTypeId").value(11))
+            .andExpect(jsonPath("$.toWorkEffortTypeId").value(12))
+            .andExpect(jsonPath("$.description").value("Dependency standard"))
+            .andExpect(jsonPath("$.comments").value("Used for valid type pairs"))
+            .andExpect(jsonPath("$.internalIdentifier").value("WE-TYPE-DEP"))
+            .andExpect(jsonPath("$.externalIdentifier").value("EXT-WE-TYPE-DEP"))
+            .andExpect(jsonPath("$.externalIdSource").value("Legacy"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/work-effort-type-associations/{id}",
+            associationId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(associationId))
+            .andExpect(jsonPath("$.internalIdentifier").value("WE-TYPE-DEP"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/work-effort-type-associations"
+        )
+            .param("workEffortTypeAssociationTypeId", "5")
+            .param("fromWorkEffortTypeId", "11")
+            .param("toWorkEffortTypeId", "12")
+            .param("internalIdentifier", "WE-TYPE-DEP")
+            .param("externalIdentifier", "EXT-WE-TYPE-DEP")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(associationId))
+            .andExpect(jsonPath("$.items[0].internalIdentifier").value("WE-TYPE-DEP"));
+    }
+
+    @Test
+    void allowsDuplicateWorkEffortTypeAssociationsForLegacyParity() throws Exception {
+        String payload = """
+            {
+              "workEffortTypeAssociationTypeId": 15,
+              "fromWorkEffortTypeId": 21,
+              "toWorkEffortTypeId": 22,
+              "description": "Dependency standard",
+              "internalIdentifier": "WE-TYPE-DEP-DUP",
+              "externalIdentifier": "EXT-WE-TYPE-DEP-DUP",
+              "externalIdSource": "Legacy"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/work-effort-type-associations"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/work-effort-type-associations"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/work-effort-type-associations"
+        )
+            .param("workEffortTypeAssociationTypeId", "15")
+            .param("fromWorkEffortTypeId", "21")
+            .param("toWorkEffortTypeId", "22")
+            .param("internalIdentifier", "WE-TYPE-DEP-DUP")
+            .param("externalIdentifier", "EXT-WE-TYPE-DEP-DUP")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
     void createsReadsAndListsRequirementPartyRoles() throws Exception {
         String partyRoleId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
             "/api/work-efforts/requirement-party-roles"

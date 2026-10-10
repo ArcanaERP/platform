@@ -27,6 +27,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCo
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPurposeTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortTypeAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkRequirementFulfillmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkOrderItemFulfillmentCommand;
@@ -47,6 +48,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortPurposeTypeView;
 import com.arcanaerp.platform.workeffort.WorkEffortRoleTypeAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
+import com.arcanaerp.platform.workeffort.WorkEffortTypeAssociationView;
 import com.arcanaerp.platform.workeffort.WorkEffortTypeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
 import com.arcanaerp.platform.workeffort.WorkRequirementFulfillmentView;
@@ -454,6 +456,52 @@ public class WorkEffortsController {
             externalIdSource,
             PageQuery.of(page, size)
         ).map(this::toWorkEffortPurposeTypeResponse);
+    }
+
+    @PostMapping("/work-effort-type-associations")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkEffortTypeAssociationResponse createWorkEffortTypeAssociation(
+        @Valid @RequestBody CreateWorkEffortTypeAssociationRequest request
+    ) {
+        return toWorkEffortTypeAssociationResponse(workEffortCatalog.registerWorkEffortTypeAssociation(
+            new RegisterWorkEffortTypeAssociationCommand(
+                request.workEffortTypeAssociationTypeId(),
+                request.fromWorkEffortTypeId(),
+                request.toWorkEffortTypeId(),
+                request.description(),
+                request.comments(),
+                request.internalIdentifier(),
+                request.externalIdentifier(),
+                request.externalIdSource()
+            )
+        ));
+    }
+
+    @GetMapping("/work-effort-type-associations/{id}")
+    public WorkEffortTypeAssociationResponse workEffortTypeAssociationById(@PathVariable java.util.UUID id) {
+        return toWorkEffortTypeAssociationResponse(workEffortCatalog.workEffortTypeAssociationById(id));
+    }
+
+    @GetMapping("/work-effort-type-associations")
+    public PageResult<WorkEffortTypeAssociationResponse> listWorkEffortTypeAssociations(
+        @RequestParam(required = false) Long workEffortTypeAssociationTypeId,
+        @RequestParam(required = false) Long fromWorkEffortTypeId,
+        @RequestParam(required = false) Long toWorkEffortTypeId,
+        @RequestParam(required = false) String internalIdentifier,
+        @RequestParam(required = false) String externalIdentifier,
+        @RequestParam(required = false) String externalIdSource,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listWorkEffortTypeAssociations(
+            workEffortTypeAssociationTypeId,
+            fromWorkEffortTypeId,
+            toWorkEffortTypeId,
+            internalIdentifier,
+            externalIdentifier,
+            externalIdSource,
+            PageQuery.of(page, size)
+        ).map(this::toWorkEffortTypeAssociationResponse);
     }
 
     @PostMapping("/association-types")
@@ -1246,6 +1294,23 @@ public class WorkEffortsController {
             view.parentId(),
             view.left(),
             view.right(),
+            view.description(),
+            view.comments(),
+            view.internalIdentifier(),
+            view.externalIdentifier(),
+            view.externalIdSource(),
+            view.createdAt()
+        );
+    }
+
+    private WorkEffortTypeAssociationResponse toWorkEffortTypeAssociationResponse(
+        WorkEffortTypeAssociationView view
+    ) {
+        return new WorkEffortTypeAssociationResponse(
+            view.id(),
+            view.workEffortTypeAssociationTypeId(),
+            view.fromWorkEffortTypeId(),
+            view.toWorkEffortTypeId(),
             view.description(),
             view.comments(),
             view.internalIdentifier(),

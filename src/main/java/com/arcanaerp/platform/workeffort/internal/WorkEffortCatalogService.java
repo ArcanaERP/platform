@@ -29,6 +29,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCo
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPurposeTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortTypeAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkRequirementFulfillmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkOrderItemFulfillmentCommand;
@@ -49,6 +50,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortPurposeTypeView;
 import com.arcanaerp.platform.workeffort.WorkEffortRoleTypeAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortStatus;
 import com.arcanaerp.platform.workeffort.WorkEffortStatusChangeView;
+import com.arcanaerp.platform.workeffort.WorkEffortTypeAssociationView;
 import com.arcanaerp.platform.workeffort.WorkEffortTypeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
 import com.arcanaerp.platform.workeffort.WorkRequirementFulfillmentView;
@@ -92,6 +94,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final RequirementTypeRepository requirementTypeRepository;
     private final WorkEffortTypeRepository workEffortTypeRepository;
     private final WorkEffortPurposeTypeRepository workEffortPurposeTypeRepository;
+    private final WorkEffortTypeAssociationRepository workEffortTypeAssociationRepository;
     private final WorkEffortAssociationTypeRepository workEffortAssociationTypeRepository;
     private final WorkEffortAssociationRepository workEffortAssociationRepository;
     private final WorkEffortStatusChangeAuditRepository workEffortStatusChangeAuditRepository;
@@ -567,6 +570,61 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toWorkEffortPurposeTypeView);
+    }
+
+    @Override
+    public WorkEffortTypeAssociationView registerWorkEffortTypeAssociation(
+        RegisterWorkEffortTypeAssociationCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toWorkEffortTypeAssociationView(workEffortTypeAssociationRepository.save(
+            WorkEffortTypeAssociation.create(
+                command.workEffortTypeAssociationTypeId(),
+                command.fromWorkEffortTypeId(),
+                command.toWorkEffortTypeId(),
+                command.description(),
+                command.comments(),
+                command.internalIdentifier(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkEffortTypeAssociationView workEffortTypeAssociationById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toWorkEffortTypeAssociationView(workEffortTypeAssociationRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Work effort type association not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkEffortTypeAssociationView> listWorkEffortTypeAssociations(
+        Long workEffortTypeAssociationTypeId,
+        Long fromWorkEffortTypeId,
+        Long toWorkEffortTypeId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    ) {
+        Page<WorkEffortTypeAssociation> page = workEffortTypeAssociationRepository.findAssociationsFiltered(
+            workEffortTypeAssociationTypeId,
+            fromWorkEffortTypeId,
+            toWorkEffortTypeId,
+            normalizeOptional(internalIdentifier, "internalIdentifier"),
+            normalizeOptional(externalIdentifier, "externalIdentifier"),
+            normalizeOptional(externalIdSource, "externalIdSource"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toWorkEffortTypeAssociationView);
     }
 
     @Override
@@ -1503,6 +1561,21 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             type.getExternalIdentifier(),
             type.getExternalIdSource(),
             type.getCreatedAt()
+        );
+    }
+
+    private WorkEffortTypeAssociationView toWorkEffortTypeAssociationView(WorkEffortTypeAssociation association) {
+        return new WorkEffortTypeAssociationView(
+            association.getId(),
+            association.getWorkEffortTypeAssociationTypeId(),
+            association.getFromWorkEffortTypeId(),
+            association.getToWorkEffortTypeId(),
+            association.getDescription(),
+            association.getComments(),
+            association.getInternalIdentifier(),
+            association.getExternalIdentifier(),
+            association.getExternalIdSource(),
+            association.getCreatedAt()
         );
     }
 

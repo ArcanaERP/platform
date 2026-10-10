@@ -184,6 +184,9 @@ Work Effort:
 - `POST /api/work-efforts/work-effort-purpose-types`
 - `GET /api/work-efforts/work-effort-purpose-types/{id}`
 - `GET /api/work-efforts/work-effort-purpose-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
+- `POST /api/work-efforts/work-effort-type-associations`
+- `GET /api/work-efforts/work-effort-type-associations/{id}`
+- `GET /api/work-efforts/work-effort-type-associations?workEffortTypeAssociationTypeId=&fromWorkEffortTypeId=&toWorkEffortTypeId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
 - `POST /api/work-efforts/requirement-party-roles`
 - `GET /api/work-efforts/requirement-party-roles/{id}`
 - `GET /api/work-efforts/requirement-party-roles?requirementId=&partyId=&roleTypeId=&validFrom=&validTo=&page=&size=`

@@ -121,6 +121,22 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    WorkEffortTypeAssociationView registerWorkEffortTypeAssociation(
+        RegisterWorkEffortTypeAssociationCommand command
+    );
+
+    WorkEffortTypeAssociationView workEffortTypeAssociationById(java.util.UUID id);
+
+    PageResult<WorkEffortTypeAssociationView> listWorkEffortTypeAssociations(
+        Long workEffortTypeAssociationTypeId,
+        Long fromWorkEffortTypeId,
+        Long toWorkEffortTypeId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    );
+
     WorkEffortAssociationTypeView registerAssociationType(RegisterWorkEffortAssociationTypeCommand command);
 
     WorkEffortAssociationTypeView associationTypeByCode(String code);

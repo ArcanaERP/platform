@@ -4,7 +4,7 @@ Updated: 2026-08-30
 
 ## Scope
 
-Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible requirements, legacy-compatible requirement types, legacy-compatible work-effort types, legacy-compatible work-effort purpose types, legacy-compatible associated-record joins, legacy-compatible work-order item fulfillment joins, legacy-compatible order requirement commitments, legacy-compatible work requirement fulfillment joins, legacy-compatible requirement party-role joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
+Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible requirements, legacy-compatible requirement types, legacy-compatible work-effort types, legacy-compatible work-effort purpose types, legacy-compatible work-effort type associations, legacy-compatible associated-record joins, legacy-compatible work-order item fulfillment joins, legacy-compatible order requirement commitments, legacy-compatible work requirement fulfillment joins, legacy-compatible requirement party-role joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
 
 ## Aggregate
 
@@ -173,6 +173,30 @@ Core fields:
 Rules:
 - all legacy columns are optional in this slice except generated `id` and `createdAt`
 - `description`, `comments`, `internalIdentifier`, `externalIdentifier`, and `externalIdSource` are trimmed when present
+- duplicate rows are allowed because the legacy table has no uniqueness constraint
+
+### WorkEffortTypeAssociation
+
+Purpose:
+- mirror legacy `work_effort_type_associations` records for valid associations between work-effort types
+- distinguish dependency and work-breakdown type associations using `workEffortTypeAssociationTypeId`
+
+Core fields:
+- `id` (`UUID`)
+- `workEffortTypeAssociationTypeId`
+- `fromWorkEffortTypeId`
+- `toWorkEffortTypeId`
+- `description`
+- `comments`
+- `internalIdentifier`
+- `externalIdentifier`
+- `externalIdSource`
+- `createdAt`
+
+Rules:
+- `workEffortTypeAssociationTypeId`, `fromWorkEffortTypeId`, and `toWorkEffortTypeId` are required
+- work-effort type ids are stored as numeric logical references without depending on WorkEffortType validation
+- metadata fields are trimmed when present
 - duplicate rows are allowed because the legacy table has no uniqueness constraint
 
 ### AssociatedWorkEffort
@@ -433,6 +457,7 @@ Rules:
 - requirement types store parent ids as logical nested-set references without adding tree mutation behavior
 - work-effort types store parent ids as logical nested-set references without adding tree mutation behavior
 - work-effort purpose types store parent ids as logical nested-set references without adding tree mutation behavior
+- work-effort type associations store work-effort type ids as numeric logical references without adding WorkEffortType validation
 - no dependency on `identity.internal`
 
 ## Minimal HTTP Surface
@@ -462,6 +487,9 @@ Rules:
 - `POST /api/work-efforts/work-effort-purpose-types`
 - `GET /api/work-efforts/work-effort-purpose-types/{id}`
 - `GET /api/work-efforts/work-effort-purpose-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
+- `POST /api/work-efforts/work-effort-type-associations`
+- `GET /api/work-efforts/work-effort-type-associations/{id}`
+- `GET /api/work-efforts/work-effort-type-associations?workEffortTypeAssociationTypeId=&fromWorkEffortTypeId=&toWorkEffortTypeId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
 - `POST /api/work-efforts/requirement-party-roles`
 - `GET /api/work-efforts/requirement-party-roles/{id}`
 - `GET /api/work-efforts/requirement-party-roles?requirementId=&partyId=&roleTypeId=&validFrom=&validTo=&page=&size=`
