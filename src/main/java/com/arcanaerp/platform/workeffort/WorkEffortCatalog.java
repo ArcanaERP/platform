@@ -158,6 +158,20 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    WorkEffortFixedAssetStandardView registerFixedAssetStandard(
+        RegisterWorkEffortFixedAssetStandardCommand command
+    );
+
+    WorkEffortFixedAssetStandardView fixedAssetStandardById(java.util.UUID id);
+
+    PageResult<WorkEffortFixedAssetStandardView> listFixedAssetStandards(
+        String tenantCode,
+        String effortNumber,
+        Long fixedAssetTypeId,
+        Long estimatedCostMoneyId,
+        PageQuery pageQuery
+    );
+
     WorkEffortFixedAssetAssignmentView registerFixedAssetAssignment(
         RegisterWorkEffortFixedAssetAssignmentCommand command
     );

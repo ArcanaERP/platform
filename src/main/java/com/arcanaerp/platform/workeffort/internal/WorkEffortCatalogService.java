@@ -25,6 +25,7 @@ import com.arcanaerp.platform.workeffort.RegisterRequirementTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetStandardCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPurposeTypeCommand;
@@ -44,6 +45,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetAssignmentView;
+import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetStandardView;
 import com.arcanaerp.platform.workeffort.WorkEffortInventoryAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortPartyAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortPurposeTypeView;
@@ -99,6 +101,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final WorkEffortAssociationRepository workEffortAssociationRepository;
     private final WorkEffortStatusChangeAuditRepository workEffortStatusChangeAuditRepository;
     private final WorkEffortAssignmentChangeAuditRepository workEffortAssignmentChangeAuditRepository;
+    private final WorkEffortFixedAssetStandardRepository workEffortFixedAssetStandardRepository;
     private final WorkEffortFixedAssetAssignmentRepository workEffortFixedAssetAssignmentRepository;
     private final WorkEffortInventoryAssignmentRepository workEffortInventoryAssignmentRepository;
     private final WorkEffortPartyAssignmentRepository workEffortPartyAssignmentRepository;
@@ -729,6 +732,55 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toAssociationView);
+    }
+
+    @Override
+    public WorkEffortFixedAssetStandardView registerFixedAssetStandard(
+        RegisterWorkEffortFixedAssetStandardCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        WorkEffort workEffort = findWorkEffort(command.tenantCode(), command.effortNumber());
+        return toFixedAssetStandardView(workEffortFixedAssetStandardRepository.save(
+            WorkEffortFixedAssetStandard.create(
+                workEffort,
+                command.fixedAssetTypeId(),
+                command.estimatedQuantity(),
+                command.estimatedDuration(),
+                command.estimatedCostMoneyId(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkEffortFixedAssetStandardView fixedAssetStandardById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toFixedAssetStandardView(workEffortFixedAssetStandardRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Work effort fixed asset standard not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkEffortFixedAssetStandardView> listFixedAssetStandards(
+        String tenantCode,
+        String effortNumber,
+        Long fixedAssetTypeId,
+        Long estimatedCostMoneyId,
+        PageQuery pageQuery
+    ) {
+        Page<WorkEffortFixedAssetStandard> page = workEffortFixedAssetStandardRepository.findStandardsFiltered(
+            normalizeOptionalUpper(tenantCode, "tenantCode"),
+            normalizeOptionalUpper(effortNumber, "effortNumber"),
+            fixedAssetTypeId,
+            estimatedCostMoneyId,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toFixedAssetStandardView);
     }
 
     @Override
@@ -1623,6 +1675,22 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             assignment.getEffortNumber(),
             assignment.getFixedAssetCode(),
             assignment.getCreatedAt()
+        );
+    }
+
+    private WorkEffortFixedAssetStandardView toFixedAssetStandardView(
+        WorkEffortFixedAssetStandard standard
+    ) {
+        return new WorkEffortFixedAssetStandardView(
+            standard.getId(),
+            standard.getWorkEffortId(),
+            standard.getTenantCode(),
+            standard.getEffortNumber(),
+            standard.getFixedAssetTypeId(),
+            standard.getEstimatedQuantity(),
+            standard.getEstimatedDuration(),
+            standard.getEstimatedCostMoneyId(),
+            standard.getCreatedAt()
         );
     }
 

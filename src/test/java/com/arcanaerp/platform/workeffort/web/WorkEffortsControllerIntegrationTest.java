@@ -1614,6 +1614,160 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsWorkEffortFixedAssetStandards() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebstandard01",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebstandard01",
+            "we-standard-001",
+            "Repair forklift",
+            "Repair forklift hydraulic line",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        String standardId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/fixed-asset-standards"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": " workwebstandard01 ",
+                  "effortNumber": " we-standard-001 ",
+                  "fixedAssetTypeId": 77,
+                  "estimatedQuantity": 2.50,
+                  "estimatedDuration": 3.75,
+                  "estimatedCostMoneyId": 8800
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.workEffortId").isNotEmpty())
+            .andExpect(jsonPath("$.tenantCode").value("WORKWEBSTANDARD01"))
+            .andExpect(jsonPath("$.effortNumber").value("WE-STANDARD-001"))
+            .andExpect(jsonPath("$.fixedAssetTypeId").value(77))
+            .andExpect(jsonPath("$.estimatedQuantity").value(2.5))
+            .andExpect(jsonPath("$.estimatedDuration").value(3.75))
+            .andExpect(jsonPath("$.estimatedCostMoneyId").value(8800))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/fixed-asset-standards/{id}",
+            standardId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(standardId))
+            .andExpect(jsonPath("$.fixedAssetTypeId").value(77));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/fixed-asset-standards"
+        )
+            .param("tenantCode", "workwebstandard01")
+            .param("effortNumber", "we-standard-001")
+            .param("fixedAssetTypeId", "77")
+            .param("estimatedCostMoneyId", "8800")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(standardId))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("WORKWEBSTANDARD01"))
+            .andExpect(jsonPath("$.items[0].effortNumber").value("WE-STANDARD-001"))
+            .andExpect(jsonPath("$.items[0].fixedAssetTypeId").value(77));
+    }
+
+    @Test
+    void allowsDuplicateWorkEffortFixedAssetStandardsForLegacyParity() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebstandard02",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebstandard02",
+            "we-standard-001",
+            "Repair conveyor",
+            "Repair conveyor belt",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+        String payload = """
+            {
+              "tenantCode": "workwebstandard02",
+              "effortNumber": "we-standard-001",
+              "fixedAssetTypeId": 88,
+              "estimatedQuantity": 1.00,
+              "estimatedDuration": 4.00,
+              "estimatedCostMoneyId": 9900
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/fixed-asset-standards"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/fixed-asset-standards"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/fixed-asset-standards"
+        )
+            .param("tenantCode", "workwebstandard02")
+            .param("effortNumber", "we-standard-001")
+            .param("fixedAssetTypeId", "88")
+            .param("estimatedCostMoneyId", "9900")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void rejectsWorkEffortFixedAssetStandardForMissingWorkEffort() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/fixed-asset-standards"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "workwebstandard03",
+                  "effortNumber": "missing",
+                  "fixedAssetTypeId": 77
+                }
+                """))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value(
+                "Work effort not found for tenant/effortNumber: WORKWEBSTANDARD03/MISSING"
+            ))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/fixed-asset-standards"));
+    }
+
+    @Test
     void createsReadsAndListsWorkEffortFixedAssetAssignments() throws Exception {
         ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
             mockMvc,

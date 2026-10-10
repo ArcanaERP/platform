@@ -196,6 +196,9 @@ Work Effort:
 - `POST /api/work-efforts/associations`
 - `GET /api/work-efforts/associations/{id}`
 - `GET /api/work-efforts/associations?tenantCode=&associationTypeCode=&fromEffortNumber=&toEffortNumber=&relationshipTypeCode=&effectiveFrom=&effectiveThru=&page=&size=`
+- `POST /api/work-efforts/fixed-asset-standards`
+- `GET /api/work-efforts/fixed-asset-standards/{id}`
+- `GET /api/work-efforts/fixed-asset-standards?tenantCode=&effortNumber=&fixedAssetTypeId=&estimatedCostMoneyId=&page=&size=`
 - `POST /api/work-efforts/fixed-asset-assignments`
 - `GET /api/work-efforts/fixed-asset-assignments/{id}`
 - `GET /api/work-efforts/fixed-asset-assignments?tenantCode=&effortNumber=&fixedAssetCode=&page=&size=`
