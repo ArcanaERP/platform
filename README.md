@@ -208,6 +208,9 @@ Work Effort:
 - `POST /api/work-efforts/inventory-produced`
 - `GET /api/work-efforts/inventory-produced/{id}`
 - `GET /api/work-efforts/inventory-produced?tenantCode=&effortNumber=&inventoryEntryId=&page=&size=`
+- `POST /api/work-efforts/deliverable-produced`
+- `GET /api/work-efforts/deliverable-produced/{id}`
+- `GET /api/work-efforts/deliverable-produced?tenantCode=&effortNumber=&deliverableId=&page=&size=`
 - `POST /api/work-efforts/fixed-asset-assignments`
 - `GET /api/work-efforts/fixed-asset-assignments/{id}`
 - `GET /api/work-efforts/fixed-asset-assignments?tenantCode=&effortNumber=&fixedAssetCode=&page=&size=`

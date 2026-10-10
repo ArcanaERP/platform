@@ -4,7 +4,7 @@ Updated: 2026-08-30
 
 ## Scope
 
-Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible requirements, legacy-compatible requirement types, legacy-compatible work-effort types, legacy-compatible work-effort purpose types, legacy-compatible work-effort type associations, legacy-compatible associated-record joins, legacy-compatible work-order item fulfillment joins, legacy-compatible order requirement commitments, legacy-compatible work requirement fulfillment joins, legacy-compatible requirement party-role joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset standards, legacy-compatible skill standards, legacy-compatible good standards, legacy-compatible inventory produced results, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
+Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible requirements, legacy-compatible requirement types, legacy-compatible work-effort types, legacy-compatible work-effort purpose types, legacy-compatible work-effort type associations, legacy-compatible associated-record joins, legacy-compatible work-order item fulfillment joins, legacy-compatible order requirement commitments, legacy-compatible work requirement fulfillment joins, legacy-compatible requirement party-role joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset standards, legacy-compatible skill standards, legacy-compatible good standards, legacy-compatible inventory produced results, legacy-compatible deliverable produced results, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
 
 ## Aggregate
 
@@ -446,6 +446,26 @@ Rules:
 - `inventoryEntryId` is required and stored as a numeric logical reference
 - duplicate rows are allowed for parity with the legacy non-unique indexes
 
+### WorkEffortDeliverableProduced
+
+Purpose:
+- mirror legacy `work_effort_deliverable_produced` records between work efforts and produced deliverables
+- represent deliverable results produced by a work effort
+
+Core fields:
+- `id` (`UUID`)
+- `workEffortId`
+- `tenantCode`
+- `effortNumber`
+- `deliverableId`
+- `createdAt`
+
+Rules:
+- writes require an existing work effort by `tenantCode + effortNumber`
+- `tenantCode` and `effortNumber` are normalized to uppercase
+- `deliverableId` is required and stored as a numeric logical reference
+- duplicate rows are allowed for parity with the legacy non-unique indexes
+
 ### WorkEffortFixedAssetAssignment
 
 Purpose:
@@ -543,6 +563,7 @@ Rules:
 - skill standards store skill type and money ids as numeric logical references without depending on Skill or Money catalogs
 - good standards store good type and money ids as numeric logical references without depending on Product or Money catalogs
 - inventory produced records store inventory-entry ids as numeric logical references without depending on Inventory
+- deliverable produced records store deliverable ids as numeric logical references without depending on a Deliverable catalog
 - associated-record links store polymorphic record id/type values without depending on target modules
 - work-order item fulfillments store order-line-item ids as logical references without depending on Orders
 - order requirement commitments store order-line-item and requirement ids as logical references without depending on Orders or Requirement
@@ -606,6 +627,9 @@ Rules:
 - `POST /api/work-efforts/inventory-produced`
 - `GET /api/work-efforts/inventory-produced/{id}`
 - `GET /api/work-efforts/inventory-produced?tenantCode=&effortNumber=&inventoryEntryId=&page=&size=`
+- `POST /api/work-efforts/deliverable-produced`
+- `GET /api/work-efforts/deliverable-produced/{id}`
+- `GET /api/work-efforts/deliverable-produced?tenantCode=&effortNumber=&deliverableId=&page=&size=`
 - `POST /api/work-efforts/fixed-asset-assignments`
 - `GET /api/work-efforts/fixed-asset-assignments/{id}`
 - `GET /api/work-efforts/fixed-asset-assignments?tenantCode=&effortNumber=&fixedAssetCode=&page=&size=`

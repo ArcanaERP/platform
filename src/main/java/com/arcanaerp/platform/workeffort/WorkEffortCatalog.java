@@ -207,6 +207,19 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    WorkEffortDeliverableProducedView registerDeliverableProduced(
+        RegisterWorkEffortDeliverableProducedCommand command
+    );
+
+    WorkEffortDeliverableProducedView deliverableProducedById(java.util.UUID id);
+
+    PageResult<WorkEffortDeliverableProducedView> listDeliverableProduced(
+        String tenantCode,
+        String effortNumber,
+        Long deliverableId,
+        PageQuery pageQuery
+    );
+
     WorkEffortFixedAssetAssignmentView registerFixedAssetAssignment(
         RegisterWorkEffortFixedAssetAssignmentCommand command
     );

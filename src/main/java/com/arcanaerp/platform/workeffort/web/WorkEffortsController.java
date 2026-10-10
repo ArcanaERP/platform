@@ -20,6 +20,7 @@ import com.arcanaerp.platform.workeffort.RegisterOrderRequirementCommitmentComma
 import com.arcanaerp.platform.workeffort.RegisterRequirementCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementPartyRoleCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementTypeCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortDeliverableProducedCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
@@ -45,6 +46,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortAssociationView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentChangeView;
 import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
+import com.arcanaerp.platform.workeffort.WorkEffortDeliverableProducedView;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetStandardView;
 import com.arcanaerp.platform.workeffort.WorkEffortGoodStandardView;
@@ -754,6 +756,41 @@ public class WorkEffortsController {
             inventoryEntryId,
             PageQuery.of(page, size)
         ).map(this::toInventoryProducedResponse);
+    }
+
+    @PostMapping("/deliverable-produced")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkEffortDeliverableProducedResponse createDeliverableProduced(
+        @Valid @RequestBody CreateWorkEffortDeliverableProducedRequest request
+    ) {
+        return toDeliverableProducedResponse(workEffortCatalog.registerDeliverableProduced(
+            new RegisterWorkEffortDeliverableProducedCommand(
+                request.tenantCode(),
+                request.effortNumber(),
+                request.deliverableId()
+            )
+        ));
+    }
+
+    @GetMapping("/deliverable-produced/{id}")
+    public WorkEffortDeliverableProducedResponse deliverableProducedById(@PathVariable java.util.UUID id) {
+        return toDeliverableProducedResponse(workEffortCatalog.deliverableProducedById(id));
+    }
+
+    @GetMapping("/deliverable-produced")
+    public PageResult<WorkEffortDeliverableProducedResponse> listDeliverableProduced(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String effortNumber,
+        @RequestParam(required = false) Long deliverableId,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listDeliverableProduced(
+            tenantCode,
+            effortNumber,
+            deliverableId,
+            PageQuery.of(page, size)
+        ).map(this::toDeliverableProducedResponse);
     }
 
     @PostMapping("/fixed-asset-assignments")
@@ -1579,6 +1616,19 @@ public class WorkEffortsController {
             view.tenantCode(),
             view.effortNumber(),
             view.inventoryEntryId(),
+            view.createdAt()
+        );
+    }
+
+    private WorkEffortDeliverableProducedResponse toDeliverableProducedResponse(
+        WorkEffortDeliverableProducedView view
+    ) {
+        return new WorkEffortDeliverableProducedResponse(
+            view.id(),
+            view.workEffortId(),
+            view.tenantCode(),
+            view.effortNumber(),
+            view.deliverableId(),
             view.createdAt()
         );
     }
