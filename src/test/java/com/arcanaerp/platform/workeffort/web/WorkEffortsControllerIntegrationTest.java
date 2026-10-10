@@ -2073,6 +2073,149 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsWorkEffortInventoryProduced() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebinvprod01",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebinvprod01",
+            "we-invprod-001",
+            "Produce inventory",
+            "Produce finished goods inventory",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+
+        String producedId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/inventory-produced"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": " workwebinvprod01 ",
+                  "effortNumber": " we-invprod-001 ",
+                  "inventoryEntryId": 7700
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.workEffortId").isNotEmpty())
+            .andExpect(jsonPath("$.tenantCode").value("WORKWEBINVPROD01"))
+            .andExpect(jsonPath("$.effortNumber").value("WE-INVPROD-001"))
+            .andExpect(jsonPath("$.inventoryEntryId").value(7700))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/inventory-produced/{id}",
+            producedId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(producedId))
+            .andExpect(jsonPath("$.inventoryEntryId").value(7700));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/inventory-produced"
+        )
+            .param("tenantCode", "workwebinvprod01")
+            .param("effortNumber", "we-invprod-001")
+            .param("inventoryEntryId", "7700")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(producedId))
+            .andExpect(jsonPath("$.items[0].tenantCode").value("WORKWEBINVPROD01"))
+            .andExpect(jsonPath("$.items[0].effortNumber").value("WE-INVPROD-001"))
+            .andExpect(jsonPath("$.items[0].inventoryEntryId").value(7700));
+    }
+
+    @Test
+    void allowsDuplicateWorkEffortInventoryProducedForLegacyParity() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workwebinvprod02",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+        WorkEffortsWebIntegrationTestSupport.createWorkEffort(
+            mockMvc,
+            "workwebinvprod02",
+            "we-invprod-001",
+            "Produce inventory",
+            "Produce finished goods inventory",
+            "PLANNED",
+            "agent01@work.com",
+            null
+        )
+            .andExpect(status().isCreated());
+        String payload = """
+            {
+              "tenantCode": "workwebinvprod02",
+              "effortNumber": "we-invprod-001",
+              "inventoryEntryId": 8800
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/inventory-produced"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/inventory-produced"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/inventory-produced"
+        )
+            .param("tenantCode", "workwebinvprod02")
+            .param("effortNumber", "we-invprod-001")
+            .param("inventoryEntryId", "8800")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void rejectsWorkEffortInventoryProducedForMissingWorkEffort() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/inventory-produced"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "workwebinvprod03",
+                  "effortNumber": "missing",
+                  "inventoryEntryId": 7700
+                }
+                """))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value(
+                "Work effort not found for tenant/effortNumber: WORKWEBINVPROD03/MISSING"
+            ))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/inventory-produced"));
+    }
+
+    @Test
     void createsReadsAndListsWorkEffortFixedAssetAssignments() throws Exception {
         ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
             mockMvc,

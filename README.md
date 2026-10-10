@@ -205,6 +205,9 @@ Work Effort:
 - `POST /api/work-efforts/good-standards`
 - `GET /api/work-efforts/good-standards/{id}`
 - `GET /api/work-efforts/good-standards?tenantCode=&effortNumber=&goodTypeId=&estimatedCostMoneyId=&page=&size=`
+- `POST /api/work-efforts/inventory-produced`
+- `GET /api/work-efforts/inventory-produced/{id}`
+- `GET /api/work-efforts/inventory-produced?tenantCode=&effortNumber=&inventoryEntryId=&page=&size=`
 - `POST /api/work-efforts/fixed-asset-assignments`
 - `GET /api/work-efforts/fixed-asset-assignments/{id}`
 - `GET /api/work-efforts/fixed-asset-assignments?tenantCode=&effortNumber=&fixedAssetCode=&page=&size=`

@@ -26,6 +26,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentC
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetStandardCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortGoodStandardCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryProducedCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPurposeTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
@@ -48,6 +49,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetStandardView;
 import com.arcanaerp.platform.workeffort.WorkEffortGoodStandardView;
 import com.arcanaerp.platform.workeffort.WorkEffortInventoryAssignmentView;
+import com.arcanaerp.platform.workeffort.WorkEffortInventoryProducedView;
 import com.arcanaerp.platform.workeffort.WorkEffortPartyAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortPurposeTypeView;
 import com.arcanaerp.platform.workeffort.WorkEffortRoleTypeAssignmentView;
@@ -717,6 +719,41 @@ public class WorkEffortsController {
             estimatedCostMoneyId,
             PageQuery.of(page, size)
         ).map(this::toGoodStandardResponse);
+    }
+
+    @PostMapping("/inventory-produced")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkEffortInventoryProducedResponse createInventoryProduced(
+        @Valid @RequestBody CreateWorkEffortInventoryProducedRequest request
+    ) {
+        return toInventoryProducedResponse(workEffortCatalog.registerInventoryProduced(
+            new RegisterWorkEffortInventoryProducedCommand(
+                request.tenantCode(),
+                request.effortNumber(),
+                request.inventoryEntryId()
+            )
+        ));
+    }
+
+    @GetMapping("/inventory-produced/{id}")
+    public WorkEffortInventoryProducedResponse inventoryProducedById(@PathVariable java.util.UUID id) {
+        return toInventoryProducedResponse(workEffortCatalog.inventoryProducedById(id));
+    }
+
+    @GetMapping("/inventory-produced")
+    public PageResult<WorkEffortInventoryProducedResponse> listInventoryProduced(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String effortNumber,
+        @RequestParam(required = false) Long inventoryEntryId,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listInventoryProduced(
+            tenantCode,
+            effortNumber,
+            inventoryEntryId,
+            PageQuery.of(page, size)
+        ).map(this::toInventoryProducedResponse);
     }
 
     @PostMapping("/fixed-asset-assignments")
@@ -1531,6 +1568,17 @@ public class WorkEffortsController {
             view.goodTypeId(),
             view.estimatedQuantity(),
             view.estimatedCostMoneyId(),
+            view.createdAt()
+        );
+    }
+
+    private WorkEffortInventoryProducedResponse toInventoryProducedResponse(WorkEffortInventoryProducedView view) {
+        return new WorkEffortInventoryProducedResponse(
+            view.id(),
+            view.workEffortId(),
+            view.tenantCode(),
+            view.effortNumber(),
+            view.inventoryEntryId(),
             view.createdAt()
         );
     }

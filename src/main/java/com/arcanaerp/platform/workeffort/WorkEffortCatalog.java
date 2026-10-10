@@ -196,6 +196,17 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    WorkEffortInventoryProducedView registerInventoryProduced(RegisterWorkEffortInventoryProducedCommand command);
+
+    WorkEffortInventoryProducedView inventoryProducedById(java.util.UUID id);
+
+    PageResult<WorkEffortInventoryProducedView> listInventoryProduced(
+        String tenantCode,
+        String effortNumber,
+        Long inventoryEntryId,
+        PageQuery pageQuery
+    );
+
     WorkEffortFixedAssetAssignmentView registerFixedAssetAssignment(
         RegisterWorkEffortFixedAssetAssignmentCommand command
     );

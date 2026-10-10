@@ -28,6 +28,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentC
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetStandardCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortGoodStandardCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryProducedCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPartyAssignmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortPurposeTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortRoleTypeAssignmentCommand;
@@ -50,6 +51,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetStandardView;
 import com.arcanaerp.platform.workeffort.WorkEffortGoodStandardView;
 import com.arcanaerp.platform.workeffort.WorkEffortInventoryAssignmentView;
+import com.arcanaerp.platform.workeffort.WorkEffortInventoryProducedView;
 import com.arcanaerp.platform.workeffort.WorkEffortPartyAssignmentView;
 import com.arcanaerp.platform.workeffort.WorkEffortPurposeTypeView;
 import com.arcanaerp.platform.workeffort.WorkEffortRoleTypeAssignmentView;
@@ -108,6 +110,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final WorkEffortFixedAssetStandardRepository workEffortFixedAssetStandardRepository;
     private final WorkEffortSkillStandardRepository workEffortSkillStandardRepository;
     private final WorkEffortGoodStandardRepository workEffortGoodStandardRepository;
+    private final WorkEffortInventoryProducedRepository workEffortInventoryProducedRepository;
     private final WorkEffortFixedAssetAssignmentRepository workEffortFixedAssetAssignmentRepository;
     private final WorkEffortInventoryAssignmentRepository workEffortInventoryAssignmentRepository;
     private final WorkEffortPartyAssignmentRepository workEffortPartyAssignmentRepository;
@@ -880,6 +883,50 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toGoodStandardView);
+    }
+
+    @Override
+    public WorkEffortInventoryProducedView registerInventoryProduced(
+        RegisterWorkEffortInventoryProducedCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        WorkEffort workEffort = findWorkEffort(command.tenantCode(), command.effortNumber());
+        return toInventoryProducedView(workEffortInventoryProducedRepository.save(
+            WorkEffortInventoryProduced.create(
+                workEffort,
+                command.inventoryEntryId(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkEffortInventoryProducedView inventoryProducedById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toInventoryProducedView(workEffortInventoryProducedRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Work effort inventory produced not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkEffortInventoryProducedView> listInventoryProduced(
+        String tenantCode,
+        String effortNumber,
+        Long inventoryEntryId,
+        PageQuery pageQuery
+    ) {
+        Page<WorkEffortInventoryProduced> page = workEffortInventoryProducedRepository.findProducedFiltered(
+            normalizeOptionalUpper(tenantCode, "tenantCode"),
+            normalizeOptionalUpper(effortNumber, "effortNumber"),
+            inventoryEntryId,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toInventoryProducedView);
     }
 
     @Override
@@ -1817,6 +1864,17 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             standard.getEstimatedQuantity(),
             standard.getEstimatedCostMoneyId(),
             standard.getCreatedAt()
+        );
+    }
+
+    private WorkEffortInventoryProducedView toInventoryProducedView(WorkEffortInventoryProduced produced) {
+        return new WorkEffortInventoryProducedView(
+            produced.getId(),
+            produced.getWorkEffortId(),
+            produced.getTenantCode(),
+            produced.getEffortNumber(),
+            produced.getInventoryEntryId(),
+            produced.getCreatedAt()
         );
     }
 
