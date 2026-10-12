@@ -4,7 +4,7 @@ Updated: 2026-08-30
 
 ## Scope
 
-Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible requirements, legacy-compatible requirement types, legacy-compatible skill types, legacy-compatible party skills, legacy-compatible work-effort types, legacy-compatible work-effort purpose types, legacy-compatible party resource availability types, legacy-compatible party resource availabilities, legacy-compatible work-effort type associations, legacy-compatible associated-record joins, legacy-compatible work-order item fulfillment joins, legacy-compatible order requirement commitments, legacy-compatible work requirement fulfillment joins, legacy-compatible requirement party-role joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset standards, legacy-compatible skill standards, legacy-compatible good standards, legacy-compatible inventory produced results, legacy-compatible deliverable produced results, legacy-compatible fixed-asset serviced results, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
+Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible requirements, legacy-compatible requirement types, legacy-compatible skill types, legacy-compatible party skills, legacy-compatible good types, legacy-compatible work-effort types, legacy-compatible work-effort purpose types, legacy-compatible party resource availability types, legacy-compatible party resource availabilities, legacy-compatible work-effort type associations, legacy-compatible associated-record joins, legacy-compatible work-order item fulfillment joins, legacy-compatible order requirement commitments, legacy-compatible work requirement fulfillment joins, legacy-compatible requirement party-role joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset standards, legacy-compatible skill standards, legacy-compatible good standards, legacy-compatible inventory produced results, legacy-compatible deliverable produced results, legacy-compatible fixed-asset serviced results, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
 
 ## Aggregate
 
@@ -168,6 +168,29 @@ Rules:
 - all legacy columns are optional in this slice except generated `id` and `createdAt`
 - `partyId` and `skillTypeId` are stored as numeric logical references
 - duplicate rows are allowed for parity with the legacy non-unique composite index
+
+### GoodType
+
+Purpose:
+- mirror legacy `good_types` records for goods required to perform work efforts
+- store nested-set metadata and external identifiers without adding tree mutation behavior
+
+Core fields:
+- `id` (`UUID`)
+- `parentId`
+- `left` mapped to legacy column `lft`
+- `right` mapped to legacy column `rgt`
+- `description`
+- `comments`
+- `internalIdentifier`
+- `externalIdentifier`
+- `externalIdSource`
+- `createdAt`
+
+Rules:
+- all legacy columns are optional in this slice except generated `id` and `createdAt`
+- `description`, `comments`, `internalIdentifier`, `externalIdentifier`, and `externalIdSource` are trimmed when present
+- duplicate rows are allowed because the legacy table has no uniqueness constraint
 
 ### WorkEffortType
 
@@ -670,6 +693,7 @@ Rules:
 - requirement types store parent ids as logical nested-set references without adding tree mutation behavior
 - skill types store parent ids as logical nested-set references without adding tree mutation behavior
 - party skills store party and skill-type ids as logical references without adding Party or SkillType validation
+- good types store parent ids as logical nested-set references without adding tree mutation behavior
 - work-effort types store parent ids as logical nested-set references without adding tree mutation behavior
 - work-effort purpose types store parent ids as logical nested-set references without adding tree mutation behavior
 - party resource availabilities store party and availability-type ids as logical references without adding Party or availability-type validation
@@ -703,6 +727,9 @@ Rules:
 - `POST /api/work-efforts/party-skills`
 - `GET /api/work-efforts/party-skills/{id}`
 - `GET /api/work-efforts/party-skills?partyId=&skillTypeId=&page=&size=`
+- `POST /api/work-efforts/good-types`
+- `GET /api/work-efforts/good-types/{id}`
+- `GET /api/work-efforts/good-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
 - `POST /api/work-efforts/work-effort-types`
 - `GET /api/work-efforts/work-effort-types/{id}`
 - `GET /api/work-efforts/work-effort-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`

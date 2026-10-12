@@ -184,6 +184,9 @@ Work Effort:
 - `POST /api/work-efforts/party-skills`
 - `GET /api/work-efforts/party-skills/{id}`
 - `GET /api/work-efforts/party-skills?partyId=&skillTypeId=&page=&size=`
+- `POST /api/work-efforts/good-types`
+- `GET /api/work-efforts/good-types/{id}`
+- `GET /api/work-efforts/good-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
 - `POST /api/work-efforts/work-effort-types`
 - `GET /api/work-efforts/work-effort-types/{id}`
 - `GET /api/work-efforts/work-effort-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`

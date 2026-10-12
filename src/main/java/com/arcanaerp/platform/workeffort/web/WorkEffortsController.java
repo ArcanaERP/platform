@@ -15,10 +15,12 @@ import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivitySumm
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.OrderRequirementCommitmentView;
+import com.arcanaerp.platform.workeffort.GoodTypeView;
 import com.arcanaerp.platform.workeffort.PartySkillView;
 import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityTypeView;
 import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityView;
 import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
+import com.arcanaerp.platform.workeffort.RegisterGoodTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterOrderRequirementCommitmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterPartySkillCommand;
 import com.arcanaerp.platform.workeffort.RegisterPartyResourceAvailabilityCommand;
@@ -464,6 +466,46 @@ public class WorkEffortsController {
             skillTypeId,
             PageQuery.of(page, size)
         ).map(this::toPartySkillResponse);
+    }
+
+    @PostMapping("/good-types")
+    @ResponseStatus(HttpStatus.CREATED)
+    public GoodTypeResponse createGoodType(@Valid @RequestBody CreateGoodTypeRequest request) {
+        return toGoodTypeResponse(workEffortCatalog.registerGoodType(
+            new RegisterGoodTypeCommand(
+                request.parentId(),
+                request.left(),
+                request.right(),
+                request.description(),
+                request.comments(),
+                request.internalIdentifier(),
+                request.externalIdentifier(),
+                request.externalIdSource()
+            )
+        ));
+    }
+
+    @GetMapping("/good-types/{id}")
+    public GoodTypeResponse goodTypeById(@PathVariable java.util.UUID id) {
+        return toGoodTypeResponse(workEffortCatalog.goodTypeById(id));
+    }
+
+    @GetMapping("/good-types")
+    public PageResult<GoodTypeResponse> listGoodTypes(
+        @RequestParam(required = false) Long parentId,
+        @RequestParam(required = false) String internalIdentifier,
+        @RequestParam(required = false) String externalIdentifier,
+        @RequestParam(required = false) String externalIdSource,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listGoodTypes(
+            parentId,
+            internalIdentifier,
+            externalIdentifier,
+            externalIdSource,
+            PageQuery.of(page, size)
+        ).map(this::toGoodTypeResponse);
     }
 
     @PostMapping("/work-effort-types")
@@ -1679,6 +1721,21 @@ public class WorkEffortsController {
             view.id(),
             view.partyId(),
             view.skillTypeId(),
+            view.createdAt()
+        );
+    }
+
+    private GoodTypeResponse toGoodTypeResponse(GoodTypeView view) {
+        return new GoodTypeResponse(
+            view.id(),
+            view.parentId(),
+            view.left(),
+            view.right(),
+            view.description(),
+            view.comments(),
+            view.internalIdentifier(),
+            view.externalIdentifier(),
+            view.externalIdSource(),
             view.createdAt()
         );
     }

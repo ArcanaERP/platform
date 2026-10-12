@@ -1112,6 +1112,114 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsGoodTypes() throws Exception {
+        String typeId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/good-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "parentId": 7,
+                  "left": 10,
+                  "right": 11,
+                  "description": " Replacement part ",
+                  "comments": " Good required for work execution ",
+                  "internalIdentifier": " REPLACEMENT-PART ",
+                  "externalIdentifier": " EXT-REPLACEMENT-PART ",
+                  "externalIdSource": " Legacy "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.parentId").value(7))
+            .andExpect(jsonPath("$.left").value(10))
+            .andExpect(jsonPath("$.right").value(11))
+            .andExpect(jsonPath("$.description").value("Replacement part"))
+            .andExpect(jsonPath("$.comments").value("Good required for work execution"))
+            .andExpect(jsonPath("$.internalIdentifier").value("REPLACEMENT-PART"))
+            .andExpect(jsonPath("$.externalIdentifier").value("EXT-REPLACEMENT-PART"))
+            .andExpect(jsonPath("$.externalIdSource").value("Legacy"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/good-types/{id}",
+            typeId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(typeId))
+            .andExpect(jsonPath("$.internalIdentifier").value("REPLACEMENT-PART"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/good-types"
+        )
+            .param("parentId", "7")
+            .param("internalIdentifier", "REPLACEMENT-PART")
+            .param("externalIdentifier", "EXT-REPLACEMENT-PART")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(typeId))
+            .andExpect(jsonPath("$.items[0].internalIdentifier").value("REPLACEMENT-PART"));
+    }
+
+    @Test
+    void allowsDuplicateGoodTypesForLegacyParity() throws Exception {
+        String payload = """
+            {
+              "description": "Replacement duplicate",
+              "internalIdentifier": "REPLACEMENT-DUP",
+              "externalIdentifier": "EXT-REPLACEMENT-DUP",
+              "externalIdSource": "Legacy"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/good-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/good-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/good-types"
+        )
+            .param("internalIdentifier", "REPLACEMENT-DUP")
+            .param("externalIdentifier", "EXT-REPLACEMENT-DUP")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void allowsEmptyGoodTypeForLegacyParity() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/good-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.parentId").doesNotExist())
+            .andExpect(jsonPath("$.internalIdentifier").doesNotExist())
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+    }
+
+    @Test
     void createsReadsAndListsWorkEffortTypes() throws Exception {
         String typeId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
             "/api/work-efforts/work-effort-types"

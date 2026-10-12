@@ -119,6 +119,18 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    GoodTypeView registerGoodType(RegisterGoodTypeCommand command);
+
+    GoodTypeView goodTypeById(java.util.UUID id);
+
+    PageResult<GoodTypeView> listGoodTypes(
+        Long parentId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    );
+
     WorkEffortTypeView registerWorkEffortType(RegisterWorkEffortTypeCommand command);
 
     WorkEffortTypeView workEffortTypeById(java.util.UUID id);

@@ -17,10 +17,12 @@ import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivitySumm
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.OrderRequirementCommitmentView;
+import com.arcanaerp.platform.workeffort.GoodTypeView;
 import com.arcanaerp.platform.workeffort.PartySkillView;
 import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityTypeView;
 import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityView;
 import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
+import com.arcanaerp.platform.workeffort.RegisterGoodTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterOrderRequirementCommitmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterPartySkillCommand;
 import com.arcanaerp.platform.workeffort.RegisterPartyResourceAvailabilityCommand;
@@ -114,6 +116,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final RequirementTypeRepository requirementTypeRepository;
     private final SkillTypeRepository skillTypeRepository;
     private final PartySkillRepository partySkillRepository;
+    private final GoodTypeRepository goodTypeRepository;
     private final WorkEffortTypeRepository workEffortTypeRepository;
     private final WorkEffortPurposeTypeRepository workEffortPurposeTypeRepository;
     private final PartyResourceAvailabilityTypeRepository partyResourceAvailabilityTypeRepository;
@@ -590,6 +593,55 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toPartySkillView);
+    }
+
+    @Override
+    public GoodTypeView registerGoodType(RegisterGoodTypeCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toGoodTypeView(goodTypeRepository.save(
+            GoodType.create(
+                command.parentId(),
+                command.left(),
+                command.right(),
+                command.description(),
+                command.comments(),
+                command.internalIdentifier(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public GoodTypeView goodTypeById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toGoodTypeView(goodTypeRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Good type not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<GoodTypeView> listGoodTypes(
+        Long parentId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    ) {
+        Page<GoodType> page = goodTypeRepository.findTypesFiltered(
+            parentId,
+            normalizeOptional(internalIdentifier, "internalIdentifier"),
+            normalizeOptional(externalIdentifier, "externalIdentifier"),
+            normalizeOptional(externalIdSource, "externalIdSource"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toGoodTypeView);
     }
 
     @Override
@@ -2039,6 +2091,21 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             skill.getPartyId(),
             skill.getSkillTypeId(),
             skill.getCreatedAt()
+        );
+    }
+
+    private GoodTypeView toGoodTypeView(GoodType type) {
+        return new GoodTypeView(
+            type.getId(),
+            type.getParentId(),
+            type.getLeft(),
+            type.getRight(),
+            type.getDescription(),
+            type.getComments(),
+            type.getInternalIdentifier(),
+            type.getExternalIdentifier(),
+            type.getExternalIdSource(),
+            type.getCreatedAt()
         );
     }
 
