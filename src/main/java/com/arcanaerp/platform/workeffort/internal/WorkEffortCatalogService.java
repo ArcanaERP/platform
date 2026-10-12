@@ -26,6 +26,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortDeliverableProducedCo
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetServicedCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetStandardCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortGoodStandardCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
@@ -50,6 +51,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortDeliverableProducedView;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetAssignmentView;
+import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetServicedView;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetStandardView;
 import com.arcanaerp.platform.workeffort.WorkEffortGoodStandardView;
 import com.arcanaerp.platform.workeffort.WorkEffortInventoryAssignmentView;
@@ -114,6 +116,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final WorkEffortGoodStandardRepository workEffortGoodStandardRepository;
     private final WorkEffortInventoryProducedRepository workEffortInventoryProducedRepository;
     private final WorkEffortDeliverableProducedRepository workEffortDeliverableProducedRepository;
+    private final WorkEffortFixedAssetServicedRepository workEffortFixedAssetServicedRepository;
     private final WorkEffortFixedAssetAssignmentRepository workEffortFixedAssetAssignmentRepository;
     private final WorkEffortInventoryAssignmentRepository workEffortInventoryAssignmentRepository;
     private final WorkEffortPartyAssignmentRepository workEffortPartyAssignmentRepository;
@@ -974,6 +977,50 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toDeliverableProducedView);
+    }
+
+    @Override
+    public WorkEffortFixedAssetServicedView registerFixedAssetServiced(
+        RegisterWorkEffortFixedAssetServicedCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        WorkEffort workEffort = findWorkEffort(command.tenantCode(), command.effortNumber());
+        return toFixedAssetServicedView(workEffortFixedAssetServicedRepository.save(
+            WorkEffortFixedAssetServiced.create(
+                workEffort,
+                command.fixedAssetId(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkEffortFixedAssetServicedView fixedAssetServicedById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toFixedAssetServicedView(workEffortFixedAssetServicedRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Work effort fixed asset serviced not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkEffortFixedAssetServicedView> listFixedAssetServiced(
+        String tenantCode,
+        String effortNumber,
+        Long fixedAssetId,
+        PageQuery pageQuery
+    ) {
+        Page<WorkEffortFixedAssetServiced> page = workEffortFixedAssetServicedRepository.findServicedFiltered(
+            normalizeOptionalUpper(tenantCode, "tenantCode"),
+            normalizeOptionalUpper(effortNumber, "effortNumber"),
+            fixedAssetId,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toFixedAssetServicedView);
     }
 
     @Override
@@ -1933,6 +1980,17 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             produced.getEffortNumber(),
             produced.getDeliverableId(),
             produced.getCreatedAt()
+        );
+    }
+
+    private WorkEffortFixedAssetServicedView toFixedAssetServicedView(WorkEffortFixedAssetServiced serviced) {
+        return new WorkEffortFixedAssetServicedView(
+            serviced.getId(),
+            serviced.getWorkEffortId(),
+            serviced.getTenantCode(),
+            serviced.getEffortNumber(),
+            serviced.getFixedAssetId(),
+            serviced.getCreatedAt()
         );
     }
 

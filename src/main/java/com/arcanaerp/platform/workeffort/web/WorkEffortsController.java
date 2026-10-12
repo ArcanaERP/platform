@@ -24,6 +24,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortDeliverableProducedCo
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetAssignmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetServicedCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortFixedAssetStandardCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortGoodStandardCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortInventoryAssignmentCommand;
@@ -48,6 +49,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortAssignmentSummaryView;
 import com.arcanaerp.platform.workeffort.WorkEffortCatalog;
 import com.arcanaerp.platform.workeffort.WorkEffortDeliverableProducedView;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetAssignmentView;
+import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetServicedView;
 import com.arcanaerp.platform.workeffort.WorkEffortFixedAssetStandardView;
 import com.arcanaerp.platform.workeffort.WorkEffortGoodStandardView;
 import com.arcanaerp.platform.workeffort.WorkEffortInventoryAssignmentView;
@@ -791,6 +793,41 @@ public class WorkEffortsController {
             deliverableId,
             PageQuery.of(page, size)
         ).map(this::toDeliverableProducedResponse);
+    }
+
+    @PostMapping("/fixed-asset-serviced")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkEffortFixedAssetServicedResponse createFixedAssetServiced(
+        @Valid @RequestBody CreateWorkEffortFixedAssetServicedRequest request
+    ) {
+        return toFixedAssetServicedResponse(workEffortCatalog.registerFixedAssetServiced(
+            new RegisterWorkEffortFixedAssetServicedCommand(
+                request.tenantCode(),
+                request.effortNumber(),
+                request.fixedAssetId()
+            )
+        ));
+    }
+
+    @GetMapping("/fixed-asset-serviced/{id}")
+    public WorkEffortFixedAssetServicedResponse fixedAssetServicedById(@PathVariable java.util.UUID id) {
+        return toFixedAssetServicedResponse(workEffortCatalog.fixedAssetServicedById(id));
+    }
+
+    @GetMapping("/fixed-asset-serviced")
+    public PageResult<WorkEffortFixedAssetServicedResponse> listFixedAssetServiced(
+        @RequestParam(required = false) String tenantCode,
+        @RequestParam(required = false) String effortNumber,
+        @RequestParam(required = false) Long fixedAssetId,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listFixedAssetServiced(
+            tenantCode,
+            effortNumber,
+            fixedAssetId,
+            PageQuery.of(page, size)
+        ).map(this::toFixedAssetServicedResponse);
     }
 
     @PostMapping("/fixed-asset-assignments")
@@ -1629,6 +1666,19 @@ public class WorkEffortsController {
             view.tenantCode(),
             view.effortNumber(),
             view.deliverableId(),
+            view.createdAt()
+        );
+    }
+
+    private WorkEffortFixedAssetServicedResponse toFixedAssetServicedResponse(
+        WorkEffortFixedAssetServicedView view
+    ) {
+        return new WorkEffortFixedAssetServicedResponse(
+            view.id(),
+            view.workEffortId(),
+            view.tenantCode(),
+            view.effortNumber(),
+            view.fixedAssetId(),
             view.createdAt()
         );
     }

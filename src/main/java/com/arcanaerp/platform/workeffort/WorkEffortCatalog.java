@@ -220,6 +220,19 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    WorkEffortFixedAssetServicedView registerFixedAssetServiced(
+        RegisterWorkEffortFixedAssetServicedCommand command
+    );
+
+    WorkEffortFixedAssetServicedView fixedAssetServicedById(java.util.UUID id);
+
+    PageResult<WorkEffortFixedAssetServicedView> listFixedAssetServiced(
+        String tenantCode,
+        String effortNumber,
+        Long fixedAssetId,
+        PageQuery pageQuery
+    );
+
     WorkEffortFixedAssetAssignmentView registerFixedAssetAssignment(
         RegisterWorkEffortFixedAssetAssignmentCommand command
     );
