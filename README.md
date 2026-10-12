@@ -184,6 +184,12 @@ Work Effort:
 - `POST /api/work-efforts/work-effort-purpose-types`
 - `GET /api/work-efforts/work-effort-purpose-types/{id}`
 - `GET /api/work-efforts/work-effort-purpose-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
+- `POST /api/work-efforts/party-resource-availability-types`
+- `GET /api/work-efforts/party-resource-availability-types/{id}`
+- `GET /api/work-efforts/party-resource-availability-types?description=&internalIdentifier=&page=&size=`
+- `POST /api/work-efforts/party-resource-availabilities`
+- `GET /api/work-efforts/party-resource-availabilities/{id}`
+- `GET /api/work-efforts/party-resource-availabilities?fromDate=&toDate=&partyId=&praTypeId=&page=&size=`
 - `POST /api/work-efforts/work-effort-type-associations`
 - `GET /api/work-efforts/work-effort-type-associations/{id}`
 - `GET /api/work-efforts/work-effort-type-associations?workEffortTypeAssociationTypeId=&fromWorkEffortTypeId=&toWorkEffortTypeId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`

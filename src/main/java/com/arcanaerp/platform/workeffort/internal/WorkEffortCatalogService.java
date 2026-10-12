@@ -17,8 +17,12 @@ import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivitySumm
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.OrderRequirementCommitmentView;
+import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityTypeView;
+import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityView;
 import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.RegisterOrderRequirementCommitmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterPartyResourceAvailabilityCommand;
+import com.arcanaerp.platform.workeffort.RegisterPartyResourceAvailabilityTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementPartyRoleCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementTypeCommand;
@@ -106,6 +110,8 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final RequirementTypeRepository requirementTypeRepository;
     private final WorkEffortTypeRepository workEffortTypeRepository;
     private final WorkEffortPurposeTypeRepository workEffortPurposeTypeRepository;
+    private final PartyResourceAvailabilityTypeRepository partyResourceAvailabilityTypeRepository;
+    private final PartyResourceAvailabilityRepository partyResourceAvailabilityRepository;
     private final WorkEffortTypeAssociationRepository workEffortTypeAssociationRepository;
     private final WorkEffortAssociationTypeRepository workEffortAssociationTypeRepository;
     private final WorkEffortAssociationRepository workEffortAssociationRepository;
@@ -588,6 +594,98 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toWorkEffortPurposeTypeView);
+    }
+
+    @Override
+    public PartyResourceAvailabilityTypeView registerPartyResourceAvailabilityType(
+        RegisterPartyResourceAvailabilityTypeCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toPartyResourceAvailabilityTypeView(partyResourceAvailabilityTypeRepository.save(
+            PartyResourceAvailabilityType.create(
+                command.description(),
+                command.internalIdentifier(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PartyResourceAvailabilityTypeView partyResourceAvailabilityTypeById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toPartyResourceAvailabilityTypeView(partyResourceAvailabilityTypeRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Party resource availability type not found for id: " + id
+            )));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<PartyResourceAvailabilityTypeView> listPartyResourceAvailabilityTypes(
+        String description,
+        String internalIdentifier,
+        PageQuery pageQuery
+    ) {
+        Page<PartyResourceAvailabilityType> page = partyResourceAvailabilityTypeRepository.findTypesFiltered(
+            normalizeOptional(description, "description"),
+            normalizeOptional(internalIdentifier, "internalIdentifier"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toPartyResourceAvailabilityTypeView);
+    }
+
+    @Override
+    public PartyResourceAvailabilityView registerPartyResourceAvailability(
+        RegisterPartyResourceAvailabilityCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toPartyResourceAvailabilityView(partyResourceAvailabilityRepository.save(
+            PartyResourceAvailability.create(
+                command.fromDate(),
+                command.toDate(),
+                command.partyId(),
+                command.praTypeId(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PartyResourceAvailabilityView partyResourceAvailabilityById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toPartyResourceAvailabilityView(partyResourceAvailabilityRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException(
+                "Party resource availability not found for id: " + id
+            )));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<PartyResourceAvailabilityView> listPartyResourceAvailabilities(
+        Instant fromDate,
+        Instant toDate,
+        Long partyId,
+        Long praTypeId,
+        PageQuery pageQuery
+    ) {
+        Page<PartyResourceAvailability> page = partyResourceAvailabilityRepository.findAvailabilitiesFiltered(
+            fromDate,
+            toDate,
+            partyId,
+            praTypeId,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toPartyResourceAvailabilityView);
     }
 
     @Override
@@ -1853,6 +1951,28 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             type.getExternalIdentifier(),
             type.getExternalIdSource(),
             type.getCreatedAt()
+        );
+    }
+
+    private PartyResourceAvailabilityTypeView toPartyResourceAvailabilityTypeView(
+        PartyResourceAvailabilityType type
+    ) {
+        return new PartyResourceAvailabilityTypeView(
+            type.getId(),
+            type.getDescription(),
+            type.getInternalIdentifier(),
+            type.getCreatedAt()
+        );
+    }
+
+    private PartyResourceAvailabilityView toPartyResourceAvailabilityView(PartyResourceAvailability availability) {
+        return new PartyResourceAvailabilityView(
+            availability.getId(),
+            availability.getFromDate(),
+            availability.getToDate(),
+            availability.getPartyId(),
+            availability.getPraTypeId(),
+            availability.getCreatedAt()
         );
     }
 

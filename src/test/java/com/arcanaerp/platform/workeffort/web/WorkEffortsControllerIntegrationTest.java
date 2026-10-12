@@ -1099,6 +1099,202 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsPartyResourceAvailabilityTypes() throws Exception {
+        String typeId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/party-resource-availability-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "description": " Available for repair ",
+                  "internalIdentifier": " AVAILABLE "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.description").value("Available for repair"))
+            .andExpect(jsonPath("$.internalIdentifier").value("AVAILABLE"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/party-resource-availability-types/{id}",
+            typeId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(typeId))
+            .andExpect(jsonPath("$.internalIdentifier").value("AVAILABLE"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/party-resource-availability-types"
+        )
+            .param("description", "Available for repair")
+            .param("internalIdentifier", "AVAILABLE")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(typeId))
+            .andExpect(jsonPath("$.items[0].internalIdentifier").value("AVAILABLE"));
+    }
+
+    @Test
+    void allowsDuplicatePartyResourceAvailabilityTypesForLegacyParity() throws Exception {
+        String payload = """
+            {
+              "description": "Available duplicate",
+              "internalIdentifier": "AVAILABLE-DUP"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/party-resource-availability-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/party-resource-availability-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/party-resource-availability-types"
+        )
+            .param("description", "Available duplicate")
+            .param("internalIdentifier", "AVAILABLE-DUP")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void allowsEmptyPartyResourceAvailabilityTypeForLegacyParity() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/party-resource-availability-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.description").doesNotExist())
+            .andExpect(jsonPath("$.internalIdentifier").doesNotExist())
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+    }
+
+    @Test
+    void createsReadsAndListsPartyResourceAvailabilities() throws Exception {
+        String availabilityId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/party-resource-availabilities"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "fromDate": "2026-10-01T08:00:00Z",
+                  "toDate": "2026-10-01T17:00:00Z",
+                  "partyId": 1100,
+                  "praTypeId": 2200
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.fromDate").value("2026-10-01T08:00:00Z"))
+            .andExpect(jsonPath("$.toDate").value("2026-10-01T17:00:00Z"))
+            .andExpect(jsonPath("$.partyId").value(1100))
+            .andExpect(jsonPath("$.praTypeId").value(2200))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/party-resource-availabilities/{id}",
+            availabilityId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(availabilityId))
+            .andExpect(jsonPath("$.partyId").value(1100))
+            .andExpect(jsonPath("$.praTypeId").value(2200));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/party-resource-availabilities"
+        )
+            .param("fromDate", "2026-10-01T08:00:00Z")
+            .param("toDate", "2026-10-01T17:00:00Z")
+            .param("partyId", "1100")
+            .param("praTypeId", "2200")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(availabilityId))
+            .andExpect(jsonPath("$.items[0].partyId").value(1100))
+            .andExpect(jsonPath("$.items[0].praTypeId").value(2200));
+    }
+
+    @Test
+    void allowsDuplicatePartyResourceAvailabilitiesForLegacyParity() throws Exception {
+        String payload = """
+            {
+              "fromDate": "2026-10-02T08:00:00Z",
+              "toDate": "2026-10-02T17:00:00Z",
+              "partyId": 3300,
+              "praTypeId": 4400
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/party-resource-availabilities"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/party-resource-availabilities"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/party-resource-availabilities"
+        )
+            .param("fromDate", "2026-10-02T08:00:00Z")
+            .param("toDate", "2026-10-02T17:00:00Z")
+            .param("partyId", "3300")
+            .param("praTypeId", "4400")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void allowsEmptyPartyResourceAvailabilityForLegacyParity() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/party-resource-availabilities"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.fromDate").doesNotExist())
+            .andExpect(jsonPath("$.toDate").doesNotExist())
+            .andExpect(jsonPath("$.partyId").doesNotExist())
+            .andExpect(jsonPath("$.praTypeId").doesNotExist())
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+    }
+
+    @Test
     void createsReadsAndListsWorkEffortTypeAssociations() throws Exception {
         String associationId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
             "/api/work-efforts/work-effort-type-associations"

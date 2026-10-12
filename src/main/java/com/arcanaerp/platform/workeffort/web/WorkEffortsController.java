@@ -15,8 +15,12 @@ import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivitySumm
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.OrderRequirementCommitmentView;
+import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityTypeView;
+import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityView;
 import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.RegisterOrderRequirementCommitmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterPartyResourceAvailabilityCommand;
+import com.arcanaerp.platform.workeffort.RegisterPartyResourceAvailabilityTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementPartyRoleCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementTypeCommand;
@@ -468,6 +472,78 @@ public class WorkEffortsController {
             externalIdSource,
             PageQuery.of(page, size)
         ).map(this::toWorkEffortPurposeTypeResponse);
+    }
+
+    @PostMapping("/party-resource-availability-types")
+    @ResponseStatus(HttpStatus.CREATED)
+    public PartyResourceAvailabilityTypeResponse createPartyResourceAvailabilityType(
+        @Valid @RequestBody CreatePartyResourceAvailabilityTypeRequest request
+    ) {
+        return toPartyResourceAvailabilityTypeResponse(workEffortCatalog.registerPartyResourceAvailabilityType(
+            new RegisterPartyResourceAvailabilityTypeCommand(
+                request.description(),
+                request.internalIdentifier()
+            )
+        ));
+    }
+
+    @GetMapping("/party-resource-availability-types/{id}")
+    public PartyResourceAvailabilityTypeResponse partyResourceAvailabilityTypeById(
+        @PathVariable java.util.UUID id
+    ) {
+        return toPartyResourceAvailabilityTypeResponse(workEffortCatalog.partyResourceAvailabilityTypeById(id));
+    }
+
+    @GetMapping("/party-resource-availability-types")
+    public PageResult<PartyResourceAvailabilityTypeResponse> listPartyResourceAvailabilityTypes(
+        @RequestParam(required = false) String description,
+        @RequestParam(required = false) String internalIdentifier,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listPartyResourceAvailabilityTypes(
+            description,
+            internalIdentifier,
+            PageQuery.of(page, size)
+        ).map(this::toPartyResourceAvailabilityTypeResponse);
+    }
+
+    @PostMapping("/party-resource-availabilities")
+    @ResponseStatus(HttpStatus.CREATED)
+    public PartyResourceAvailabilityResponse createPartyResourceAvailability(
+        @Valid @RequestBody CreatePartyResourceAvailabilityRequest request
+    ) {
+        return toPartyResourceAvailabilityResponse(workEffortCatalog.registerPartyResourceAvailability(
+            new RegisterPartyResourceAvailabilityCommand(
+                parseOptionalInstant(request.fromDate(), "fromDate"),
+                parseOptionalInstant(request.toDate(), "toDate"),
+                request.partyId(),
+                request.praTypeId()
+            )
+        ));
+    }
+
+    @GetMapping("/party-resource-availabilities/{id}")
+    public PartyResourceAvailabilityResponse partyResourceAvailabilityById(@PathVariable java.util.UUID id) {
+        return toPartyResourceAvailabilityResponse(workEffortCatalog.partyResourceAvailabilityById(id));
+    }
+
+    @GetMapping("/party-resource-availabilities")
+    public PageResult<PartyResourceAvailabilityResponse> listPartyResourceAvailabilities(
+        @RequestParam(required = false) String fromDate,
+        @RequestParam(required = false) String toDate,
+        @RequestParam(required = false) Long partyId,
+        @RequestParam(required = false) Long praTypeId,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listPartyResourceAvailabilities(
+            parseOptionalInstant(fromDate, "fromDate"),
+            parseOptionalInstant(toDate, "toDate"),
+            partyId,
+            praTypeId,
+            PageQuery.of(page, size)
+        ).map(this::toPartyResourceAvailabilityResponse);
     }
 
     @PostMapping("/work-effort-type-associations")
@@ -1535,6 +1611,30 @@ public class WorkEffortsController {
             view.internalIdentifier(),
             view.externalIdentifier(),
             view.externalIdSource(),
+            view.createdAt()
+        );
+    }
+
+    private PartyResourceAvailabilityTypeResponse toPartyResourceAvailabilityTypeResponse(
+        PartyResourceAvailabilityTypeView view
+    ) {
+        return new PartyResourceAvailabilityTypeResponse(
+            view.id(),
+            view.description(),
+            view.internalIdentifier(),
+            view.createdAt()
+        );
+    }
+
+    private PartyResourceAvailabilityResponse toPartyResourceAvailabilityResponse(
+        PartyResourceAvailabilityView view
+    ) {
+        return new PartyResourceAvailabilityResponse(
+            view.id(),
+            view.fromDate(),
+            view.toDate(),
+            view.partyId(),
+            view.praTypeId(),
             view.createdAt()
         );
     }

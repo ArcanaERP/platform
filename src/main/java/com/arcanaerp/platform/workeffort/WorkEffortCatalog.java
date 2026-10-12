@@ -121,6 +121,32 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    PartyResourceAvailabilityTypeView registerPartyResourceAvailabilityType(
+        RegisterPartyResourceAvailabilityTypeCommand command
+    );
+
+    PartyResourceAvailabilityTypeView partyResourceAvailabilityTypeById(java.util.UUID id);
+
+    PageResult<PartyResourceAvailabilityTypeView> listPartyResourceAvailabilityTypes(
+        String description,
+        String internalIdentifier,
+        PageQuery pageQuery
+    );
+
+    PartyResourceAvailabilityView registerPartyResourceAvailability(
+        RegisterPartyResourceAvailabilityCommand command
+    );
+
+    PartyResourceAvailabilityView partyResourceAvailabilityById(java.util.UUID id);
+
+    PageResult<PartyResourceAvailabilityView> listPartyResourceAvailabilities(
+        Instant fromDate,
+        Instant toDate,
+        Long partyId,
+        Long praTypeId,
+        PageQuery pageQuery
+    );
+
     WorkEffortTypeAssociationView registerWorkEffortTypeAssociation(
         RegisterWorkEffortTypeAssociationCommand command
     );
