@@ -15,15 +15,18 @@ import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivitySumm
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.OrderRequirementCommitmentView;
+import com.arcanaerp.platform.workeffort.PartySkillView;
 import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityTypeView;
 import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityView;
 import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.RegisterOrderRequirementCommitmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterPartySkillCommand;
 import com.arcanaerp.platform.workeffort.RegisterPartyResourceAvailabilityCommand;
 import com.arcanaerp.platform.workeffort.RegisterPartyResourceAvailabilityTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementPartyRoleCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementTypeCommand;
+import com.arcanaerp.platform.workeffort.RegisterSkillTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortDeliverableProducedCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
@@ -72,6 +75,7 @@ import com.arcanaerp.platform.workeffort.WorkOrderItemFulfillmentView;
 import com.arcanaerp.platform.workeffort.RequirementTypeView;
 import com.arcanaerp.platform.workeffort.RequirementView;
 import com.arcanaerp.platform.workeffort.RequirementPartyRoleView;
+import com.arcanaerp.platform.workeffort.SkillTypeView;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -390,6 +394,76 @@ public class WorkEffortsController {
             externalIdSource,
             PageQuery.of(page, size)
         ).map(this::toRequirementTypeResponse);
+    }
+
+    @PostMapping("/skill-types")
+    @ResponseStatus(HttpStatus.CREATED)
+    public SkillTypeResponse createSkillType(@Valid @RequestBody CreateSkillTypeRequest request) {
+        return toSkillTypeResponse(workEffortCatalog.registerSkillType(
+            new RegisterSkillTypeCommand(
+                request.parentId(),
+                request.left(),
+                request.right(),
+                request.description(),
+                request.comments(),
+                request.internalIdentifier(),
+                request.externalIdentifier(),
+                request.externalIdSource()
+            )
+        ));
+    }
+
+    @GetMapping("/skill-types/{id}")
+    public SkillTypeResponse skillTypeById(@PathVariable java.util.UUID id) {
+        return toSkillTypeResponse(workEffortCatalog.skillTypeById(id));
+    }
+
+    @GetMapping("/skill-types")
+    public PageResult<SkillTypeResponse> listSkillTypes(
+        @RequestParam(required = false) Long parentId,
+        @RequestParam(required = false) String internalIdentifier,
+        @RequestParam(required = false) String externalIdentifier,
+        @RequestParam(required = false) String externalIdSource,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listSkillTypes(
+            parentId,
+            internalIdentifier,
+            externalIdentifier,
+            externalIdSource,
+            PageQuery.of(page, size)
+        ).map(this::toSkillTypeResponse);
+    }
+
+    @PostMapping("/party-skills")
+    @ResponseStatus(HttpStatus.CREATED)
+    public PartySkillResponse createPartySkill(@Valid @RequestBody CreatePartySkillRequest request) {
+        return toPartySkillResponse(workEffortCatalog.registerPartySkill(
+            new RegisterPartySkillCommand(
+                request.partyId(),
+                request.skillTypeId()
+            )
+        ));
+    }
+
+    @GetMapping("/party-skills/{id}")
+    public PartySkillResponse partySkillById(@PathVariable java.util.UUID id) {
+        return toPartySkillResponse(workEffortCatalog.partySkillById(id));
+    }
+
+    @GetMapping("/party-skills")
+    public PageResult<PartySkillResponse> listPartySkills(
+        @RequestParam(required = false) Long partyId,
+        @RequestParam(required = false) Long skillTypeId,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listPartySkills(
+            partyId,
+            skillTypeId,
+            PageQuery.of(page, size)
+        ).map(this::toPartySkillResponse);
     }
 
     @PostMapping("/work-effort-types")
@@ -1581,6 +1655,30 @@ public class WorkEffortsController {
             view.internalIdentifier(),
             view.externalIdentifier(),
             view.externalIdSource(),
+            view.createdAt()
+        );
+    }
+
+    private SkillTypeResponse toSkillTypeResponse(SkillTypeView view) {
+        return new SkillTypeResponse(
+            view.id(),
+            view.parentId(),
+            view.left(),
+            view.right(),
+            view.description(),
+            view.comments(),
+            view.internalIdentifier(),
+            view.externalIdentifier(),
+            view.externalIdSource(),
+            view.createdAt()
+        );
+    }
+
+    private PartySkillResponse toPartySkillResponse(PartySkillView view) {
+        return new PartySkillResponse(
+            view.id(),
+            view.partyId(),
+            view.skillTypeId(),
             view.createdAt()
         );
     }

@@ -17,15 +17,18 @@ import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivitySumm
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivitySummaryView;
 import com.arcanaerp.platform.workeffort.OrderRequirementCommitmentView;
+import com.arcanaerp.platform.workeffort.PartySkillView;
 import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityTypeView;
 import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityView;
 import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.RegisterOrderRequirementCommitmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterPartySkillCommand;
 import com.arcanaerp.platform.workeffort.RegisterPartyResourceAvailabilityCommand;
 import com.arcanaerp.platform.workeffort.RegisterPartyResourceAvailabilityTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementPartyRoleCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementTypeCommand;
+import com.arcanaerp.platform.workeffort.RegisterSkillTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortDeliverableProducedCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
@@ -74,6 +77,7 @@ import com.arcanaerp.platform.workeffort.WorkOrderItemFulfillmentView;
 import com.arcanaerp.platform.workeffort.RequirementTypeView;
 import com.arcanaerp.platform.workeffort.RequirementView;
 import com.arcanaerp.platform.workeffort.RequirementPartyRoleView;
+import com.arcanaerp.platform.workeffort.SkillTypeView;
 import java.time.DayOfWeek;
 import java.time.Clock;
 import java.time.Instant;
@@ -108,6 +112,8 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final RequirementPartyRoleRepository requirementPartyRoleRepository;
     private final RequirementRepository requirementRepository;
     private final RequirementTypeRepository requirementTypeRepository;
+    private final SkillTypeRepository skillTypeRepository;
+    private final PartySkillRepository partySkillRepository;
     private final WorkEffortTypeRepository workEffortTypeRepository;
     private final WorkEffortPurposeTypeRepository workEffortPurposeTypeRepository;
     private final PartyResourceAvailabilityTypeRepository partyResourceAvailabilityTypeRepository;
@@ -496,6 +502,94 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toRequirementTypeView);
+    }
+
+    @Override
+    public SkillTypeView registerSkillType(RegisterSkillTypeCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toSkillTypeView(skillTypeRepository.save(
+            SkillType.create(
+                command.parentId(),
+                command.left(),
+                command.right(),
+                command.description(),
+                command.comments(),
+                command.internalIdentifier(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SkillTypeView skillTypeById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toSkillTypeView(skillTypeRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Skill type not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<SkillTypeView> listSkillTypes(
+        Long parentId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    ) {
+        Page<SkillType> page = skillTypeRepository.findTypesFiltered(
+            parentId,
+            normalizeOptional(internalIdentifier, "internalIdentifier"),
+            normalizeOptional(externalIdentifier, "externalIdentifier"),
+            normalizeOptional(externalIdSource, "externalIdSource"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toSkillTypeView);
+    }
+
+    @Override
+    public PartySkillView registerPartySkill(RegisterPartySkillCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toPartySkillView(partySkillRepository.save(
+            PartySkill.create(
+                command.partyId(),
+                command.skillTypeId(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PartySkillView partySkillById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toPartySkillView(partySkillRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Party skill not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<PartySkillView> listPartySkills(
+        Long partyId,
+        Long skillTypeId,
+        PageQuery pageQuery
+    ) {
+        Page<PartySkill> page = partySkillRepository.findSkillsFiltered(
+            partyId,
+            skillTypeId,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toPartySkillView);
     }
 
     @Override
@@ -1921,6 +2015,30 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             type.getExternalIdentifier(),
             type.getExternalIdSource(),
             type.getCreatedAt()
+        );
+    }
+
+    private SkillTypeView toSkillTypeView(SkillType type) {
+        return new SkillTypeView(
+            type.getId(),
+            type.getParentId(),
+            type.getLeft(),
+            type.getRight(),
+            type.getDescription(),
+            type.getComments(),
+            type.getInternalIdentifier(),
+            type.getExternalIdentifier(),
+            type.getExternalIdSource(),
+            type.getCreatedAt()
+        );
+    }
+
+    private PartySkillView toPartySkillView(PartySkill skill) {
+        return new PartySkillView(
+            skill.getId(),
+            skill.getPartyId(),
+            skill.getSkillTypeId(),
+            skill.getCreatedAt()
         );
     }
 

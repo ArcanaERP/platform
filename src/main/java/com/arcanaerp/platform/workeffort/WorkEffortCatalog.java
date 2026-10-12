@@ -97,6 +97,28 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    SkillTypeView registerSkillType(RegisterSkillTypeCommand command);
+
+    SkillTypeView skillTypeById(java.util.UUID id);
+
+    PageResult<SkillTypeView> listSkillTypes(
+        Long parentId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    );
+
+    PartySkillView registerPartySkill(RegisterPartySkillCommand command);
+
+    PartySkillView partySkillById(java.util.UUID id);
+
+    PageResult<PartySkillView> listPartySkills(
+        Long partyId,
+        Long skillTypeId,
+        PageQuery pageQuery
+    );
+
     WorkEffortTypeView registerWorkEffortType(RegisterWorkEffortTypeCommand command);
 
     WorkEffortTypeView workEffortTypeById(java.util.UUID id);

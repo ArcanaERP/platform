@@ -178,6 +178,12 @@ Work Effort:
 - `POST /api/work-efforts/requirement-types`
 - `GET /api/work-efforts/requirement-types/{id}`
 - `GET /api/work-efforts/requirement-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
+- `POST /api/work-efforts/skill-types`
+- `GET /api/work-efforts/skill-types/{id}`
+- `GET /api/work-efforts/skill-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
+- `POST /api/work-efforts/party-skills`
+- `GET /api/work-efforts/party-skills/{id}`
+- `GET /api/work-efforts/party-skills?partyId=&skillTypeId=&page=&size=`
 - `POST /api/work-efforts/work-effort-types`
 - `GET /api/work-efforts/work-effort-types/{id}`
 - `GET /api/work-efforts/work-effort-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`

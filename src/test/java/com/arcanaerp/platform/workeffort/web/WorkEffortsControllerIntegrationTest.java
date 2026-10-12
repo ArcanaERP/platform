@@ -911,6 +911,207 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsSkillTypes() throws Exception {
+        String typeId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/skill-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "parentId": 7,
+                  "left": 10,
+                  "right": 11,
+                  "description": " Welding ",
+                  "comments": " Certified welding skill ",
+                  "internalIdentifier": " WELDING ",
+                  "externalIdentifier": " EXT-WELDING ",
+                  "externalIdSource": " Legacy "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.parentId").value(7))
+            .andExpect(jsonPath("$.left").value(10))
+            .andExpect(jsonPath("$.right").value(11))
+            .andExpect(jsonPath("$.description").value("Welding"))
+            .andExpect(jsonPath("$.comments").value("Certified welding skill"))
+            .andExpect(jsonPath("$.internalIdentifier").value("WELDING"))
+            .andExpect(jsonPath("$.externalIdentifier").value("EXT-WELDING"))
+            .andExpect(jsonPath("$.externalIdSource").value("Legacy"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/skill-types/{id}",
+            typeId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(typeId))
+            .andExpect(jsonPath("$.internalIdentifier").value("WELDING"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/skill-types"
+        )
+            .param("parentId", "7")
+            .param("internalIdentifier", "WELDING")
+            .param("externalIdentifier", "EXT-WELDING")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(typeId))
+            .andExpect(jsonPath("$.items[0].internalIdentifier").value("WELDING"));
+    }
+
+    @Test
+    void allowsDuplicateSkillTypesForLegacyParity() throws Exception {
+        String payload = """
+            {
+              "description": "Welding duplicate",
+              "internalIdentifier": "WELDING-DUP",
+              "externalIdentifier": "EXT-WELDING-DUP",
+              "externalIdSource": "Legacy"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/skill-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/skill-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/skill-types"
+        )
+            .param("internalIdentifier", "WELDING-DUP")
+            .param("externalIdentifier", "EXT-WELDING-DUP")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void allowsEmptySkillTypeForLegacyParity() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/skill-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.parentId").doesNotExist())
+            .andExpect(jsonPath("$.internalIdentifier").doesNotExist())
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+    }
+
+    @Test
+    void createsReadsAndListsPartySkills() throws Exception {
+        String skillId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/party-skills"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "partyId": 1100,
+                  "skillTypeId": 2200
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.partyId").value(1100))
+            .andExpect(jsonPath("$.skillTypeId").value(2200))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/party-skills/{id}",
+            skillId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(skillId))
+            .andExpect(jsonPath("$.partyId").value(1100))
+            .andExpect(jsonPath("$.skillTypeId").value(2200));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/party-skills"
+        )
+            .param("partyId", "1100")
+            .param("skillTypeId", "2200")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(skillId))
+            .andExpect(jsonPath("$.items[0].partyId").value(1100))
+            .andExpect(jsonPath("$.items[0].skillTypeId").value(2200));
+    }
+
+    @Test
+    void allowsDuplicatePartySkillsForLegacyParity() throws Exception {
+        String payload = """
+            {
+              "partyId": 3300,
+              "skillTypeId": 4400
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/party-skills"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/party-skills"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/party-skills"
+        )
+            .param("partyId", "3300")
+            .param("skillTypeId", "4400")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void allowsEmptyPartySkillForLegacyParity() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/party-skills"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.partyId").doesNotExist())
+            .andExpect(jsonPath("$.skillTypeId").doesNotExist())
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+    }
+
+    @Test
     void createsReadsAndListsWorkEffortTypes() throws Exception {
         String typeId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
             "/api/work-efforts/work-effort-types"
