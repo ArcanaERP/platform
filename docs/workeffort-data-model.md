@@ -4,7 +4,7 @@ Updated: 2026-08-30
 
 ## Scope
 
-Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible requirements, legacy-compatible requirement types, legacy-compatible skill types, legacy-compatible party skills, legacy-compatible good types, legacy-compatible deliverable types, legacy-compatible deliverables, legacy-compatible work-effort types, legacy-compatible work-effort purpose types, legacy-compatible party resource availability types, legacy-compatible party resource availabilities, legacy-compatible work-effort type associations, legacy-compatible associated-record joins, legacy-compatible work-order item fulfillment joins, legacy-compatible order requirement commitments, legacy-compatible work requirement fulfillment joins, legacy-compatible requirement party-role joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset standards, legacy-compatible skill standards, legacy-compatible good standards, legacy-compatible inventory produced results, legacy-compatible deliverable produced results, legacy-compatible fixed-asset serviced results, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
+Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible requirements, legacy-compatible requirement types, legacy-compatible skill types, legacy-compatible party skills, legacy-compatible good types, legacy-compatible deliverable types, legacy-compatible deliverables, legacy-compatible transportation routes, legacy-compatible associated transportation route joins, legacy-compatible work-effort types, legacy-compatible work-effort purpose types, legacy-compatible party resource availability types, legacy-compatible party resource availabilities, legacy-compatible work-effort type associations, legacy-compatible associated-record joins, legacy-compatible work-order item fulfillment joins, legacy-compatible order requirement commitments, legacy-compatible work requirement fulfillment joins, legacy-compatible requirement party-role joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset standards, legacy-compatible skill standards, legacy-compatible good standards, legacy-compatible inventory produced results, legacy-compatible deliverable produced results, legacy-compatible fixed-asset serviced results, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
 
 ## Aggregate
 
@@ -237,6 +237,45 @@ Rules:
 - string fields are trimmed when present
 - `deliverableRecordType` and `deliverableRecordId` are stored as logical polymorphic references
 - duplicate rows are allowed because the legacy table has no uniqueness constraint
+
+### TransportationRoute
+
+Purpose:
+- mirror legacy `transportation_routes` records for routable work-effort-related records
+- store route metadata and external references without adding segment/stop lifecycle in this slice
+
+Core fields:
+- `id` (`UUID`)
+- `internalIdentifier`
+- `description`
+- `comments`
+- `externalIdentifier`
+- `externalIdSource`
+- `createdAt`
+
+Rules:
+- all legacy columns are optional in this slice except generated `id` and `createdAt`
+- string fields are trimmed when present
+- duplicate rows are allowed because the legacy table has no uniqueness constraint
+
+### AssociatedTransportationRoute
+
+Purpose:
+- mirror legacy `associated_transportation_routes` polymorphic join records
+- link a transportation route to an associated record without adding target-module dependencies
+
+Core fields:
+- `id` (`UUID`)
+- `transportationRouteId`
+- `associatedRecordId`
+- `associatedRecordType`
+- `createdAt`
+
+Rules:
+- writes require an existing transportation route id
+- `associatedRecordType` is trimmed when present
+- associated record id/type values remain logical polymorphic references
+- duplicate rows are allowed for parity with the legacy non-unique indexes
 
 ### WorkEffortType
 
@@ -731,6 +770,7 @@ Rules:
 - deliverable produced records store deliverable ids as numeric logical references without depending on a Deliverable catalog
 - fixed-asset serviced records store fixed-asset ids as numeric logical references without depending on Inventory
 - associated-record links store polymorphic record id/type values without depending on target modules
+- associated transportation routes store polymorphic record id/type values without depending on target modules
 - work-order item fulfillments store order-line-item ids as logical references without depending on Orders
 - order requirement commitments store order-line-item and requirement ids as logical references without depending on Orders or Requirement
 - work requirement fulfillments store requirement ids as logical references without depending on Requirement
@@ -742,6 +782,7 @@ Rules:
 - good types store parent ids as logical nested-set references without adding tree mutation behavior
 - deliverable types store parent ids as logical nested-set references without adding tree mutation behavior
 - deliverables store polymorphic record id/type references without adding target-module dependencies
+- transportation routes store route metadata without adding route segment or stop lifecycle in this slice
 - work-effort types store parent ids as logical nested-set references without adding tree mutation behavior
 - work-effort purpose types store parent ids as logical nested-set references without adding tree mutation behavior
 - party resource availabilities store party and availability-type ids as logical references without adding Party or availability-type validation
@@ -754,6 +795,12 @@ Rules:
 - `POST /api/work-efforts/associated-records`
 - `GET /api/work-efforts/associated-records/{id}`
 - `GET /api/work-efforts/associated-records?tenantCode=&effortNumber=&associatedRecordId=&associatedRecordType=&page=&size=`
+- `POST /api/work-efforts/transportation-routes`
+- `GET /api/work-efforts/transportation-routes/{id}`
+- `GET /api/work-efforts/transportation-routes?internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
+- `POST /api/work-efforts/associated-transportation-routes`
+- `GET /api/work-efforts/associated-transportation-routes/{id}`
+- `GET /api/work-efforts/associated-transportation-routes?transportationRouteId=&associatedRecordId=&associatedRecordType=&page=&size=`
 - `POST /api/work-efforts/work-order-item-fulfillments`
 - `GET /api/work-efforts/work-order-item-fulfillments/{id}`
 - `GET /api/work-efforts/work-order-item-fulfillments?tenantCode=&effortNumber=&orderLineItemId=&page=&size=`

@@ -1442,6 +1442,240 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsTransportationRoutes() throws Exception {
+        String routeId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-routes"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "internalIdentifier": " ROUTE-1 ",
+                  "description": " Primary route ",
+                  "comments": " Used by work transportation ",
+                  "externalIdentifier": " EXT-ROUTE-1 ",
+                  "externalIdSource": " Legacy "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.internalIdentifier").value("ROUTE-1"))
+            .andExpect(jsonPath("$.description").value("Primary route"))
+            .andExpect(jsonPath("$.comments").value("Used by work transportation"))
+            .andExpect(jsonPath("$.externalIdentifier").value("EXT-ROUTE-1"))
+            .andExpect(jsonPath("$.externalIdSource").value("Legacy"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/transportation-routes/{id}",
+            routeId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(routeId))
+            .andExpect(jsonPath("$.internalIdentifier").value("ROUTE-1"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/transportation-routes"
+        )
+            .param("internalIdentifier", "ROUTE-1")
+            .param("externalIdentifier", "EXT-ROUTE-1")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(routeId))
+            .andExpect(jsonPath("$.items[0].internalIdentifier").value("ROUTE-1"));
+    }
+
+    @Test
+    void allowsDuplicateTransportationRoutesForLegacyParity() throws Exception {
+        String payload = """
+            {
+              "internalIdentifier": "ROUTE-DUP",
+              "description": "Duplicate route",
+              "externalIdentifier": "EXT-ROUTE-DUP",
+              "externalIdSource": "Legacy"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-routes"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-routes"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/transportation-routes"
+        )
+            .param("internalIdentifier", "ROUTE-DUP")
+            .param("externalIdentifier", "EXT-ROUTE-DUP")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void allowsEmptyTransportationRouteForLegacyParity() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-routes"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.internalIdentifier").doesNotExist())
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+    }
+
+    @Test
+    void createsReadsAndListsAssociatedTransportationRoutes() throws Exception {
+        String routeId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-routes"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "internalIdentifier": "ASSOC-ROUTE-1"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        String associationId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/associated-transportation-routes"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "transportationRouteId": "%s",
+                  "associatedRecordId": 7700,
+                  "associatedRecordType": " Shipment "
+                }
+                """.formatted(routeId)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.transportationRouteId").value(routeId))
+            .andExpect(jsonPath("$.associatedRecordId").value(7700))
+            .andExpect(jsonPath("$.associatedRecordType").value("Shipment"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/associated-transportation-routes/{id}",
+            associationId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(associationId))
+            .andExpect(jsonPath("$.transportationRouteId").value(routeId));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/associated-transportation-routes"
+        )
+            .param("transportationRouteId", routeId)
+            .param("associatedRecordId", "7700")
+            .param("associatedRecordType", "Shipment")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(associationId))
+            .andExpect(jsonPath("$.items[0].associatedRecordType").value("Shipment"));
+    }
+
+    @Test
+    void allowsDuplicateAssociatedTransportationRoutesForLegacyParity() throws Exception {
+        String routeId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-routes"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "internalIdentifier": "ASSOC-ROUTE-DUP"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+        String payload = """
+            {
+              "transportationRouteId": "%s",
+              "associatedRecordId": 8800,
+              "associatedRecordType": "Shipment"
+            }
+            """.formatted(routeId);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/associated-transportation-routes"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/associated-transportation-routes"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/associated-transportation-routes"
+        )
+            .param("transportationRouteId", routeId)
+            .param("associatedRecordId", "8800")
+            .param("associatedRecordType", "Shipment")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void rejectsAssociatedTransportationRouteForMissingRoute() throws Exception {
+        String missingRouteId = "00000000-0000-0000-0000-000000000001";
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/associated-transportation-routes"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "transportationRouteId": "%s",
+                  "associatedRecordId": 7700,
+                  "associatedRecordType": "Shipment"
+                }
+                """.formatted(missingRouteId)))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value(
+                "Transportation route not found for id: " + missingRouteId
+            ))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/associated-transportation-routes"));
+    }
+
+    @Test
     void createsReadsAndListsWorkEffortTypes() throws Exception {
         String typeId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
             "/api/work-efforts/work-effort-types"

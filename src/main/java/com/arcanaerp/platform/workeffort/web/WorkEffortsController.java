@@ -3,6 +3,7 @@ package com.arcanaerp.platform.workeffort.web;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.workeffort.AssociatedWorkEffortView;
+import com.arcanaerp.platform.workeffort.AssociatedTransportationRouteView;
 import com.arcanaerp.platform.workeffort.AssignWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.ChangeWorkEffortStatusCommand;
 import com.arcanaerp.platform.workeffort.CreateWorkEffortCommand;
@@ -22,6 +23,7 @@ import com.arcanaerp.platform.workeffort.PartySkillView;
 import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityTypeView;
 import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityView;
 import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
+import com.arcanaerp.platform.workeffort.RegisterAssociatedTransportationRouteCommand;
 import com.arcanaerp.platform.workeffort.RegisterDeliverableCommand;
 import com.arcanaerp.platform.workeffort.RegisterDeliverableTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterGoodTypeCommand;
@@ -33,6 +35,7 @@ import com.arcanaerp.platform.workeffort.RegisterRequirementCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementPartyRoleCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterSkillTypeCommand;
+import com.arcanaerp.platform.workeffort.RegisterTransportationRouteCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortDeliverableProducedCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
@@ -82,6 +85,7 @@ import com.arcanaerp.platform.workeffort.RequirementTypeView;
 import com.arcanaerp.platform.workeffort.RequirementView;
 import com.arcanaerp.platform.workeffort.RequirementPartyRoleView;
 import com.arcanaerp.platform.workeffort.SkillTypeView;
+import com.arcanaerp.platform.workeffort.TransportationRouteView;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -591,6 +595,78 @@ public class WorkEffortsController {
             deliverableRecordId,
             PageQuery.of(page, size)
         ).map(this::toDeliverableResponse);
+    }
+
+    @PostMapping("/transportation-routes")
+    @ResponseStatus(HttpStatus.CREATED)
+    public TransportationRouteResponse createTransportationRoute(
+        @Valid @RequestBody CreateTransportationRouteRequest request
+    ) {
+        return toTransportationRouteResponse(workEffortCatalog.registerTransportationRoute(
+            new RegisterTransportationRouteCommand(
+                request.internalIdentifier(),
+                request.description(),
+                request.comments(),
+                request.externalIdentifier(),
+                request.externalIdSource()
+            )
+        ));
+    }
+
+    @GetMapping("/transportation-routes/{id}")
+    public TransportationRouteResponse transportationRouteById(@PathVariable java.util.UUID id) {
+        return toTransportationRouteResponse(workEffortCatalog.transportationRouteById(id));
+    }
+
+    @GetMapping("/transportation-routes")
+    public PageResult<TransportationRouteResponse> listTransportationRoutes(
+        @RequestParam(required = false) String internalIdentifier,
+        @RequestParam(required = false) String externalIdentifier,
+        @RequestParam(required = false) String externalIdSource,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listTransportationRoutes(
+            internalIdentifier,
+            externalIdentifier,
+            externalIdSource,
+            PageQuery.of(page, size)
+        ).map(this::toTransportationRouteResponse);
+    }
+
+    @PostMapping("/associated-transportation-routes")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AssociatedTransportationRouteResponse createAssociatedTransportationRoute(
+        @Valid @RequestBody CreateAssociatedTransportationRouteRequest request
+    ) {
+        return toAssociatedTransportationRouteResponse(workEffortCatalog.registerAssociatedTransportationRoute(
+            new RegisterAssociatedTransportationRouteCommand(
+                request.transportationRouteId(),
+                request.associatedRecordId(),
+                request.associatedRecordType()
+            )
+        ));
+    }
+
+    @GetMapping("/associated-transportation-routes/{id}")
+    public AssociatedTransportationRouteResponse associatedTransportationRouteById(@PathVariable java.util.UUID id) {
+        return toAssociatedTransportationRouteResponse(workEffortCatalog.associatedTransportationRouteById(id));
+    }
+
+    @GetMapping("/associated-transportation-routes")
+    public PageResult<AssociatedTransportationRouteResponse> listAssociatedTransportationRoutes(
+        @RequestParam(required = false) java.util.UUID transportationRouteId,
+        @RequestParam(required = false) Long associatedRecordId,
+        @RequestParam(required = false) String associatedRecordType,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listAssociatedTransportationRoutes(
+            transportationRouteId,
+            associatedRecordId,
+            associatedRecordType,
+            PageQuery.of(page, size)
+        ).map(this::toAssociatedTransportationRouteResponse);
     }
 
     @PostMapping("/work-effort-types")
@@ -1850,6 +1926,30 @@ public class WorkEffortsController {
             view.externalIdSource(),
             view.deliverableRecordType(),
             view.deliverableRecordId(),
+            view.createdAt()
+        );
+    }
+
+    private TransportationRouteResponse toTransportationRouteResponse(TransportationRouteView view) {
+        return new TransportationRouteResponse(
+            view.id(),
+            view.internalIdentifier(),
+            view.description(),
+            view.comments(),
+            view.externalIdentifier(),
+            view.externalIdSource(),
+            view.createdAt()
+        );
+    }
+
+    private AssociatedTransportationRouteResponse toAssociatedTransportationRouteResponse(
+        AssociatedTransportationRouteView view
+    ) {
+        return new AssociatedTransportationRouteResponse(
+            view.id(),
+            view.transportationRouteId(),
+            view.associatedRecordId(),
+            view.associatedRecordType(),
             view.createdAt()
         );
     }

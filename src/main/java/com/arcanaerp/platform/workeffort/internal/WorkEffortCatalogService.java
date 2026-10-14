@@ -5,6 +5,7 @@ import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import com.arcanaerp.platform.identity.IdentityActorLookup;
 import com.arcanaerp.platform.workeffort.AssociatedWorkEffortView;
+import com.arcanaerp.platform.workeffort.AssociatedTransportationRouteView;
 import com.arcanaerp.platform.workeffort.AssignWorkEffortCommand;
 import com.arcanaerp.platform.workeffort.ChangeWorkEffortStatusCommand;
 import com.arcanaerp.platform.workeffort.CreateWorkEffortCommand;
@@ -24,6 +25,7 @@ import com.arcanaerp.platform.workeffort.PartySkillView;
 import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityTypeView;
 import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityView;
 import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
+import com.arcanaerp.platform.workeffort.RegisterAssociatedTransportationRouteCommand;
 import com.arcanaerp.platform.workeffort.RegisterDeliverableCommand;
 import com.arcanaerp.platform.workeffort.RegisterDeliverableTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterGoodTypeCommand;
@@ -35,6 +37,7 @@ import com.arcanaerp.platform.workeffort.RegisterRequirementCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementPartyRoleCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterSkillTypeCommand;
+import com.arcanaerp.platform.workeffort.RegisterTransportationRouteCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortDeliverableProducedCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
@@ -84,6 +87,7 @@ import com.arcanaerp.platform.workeffort.RequirementTypeView;
 import com.arcanaerp.platform.workeffort.RequirementView;
 import com.arcanaerp.platform.workeffort.RequirementPartyRoleView;
 import com.arcanaerp.platform.workeffort.SkillTypeView;
+import com.arcanaerp.platform.workeffort.TransportationRouteView;
 import java.time.DayOfWeek;
 import java.time.Clock;
 import java.time.Instant;
@@ -123,6 +127,8 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final GoodTypeRepository goodTypeRepository;
     private final DeliverableTypeRepository deliverableTypeRepository;
     private final DeliverableRepository deliverableRepository;
+    private final TransportationRouteRepository transportationRouteRepository;
+    private final AssociatedTransportationRouteRepository associatedTransportationRouteRepository;
     private final WorkEffortTypeRepository workEffortTypeRepository;
     private final WorkEffortPurposeTypeRepository workEffortPurposeTypeRepository;
     private final PartyResourceAvailabilityTypeRepository partyResourceAvailabilityTypeRepository;
@@ -747,6 +753,101 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toDeliverableView);
+    }
+
+    @Override
+    public TransportationRouteView registerTransportationRoute(RegisterTransportationRouteCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toTransportationRouteView(transportationRouteRepository.save(
+            TransportationRoute.create(
+                command.internalIdentifier(),
+                command.description(),
+                command.comments(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TransportationRouteView transportationRouteById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toTransportationRouteView(transportationRouteRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Transportation route not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<TransportationRouteView> listTransportationRoutes(
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    ) {
+        Page<TransportationRoute> page = transportationRouteRepository.findRoutesFiltered(
+            normalizeOptional(internalIdentifier, "internalIdentifier"),
+            normalizeOptional(externalIdentifier, "externalIdentifier"),
+            normalizeOptional(externalIdSource, "externalIdSource"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toTransportationRouteView);
+    }
+
+    @Override
+    public AssociatedTransportationRouteView registerAssociatedTransportationRoute(
+        RegisterAssociatedTransportationRouteCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        if (command.transportationRouteId() == null) {
+            throw new IllegalArgumentException("transportationRouteId is required");
+        }
+        TransportationRoute route = transportationRouteRepository.findById(command.transportationRouteId())
+            .orElseThrow(() -> new NoSuchElementException(
+                "Transportation route not found for id: " + command.transportationRouteId()
+            ));
+        return toAssociatedTransportationRouteView(associatedTransportationRouteRepository.save(
+            AssociatedTransportationRoute.create(
+                route,
+                command.associatedRecordId(),
+                command.associatedRecordType(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AssociatedTransportationRouteView associatedTransportationRouteById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toAssociatedTransportationRouteView(associatedTransportationRouteRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Associated transportation route not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<AssociatedTransportationRouteView> listAssociatedTransportationRoutes(
+        UUID transportationRouteId,
+        Long associatedRecordId,
+        String associatedRecordType,
+        PageQuery pageQuery
+    ) {
+        Page<AssociatedTransportationRoute> page = associatedTransportationRouteRepository.findAssociatedRoutesFiltered(
+            transportationRouteId,
+            associatedRecordId,
+            normalizeOptional(associatedRecordType, "associatedRecordType"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toAssociatedTransportationRouteView);
     }
 
     @Override
@@ -2240,6 +2341,30 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             deliverable.getDeliverableRecordType(),
             deliverable.getDeliverableRecordId(),
             deliverable.getCreatedAt()
+        );
+    }
+
+    private TransportationRouteView toTransportationRouteView(TransportationRoute route) {
+        return new TransportationRouteView(
+            route.getId(),
+            route.getInternalIdentifier(),
+            route.getDescription(),
+            route.getComments(),
+            route.getExternalIdentifier(),
+            route.getExternalIdSource(),
+            route.getCreatedAt()
+        );
+    }
+
+    private AssociatedTransportationRouteView toAssociatedTransportationRouteView(
+        AssociatedTransportationRoute associated
+    ) {
+        return new AssociatedTransportationRouteView(
+            associated.getId(),
+            associated.getTransportationRouteId(),
+            associated.getAssociatedRecordId(),
+            associated.getAssociatedRecordType(),
+            associated.getCreatedAt()
         );
     }
 

@@ -193,6 +193,12 @@ Work Effort:
 - `POST /api/work-efforts/deliverables`
 - `GET /api/work-efforts/deliverables/{id}`
 - `GET /api/work-efforts/deliverables?internalIdentifier=&externalIdentifier=&externalIdSource=&deliverableRecordType=&deliverableRecordId=&page=&size=`
+- `POST /api/work-efforts/transportation-routes`
+- `GET /api/work-efforts/transportation-routes/{id}`
+- `GET /api/work-efforts/transportation-routes?internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
+- `POST /api/work-efforts/associated-transportation-routes`
+- `GET /api/work-efforts/associated-transportation-routes/{id}`
+- `GET /api/work-efforts/associated-transportation-routes?transportationRouteId=&associatedRecordId=&associatedRecordType=&page=&size=`
 - `POST /api/work-efforts/work-effort-types`
 - `GET /api/work-efforts/work-effort-types/{id}`
 - `GET /api/work-efforts/work-effort-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`

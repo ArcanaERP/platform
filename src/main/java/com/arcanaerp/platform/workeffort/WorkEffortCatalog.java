@@ -156,6 +156,30 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    TransportationRouteView registerTransportationRoute(RegisterTransportationRouteCommand command);
+
+    TransportationRouteView transportationRouteById(java.util.UUID id);
+
+    PageResult<TransportationRouteView> listTransportationRoutes(
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    );
+
+    AssociatedTransportationRouteView registerAssociatedTransportationRoute(
+        RegisterAssociatedTransportationRouteCommand command
+    );
+
+    AssociatedTransportationRouteView associatedTransportationRouteById(java.util.UUID id);
+
+    PageResult<AssociatedTransportationRouteView> listAssociatedTransportationRoutes(
+        java.util.UUID transportationRouteId,
+        Long associatedRecordId,
+        String associatedRecordType,
+        PageQuery pageQuery
+    );
+
     WorkEffortTypeView registerWorkEffortType(RegisterWorkEffortTypeCommand command);
 
     WorkEffortTypeView workEffortTypeById(java.util.UUID id);
