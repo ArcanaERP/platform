@@ -125,7 +125,25 @@ public class WorkEffortsController {
                 request.description(),
                 request.status(),
                 request.assignedTo(),
-                request.dueAt()
+                request.dueAt(),
+                request.parentId(),
+                request.left(),
+                request.right(),
+                request.facilityId(),
+                request.projectedCostMoneyId(),
+                request.actualCostMoneyId(),
+                request.fixedAssetId(),
+                request.workEffortPurposeTypeId(),
+                request.workEffortTypeId(),
+                request.legacyType(),
+                request.startedAt(),
+                request.finishedAt(),
+                request.projectedCompletionTime(),
+                request.actualCompletionTime(),
+                request.workEffortRecordId(),
+                request.workEffortRecordType(),
+                request.workEffortItemId(),
+                request.workEffortItemType()
             )
         );
         return toResponse(created);
@@ -1879,6 +1897,24 @@ public class WorkEffortsController {
             view.status(),
             view.assignedTo(),
             view.dueAt(),
+            view.parentId(),
+            view.left(),
+            view.right(),
+            view.facilityId(),
+            view.projectedCostMoneyId(),
+            view.actualCostMoneyId(),
+            view.fixedAssetId(),
+            view.workEffortPurposeTypeId(),
+            view.workEffortTypeId(),
+            view.legacyType(),
+            view.startedAt(),
+            view.finishedAt(),
+            view.projectedCompletionTime(),
+            view.actualCompletionTime(),
+            view.workEffortRecordId(),
+            view.workEffortRecordType(),
+            view.workEffortItemId(),
+            view.workEffortItemType(),
             view.createdAt()
         );
     }

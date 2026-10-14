@@ -105,6 +105,80 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void preservesLegacyWorkEffortColumns() throws Exception {
+        ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
+            mockMvc,
+            "workweblegacy01",
+            "agent01@work.com",
+            "Work Web",
+            "Agent 01"
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/work-efforts")
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": " workweblegacy01 ",
+                  "effortNumber": " we-legacy-001 ",
+                  "name": "Legacy effort",
+                  "description": "Legacy column coverage",
+                  "status": "PLANNED",
+                  "assignedTo": "AGENT01@WORK.COM",
+                  "dueAt": "2026-04-22T10:00:00Z",
+                  "parentId": 10,
+                  "left": 11,
+                  "right": 12,
+                  "facilityId": 13,
+                  "projectedCostMoneyId": 14,
+                  "actualCostMoneyId": 15,
+                  "fixedAssetId": 16,
+                  "workEffortPurposeTypeId": 17,
+                  "workEffortTypeId": 18,
+                  "legacyType": " WorkOrder ",
+                  "startedAt": "2026-04-22T08:00:00Z",
+                  "finishedAt": "2026-04-22T09:30:00Z",
+                  "projectedCompletionTime": 120,
+                  "actualCompletionTime": 90,
+                  "workEffortRecordId": 19,
+                  "workEffortRecordType": " ProjectTask ",
+                  "workEffortItemId": 20,
+                  "workEffortItemType": " WorkOrderItem "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.tenantCode").value("WORKWEBLEGACY01"))
+            .andExpect(jsonPath("$.effortNumber").value("WE-LEGACY-001"))
+            .andExpect(jsonPath("$.assignedTo").value("agent01@work.com"))
+            .andExpect(jsonPath("$.parentId").value(10))
+            .andExpect(jsonPath("$.left").value(11))
+            .andExpect(jsonPath("$.right").value(12))
+            .andExpect(jsonPath("$.facilityId").value(13))
+            .andExpect(jsonPath("$.projectedCostMoneyId").value(14))
+            .andExpect(jsonPath("$.actualCostMoneyId").value(15))
+            .andExpect(jsonPath("$.fixedAssetId").value(16))
+            .andExpect(jsonPath("$.workEffortPurposeTypeId").value(17))
+            .andExpect(jsonPath("$.workEffortTypeId").value(18))
+            .andExpect(jsonPath("$.legacyType").value("WorkOrder"))
+            .andExpect(jsonPath("$.startedAt").value("2026-04-22T08:00:00Z"))
+            .andExpect(jsonPath("$.finishedAt").value("2026-04-22T09:30:00Z"))
+            .andExpect(jsonPath("$.projectedCompletionTime").value(120))
+            .andExpect(jsonPath("$.actualCompletionTime").value(90))
+            .andExpect(jsonPath("$.workEffortRecordId").value(19))
+            .andExpect(jsonPath("$.workEffortRecordType").value("ProjectTask"))
+            .andExpect(jsonPath("$.workEffortItemId").value(20))
+            .andExpect(jsonPath("$.workEffortItemType").value("WorkOrderItem"));
+
+        mockMvc.perform(WorkEffortsWebIntegrationTestSupport.getWorkEffortRequest(
+            "workweblegacy01",
+            "we-legacy-001"
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.fixedAssetId").value(16))
+            .andExpect(jsonPath("$.workEffortRecordType").value("ProjectTask"))
+            .andExpect(jsonPath("$.workEffortItemType").value("WorkOrderItem"));
+    }
+
+    @Test
     void usesDefaultPaginationWhenPageAndSizeOmitted() throws Exception {
         ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
             mockMvc,

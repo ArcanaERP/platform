@@ -24,7 +24,11 @@ import lombok.NoArgsConstructor;
     indexes = {
         @Index(name = "idx_work_efforts_tenant_created_at", columnList = "tenantCode,createdAt"),
         @Index(name = "idx_work_efforts_tenant_status", columnList = "tenantCode,status"),
-        @Index(name = "idx_work_efforts_tenant_assigned_to", columnList = "tenantCode,assignedTo")
+        @Index(name = "idx_work_efforts_tenant_assigned_to", columnList = "tenantCode,assignedTo"),
+        @Index(name = "idx_work_efforts_record", columnList = "workEffortRecordId,workEffortRecordType"),
+        @Index(name = "idx_work_efforts_item", columnList = "workEffortItemId,workEffortItemType"),
+        @Index(name = "idx_work_efforts_fixed_asset", columnList = "fixedAssetId"),
+        @Index(name = "idx_work_efforts_finished_at", columnList = "finishedAt")
     }
 )
 @Getter
@@ -57,6 +61,47 @@ class WorkEffort {
     @Column
     private Instant dueAt;
 
+    private Long parentId;
+
+    @Column(name = "lft")
+    private Long left;
+
+    @Column(name = "rgt")
+    private Long right;
+
+    private Long facilityId;
+
+    private Long projectedCostMoneyId;
+
+    private Long actualCostMoneyId;
+
+    private Long fixedAssetId;
+
+    private Long workEffortPurposeTypeId;
+
+    private Long workEffortTypeId;
+
+    @Column(name = "type", length = 128)
+    private String legacyType;
+
+    private Instant startedAt;
+
+    private Instant finishedAt;
+
+    private Integer projectedCompletionTime;
+
+    private Integer actualCompletionTime;
+
+    private Long workEffortRecordId;
+
+    @Column(length = 128)
+    private String workEffortRecordType;
+
+    private Long workEffortItemId;
+
+    @Column(length = 128)
+    private String workEffortItemType;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -69,6 +114,24 @@ class WorkEffort {
         WorkEffortStatus status,
         String assignedTo,
         Instant dueAt,
+        Long parentId,
+        Long left,
+        Long right,
+        Long facilityId,
+        Long projectedCostMoneyId,
+        Long actualCostMoneyId,
+        Long fixedAssetId,
+        Long workEffortPurposeTypeId,
+        Long workEffortTypeId,
+        String legacyType,
+        Instant startedAt,
+        Instant finishedAt,
+        Integer projectedCompletionTime,
+        Integer actualCompletionTime,
+        Long workEffortRecordId,
+        String workEffortRecordType,
+        Long workEffortItemId,
+        String workEffortItemType,
         Instant createdAt
     ) {
         this.id = id;
@@ -79,6 +142,24 @@ class WorkEffort {
         this.status = status;
         this.assignedTo = assignedTo;
         this.dueAt = dueAt;
+        this.parentId = parentId;
+        this.left = left;
+        this.right = right;
+        this.facilityId = facilityId;
+        this.projectedCostMoneyId = projectedCostMoneyId;
+        this.actualCostMoneyId = actualCostMoneyId;
+        this.fixedAssetId = fixedAssetId;
+        this.workEffortPurposeTypeId = workEffortPurposeTypeId;
+        this.workEffortTypeId = workEffortTypeId;
+        this.legacyType = normalizeOptional(legacyType);
+        this.startedAt = startedAt;
+        this.finishedAt = finishedAt;
+        this.projectedCompletionTime = projectedCompletionTime;
+        this.actualCompletionTime = actualCompletionTime;
+        this.workEffortRecordId = workEffortRecordId;
+        this.workEffortRecordType = normalizeOptional(workEffortRecordType);
+        this.workEffortItemId = workEffortItemId;
+        this.workEffortItemType = normalizeOptional(workEffortItemType);
         this.createdAt = createdAt;
     }
 
@@ -90,6 +171,64 @@ class WorkEffort {
         WorkEffortStatus status,
         String assignedTo,
         Instant dueAt,
+        Instant createdAt
+    ) {
+        return create(
+            tenantCode,
+            effortNumber,
+            name,
+            description,
+            status,
+            assignedTo,
+            dueAt,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            createdAt
+        );
+    }
+
+    static WorkEffort create(
+        String tenantCode,
+        String effortNumber,
+        String name,
+        String description,
+        WorkEffortStatus status,
+        String assignedTo,
+        Instant dueAt,
+        Long parentId,
+        Long left,
+        Long right,
+        Long facilityId,
+        Long projectedCostMoneyId,
+        Long actualCostMoneyId,
+        Long fixedAssetId,
+        Long workEffortPurposeTypeId,
+        Long workEffortTypeId,
+        String legacyType,
+        Instant startedAt,
+        Instant finishedAt,
+        Integer projectedCompletionTime,
+        Integer actualCompletionTime,
+        Long workEffortRecordId,
+        String workEffortRecordType,
+        Long workEffortItemId,
+        String workEffortItemType,
         Instant createdAt
     ) {
         if (status == null) {
@@ -107,6 +246,24 @@ class WorkEffort {
             status,
             normalizeEmail(assignedTo),
             dueAt,
+            parentId,
+            left,
+            right,
+            facilityId,
+            projectedCostMoneyId,
+            actualCostMoneyId,
+            fixedAssetId,
+            workEffortPurposeTypeId,
+            workEffortTypeId,
+            legacyType,
+            startedAt,
+            finishedAt,
+            projectedCompletionTime,
+            actualCompletionTime,
+            workEffortRecordId,
+            workEffortRecordType,
+            workEffortItemId,
+            workEffortItemType,
             createdAt
         );
     }
@@ -140,6 +297,13 @@ class WorkEffort {
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");
+        }
+        return value.trim();
+    }
+
+    private static String normalizeOptional(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
         }
         return value.trim();
     }

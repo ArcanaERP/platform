@@ -23,11 +23,31 @@ Core fields:
 - `status`
 - `assignedTo`
 - `dueAt`
+- `parentId`
+- `left` mapped to legacy column `lft`
+- `right` mapped to legacy column `rgt`
+- `facilityId`
+- `projectedCostMoneyId`
+- `actualCostMoneyId`
+- `fixedAssetId`
+- `workEffortPurposeTypeId`
+- `workEffortTypeId`
+- `legacyType` mapped to legacy column `type`
+- `startedAt`
+- `finishedAt`
+- `projectedCompletionTime`
+- `actualCompletionTime`
+- `workEffortRecordId`
+- `workEffortRecordType`
+- `workEffortItemId`
+- `workEffortItemType`
 - `createdAt`
 
 Rules:
 - `tenantCode` and `effortNumber` are normalized to uppercase
 - `assignedTo` is normalized to lowercase when present
+- legacy string discriminator fields are trimmed when present
+- legacy numeric relationship columns are stored as logical references
 - create, status-transition, and assignment commands validate actor emails through the `identity` module
 - list filters currently support exact `tenantCode`, optional exact `status`, and optional exact `assignedTo`
 
@@ -842,6 +862,7 @@ Rules:
 - deliverable produced records store deliverable ids as numeric logical references without depending on a Deliverable catalog
 - fixed-asset serviced records store fixed-asset ids as numeric logical references without depending on Inventory
 - associated-record links store polymorphic record id/type values without depending on target modules
+- work efforts store facility, money, fixed asset, type, purpose, record, and item references as logical values without adding module dependencies
 - associated transportation routes store polymorphic record id/type values without depending on target modules
 - transportation route stops store postal address ids as logical references without depending on Address
 - transportation route segments store route and stop ids as logical references inside the Work Effort module
@@ -1014,3 +1035,4 @@ Rules:
 - assignment activity summaries are grouped by current assignee from immutable assignment-change audits; daily/weekly/monthly by-assignee endpoints add the same assignee split inside each UTC bucket
 - daily, weekly, and monthly assignment activity summaries use UTC bucket boundaries
 - daily, weekly, and monthly status activity summaries use UTC bucket boundaries
+- `valid_work_assignment` and `valid_work_assignment_attribute` exist as legacy models, but no table migration has been found in the checked legacy migrations; this schema is not implemented until table ownership and columns are verified
