@@ -12,6 +12,8 @@ import com.arcanaerp.platform.workeffort.DailyWorkEffortAssignmentActivityByAssi
 import com.arcanaerp.platform.workeffort.DailyWorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.DailyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.DailyWorkEffortStatusActivitySummaryView;
+import com.arcanaerp.platform.workeffort.DeliverableTypeView;
+import com.arcanaerp.platform.workeffort.DeliverableView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivityByAssigneeSummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivityByCurrentStatusSummaryView;
@@ -22,6 +24,8 @@ import com.arcanaerp.platform.workeffort.PartySkillView;
 import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityTypeView;
 import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityView;
 import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
+import com.arcanaerp.platform.workeffort.RegisterDeliverableCommand;
+import com.arcanaerp.platform.workeffort.RegisterDeliverableTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterGoodTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterOrderRequirementCommitmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterPartySkillCommand;
@@ -117,6 +121,8 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final SkillTypeRepository skillTypeRepository;
     private final PartySkillRepository partySkillRepository;
     private final GoodTypeRepository goodTypeRepository;
+    private final DeliverableTypeRepository deliverableTypeRepository;
+    private final DeliverableRepository deliverableRepository;
     private final WorkEffortTypeRepository workEffortTypeRepository;
     private final WorkEffortPurposeTypeRepository workEffortPurposeTypeRepository;
     private final PartyResourceAvailabilityTypeRepository partyResourceAvailabilityTypeRepository;
@@ -642,6 +648,105 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toGoodTypeView);
+    }
+
+    @Override
+    public DeliverableTypeView registerDeliverableType(RegisterDeliverableTypeCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toDeliverableTypeView(deliverableTypeRepository.save(
+            DeliverableType.create(
+                command.parentId(),
+                command.left(),
+                command.right(),
+                command.description(),
+                command.comments(),
+                command.internalIdentifier(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DeliverableTypeView deliverableTypeById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toDeliverableTypeView(deliverableTypeRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Deliverable type not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DeliverableTypeView> listDeliverableTypes(
+        Long parentId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    ) {
+        Page<DeliverableType> page = deliverableTypeRepository.findTypesFiltered(
+            parentId,
+            normalizeOptional(internalIdentifier, "internalIdentifier"),
+            normalizeOptional(externalIdentifier, "externalIdentifier"),
+            normalizeOptional(externalIdSource, "externalIdSource"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toDeliverableTypeView);
+    }
+
+    @Override
+    public DeliverableView registerDeliverable(RegisterDeliverableCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toDeliverableView(deliverableRepository.save(
+            Deliverable.create(
+                command.description(),
+                command.comments(),
+                command.internalIdentifier(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
+                command.deliverableRecordType(),
+                command.deliverableRecordId(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DeliverableView deliverableById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toDeliverableView(deliverableRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Deliverable not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DeliverableView> listDeliverables(
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        String deliverableRecordType,
+        Long deliverableRecordId,
+        PageQuery pageQuery
+    ) {
+        Page<Deliverable> page = deliverableRepository.findDeliverablesFiltered(
+            normalizeOptional(internalIdentifier, "internalIdentifier"),
+            normalizeOptional(externalIdentifier, "externalIdentifier"),
+            normalizeOptional(externalIdSource, "externalIdSource"),
+            normalizeOptional(deliverableRecordType, "deliverableRecordType"),
+            deliverableRecordId,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toDeliverableView);
     }
 
     @Override
@@ -2106,6 +2211,35 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             type.getExternalIdentifier(),
             type.getExternalIdSource(),
             type.getCreatedAt()
+        );
+    }
+
+    private DeliverableTypeView toDeliverableTypeView(DeliverableType type) {
+        return new DeliverableTypeView(
+            type.getId(),
+            type.getParentId(),
+            type.getLeft(),
+            type.getRight(),
+            type.getDescription(),
+            type.getComments(),
+            type.getInternalIdentifier(),
+            type.getExternalIdentifier(),
+            type.getExternalIdSource(),
+            type.getCreatedAt()
+        );
+    }
+
+    private DeliverableView toDeliverableView(Deliverable deliverable) {
+        return new DeliverableView(
+            deliverable.getId(),
+            deliverable.getDescription(),
+            deliverable.getComments(),
+            deliverable.getInternalIdentifier(),
+            deliverable.getExternalIdentifier(),
+            deliverable.getExternalIdSource(),
+            deliverable.getDeliverableRecordType(),
+            deliverable.getDeliverableRecordId(),
+            deliverable.getCreatedAt()
         );
     }
 

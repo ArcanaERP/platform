@@ -1220,6 +1220,228 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsDeliverableTypes() throws Exception {
+        String typeId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/deliverable-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "parentId": 7,
+                  "left": 10,
+                  "right": 11,
+                  "description": " Document ",
+                  "comments": " Document deliverable ",
+                  "internalIdentifier": " DOCUMENT ",
+                  "externalIdentifier": " EXT-DOCUMENT ",
+                  "externalIdSource": " Legacy "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.parentId").value(7))
+            .andExpect(jsonPath("$.left").value(10))
+            .andExpect(jsonPath("$.right").value(11))
+            .andExpect(jsonPath("$.description").value("Document"))
+            .andExpect(jsonPath("$.comments").value("Document deliverable"))
+            .andExpect(jsonPath("$.internalIdentifier").value("DOCUMENT"))
+            .andExpect(jsonPath("$.externalIdentifier").value("EXT-DOCUMENT"))
+            .andExpect(jsonPath("$.externalIdSource").value("Legacy"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/deliverable-types/{id}",
+            typeId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(typeId))
+            .andExpect(jsonPath("$.internalIdentifier").value("DOCUMENT"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/deliverable-types"
+        )
+            .param("parentId", "7")
+            .param("internalIdentifier", "DOCUMENT")
+            .param("externalIdentifier", "EXT-DOCUMENT")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(typeId))
+            .andExpect(jsonPath("$.items[0].internalIdentifier").value("DOCUMENT"));
+    }
+
+    @Test
+    void allowsDuplicateDeliverableTypesForLegacyParity() throws Exception {
+        String payload = """
+            {
+              "description": "Document duplicate",
+              "internalIdentifier": "DOCUMENT-DUP",
+              "externalIdentifier": "EXT-DOCUMENT-DUP",
+              "externalIdSource": "Legacy"
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/deliverable-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/deliverable-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/deliverable-types"
+        )
+            .param("internalIdentifier", "DOCUMENT-DUP")
+            .param("externalIdentifier", "EXT-DOCUMENT-DUP")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void allowsEmptyDeliverableTypeForLegacyParity() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/deliverable-types"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.parentId").doesNotExist())
+            .andExpect(jsonPath("$.internalIdentifier").doesNotExist())
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+    }
+
+    @Test
+    void createsReadsAndListsDeliverables() throws Exception {
+        String deliverableId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/deliverables"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "description": " Inspection report ",
+                  "comments": " Customer-facing report ",
+                  "internalIdentifier": " INSPECTION-REPORT ",
+                  "externalIdentifier": " EXT-REPORT ",
+                  "externalIdSource": " Legacy ",
+                  "deliverableRecordType": " WorkOrder ",
+                  "deliverableRecordId": 5500
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.description").value("Inspection report"))
+            .andExpect(jsonPath("$.comments").value("Customer-facing report"))
+            .andExpect(jsonPath("$.internalIdentifier").value("INSPECTION-REPORT"))
+            .andExpect(jsonPath("$.externalIdentifier").value("EXT-REPORT"))
+            .andExpect(jsonPath("$.externalIdSource").value("Legacy"))
+            .andExpect(jsonPath("$.deliverableRecordType").value("WorkOrder"))
+            .andExpect(jsonPath("$.deliverableRecordId").value(5500))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/deliverables/{id}",
+            deliverableId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(deliverableId))
+            .andExpect(jsonPath("$.internalIdentifier").value("INSPECTION-REPORT"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/deliverables"
+        )
+            .param("internalIdentifier", "INSPECTION-REPORT")
+            .param("externalIdentifier", "EXT-REPORT")
+            .param("externalIdSource", "Legacy")
+            .param("deliverableRecordType", "WorkOrder")
+            .param("deliverableRecordId", "5500")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(deliverableId))
+            .andExpect(jsonPath("$.items[0].internalIdentifier").value("INSPECTION-REPORT"))
+            .andExpect(jsonPath("$.items[0].deliverableRecordType").value("WorkOrder"))
+            .andExpect(jsonPath("$.items[0].deliverableRecordId").value(5500));
+    }
+
+    @Test
+    void allowsDuplicateDeliverablesForLegacyParity() throws Exception {
+        String payload = """
+            {
+              "description": "Inspection report duplicate",
+              "internalIdentifier": "INSPECTION-REPORT-DUP",
+              "externalIdentifier": "EXT-REPORT-DUP",
+              "externalIdSource": "Legacy",
+              "deliverableRecordType": "WorkOrder",
+              "deliverableRecordId": 6600
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/deliverables"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/deliverables"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/deliverables"
+        )
+            .param("internalIdentifier", "INSPECTION-REPORT-DUP")
+            .param("externalIdentifier", "EXT-REPORT-DUP")
+            .param("externalIdSource", "Legacy")
+            .param("deliverableRecordType", "WorkOrder")
+            .param("deliverableRecordId", "6600")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void allowsEmptyDeliverableForLegacyParity() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/deliverables"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.internalIdentifier").doesNotExist())
+            .andExpect(jsonPath("$.deliverableRecordType").doesNotExist())
+            .andExpect(jsonPath("$.deliverableRecordId").doesNotExist())
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+    }
+
+    @Test
     void createsReadsAndListsWorkEffortTypes() throws Exception {
         String typeId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
             "/api/work-efforts/work-effort-types"

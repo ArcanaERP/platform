@@ -10,6 +10,8 @@ import com.arcanaerp.platform.workeffort.DailyWorkEffortAssignmentActivityByAssi
 import com.arcanaerp.platform.workeffort.DailyWorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.DailyWorkEffortStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.workeffort.DailyWorkEffortStatusActivitySummaryView;
+import com.arcanaerp.platform.workeffort.DeliverableTypeView;
+import com.arcanaerp.platform.workeffort.DeliverableView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivityByAssigneeSummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortAssignmentActivitySummaryView;
 import com.arcanaerp.platform.workeffort.MonthlyWorkEffortStatusActivityByCurrentStatusSummaryView;
@@ -20,6 +22,8 @@ import com.arcanaerp.platform.workeffort.PartySkillView;
 import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityTypeView;
 import com.arcanaerp.platform.workeffort.PartyResourceAvailabilityView;
 import com.arcanaerp.platform.workeffort.RegisterAssociatedWorkEffortCommand;
+import com.arcanaerp.platform.workeffort.RegisterDeliverableCommand;
+import com.arcanaerp.platform.workeffort.RegisterDeliverableTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterGoodTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterOrderRequirementCommitmentCommand;
 import com.arcanaerp.platform.workeffort.RegisterPartySkillCommand;
@@ -506,6 +510,87 @@ public class WorkEffortsController {
             externalIdSource,
             PageQuery.of(page, size)
         ).map(this::toGoodTypeResponse);
+    }
+
+    @PostMapping("/deliverable-types")
+    @ResponseStatus(HttpStatus.CREATED)
+    public DeliverableTypeResponse createDeliverableType(@Valid @RequestBody CreateDeliverableTypeRequest request) {
+        return toDeliverableTypeResponse(workEffortCatalog.registerDeliverableType(
+            new RegisterDeliverableTypeCommand(
+                request.parentId(),
+                request.left(),
+                request.right(),
+                request.description(),
+                request.comments(),
+                request.internalIdentifier(),
+                request.externalIdentifier(),
+                request.externalIdSource()
+            )
+        ));
+    }
+
+    @GetMapping("/deliverable-types/{id}")
+    public DeliverableTypeResponse deliverableTypeById(@PathVariable java.util.UUID id) {
+        return toDeliverableTypeResponse(workEffortCatalog.deliverableTypeById(id));
+    }
+
+    @GetMapping("/deliverable-types")
+    public PageResult<DeliverableTypeResponse> listDeliverableTypes(
+        @RequestParam(required = false) Long parentId,
+        @RequestParam(required = false) String internalIdentifier,
+        @RequestParam(required = false) String externalIdentifier,
+        @RequestParam(required = false) String externalIdSource,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listDeliverableTypes(
+            parentId,
+            internalIdentifier,
+            externalIdentifier,
+            externalIdSource,
+            PageQuery.of(page, size)
+        ).map(this::toDeliverableTypeResponse);
+    }
+
+    @PostMapping("/deliverables")
+    @ResponseStatus(HttpStatus.CREATED)
+    public DeliverableResponse createDeliverable(@Valid @RequestBody CreateDeliverableRequest request) {
+        return toDeliverableResponse(workEffortCatalog.registerDeliverable(
+            new RegisterDeliverableCommand(
+                request.description(),
+                request.comments(),
+                request.internalIdentifier(),
+                request.externalIdentifier(),
+                request.externalIdSource(),
+                request.deliverableRecordType(),
+                request.deliverableRecordId()
+            )
+        ));
+    }
+
+    @GetMapping("/deliverables/{id}")
+    public DeliverableResponse deliverableById(@PathVariable java.util.UUID id) {
+        return toDeliverableResponse(workEffortCatalog.deliverableById(id));
+    }
+
+    @GetMapping("/deliverables")
+    public PageResult<DeliverableResponse> listDeliverables(
+        @RequestParam(required = false) String internalIdentifier,
+        @RequestParam(required = false) String externalIdentifier,
+        @RequestParam(required = false) String externalIdSource,
+        @RequestParam(required = false) String deliverableRecordType,
+        @RequestParam(required = false) Long deliverableRecordId,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listDeliverables(
+            internalIdentifier,
+            externalIdentifier,
+            externalIdSource,
+            deliverableRecordType,
+            deliverableRecordId,
+            PageQuery.of(page, size)
+        ).map(this::toDeliverableResponse);
     }
 
     @PostMapping("/work-effort-types")
@@ -1736,6 +1821,35 @@ public class WorkEffortsController {
             view.internalIdentifier(),
             view.externalIdentifier(),
             view.externalIdSource(),
+            view.createdAt()
+        );
+    }
+
+    private DeliverableTypeResponse toDeliverableTypeResponse(DeliverableTypeView view) {
+        return new DeliverableTypeResponse(
+            view.id(),
+            view.parentId(),
+            view.left(),
+            view.right(),
+            view.description(),
+            view.comments(),
+            view.internalIdentifier(),
+            view.externalIdentifier(),
+            view.externalIdSource(),
+            view.createdAt()
+        );
+    }
+
+    private DeliverableResponse toDeliverableResponse(DeliverableView view) {
+        return new DeliverableResponse(
+            view.id(),
+            view.description(),
+            view.comments(),
+            view.internalIdentifier(),
+            view.externalIdentifier(),
+            view.externalIdSource(),
+            view.deliverableRecordType(),
+            view.deliverableRecordId(),
             view.createdAt()
         );
     }

@@ -131,6 +131,31 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    DeliverableTypeView registerDeliverableType(RegisterDeliverableTypeCommand command);
+
+    DeliverableTypeView deliverableTypeById(java.util.UUID id);
+
+    PageResult<DeliverableTypeView> listDeliverableTypes(
+        Long parentId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    );
+
+    DeliverableView registerDeliverable(RegisterDeliverableCommand command);
+
+    DeliverableView deliverableById(java.util.UUID id);
+
+    PageResult<DeliverableView> listDeliverables(
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        String deliverableRecordType,
+        Long deliverableRecordId,
+        PageQuery pageQuery
+    );
+
     WorkEffortTypeView registerWorkEffortType(RegisterWorkEffortTypeCommand command);
 
     WorkEffortTypeView workEffortTypeById(java.util.UUID id);

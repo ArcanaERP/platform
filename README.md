@@ -187,6 +187,12 @@ Work Effort:
 - `POST /api/work-efforts/good-types`
 - `GET /api/work-efforts/good-types/{id}`
 - `GET /api/work-efforts/good-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
+- `POST /api/work-efforts/deliverable-types`
+- `GET /api/work-efforts/deliverable-types/{id}`
+- `GET /api/work-efforts/deliverable-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
+- `POST /api/work-efforts/deliverables`
+- `GET /api/work-efforts/deliverables/{id}`
+- `GET /api/work-efforts/deliverables?internalIdentifier=&externalIdentifier=&externalIdSource=&deliverableRecordType=&deliverableRecordId=&page=&size=`
 - `POST /api/work-efforts/work-effort-types`
 - `GET /api/work-efforts/work-effort-types/{id}`
 - `GET /api/work-efforts/work-effort-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
