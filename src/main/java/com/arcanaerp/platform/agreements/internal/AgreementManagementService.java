@@ -1,6 +1,8 @@
 package com.arcanaerp.platform.agreements.internal;
 
 import com.arcanaerp.platform.agreements.AgreementManagement;
+import com.arcanaerp.platform.agreements.AgreementItemTypeView;
+import com.arcanaerp.platform.agreements.AgreementItemView;
 import com.arcanaerp.platform.agreements.AgreementStatus;
 import com.arcanaerp.platform.agreements.AgreementStatusChangeView;
 import com.arcanaerp.platform.agreements.AgreementTypeView;
@@ -11,6 +13,8 @@ import com.arcanaerp.platform.agreements.DailyAgreementStatusActivityByCurrentSt
 import com.arcanaerp.platform.agreements.DailyAgreementStatusActivitySummaryView;
 import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivitySummaryView;
+import com.arcanaerp.platform.agreements.RegisterAgreementItemCommand;
+import com.arcanaerp.platform.agreements.RegisterAgreementItemTypeCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementTypeCommand;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivitySummaryView;
@@ -43,6 +47,8 @@ class AgreementManagementService implements AgreementManagement {
 
     private final AgreementRepository agreementRepository;
     private final AgreementTypeRepository agreementTypeRepository;
+    private final AgreementItemTypeRepository agreementItemTypeRepository;
+    private final AgreementItemRepository agreementItemRepository;
     private final AgreementStatusChangeAuditRepository agreementStatusChangeAuditRepository;
     private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
@@ -118,6 +124,106 @@ class AgreementManagementService implements AgreementManagement {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toAgreementTypeView);
+    }
+
+    @Override
+    public AgreementItemTypeView registerAgreementItemType(RegisterAgreementItemTypeCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toAgreementItemTypeView(agreementItemTypeRepository.save(
+            AgreementItemType.create(
+                command.parentId(),
+                command.left(),
+                command.right(),
+                command.description(),
+                command.comments(),
+                command.internalIdentifier(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AgreementItemTypeView agreementItemTypeById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toAgreementItemTypeView(agreementItemTypeRepository.findById(id)
+            .orElseThrow(() -> new java.util.NoSuchElementException("Agreement item type not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<AgreementItemTypeView> listAgreementItemTypes(
+        Long parentId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    ) {
+        Page<AgreementItemType> page = agreementItemTypeRepository.findTypesFiltered(
+            parentId,
+            normalizeOptional(internalIdentifier, "internalIdentifier"),
+            normalizeOptional(externalIdentifier, "externalIdentifier"),
+            normalizeOptional(externalIdSource, "externalIdSource"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toAgreementItemTypeView);
+    }
+
+    @Override
+    public AgreementItemView registerAgreementItem(RegisterAgreementItemCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        if (command.agreementId() != null && !agreementRepository.existsById(command.agreementId())) {
+            throw new java.util.NoSuchElementException("Agreement not found for id: " + command.agreementId());
+        }
+        if (command.agreementItemTypeId() != null
+            && !agreementItemTypeRepository.existsById(command.agreementItemTypeId())) {
+            throw new java.util.NoSuchElementException(
+                "Agreement item type not found for id: " + command.agreementItemTypeId()
+            );
+        }
+        return toAgreementItemView(agreementItemRepository.save(
+            AgreementItem.create(
+                command.agreementId(),
+                command.agreementItemTypeId(),
+                command.agreementItemValue(),
+                command.description(),
+                command.agreementItemRuleString(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AgreementItemView agreementItemById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toAgreementItemView(agreementItemRepository.findById(id)
+            .orElseThrow(() -> new java.util.NoSuchElementException("Agreement item not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<AgreementItemView> listAgreementItems(
+        UUID agreementId,
+        UUID agreementItemTypeId,
+        PageQuery pageQuery
+    ) {
+        Page<AgreementItem> page = agreementItemRepository.findItemsFiltered(
+            agreementId,
+            agreementItemTypeId,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toAgreementItemView);
     }
 
     @Override
@@ -446,6 +552,33 @@ class AgreementManagementService implements AgreementManagement {
             type.getExternalIdentifier(),
             type.getExternalIdSource(),
             type.getCreatedAt()
+        );
+    }
+
+    private AgreementItemTypeView toAgreementItemTypeView(AgreementItemType type) {
+        return new AgreementItemTypeView(
+            type.getId(),
+            type.getParentId(),
+            type.getLeft(),
+            type.getRight(),
+            type.getDescription(),
+            type.getComments(),
+            type.getInternalIdentifier(),
+            type.getExternalIdentifier(),
+            type.getExternalIdSource(),
+            type.getCreatedAt()
+        );
+    }
+
+    private AgreementItemView toAgreementItemView(AgreementItem item) {
+        return new AgreementItemView(
+            item.getId(),
+            item.getAgreementId(),
+            item.getAgreementItemTypeId(),
+            item.getAgreementItemValue(),
+            item.getDescription(),
+            item.getAgreementItemRuleString(),
+            item.getCreatedAt()
         );
     }
 

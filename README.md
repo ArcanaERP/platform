@@ -408,6 +408,12 @@ Agreements:
 - `POST /api/agreements/types`
 - `GET /api/agreements/types/{id}`
 - `GET /api/agreements/types?page=&size=&parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=`
+- `POST /api/agreements/item-types`
+- `GET /api/agreements/item-types/{id}`
+- `GET /api/agreements/item-types?page=&size=&parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=`
+- `POST /api/agreements/items`
+- `GET /api/agreements/items/{id}`
+- `GET /api/agreements/items?page=&size=&agreementId=&agreementItemTypeId=`
 - `GET /api/agreements/{agreementNumber}`
 - `GET /api/agreements?page=&size=&tenantCode=&status=`
 - `GET /api/agreements/status-activity/daily-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`

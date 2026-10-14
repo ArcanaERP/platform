@@ -1,6 +1,8 @@
 package com.arcanaerp.platform.agreements.web;
 
 import com.arcanaerp.platform.agreements.AgreementManagement;
+import com.arcanaerp.platform.agreements.AgreementItemTypeView;
+import com.arcanaerp.platform.agreements.AgreementItemView;
 import com.arcanaerp.platform.agreements.AgreementStatus;
 import com.arcanaerp.platform.agreements.AgreementStatusChangeView;
 import com.arcanaerp.platform.agreements.AgreementTypeView;
@@ -11,6 +13,8 @@ import com.arcanaerp.platform.agreements.DailyAgreementStatusActivityByCurrentSt
 import com.arcanaerp.platform.agreements.DailyAgreementStatusActivitySummaryView;
 import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivitySummaryView;
+import com.arcanaerp.platform.agreements.RegisterAgreementItemCommand;
+import com.arcanaerp.platform.agreements.RegisterAgreementItemTypeCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementTypeCommand;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivitySummaryView;
@@ -92,6 +96,81 @@ public class AgreementsController {
             externalIdSource,
             PageQuery.of(page, size)
         ).map(this::toAgreementTypeResponse);
+    }
+
+    @PostMapping("/item-types")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AgreementItemTypeResponse createAgreementItemType(
+        @Valid @RequestBody CreateAgreementItemTypeRequest request
+    ) {
+        return toAgreementItemTypeResponse(agreementManagement.registerAgreementItemType(
+            new RegisterAgreementItemTypeCommand(
+                request.parentId(),
+                request.left(),
+                request.right(),
+                request.description(),
+                request.comments(),
+                request.internalIdentifier(),
+                request.externalIdentifier(),
+                request.externalIdSource()
+            )
+        ));
+    }
+
+    @GetMapping("/item-types/{id}")
+    public AgreementItemTypeResponse agreementItemTypeById(@PathVariable UUID id) {
+        return toAgreementItemTypeResponse(agreementManagement.agreementItemTypeById(id));
+    }
+
+    @GetMapping("/item-types")
+    public PageResult<AgreementItemTypeResponse> listAgreementItemTypes(
+        @RequestParam(required = false) Long parentId,
+        @RequestParam(required = false) String internalIdentifier,
+        @RequestParam(required = false) String externalIdentifier,
+        @RequestParam(required = false) String externalIdSource,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return agreementManagement.listAgreementItemTypes(
+            parentId,
+            internalIdentifier,
+            externalIdentifier,
+            externalIdSource,
+            PageQuery.of(page, size)
+        ).map(this::toAgreementItemTypeResponse);
+    }
+
+    @PostMapping("/items")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AgreementItemResponse createAgreementItem(@Valid @RequestBody CreateAgreementItemRequest request) {
+        return toAgreementItemResponse(agreementManagement.registerAgreementItem(
+            new RegisterAgreementItemCommand(
+                request.agreementId(),
+                request.agreementItemTypeId(),
+                request.agreementItemValue(),
+                request.description(),
+                request.agreementItemRuleString()
+            )
+        ));
+    }
+
+    @GetMapping("/items/{id}")
+    public AgreementItemResponse agreementItemById(@PathVariable UUID id) {
+        return toAgreementItemResponse(agreementManagement.agreementItemById(id));
+    }
+
+    @GetMapping("/items")
+    public PageResult<AgreementItemResponse> listAgreementItems(
+        @RequestParam(required = false) UUID agreementId,
+        @RequestParam(required = false) UUID agreementItemTypeId,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return agreementManagement.listAgreementItems(
+            agreementId,
+            agreementItemTypeId,
+            PageQuery.of(page, size)
+        ).map(this::toAgreementItemResponse);
     }
 
     @GetMapping("/{agreementNumber}")
@@ -331,6 +410,33 @@ public class AgreementsController {
             type.externalIdentifier(),
             type.externalIdSource(),
             type.createdAt()
+        );
+    }
+
+    private AgreementItemTypeResponse toAgreementItemTypeResponse(AgreementItemTypeView type) {
+        return new AgreementItemTypeResponse(
+            type.id(),
+            type.parentId(),
+            type.left(),
+            type.right(),
+            type.description(),
+            type.comments(),
+            type.internalIdentifier(),
+            type.externalIdentifier(),
+            type.externalIdSource(),
+            type.createdAt()
+        );
+    }
+
+    private AgreementItemResponse toAgreementItemResponse(AgreementItemView item) {
+        return new AgreementItemResponse(
+            item.id(),
+            item.agreementId(),
+            item.agreementItemTypeId(),
+            item.agreementItemValue(),
+            item.description(),
+            item.agreementItemRuleString(),
+            item.createdAt()
         );
     }
 

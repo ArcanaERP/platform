@@ -40,12 +40,35 @@ erDiagram
       STRING externalIdSource
       INSTANT createdAt
     }
+    AGREEMENT_ITEM_TYPES {
+      UUID id PK
+      LONG parentId
+      INTEGER lft
+      INTEGER rgt
+      STRING description
+      STRING comments
+      STRING internalIdentifier
+      STRING externalIdentifier
+      STRING externalIdSource
+      INSTANT createdAt
+    }
+    AGREEMENT_ITEMS {
+      UUID id PK
+      UUID agreementId
+      UUID agreementItemTypeId
+      STRING agreementItemValue
+      STRING description
+      STRING agreementItemRuleString
+      INSTANT createdAt
+    }
     AGREEMENTS ||--o{ AGREEMENT_STATUS_CHANGE_AUDITS : "status changes"
+    AGREEMENTS o|--o{ AGREEMENT_ITEMS : "optional agreement"
+    AGREEMENT_ITEM_TYPES o|--o{ AGREEMENT_ITEMS : "optional item type"
 ```
 
 ## Relationship Notes
 
-- This initial `agreements` slice models a single aggregate (`Agreement`) with no external entity links.
+- The agreement master, agreement type, item type, and item records remain internal to the Agreements module.
 - `tenantCode` is normalized to uppercase and currently scopes list queries.
 - `agreementNumber` is the external business identifier and is normalized to uppercase.
 - `agreementNumber` is also the direct-read lookup key for `GET /api/agreements/{agreementNumber}`.
@@ -84,6 +107,14 @@ erDiagram
   - maps the legacy `agreement_types` table columns `parent_id`, `lft`, `rgt`, `description`, `comments`, `internal_identifier`, `external_identifier`, and `external_id_source`
   - preserves nested-set fields for later hierarchy parity without enforcing hierarchy rules yet
   - supports direct lookup by generated UUID and filtered listing by `parentId`, `internalIdentifier`, `externalIdentifier`, and `externalIdSource`
+- Legacy-compatible agreement item type catalog:
+  - maps the legacy `agreement_item_types` nested-set and identifier columns
+  - supports direct lookup and filtered listing using the same fields as agreement types
+- Legacy-compatible agreement items:
+  - map `agreement_id`, `agreement_item_type_id`, `agreement_item_value`, `description`, and `agreement_item_rule_string`
+  - preserve nullable agreement and item-type references because the legacy schema and model tests allow empty rows
+  - validate agreement and item-type UUIDs when supplied
+  - support direct lookup and filtered listing by agreement and item type
 
 ## Constraint Notes
 
@@ -95,6 +126,11 @@ erDiagram
   - `agreement_types(parentId)`
   - `agreement_types(internalIdentifier)`
   - `agreement_types(externalIdentifier, externalIdSource)`
+  - `agreement_item_types(parentId)`
+  - `agreement_item_types(internalIdentifier)`
+  - `agreement_item_types(externalIdentifier, externalIdSource)`
+  - `agreement_items(agreementId)`
+  - `agreement_items(agreementItemTypeId)`
 
 ## Minimal HTTP Surface
 
@@ -102,6 +138,12 @@ erDiagram
 - `POST /api/agreements/types`
 - `GET /api/agreements/types/{id}`
 - `GET /api/agreements/types?page=&size=&parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=`
+- `POST /api/agreements/item-types`
+- `GET /api/agreements/item-types/{id}`
+- `GET /api/agreements/item-types?page=&size=&parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=`
+- `POST /api/agreements/items`
+- `GET /api/agreements/items/{id}`
+- `GET /api/agreements/items?page=&size=&agreementId=&agreementItemTypeId=`
 - `GET /api/agreements/{agreementNumber}`
 - `GET /api/agreements?page=&size=&tenantCode=&status=`
 - `GET /api/agreements/status-activity/daily-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`

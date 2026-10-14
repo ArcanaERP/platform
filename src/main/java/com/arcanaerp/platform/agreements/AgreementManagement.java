@@ -21,6 +21,28 @@ public interface AgreementManagement {
         PageQuery pageQuery
     );
 
+    AgreementItemTypeView registerAgreementItemType(RegisterAgreementItemTypeCommand command);
+
+    AgreementItemTypeView agreementItemTypeById(UUID id);
+
+    PageResult<AgreementItemTypeView> listAgreementItemTypes(
+        Long parentId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    );
+
+    AgreementItemView registerAgreementItem(RegisterAgreementItemCommand command);
+
+    AgreementItemView agreementItemById(UUID id);
+
+    PageResult<AgreementItemView> listAgreementItems(
+        UUID agreementId,
+        UUID agreementItemTypeId,
+        PageQuery pageQuery
+    );
+
     AgreementView getAgreement(String agreementNumber);
 
     PageResult<AgreementView> listAgreements(PageQuery pageQuery, AgreementStatus status);

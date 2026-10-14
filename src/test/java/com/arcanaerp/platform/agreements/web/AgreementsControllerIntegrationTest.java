@@ -92,6 +92,118 @@ class AgreementsControllerIntegrationTest {
     }
 
     @Test
+    void createsAndReadsAgreementItemTypeAndAgreementItem() throws Exception {
+        MvcResult typeResult = mockMvc.perform(post("/api/agreements/item-types")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "parentId": 17,
+                  "left": 5,
+                  "right": 6,
+                  "description": "  Reference Number ",
+                  "comments": "Legacy item type",
+                  "internalIdentifier": " reference_number ",
+                  "externalIdentifier": " EXT-ITEM-TYPE-1 ",
+                  "externalIdSource": " legacy "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.parentId").value(17))
+            .andExpect(jsonPath("$.left").value(5))
+            .andExpect(jsonPath("$.right").value(6))
+            .andExpect(jsonPath("$.description").value("Reference Number"))
+            .andExpect(jsonPath("$.internalIdentifier").value("reference_number"))
+            .andReturn();
+        String itemTypeId = com.jayway.jsonpath.JsonPath.read(
+            typeResult.getResponse().getContentAsString(),
+            "$.id"
+        );
+
+        mockMvc.perform(get("/api/agreements/item-types/{id}", itemTypeId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(itemTypeId))
+            .andExpect(jsonPath("$.externalIdentifier").value("EXT-ITEM-TYPE-1"));
+
+        mockMvc.perform(get("/api/agreements/item-types")
+            .param("parentId", "17")
+            .param("internalIdentifier", "reference_number")
+            .param("page", "0")
+            .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[?(@.id=='" + itemTypeId + "')].description", hasItem("Reference Number")));
+
+        MvcResult agreementResult = mockMvc.perform(post("/api/agreements")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "tenant-agreement-items",
+                  "agreementNumber": "agr-item-1",
+                  "name": "Agreement Item Parent",
+                  "agreementType": "service",
+                  "effectiveFrom": "2026-03-01T00:00:00Z"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andReturn();
+        String agreementId = com.jayway.jsonpath.JsonPath.read(
+            agreementResult.getResponse().getContentAsString(),
+            "$.id"
+        );
+
+        MvcResult itemResult = mockMvc.perform(post("/api/agreements/items")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "agreementId": "%s",
+                  "agreementItemTypeId": "%s",
+                  "agreementItemValue": " 1234ABCD ",
+                  "description": " Customer reference ",
+                  "agreementItemRuleString": " value != null "
+                }
+                """.formatted(agreementId, itemTypeId)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.agreementId").value(agreementId))
+            .andExpect(jsonPath("$.agreementItemTypeId").value(itemTypeId))
+            .andExpect(jsonPath("$.agreementItemValue").value("1234ABCD"))
+            .andExpect(jsonPath("$.description").value("Customer reference"))
+            .andExpect(jsonPath("$.agreementItemRuleString").value("value != null"))
+            .andReturn();
+        String itemId = com.jayway.jsonpath.JsonPath.read(itemResult.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(get("/api/agreements/items/{id}", itemId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(itemId))
+            .andExpect(jsonPath("$.agreementItemValue").value("1234ABCD"));
+
+        mockMvc.perform(get("/api/agreements/items")
+            .param("agreementId", agreementId)
+            .param("agreementItemTypeId", itemTypeId)
+            .param("page", "0")
+            .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[?(@.id=='" + itemId + "')].agreementItemValue", hasItem("1234ABCD")));
+    }
+
+    @Test
+    void allowsEmptyAgreementItemTypeAndAgreementItemForLegacyParity() throws Exception {
+        mockMvc.perform(post("/api/agreements/item-types")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.description").value(nullValue()));
+
+        mockMvc.perform(post("/api/agreements/items")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.agreementId").value(nullValue()))
+            .andExpect(jsonPath("$.agreementItemTypeId").value(nullValue()))
+            .andExpect(jsonPath("$.agreementItemValue").value(nullValue()));
+    }
+
+    @Test
     void createsAgreement() throws Exception {
         String payload = """
             {
