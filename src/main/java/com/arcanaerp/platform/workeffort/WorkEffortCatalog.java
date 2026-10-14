@@ -20,6 +20,12 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    WorkOrderItemView registerWorkOrderItem(RegisterWorkOrderItemCommand command);
+
+    WorkOrderItemView workOrderItemById(java.util.UUID id);
+
+    PageResult<WorkOrderItemView> listWorkOrderItems(PageQuery pageQuery);
+
     WorkOrderItemFulfillmentView registerWorkOrderItemFulfillment(RegisterWorkOrderItemFulfillmentCommand command);
 
     WorkOrderItemFulfillmentView workOrderItemFulfillmentById(java.util.UUID id);

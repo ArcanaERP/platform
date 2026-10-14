@@ -54,6 +54,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortSkillStandardCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortTypeAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkRequirementFulfillmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkOrderItemCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkOrderItemFulfillmentCommand;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivityByAssigneeSummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySummaryView;
@@ -82,6 +83,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortTypeAssociationView;
 import com.arcanaerp.platform.workeffort.WorkEffortTypeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
 import com.arcanaerp.platform.workeffort.WorkRequirementFulfillmentView;
+import com.arcanaerp.platform.workeffort.WorkOrderItemView;
 import com.arcanaerp.platform.workeffort.WorkOrderItemFulfillmentView;
 import com.arcanaerp.platform.workeffort.RequirementTypeView;
 import com.arcanaerp.platform.workeffort.RequirementView;
@@ -165,6 +167,25 @@ public class WorkEffortsController {
             associatedRecordType,
             PageQuery.of(page, size)
         ).map(this::toAssociatedWorkEffortResponse);
+    }
+
+    @PostMapping("/work-order-items")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WorkOrderItemResponse createWorkOrderItem(@Valid @RequestBody CreateWorkOrderItemRequest request) {
+        return toWorkOrderItemResponse(workEffortCatalog.registerWorkOrderItem(new RegisterWorkOrderItemCommand()));
+    }
+
+    @GetMapping("/work-order-items/{id}")
+    public WorkOrderItemResponse workOrderItemById(@PathVariable java.util.UUID id) {
+        return toWorkOrderItemResponse(workEffortCatalog.workOrderItemById(id));
+    }
+
+    @GetMapping("/work-order-items")
+    public PageResult<WorkOrderItemResponse> listWorkOrderItems(
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listWorkOrderItems(PageQuery.of(page, size)).map(this::toWorkOrderItemResponse);
     }
 
     @PostMapping("/work-order-item-fulfillments")
@@ -1870,6 +1891,13 @@ public class WorkEffortsController {
             view.effortNumber(),
             view.associatedRecordId(),
             view.associatedRecordType()
+        );
+    }
+
+    private WorkOrderItemResponse toWorkOrderItemResponse(WorkOrderItemView view) {
+        return new WorkOrderItemResponse(
+            view.id(),
+            view.createdAt()
         );
     }
 

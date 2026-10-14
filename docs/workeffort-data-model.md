@@ -4,7 +4,7 @@ Updated: 2026-08-30
 
 ## Scope
 
-Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible requirements, legacy-compatible requirement types, legacy-compatible skill types, legacy-compatible party skills, legacy-compatible good types, legacy-compatible deliverable types, legacy-compatible deliverables, legacy-compatible transportation routes, legacy-compatible associated transportation route joins, legacy-compatible transportation route stops, legacy-compatible transportation route segments, legacy-compatible work-effort types, legacy-compatible work-effort purpose types, legacy-compatible party resource availability types, legacy-compatible party resource availabilities, legacy-compatible work-effort type associations, legacy-compatible associated-record joins, legacy-compatible work-order item fulfillment joins, legacy-compatible order requirement commitments, legacy-compatible work requirement fulfillment joins, legacy-compatible requirement party-role joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset standards, legacy-compatible skill standards, legacy-compatible good standards, legacy-compatible inventory produced results, legacy-compatible deliverable produced results, legacy-compatible fixed-asset serviced results, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
+Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible requirements, legacy-compatible requirement types, legacy-compatible skill types, legacy-compatible party skills, legacy-compatible good types, legacy-compatible deliverable types, legacy-compatible deliverables, legacy-compatible transportation routes, legacy-compatible associated transportation route joins, legacy-compatible transportation route stops, legacy-compatible transportation route segments, legacy-compatible work-effort types, legacy-compatible work-effort purpose types, legacy-compatible party resource availability types, legacy-compatible party resource availabilities, legacy-compatible work-effort type associations, legacy-compatible associated-record joins, legacy-compatible work-order items, legacy-compatible work-order item fulfillment joins, legacy-compatible order requirement commitments, legacy-compatible work requirement fulfillment joins, legacy-compatible requirement party-role joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset standards, legacy-compatible skill standards, legacy-compatible good standards, legacy-compatible inventory produced results, legacy-compatible deliverable produced results, legacy-compatible fixed-asset serviced results, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
 
 ## Aggregate
 
@@ -460,6 +460,21 @@ Rules:
 - `associatedRecordType` is trimmed but preserves case because the legacy value is a Rails class/type discriminator
 - duplicate rows are allowed for parity with the legacy non-unique indexes
 
+### WorkOrderItem
+
+Purpose:
+- mirror legacy `work_order_items` records
+- preserve the timestamp-only subtype table used by legacy `acts_as_order_line_item`
+
+Core fields:
+- `id` (`UUID`)
+- `createdAt`
+
+Rules:
+- no business columns are present in the legacy table
+- empty rows are allowed and are the expected create path for parity with the legacy model spec
+- order-line-item subtype behavior remains a logical boundary in this slice; no Orders internals are introduced
+
 ### WorkOrderItemFulfillment
 
 Purpose:
@@ -830,6 +845,7 @@ Rules:
 - associated transportation routes store polymorphic record id/type values without depending on target modules
 - transportation route stops store postal address ids as logical references without depending on Address
 - transportation route segments store route and stop ids as logical references inside the Work Effort module
+- work-order items preserve the Work Effort subtype table without depending on Orders internals
 - work-order item fulfillments store order-line-item ids as logical references without depending on Orders
 - order requirement commitments store order-line-item and requirement ids as logical references without depending on Orders or Requirement
 - work requirement fulfillments store requirement ids as logical references without depending on Requirement
@@ -854,6 +870,9 @@ Rules:
 - `POST /api/work-efforts/associated-records`
 - `GET /api/work-efforts/associated-records/{id}`
 - `GET /api/work-efforts/associated-records?tenantCode=&effortNumber=&associatedRecordId=&associatedRecordType=&page=&size=`
+- `POST /api/work-efforts/work-order-items`
+- `GET /api/work-efforts/work-order-items/{id}`
+- `GET /api/work-efforts/work-order-items?page=&size=`
 - `POST /api/work-efforts/transportation-routes`
 - `GET /api/work-efforts/transportation-routes/{id}`
 - `GET /api/work-efforts/transportation-routes?internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`

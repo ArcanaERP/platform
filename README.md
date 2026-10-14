@@ -163,6 +163,9 @@ Work Effort:
 - `POST /api/work-efforts/associated-records`
 - `GET /api/work-efforts/associated-records/{id}`
 - `GET /api/work-efforts/associated-records?tenantCode=&effortNumber=&associatedRecordId=&associatedRecordType=&page=&size=`
+- `POST /api/work-efforts/work-order-items`
+- `GET /api/work-efforts/work-order-items/{id}`
+- `GET /api/work-efforts/work-order-items?page=&size=`
 - `POST /api/work-efforts/work-order-item-fulfillments`
 - `GET /api/work-efforts/work-order-item-fulfillments/{id}`
 - `GET /api/work-efforts/work-order-item-fulfillments?tenantCode=&effortNumber=&orderLineItemId=&page=&size=`

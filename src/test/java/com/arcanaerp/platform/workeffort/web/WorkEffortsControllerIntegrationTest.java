@@ -323,6 +323,78 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsWorkOrderItems() throws Exception {
+        String itemId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/work-order-items"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/work-order-items/{id}",
+            itemId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(itemId))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/work-order-items"
+        )
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems", greaterThanOrEqualTo(1)))
+            .andExpect(jsonPath("$.items[?(@.id=='%s')].id".formatted(itemId), hasItem(itemId)));
+    }
+
+    @Test
+    void allowsDuplicateEmptyWorkOrderItemsForLegacyParity() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/work-order-items"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/work-order-items"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/work-order-items"
+        )
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems", greaterThanOrEqualTo(2)));
+    }
+
+    @Test
+    void rejectsMissingWorkOrderItemLookup() throws Exception {
+        String missingItemId = "00000000-0000-0000-0000-000000000004";
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/work-order-items/{id}",
+            missingItemId
+        ))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value("Work order item not found for id: " + missingItemId))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/work-order-items/" + missingItemId));
+    }
+
+    @Test
     void createsReadsAndListsWorkOrderItemFulfillments() throws Exception {
         ActorActivationWebTestSupport.registerActorAllowingDuplicateEmail(
             mockMvc,

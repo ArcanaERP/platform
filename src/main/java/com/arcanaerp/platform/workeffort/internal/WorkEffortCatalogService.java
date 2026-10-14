@@ -56,6 +56,7 @@ import com.arcanaerp.platform.workeffort.RegisterWorkEffortSkillStandardCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortTypeAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkRequirementFulfillmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterWorkOrderItemCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkOrderItemFulfillmentCommand;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivityByAssigneeSummaryView;
 import com.arcanaerp.platform.workeffort.WeeklyWorkEffortAssignmentActivitySummaryView;
@@ -84,6 +85,7 @@ import com.arcanaerp.platform.workeffort.WorkEffortTypeAssociationView;
 import com.arcanaerp.platform.workeffort.WorkEffortTypeView;
 import com.arcanaerp.platform.workeffort.WorkEffortView;
 import com.arcanaerp.platform.workeffort.WorkRequirementFulfillmentView;
+import com.arcanaerp.platform.workeffort.WorkOrderItemView;
 import com.arcanaerp.platform.workeffort.WorkOrderItemFulfillmentView;
 import com.arcanaerp.platform.workeffort.RequirementTypeView;
 import com.arcanaerp.platform.workeffort.RequirementView;
@@ -120,6 +122,7 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
 
     private final WorkEffortRepository workEffortRepository;
     private final AssociatedWorkEffortRepository associatedWorkEffortRepository;
+    private final WorkOrderItemRepository workOrderItemRepository;
     private final WorkOrderItemFulfillmentRepository workOrderItemFulfillmentRepository;
     private final OrderRequirementCommitmentRepository orderRequirementCommitmentRepository;
     private final WorkRequirementFulfillmentRepository workRequirementFulfillmentRepository;
@@ -228,6 +231,33 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.ASC, "associatedRecordType"))
         );
         return PageResult.from(page).map(this::toAssociatedWorkEffortView);
+    }
+
+    @Override
+    public WorkOrderItemView registerWorkOrderItem(RegisterWorkOrderItemCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toWorkOrderItemView(workOrderItemRepository.save(WorkOrderItem.create(Instant.now(clock))));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkOrderItemView workOrderItemById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toWorkOrderItemView(workOrderItemRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Work order item not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<WorkOrderItemView> listWorkOrderItems(PageQuery pageQuery) {
+        Page<WorkOrderItem> page = workOrderItemRepository.findAll(
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toWorkOrderItemView);
     }
 
     @Override
@@ -2310,6 +2340,13 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             associatedWorkEffort.getEffortNumber(),
             associatedWorkEffort.getAssociatedRecordId(),
             associatedWorkEffort.getAssociatedRecordType()
+        );
+    }
+
+    private WorkOrderItemView toWorkOrderItemView(WorkOrderItem item) {
+        return new WorkOrderItemView(
+            item.getId(),
+            item.getCreatedAt()
         );
     }
 
