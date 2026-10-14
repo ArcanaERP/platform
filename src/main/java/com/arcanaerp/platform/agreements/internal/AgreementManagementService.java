@@ -3,6 +3,7 @@ package com.arcanaerp.platform.agreements.internal;
 import com.arcanaerp.platform.agreements.AgreementManagement;
 import com.arcanaerp.platform.agreements.AgreementStatus;
 import com.arcanaerp.platform.agreements.AgreementStatusChangeView;
+import com.arcanaerp.platform.agreements.AgreementTypeView;
 import com.arcanaerp.platform.agreements.AgreementView;
 import com.arcanaerp.platform.agreements.ChangeAgreementStatusCommand;
 import com.arcanaerp.platform.agreements.CreateAgreementCommand;
@@ -10,6 +11,7 @@ import com.arcanaerp.platform.agreements.DailyAgreementStatusActivityByCurrentSt
 import com.arcanaerp.platform.agreements.DailyAgreementStatusActivitySummaryView;
 import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivitySummaryView;
+import com.arcanaerp.platform.agreements.RegisterAgreementTypeCommand;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivitySummaryView;
 import com.arcanaerp.platform.core.pagination.PageQuery;
@@ -40,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 class AgreementManagementService implements AgreementManagement {
 
     private final AgreementRepository agreementRepository;
+    private final AgreementTypeRepository agreementTypeRepository;
     private final AgreementStatusChangeAuditRepository agreementStatusChangeAuditRepository;
     private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
@@ -66,6 +69,55 @@ class AgreementManagementService implements AgreementManagement {
             )
         );
         return toView(agreement);
+    }
+
+    @Override
+    public AgreementTypeView registerAgreementType(RegisterAgreementTypeCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toAgreementTypeView(agreementTypeRepository.save(
+            AgreementType.create(
+                command.parentId(),
+                command.left(),
+                command.right(),
+                command.description(),
+                command.comments(),
+                command.internalIdentifier(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AgreementTypeView agreementTypeById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toAgreementTypeView(agreementTypeRepository.findById(id)
+            .orElseThrow(() -> new java.util.NoSuchElementException("Agreement type not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<AgreementTypeView> listAgreementTypes(
+        Long parentId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    ) {
+        Page<AgreementType> page = agreementTypeRepository.findTypesFiltered(
+            parentId,
+            normalizeOptional(internalIdentifier, "internalIdentifier"),
+            normalizeOptional(externalIdentifier, "externalIdentifier"),
+            normalizeOptional(externalIdSource, "externalIdSource"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toAgreementTypeView);
     }
 
     @Override
@@ -350,6 +402,17 @@ class AgreementManagementService implements AgreementManagement {
         return normalizeRequired(changedBy, "changedBy").toLowerCase();
     }
 
+    private static String normalizeOptional(String value, String fieldName) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException(fieldName + " must not be blank when provided");
+        }
+        return normalized;
+    }
+
     private Agreement findAgreementByNumber(String agreementNumber) {
         String normalizedAgreementNumber = normalizeRequired(agreementNumber, "agreementNumber").toUpperCase();
         return agreementRepository.findByAgreementNumber(normalizedAgreementNumber)
@@ -368,6 +431,21 @@ class AgreementManagementService implements AgreementManagement {
             agreement.getCreatedAt(),
             agreement.getActivatedAt(),
             agreement.getTerminatedAt()
+        );
+    }
+
+    private AgreementTypeView toAgreementTypeView(AgreementType type) {
+        return new AgreementTypeView(
+            type.getId(),
+            type.getParentId(),
+            type.getLeft(),
+            type.getRight(),
+            type.getDescription(),
+            type.getComments(),
+            type.getInternalIdentifier(),
+            type.getExternalIdentifier(),
+            type.getExternalIdSource(),
+            type.getCreatedAt()
         );
     }
 

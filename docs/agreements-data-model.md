@@ -1,6 +1,6 @@
 # Agreements Module Data Model (High-Level)
 
-Updated: 2026-04-25
+Updated: 2026-10-14
 
 ## Entity Diagram
 
@@ -27,6 +27,18 @@ erDiagram
       STRING reason
       STRING changedBy
       INSTANT changedAt
+    }
+    AGREEMENT_TYPES {
+      UUID id PK
+      LONG parentId
+      INTEGER lft
+      INTEGER rgt
+      STRING description
+      STRING comments
+      STRING internalIdentifier
+      STRING externalIdentifier
+      STRING externalIdSource
+      INSTANT createdAt
     }
     AGREEMENTS ||--o{ AGREEMENT_STATUS_CHANGE_AUDITS : "status changes"
 ```
@@ -68,6 +80,10 @@ erDiagram
   - summary rows include `transitionCount` and distinct `agreementCount`
   - by-current-status summaries split each bucket by `currentStatus`
   - summary endpoints support optional `tenantCode`, `previousStatus`, `currentStatus`, `changedBy`, `changedAtFrom`, and `changedAtTo` filters
+- Legacy-compatible agreement type catalog:
+  - maps the legacy `agreement_types` table columns `parent_id`, `lft`, `rgt`, `description`, `comments`, `internal_identifier`, `external_identifier`, and `external_id_source`
+  - preserves nested-set fields for later hierarchy parity without enforcing hierarchy rules yet
+  - supports direct lookup by generated UUID and filtered listing by `parentId`, `internalIdentifier`, `externalIdentifier`, and `externalIdSource`
 
 ## Constraint Notes
 
@@ -76,10 +92,16 @@ erDiagram
 - Indexes:
   - `agreement_status_change_audits(agreementId, changedAt)`
   - `agreement_status_change_audits(agreementId, tenantCode, changedAt)`
+  - `agreement_types(parentId)`
+  - `agreement_types(internalIdentifier)`
+  - `agreement_types(externalIdentifier, externalIdSource)`
 
 ## Minimal HTTP Surface
 
 - `POST /api/agreements`
+- `POST /api/agreements/types`
+- `GET /api/agreements/types/{id}`
+- `GET /api/agreements/types?page=&size=&parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=`
 - `GET /api/agreements/{agreementNumber}`
 - `GET /api/agreements?page=&size=&tenantCode=&status=`
 - `GET /api/agreements/status-activity/daily-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`

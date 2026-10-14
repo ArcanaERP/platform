@@ -405,6 +405,9 @@ Payments:
 Agreements:
 
 - `POST /api/agreements`
+- `POST /api/agreements/types`
+- `GET /api/agreements/types/{id}`
+- `GET /api/agreements/types?page=&size=&parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=`
 - `GET /api/agreements/{agreementNumber}`
 - `GET /api/agreements?page=&size=&tenantCode=&status=`
 - `GET /api/agreements/status-activity/daily-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`

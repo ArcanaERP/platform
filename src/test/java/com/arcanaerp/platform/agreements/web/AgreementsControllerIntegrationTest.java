@@ -3,6 +3,7 @@ package com.arcanaerp.platform.agreements.web;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -17,6 +18,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -38,6 +40,55 @@ class AgreementsControllerIntegrationTest {
     @BeforeEach
     void resetClock() {
         testClock.resetToBaseInstant();
+    }
+
+    @Test
+    void createsAndReadsAgreementType() throws Exception {
+        String payload = """
+            {
+              "parentId": 42,
+              "left": 3,
+              "right": 4,
+              "description": "  Service Agreement Type ",
+              "comments": "Legacy agreement type catalog entry",
+              "internalIdentifier": " service-agreement ",
+              "externalIdentifier": " EXT-AGR-TYPE-1 ",
+              "externalIdSource": " legacy "
+            }
+            """;
+
+        MvcResult result = mockMvc.perform(post("/api/agreements/types")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.parentId").value(42))
+            .andExpect(jsonPath("$.left").value(3))
+            .andExpect(jsonPath("$.right").value(4))
+            .andExpect(jsonPath("$.description").value("Service Agreement Type"))
+            .andExpect(jsonPath("$.comments").value("Legacy agreement type catalog entry"))
+            .andExpect(jsonPath("$.internalIdentifier").value("service-agreement"))
+            .andExpect(jsonPath("$.externalIdentifier").value("EXT-AGR-TYPE-1"))
+            .andExpect(jsonPath("$.externalIdSource").value("legacy"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn();
+
+        String id = com.jayway.jsonpath.JsonPath.read(result.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(get("/api/agreements/types/{id}", id))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(id))
+            .andExpect(jsonPath("$.description").value("Service Agreement Type"));
+
+        mockMvc.perform(get("/api/agreements/types")
+            .param("parentId", "42")
+            .param("internalIdentifier", "service-agreement")
+            .param("externalIdentifier", "EXT-AGR-TYPE-1")
+            .param("externalIdSource", "legacy")
+            .param("page", "0")
+            .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[?(@.id=='" + id + "')].description", hasItem("Service Agreement Type")));
     }
 
     @Test

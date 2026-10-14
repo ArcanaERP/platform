@@ -3,6 +3,7 @@ package com.arcanaerp.platform.agreements.web;
 import com.arcanaerp.platform.agreements.AgreementManagement;
 import com.arcanaerp.platform.agreements.AgreementStatus;
 import com.arcanaerp.platform.agreements.AgreementStatusChangeView;
+import com.arcanaerp.platform.agreements.AgreementTypeView;
 import com.arcanaerp.platform.agreements.AgreementView;
 import com.arcanaerp.platform.agreements.ChangeAgreementStatusCommand;
 import com.arcanaerp.platform.agreements.CreateAgreementCommand;
@@ -10,6 +11,7 @@ import com.arcanaerp.platform.agreements.DailyAgreementStatusActivityByCurrentSt
 import com.arcanaerp.platform.agreements.DailyAgreementStatusActivitySummaryView;
 import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivitySummaryView;
+import com.arcanaerp.platform.agreements.RegisterAgreementTypeCommand;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivitySummaryView;
 import com.arcanaerp.platform.core.pagination.PageQuery;
@@ -17,6 +19,7 @@ import com.arcanaerp.platform.core.pagination.PageResult;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.http.HttpStatus;
@@ -49,6 +52,46 @@ public class AgreementsController {
             )
         );
         return toResponse(agreement);
+    }
+
+    @PostMapping("/types")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AgreementTypeResponse createAgreementType(@Valid @RequestBody CreateAgreementTypeRequest request) {
+        return toAgreementTypeResponse(agreementManagement.registerAgreementType(
+            new RegisterAgreementTypeCommand(
+                request.parentId(),
+                request.left(),
+                request.right(),
+                request.description(),
+                request.comments(),
+                request.internalIdentifier(),
+                request.externalIdentifier(),
+                request.externalIdSource()
+            )
+        ));
+    }
+
+    @GetMapping("/types/{id}")
+    public AgreementTypeResponse agreementTypeById(@PathVariable UUID id) {
+        return toAgreementTypeResponse(agreementManagement.agreementTypeById(id));
+    }
+
+    @GetMapping("/types")
+    public PageResult<AgreementTypeResponse> listAgreementTypes(
+        @RequestParam(required = false) Long parentId,
+        @RequestParam(required = false) String internalIdentifier,
+        @RequestParam(required = false) String externalIdentifier,
+        @RequestParam(required = false) String externalIdSource,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return agreementManagement.listAgreementTypes(
+            parentId,
+            internalIdentifier,
+            externalIdentifier,
+            externalIdSource,
+            PageQuery.of(page, size)
+        ).map(this::toAgreementTypeResponse);
     }
 
     @GetMapping("/{agreementNumber}")
@@ -274,6 +317,21 @@ public class AgreementsController {
                 agreement.activatedAt(),
                 agreement.terminatedAt()
             );
+    }
+
+    private AgreementTypeResponse toAgreementTypeResponse(AgreementTypeView type) {
+        return new AgreementTypeResponse(
+            type.id(),
+            type.parentId(),
+            type.left(),
+            type.right(),
+            type.description(),
+            type.comments(),
+            type.internalIdentifier(),
+            type.externalIdentifier(),
+            type.externalIdSource(),
+            type.createdAt()
+        );
     }
 
     private AgreementStatusChangeResponse toStatusHistoryResponse(AgreementStatusChangeView change) {

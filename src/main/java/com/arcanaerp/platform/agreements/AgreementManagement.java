@@ -3,10 +3,23 @@ package com.arcanaerp.platform.agreements;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import java.time.Instant;
+import java.util.UUID;
 
 public interface AgreementManagement {
 
     AgreementView createAgreement(CreateAgreementCommand command);
+
+    AgreementTypeView registerAgreementType(RegisterAgreementTypeCommand command);
+
+    AgreementTypeView agreementTypeById(UUID id);
+
+    PageResult<AgreementTypeView> listAgreementTypes(
+        Long parentId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    );
 
     AgreementView getAgreement(String agreementNumber);
 
