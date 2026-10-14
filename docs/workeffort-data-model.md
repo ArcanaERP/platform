@@ -4,7 +4,7 @@ Updated: 2026-08-30
 
 ## Scope
 
-Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible requirements, legacy-compatible requirement types, legacy-compatible skill types, legacy-compatible party skills, legacy-compatible good types, legacy-compatible deliverable types, legacy-compatible deliverables, legacy-compatible transportation routes, legacy-compatible associated transportation route joins, legacy-compatible work-effort types, legacy-compatible work-effort purpose types, legacy-compatible party resource availability types, legacy-compatible party resource availabilities, legacy-compatible work-effort type associations, legacy-compatible associated-record joins, legacy-compatible work-order item fulfillment joins, legacy-compatible order requirement commitments, legacy-compatible work requirement fulfillment joins, legacy-compatible requirement party-role joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset standards, legacy-compatible skill standards, legacy-compatible good standards, legacy-compatible inventory produced results, legacy-compatible deliverable produced results, legacy-compatible fixed-asset serviced results, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
+Current work-effort slice covers tenant-scoped work-effort registration, direct lookup, filtered listing, lightweight status transitions, assignment changes, append-only status history, append-only assignment history, assignment activity summaries, status activity summaries, legacy-compatible requirements, legacy-compatible requirement types, legacy-compatible skill types, legacy-compatible party skills, legacy-compatible good types, legacy-compatible deliverable types, legacy-compatible deliverables, legacy-compatible transportation routes, legacy-compatible associated transportation route joins, legacy-compatible transportation route stops, legacy-compatible transportation route segments, legacy-compatible work-effort types, legacy-compatible work-effort purpose types, legacy-compatible party resource availability types, legacy-compatible party resource availabilities, legacy-compatible work-effort type associations, legacy-compatible associated-record joins, legacy-compatible work-order item fulfillment joins, legacy-compatible order requirement commitments, legacy-compatible work requirement fulfillment joins, legacy-compatible requirement party-role joins, legacy-compatible association types, legacy-compatible work-effort associations, legacy-compatible fixed-asset standards, legacy-compatible skill standards, legacy-compatible good standards, legacy-compatible inventory produced results, legacy-compatible deliverable produced results, legacy-compatible fixed-asset serviced results, legacy-compatible fixed-asset assignment joins, legacy-compatible inventory assignment joins, legacy-compatible party assignment joins, and legacy-compatible role-type assignment joins.
 
 ## Aggregate
 
@@ -276,6 +276,63 @@ Rules:
 - `associatedRecordType` is trimmed when present
 - associated record id/type values remain logical polymorphic references
 - duplicate rows are allowed for parity with the legacy non-unique indexes
+
+### TransportationRouteStop
+
+Purpose:
+- mirror legacy `transportation_route_stops` records for stop points along a route
+- keep route and address references logical without adding route-planning or address dependencies
+
+Core fields:
+- `id` (`UUID`)
+- `transportationRouteId`
+- `internalIdentifier`
+- `description`
+- `postalAddressId`
+- `geoloc`
+- `sequence`
+- `externalIdentifier`
+- `externalIdSource`
+- `createdAt`
+
+Rules:
+- all legacy columns are optional in this slice except generated `id` and `createdAt`
+- route id is validated only when supplied
+- string fields are trimmed when present
+- `postalAddressId` remains a logical reference; this slice does not add Postal Address dependencies
+- duplicate rows are allowed because the legacy table has no uniqueness constraint
+
+### TransportationRouteSegment
+
+Purpose:
+- mirror legacy `transportation_route_segments` records between route stops
+- preserve legacy time, mileage, fuel, route, and stop reference fields without adding route optimization behavior
+
+Core fields:
+- `id` (`UUID`)
+- `transportationRouteId`
+- `fromTransportationRouteStopId`
+- `toTransportationRouteStopId`
+- `internalIdentifier`
+- `description`
+- `comments`
+- `externalIdentifier`
+- `externalIdSource`
+- `sequence`
+- `estimatedStart`
+- `estimatedArrival` mapped to legacy column `estmated_arrival`
+- `actualStart`
+- `actualArrival`
+- `startMileage`
+- `endMileage` mapped to legacy column `end_milage`
+- `fuelUsed`
+- `createdAt`
+
+Rules:
+- all legacy columns are optional in this slice except generated `id` and `createdAt`
+- route and stop ids are validated only when supplied
+- string fields are trimmed when present
+- duplicate rows are allowed because the legacy table has no uniqueness constraint
 
 ### WorkEffortType
 
@@ -771,6 +828,8 @@ Rules:
 - fixed-asset serviced records store fixed-asset ids as numeric logical references without depending on Inventory
 - associated-record links store polymorphic record id/type values without depending on target modules
 - associated transportation routes store polymorphic record id/type values without depending on target modules
+- transportation route stops store postal address ids as logical references without depending on Address
+- transportation route segments store route and stop ids as logical references inside the Work Effort module
 - work-order item fulfillments store order-line-item ids as logical references without depending on Orders
 - order requirement commitments store order-line-item and requirement ids as logical references without depending on Orders or Requirement
 - work requirement fulfillments store requirement ids as logical references without depending on Requirement
@@ -782,7 +841,7 @@ Rules:
 - good types store parent ids as logical nested-set references without adding tree mutation behavior
 - deliverable types store parent ids as logical nested-set references without adding tree mutation behavior
 - deliverables store polymorphic record id/type references without adding target-module dependencies
-- transportation routes store route metadata without adding route segment or stop lifecycle in this slice
+- transportation routes store route metadata without adding route optimization behavior
 - work-effort types store parent ids as logical nested-set references without adding tree mutation behavior
 - work-effort purpose types store parent ids as logical nested-set references without adding tree mutation behavior
 - party resource availabilities store party and availability-type ids as logical references without adding Party or availability-type validation
@@ -801,6 +860,12 @@ Rules:
 - `POST /api/work-efforts/associated-transportation-routes`
 - `GET /api/work-efforts/associated-transportation-routes/{id}`
 - `GET /api/work-efforts/associated-transportation-routes?transportationRouteId=&associatedRecordId=&associatedRecordType=&page=&size=`
+- `POST /api/work-efforts/transportation-route-stops`
+- `GET /api/work-efforts/transportation-route-stops/{id}`
+- `GET /api/work-efforts/transportation-route-stops?transportationRouteId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
+- `POST /api/work-efforts/transportation-route-segments`
+- `GET /api/work-efforts/transportation-route-segments/{id}`
+- `GET /api/work-efforts/transportation-route-segments?transportationRouteId=&fromTransportationRouteStopId=&toTransportationRouteStopId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
 - `POST /api/work-efforts/work-order-item-fulfillments`
 - `GET /api/work-efforts/work-order-item-fulfillments/{id}`
 - `GET /api/work-efforts/work-order-item-fulfillments?tenantCode=&effortNumber=&orderLineItemId=&page=&size=`

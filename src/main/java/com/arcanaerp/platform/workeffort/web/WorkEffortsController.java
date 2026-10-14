@@ -36,6 +36,8 @@ import com.arcanaerp.platform.workeffort.RegisterRequirementPartyRoleCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterSkillTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterTransportationRouteCommand;
+import com.arcanaerp.platform.workeffort.RegisterTransportationRouteSegmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterTransportationRouteStopCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortDeliverableProducedCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
@@ -85,6 +87,8 @@ import com.arcanaerp.platform.workeffort.RequirementTypeView;
 import com.arcanaerp.platform.workeffort.RequirementView;
 import com.arcanaerp.platform.workeffort.RequirementPartyRoleView;
 import com.arcanaerp.platform.workeffort.SkillTypeView;
+import com.arcanaerp.platform.workeffort.TransportationRouteSegmentView;
+import com.arcanaerp.platform.workeffort.TransportationRouteStopView;
 import com.arcanaerp.platform.workeffort.TransportationRouteView;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -667,6 +671,102 @@ public class WorkEffortsController {
             associatedRecordType,
             PageQuery.of(page, size)
         ).map(this::toAssociatedTransportationRouteResponse);
+    }
+
+    @PostMapping("/transportation-route-stops")
+    @ResponseStatus(HttpStatus.CREATED)
+    public TransportationRouteStopResponse createTransportationRouteStop(
+        @Valid @RequestBody CreateTransportationRouteStopRequest request
+    ) {
+        return toTransportationRouteStopResponse(workEffortCatalog.registerTransportationRouteStop(
+            new RegisterTransportationRouteStopCommand(
+                request.transportationRouteId(),
+                request.internalIdentifier(),
+                request.description(),
+                request.postalAddressId(),
+                request.geoloc(),
+                request.sequence(),
+                request.externalIdentifier(),
+                request.externalIdSource()
+            )
+        ));
+    }
+
+    @GetMapping("/transportation-route-stops/{id}")
+    public TransportationRouteStopResponse transportationRouteStopById(@PathVariable java.util.UUID id) {
+        return toTransportationRouteStopResponse(workEffortCatalog.transportationRouteStopById(id));
+    }
+
+    @GetMapping("/transportation-route-stops")
+    public PageResult<TransportationRouteStopResponse> listTransportationRouteStops(
+        @RequestParam(required = false) java.util.UUID transportationRouteId,
+        @RequestParam(required = false) String internalIdentifier,
+        @RequestParam(required = false) String externalIdentifier,
+        @RequestParam(required = false) String externalIdSource,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listTransportationRouteStops(
+            transportationRouteId,
+            internalIdentifier,
+            externalIdentifier,
+            externalIdSource,
+            PageQuery.of(page, size)
+        ).map(this::toTransportationRouteStopResponse);
+    }
+
+    @PostMapping("/transportation-route-segments")
+    @ResponseStatus(HttpStatus.CREATED)
+    public TransportationRouteSegmentResponse createTransportationRouteSegment(
+        @Valid @RequestBody CreateTransportationRouteSegmentRequest request
+    ) {
+        return toTransportationRouteSegmentResponse(workEffortCatalog.registerTransportationRouteSegment(
+            new RegisterTransportationRouteSegmentCommand(
+                request.transportationRouteId(),
+                request.fromTransportationRouteStopId(),
+                request.toTransportationRouteStopId(),
+                request.internalIdentifier(),
+                request.description(),
+                request.comments(),
+                request.externalIdentifier(),
+                request.externalIdSource(),
+                request.sequence(),
+                request.estimatedStart(),
+                request.estimatedArrival(),
+                request.actualStart(),
+                request.actualArrival(),
+                request.startMileage(),
+                request.endMileage(),
+                request.fuelUsed()
+            )
+        ));
+    }
+
+    @GetMapping("/transportation-route-segments/{id}")
+    public TransportationRouteSegmentResponse transportationRouteSegmentById(@PathVariable java.util.UUID id) {
+        return toTransportationRouteSegmentResponse(workEffortCatalog.transportationRouteSegmentById(id));
+    }
+
+    @GetMapping("/transportation-route-segments")
+    public PageResult<TransportationRouteSegmentResponse> listTransportationRouteSegments(
+        @RequestParam(required = false) java.util.UUID transportationRouteId,
+        @RequestParam(required = false) java.util.UUID fromTransportationRouteStopId,
+        @RequestParam(required = false) java.util.UUID toTransportationRouteStopId,
+        @RequestParam(required = false) String internalIdentifier,
+        @RequestParam(required = false) String externalIdentifier,
+        @RequestParam(required = false) String externalIdSource,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return workEffortCatalog.listTransportationRouteSegments(
+            transportationRouteId,
+            fromTransportationRouteStopId,
+            toTransportationRouteStopId,
+            internalIdentifier,
+            externalIdentifier,
+            externalIdSource,
+            PageQuery.of(page, size)
+        ).map(this::toTransportationRouteSegmentResponse);
     }
 
     @PostMapping("/work-effort-types")
@@ -1950,6 +2050,46 @@ public class WorkEffortsController {
             view.transportationRouteId(),
             view.associatedRecordId(),
             view.associatedRecordType(),
+            view.createdAt()
+        );
+    }
+
+    private TransportationRouteStopResponse toTransportationRouteStopResponse(TransportationRouteStopView view) {
+        return new TransportationRouteStopResponse(
+            view.id(),
+            view.transportationRouteId(),
+            view.internalIdentifier(),
+            view.description(),
+            view.postalAddressId(),
+            view.geoloc(),
+            view.sequence(),
+            view.externalIdentifier(),
+            view.externalIdSource(),
+            view.createdAt()
+        );
+    }
+
+    private TransportationRouteSegmentResponse toTransportationRouteSegmentResponse(
+        TransportationRouteSegmentView view
+    ) {
+        return new TransportationRouteSegmentResponse(
+            view.id(),
+            view.transportationRouteId(),
+            view.fromTransportationRouteStopId(),
+            view.toTransportationRouteStopId(),
+            view.internalIdentifier(),
+            view.description(),
+            view.comments(),
+            view.externalIdentifier(),
+            view.externalIdSource(),
+            view.sequence(),
+            view.estimatedStart(),
+            view.estimatedArrival(),
+            view.actualStart(),
+            view.actualArrival(),
+            view.startMileage(),
+            view.endMileage(),
+            view.fuelUsed(),
             view.createdAt()
         );
     }

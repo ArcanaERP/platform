@@ -180,6 +180,34 @@ public interface WorkEffortCatalog {
         PageQuery pageQuery
     );
 
+    TransportationRouteStopView registerTransportationRouteStop(RegisterTransportationRouteStopCommand command);
+
+    TransportationRouteStopView transportationRouteStopById(java.util.UUID id);
+
+    PageResult<TransportationRouteStopView> listTransportationRouteStops(
+        java.util.UUID transportationRouteId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    );
+
+    TransportationRouteSegmentView registerTransportationRouteSegment(
+        RegisterTransportationRouteSegmentCommand command
+    );
+
+    TransportationRouteSegmentView transportationRouteSegmentById(java.util.UUID id);
+
+    PageResult<TransportationRouteSegmentView> listTransportationRouteSegments(
+        java.util.UUID transportationRouteId,
+        java.util.UUID fromTransportationRouteStopId,
+        java.util.UUID toTransportationRouteStopId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    );
+
     WorkEffortTypeView registerWorkEffortType(RegisterWorkEffortTypeCommand command);
 
     WorkEffortTypeView workEffortTypeById(java.util.UUID id);

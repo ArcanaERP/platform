@@ -199,6 +199,12 @@ Work Effort:
 - `POST /api/work-efforts/associated-transportation-routes`
 - `GET /api/work-efforts/associated-transportation-routes/{id}`
 - `GET /api/work-efforts/associated-transportation-routes?transportationRouteId=&associatedRecordId=&associatedRecordType=&page=&size=`
+- `POST /api/work-efforts/transportation-route-stops`
+- `GET /api/work-efforts/transportation-route-stops/{id}`
+- `GET /api/work-efforts/transportation-route-stops?transportationRouteId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
+- `POST /api/work-efforts/transportation-route-segments`
+- `GET /api/work-efforts/transportation-route-segments/{id}`
+- `GET /api/work-efforts/transportation-route-segments?transportationRouteId=&fromTransportationRouteStopId=&toTransportationRouteStopId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`
 - `POST /api/work-efforts/work-effort-types`
 - `GET /api/work-efforts/work-effort-types/{id}`
 - `GET /api/work-efforts/work-effort-types?parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=&page=&size=`

@@ -38,6 +38,8 @@ import com.arcanaerp.platform.workeffort.RegisterRequirementPartyRoleCommand;
 import com.arcanaerp.platform.workeffort.RegisterRequirementTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterSkillTypeCommand;
 import com.arcanaerp.platform.workeffort.RegisterTransportationRouteCommand;
+import com.arcanaerp.platform.workeffort.RegisterTransportationRouteSegmentCommand;
+import com.arcanaerp.platform.workeffort.RegisterTransportationRouteStopCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortDeliverableProducedCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationCommand;
 import com.arcanaerp.platform.workeffort.RegisterWorkEffortAssociationTypeCommand;
@@ -87,6 +89,8 @@ import com.arcanaerp.platform.workeffort.RequirementTypeView;
 import com.arcanaerp.platform.workeffort.RequirementView;
 import com.arcanaerp.platform.workeffort.RequirementPartyRoleView;
 import com.arcanaerp.platform.workeffort.SkillTypeView;
+import com.arcanaerp.platform.workeffort.TransportationRouteSegmentView;
+import com.arcanaerp.platform.workeffort.TransportationRouteStopView;
 import com.arcanaerp.platform.workeffort.TransportationRouteView;
 import java.time.DayOfWeek;
 import java.time.Clock;
@@ -129,6 +133,8 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private final DeliverableRepository deliverableRepository;
     private final TransportationRouteRepository transportationRouteRepository;
     private final AssociatedTransportationRouteRepository associatedTransportationRouteRepository;
+    private final TransportationRouteStopRepository transportationRouteStopRepository;
+    private final TransportationRouteSegmentRepository transportationRouteSegmentRepository;
     private final WorkEffortTypeRepository workEffortTypeRepository;
     private final WorkEffortPurposeTypeRepository workEffortPurposeTypeRepository;
     private final PartyResourceAvailabilityTypeRepository partyResourceAvailabilityTypeRepository;
@@ -848,6 +854,122 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toAssociatedTransportationRouteView);
+    }
+
+    @Override
+    public TransportationRouteStopView registerTransportationRouteStop(RegisterTransportationRouteStopCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        requireTransportationRouteWhenPresent(command.transportationRouteId());
+        return toTransportationRouteStopView(transportationRouteStopRepository.save(
+            TransportationRouteStop.create(
+                command.transportationRouteId(),
+                command.internalIdentifier(),
+                command.description(),
+                command.postalAddressId(),
+                command.geoloc(),
+                command.sequence(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TransportationRouteStopView transportationRouteStopById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toTransportationRouteStopView(transportationRouteStopRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Transportation route stop not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<TransportationRouteStopView> listTransportationRouteStops(
+        UUID transportationRouteId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    ) {
+        Page<TransportationRouteStop> page = transportationRouteStopRepository.findStopsFiltered(
+            transportationRouteId,
+            normalizeOptional(internalIdentifier, "internalIdentifier"),
+            normalizeOptional(externalIdentifier, "externalIdentifier"),
+            normalizeOptional(externalIdSource, "externalIdSource"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toTransportationRouteStopView);
+    }
+
+    @Override
+    public TransportationRouteSegmentView registerTransportationRouteSegment(
+        RegisterTransportationRouteSegmentCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        requireTransportationRouteWhenPresent(command.transportationRouteId());
+        requireTransportationRouteStopWhenPresent(command.fromTransportationRouteStopId());
+        requireTransportationRouteStopWhenPresent(command.toTransportationRouteStopId());
+        return toTransportationRouteSegmentView(transportationRouteSegmentRepository.save(
+            TransportationRouteSegment.create(
+                command.transportationRouteId(),
+                command.fromTransportationRouteStopId(),
+                command.toTransportationRouteStopId(),
+                command.internalIdentifier(),
+                command.description(),
+                command.comments(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
+                command.sequence(),
+                command.estimatedStart(),
+                command.estimatedArrival(),
+                command.actualStart(),
+                command.actualArrival(),
+                command.startMileage(),
+                command.endMileage(),
+                command.fuelUsed(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TransportationRouteSegmentView transportationRouteSegmentById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toTransportationRouteSegmentView(transportationRouteSegmentRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Transportation route segment not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<TransportationRouteSegmentView> listTransportationRouteSegments(
+        UUID transportationRouteId,
+        UUID fromTransportationRouteStopId,
+        UUID toTransportationRouteStopId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    ) {
+        Page<TransportationRouteSegment> page = transportationRouteSegmentRepository.findSegmentsFiltered(
+            transportationRouteId,
+            fromTransportationRouteStopId,
+            toTransportationRouteStopId,
+            normalizeOptional(internalIdentifier, "internalIdentifier"),
+            normalizeOptional(externalIdentifier, "externalIdentifier"),
+            normalizeOptional(externalIdSource, "externalIdSource"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toTransportationRouteSegmentView);
     }
 
     @Override
@@ -2368,6 +2490,44 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
         );
     }
 
+    private TransportationRouteStopView toTransportationRouteStopView(TransportationRouteStop stop) {
+        return new TransportationRouteStopView(
+            stop.getId(),
+            stop.getTransportationRouteId(),
+            stop.getInternalIdentifier(),
+            stop.getDescription(),
+            stop.getPostalAddressId(),
+            stop.getGeoloc(),
+            stop.getSequence(),
+            stop.getExternalIdentifier(),
+            stop.getExternalIdSource(),
+            stop.getCreatedAt()
+        );
+    }
+
+    private TransportationRouteSegmentView toTransportationRouteSegmentView(TransportationRouteSegment segment) {
+        return new TransportationRouteSegmentView(
+            segment.getId(),
+            segment.getTransportationRouteId(),
+            segment.getFromTransportationRouteStopId(),
+            segment.getToTransportationRouteStopId(),
+            segment.getInternalIdentifier(),
+            segment.getDescription(),
+            segment.getComments(),
+            segment.getExternalIdentifier(),
+            segment.getExternalIdSource(),
+            segment.getSequence(),
+            segment.getEstimatedStart(),
+            segment.getEstimatedArrival(),
+            segment.getActualStart(),
+            segment.getActualArrival(),
+            segment.getStartMileage(),
+            segment.getEndMileage(),
+            segment.getFuelUsed(),
+            segment.getCreatedAt()
+        );
+    }
+
     private WorkEffortTypeView toWorkEffortTypeView(WorkEffortType type) {
         return new WorkEffortTypeView(
             type.getId(),
@@ -2836,6 +2996,21 @@ class WorkEffortCatalogService implements WorkEffortCatalog {
     private static final class StatusBucketSummary {
         private long transitionCount;
         private final Set<UUID> workEffortIds = new HashSet<>();
+    }
+
+    private void requireTransportationRouteWhenPresent(UUID transportationRouteId) {
+        if (transportationRouteId != null && !transportationRouteRepository.existsById(transportationRouteId)) {
+            throw new NoSuchElementException("Transportation route not found for id: " + transportationRouteId);
+        }
+    }
+
+    private void requireTransportationRouteStopWhenPresent(UUID transportationRouteStopId) {
+        if (
+            transportationRouteStopId != null
+                && !transportationRouteStopRepository.existsById(transportationRouteStopId)
+        ) {
+            throw new NoSuchElementException("Transportation route stop not found for id: " + transportationRouteStopId);
+        }
     }
 
     private static String normalizeRequired(String value, String fieldName) {

@@ -1676,6 +1676,291 @@ class WorkEffortsControllerIntegrationTest {
     }
 
     @Test
+    void createsReadsAndListsTransportationRouteStops() throws Exception {
+        String routeId = createTransportationRoute("STOP-ROUTE-1");
+
+        String stopId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-route-stops"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "transportationRouteId": "%s",
+                  "internalIdentifier": " STOP-1 ",
+                  "description": " Origin stop ",
+                  "postalAddressId": 1234,
+                  "geoloc": " 47.6205,-122.3493 ",
+                  "sequence": 1,
+                  "externalIdentifier": " EXT-STOP-1 ",
+                  "externalIdSource": " Legacy "
+                }
+                """.formatted(routeId)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.transportationRouteId").value(routeId))
+            .andExpect(jsonPath("$.internalIdentifier").value("STOP-1"))
+            .andExpect(jsonPath("$.description").value("Origin stop"))
+            .andExpect(jsonPath("$.postalAddressId").value(1234))
+            .andExpect(jsonPath("$.geoloc").value("47.6205,-122.3493"))
+            .andExpect(jsonPath("$.sequence").value(1))
+            .andExpect(jsonPath("$.externalIdentifier").value("EXT-STOP-1"))
+            .andExpect(jsonPath("$.externalIdSource").value("Legacy"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/transportation-route-stops/{id}",
+            stopId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(stopId))
+            .andExpect(jsonPath("$.transportationRouteId").value(routeId));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/transportation-route-stops"
+        )
+            .param("transportationRouteId", routeId)
+            .param("internalIdentifier", "STOP-1")
+            .param("externalIdentifier", "EXT-STOP-1")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(stopId));
+    }
+
+    @Test
+    void allowsEmptyTransportationRouteStopForLegacyParity() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-route-stops"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.transportationRouteId").doesNotExist())
+            .andExpect(jsonPath("$.internalIdentifier").doesNotExist())
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+    }
+
+    @Test
+    void allowsDuplicateTransportationRouteStopsForLegacyParity() throws Exception {
+        String routeId = createTransportationRoute("STOP-ROUTE-DUP");
+        String payload = """
+            {
+              "transportationRouteId": "%s",
+              "internalIdentifier": "STOP-DUP",
+              "externalIdentifier": "EXT-STOP-DUP",
+              "externalIdSource": "Legacy"
+            }
+            """.formatted(routeId);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-route-stops"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-route-stops"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/transportation-route-stops"
+        )
+            .param("transportationRouteId", routeId)
+            .param("internalIdentifier", "STOP-DUP")
+            .param("externalIdentifier", "EXT-STOP-DUP")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void rejectsTransportationRouteStopForMissingRoute() throws Exception {
+        String missingRouteId = "00000000-0000-0000-0000-000000000002";
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-route-stops"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "transportationRouteId": "%s",
+                  "internalIdentifier": "STOP-MISSING-ROUTE"
+                }
+                """.formatted(missingRouteId)))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value("Transportation route not found for id: " + missingRouteId))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/transportation-route-stops"));
+    }
+
+    @Test
+    void createsReadsAndListsTransportationRouteSegments() throws Exception {
+        String routeId = createTransportationRoute("SEGMENT-ROUTE-1");
+        String fromStopId = createTransportationRouteStop(routeId, "SEGMENT-FROM-1");
+        String toStopId = createTransportationRouteStop(routeId, "SEGMENT-TO-1");
+
+        String segmentId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-route-segments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "transportationRouteId": "%s",
+                  "fromTransportationRouteStopId": "%s",
+                  "toTransportationRouteStopId": "%s",
+                  "internalIdentifier": " SEG-1 ",
+                  "description": " Outbound segment ",
+                  "comments": " First leg ",
+                  "externalIdentifier": " EXT-SEG-1 ",
+                  "externalIdSource": " Legacy ",
+                  "sequence": 1,
+                  "estimatedStart": "2026-05-01T10:00:00Z",
+                  "estimatedArrival": "2026-05-01T11:00:00Z",
+                  "actualStart": "2026-05-01T10:05:00Z",
+                  "actualArrival": "2026-05-01T11:05:00Z",
+                  "startMileage": 10,
+                  "endMileage": 55,
+                  "fuelUsed": 4
+                }
+                """.formatted(routeId, fromStopId, toStopId)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.transportationRouteId").value(routeId))
+            .andExpect(jsonPath("$.fromTransportationRouteStopId").value(fromStopId))
+            .andExpect(jsonPath("$.toTransportationRouteStopId").value(toStopId))
+            .andExpect(jsonPath("$.internalIdentifier").value("SEG-1"))
+            .andExpect(jsonPath("$.description").value("Outbound segment"))
+            .andExpect(jsonPath("$.comments").value("First leg"))
+            .andExpect(jsonPath("$.externalIdentifier").value("EXT-SEG-1"))
+            .andExpect(jsonPath("$.externalIdSource").value("Legacy"))
+            .andExpect(jsonPath("$.sequence").value(1))
+            .andExpect(jsonPath("$.estimatedStart").value("2026-05-01T10:00:00Z"))
+            .andExpect(jsonPath("$.estimatedArrival").value("2026-05-01T11:00:00Z"))
+            .andExpect(jsonPath("$.actualStart").value("2026-05-01T10:05:00Z"))
+            .andExpect(jsonPath("$.actualArrival").value("2026-05-01T11:05:00Z"))
+            .andExpect(jsonPath("$.startMileage").value(10))
+            .andExpect(jsonPath("$.endMileage").value(55))
+            .andExpect(jsonPath("$.fuelUsed").value(4))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/transportation-route-segments/{id}",
+            segmentId
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(segmentId))
+            .andExpect(jsonPath("$.transportationRouteId").value(routeId));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/transportation-route-segments"
+        )
+            .param("transportationRouteId", routeId)
+            .param("fromTransportationRouteStopId", fromStopId)
+            .param("toTransportationRouteStopId", toStopId)
+            .param("internalIdentifier", "SEG-1")
+            .param("externalIdentifier", "EXT-SEG-1")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(1))
+            .andExpect(jsonPath("$.items[0].id").value(segmentId));
+    }
+
+    @Test
+    void allowsEmptyTransportationRouteSegmentForLegacyParity() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-route-segments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.transportationRouteId").doesNotExist())
+            .andExpect(jsonPath("$.fromTransportationRouteStopId").doesNotExist())
+            .andExpect(jsonPath("$.toTransportationRouteStopId").doesNotExist())
+            .andExpect(jsonPath("$.createdAt").isNotEmpty());
+    }
+
+    @Test
+    void allowsDuplicateTransportationRouteSegmentsForLegacyParity() throws Exception {
+        String routeId = createTransportationRoute("SEGMENT-ROUTE-DUP");
+        String payload = """
+            {
+              "transportationRouteId": "%s",
+              "internalIdentifier": "SEG-DUP",
+              "externalIdentifier": "EXT-SEG-DUP",
+              "externalIdSource": "Legacy"
+            }
+            """.formatted(routeId);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-route-segments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-route-segments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+            "/api/work-efforts/transportation-route-segments"
+        )
+            .param("transportationRouteId", routeId)
+            .param("internalIdentifier", "SEG-DUP")
+            .param("externalIdentifier", "EXT-SEG-DUP")
+            .param("externalIdSource", "Legacy")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalItems").value(2));
+    }
+
+    @Test
+    void rejectsTransportationRouteSegmentForMissingStop() throws Exception {
+        String routeId = createTransportationRoute("SEGMENT-MISSING-STOP-ROUTE");
+        String missingStopId = "00000000-0000-0000-0000-000000000003";
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-route-segments"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "transportationRouteId": "%s",
+                  "fromTransportationRouteStopId": "%s",
+                  "internalIdentifier": "SEG-MISSING-STOP"
+                }
+                """.formatted(routeId, missingStopId)))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value("Transportation route stop not found for id: " + missingStopId))
+            .andExpect(jsonPath("$.path").value("/api/work-efforts/transportation-route-segments"));
+    }
+
+    @Test
     void createsReadsAndListsWorkEffortTypes() throws Exception {
         String typeId = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
             "/api/work-efforts/work-effort-types"
@@ -4809,5 +5094,40 @@ class WorkEffortsControllerIntegrationTest {
         )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("assignedAtFrom must be before or equal to assignedAtTo"));
+    }
+
+    private String createTransportationRoute(String internalIdentifier) throws Exception {
+        return mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-routes"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "internalIdentifier": "%s"
+                }
+                """.formatted(internalIdentifier)))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+    }
+
+    private String createTransportationRouteStop(String routeId, String internalIdentifier) throws Exception {
+        return mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+            "/api/work-efforts/transportation-route-stops"
+        )
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "transportationRouteId": "%s",
+                  "internalIdentifier": "%s"
+                }
+                """.formatted(routeId, internalIdentifier)))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString()
+            .replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
     }
 }
