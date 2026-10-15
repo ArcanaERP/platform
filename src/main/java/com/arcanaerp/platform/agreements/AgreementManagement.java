@@ -43,6 +43,31 @@ public interface AgreementManagement {
         PageQuery pageQuery
     );
 
+    AgreementRoleTypeView registerAgreementRoleType(RegisterAgreementRoleTypeCommand command);
+
+    AgreementRoleTypeView agreementRoleTypeById(UUID id);
+
+    PageResult<AgreementRoleTypeView> listAgreementRoleTypes(
+        Long parentId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    );
+
+    AgreementPartyRoleView registerAgreementPartyRole(RegisterAgreementPartyRoleCommand command);
+
+    AgreementPartyRoleView agreementPartyRoleById(UUID id);
+
+    PageResult<AgreementPartyRoleView> listAgreementPartyRoles(
+        UUID agreementId,
+        Long partyId,
+        Long roleTypeId,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    );
+
     AgreementView getAgreement(String agreementNumber);
 
     PageResult<AgreementView> listAgreements(PageQuery pageQuery, AgreementStatus status);

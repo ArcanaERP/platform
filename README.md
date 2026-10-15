@@ -414,6 +414,12 @@ Agreements:
 - `POST /api/agreements/items`
 - `GET /api/agreements/items/{id}`
 - `GET /api/agreements/items?page=&size=&agreementId=&agreementItemTypeId=`
+- `POST /api/agreements/role-types`
+- `GET /api/agreements/role-types/{id}`
+- `GET /api/agreements/role-types?page=&size=&parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=`
+- `POST /api/agreements/party-roles`
+- `GET /api/agreements/party-roles/{id}`
+- `GET /api/agreements/party-roles?page=&size=&agreementId=&partyId=&roleTypeId=&externalIdentifier=&externalIdSource=`
 - `GET /api/agreements/{agreementNumber}`
 - `GET /api/agreements?page=&size=&tenantCode=&status=`
 - `GET /api/agreements/status-activity/daily-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`

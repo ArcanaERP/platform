@@ -3,6 +3,8 @@ package com.arcanaerp.platform.agreements.internal;
 import com.arcanaerp.platform.agreements.AgreementManagement;
 import com.arcanaerp.platform.agreements.AgreementItemTypeView;
 import com.arcanaerp.platform.agreements.AgreementItemView;
+import com.arcanaerp.platform.agreements.AgreementPartyRoleView;
+import com.arcanaerp.platform.agreements.AgreementRoleTypeView;
 import com.arcanaerp.platform.agreements.AgreementStatus;
 import com.arcanaerp.platform.agreements.AgreementStatusChangeView;
 import com.arcanaerp.platform.agreements.AgreementTypeView;
@@ -15,6 +17,8 @@ import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivityByCurrent
 import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivitySummaryView;
 import com.arcanaerp.platform.agreements.RegisterAgreementItemCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementItemTypeCommand;
+import com.arcanaerp.platform.agreements.RegisterAgreementPartyRoleCommand;
+import com.arcanaerp.platform.agreements.RegisterAgreementRoleTypeCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementTypeCommand;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivitySummaryView;
@@ -49,6 +53,8 @@ class AgreementManagementService implements AgreementManagement {
     private final AgreementTypeRepository agreementTypeRepository;
     private final AgreementItemTypeRepository agreementItemTypeRepository;
     private final AgreementItemRepository agreementItemRepository;
+    private final AgreementRoleTypeRepository agreementRoleTypeRepository;
+    private final AgreementPartyRoleRepository agreementPartyRoleRepository;
     private final AgreementStatusChangeAuditRepository agreementStatusChangeAuditRepository;
     private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
@@ -224,6 +230,107 @@ class AgreementManagementService implements AgreementManagement {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toAgreementItemView);
+    }
+
+    @Override
+    public AgreementRoleTypeView registerAgreementRoleType(RegisterAgreementRoleTypeCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toAgreementRoleTypeView(agreementRoleTypeRepository.save(
+            AgreementRoleType.create(
+                command.parentId(),
+                command.left(),
+                command.right(),
+                command.description(),
+                command.comments(),
+                command.internalIdentifier(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AgreementRoleTypeView agreementRoleTypeById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toAgreementRoleTypeView(agreementRoleTypeRepository.findById(id)
+            .orElseThrow(() -> new java.util.NoSuchElementException("Agreement role type not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<AgreementRoleTypeView> listAgreementRoleTypes(
+        Long parentId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    ) {
+        Page<AgreementRoleType> page = agreementRoleTypeRepository.findTypesFiltered(
+            parentId,
+            normalizeOptional(internalIdentifier, "internalIdentifier"),
+            normalizeOptional(externalIdentifier, "externalIdentifier"),
+            normalizeOptional(externalIdSource, "externalIdSource"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toAgreementRoleTypeView);
+    }
+
+    @Override
+    public AgreementPartyRoleView registerAgreementPartyRole(RegisterAgreementPartyRoleCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        if (command.agreementId() != null && !agreementRepository.existsById(command.agreementId())) {
+            throw new java.util.NoSuchElementException("Agreement not found for id: " + command.agreementId());
+        }
+        return toAgreementPartyRoleView(agreementPartyRoleRepository.save(
+            AgreementPartyRole.create(
+                command.description(),
+                command.agreementId(),
+                command.partyId(),
+                command.roleTypeId(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AgreementPartyRoleView agreementPartyRoleById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toAgreementPartyRoleView(agreementPartyRoleRepository.findById(id)
+            .orElseThrow(() -> new java.util.NoSuchElementException("Agreement party role not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<AgreementPartyRoleView> listAgreementPartyRoles(
+        UUID agreementId,
+        Long partyId,
+        Long roleTypeId,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    ) {
+        Page<AgreementPartyRole> page = agreementPartyRoleRepository.findPartyRolesFiltered(
+            agreementId,
+            partyId,
+            roleTypeId,
+            normalizeOptional(externalIdentifier, "externalIdentifier"),
+            normalizeOptional(externalIdSource, "externalIdSource"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toAgreementPartyRoleView);
     }
 
     @Override
@@ -579,6 +686,34 @@ class AgreementManagementService implements AgreementManagement {
             item.getDescription(),
             item.getAgreementItemRuleString(),
             item.getCreatedAt()
+        );
+    }
+
+    private AgreementRoleTypeView toAgreementRoleTypeView(AgreementRoleType type) {
+        return new AgreementRoleTypeView(
+            type.getId(),
+            type.getParentId(),
+            type.getLeft(),
+            type.getRight(),
+            type.getDescription(),
+            type.getComments(),
+            type.getInternalIdentifier(),
+            type.getExternalIdentifier(),
+            type.getExternalIdSource(),
+            type.getCreatedAt()
+        );
+    }
+
+    private AgreementPartyRoleView toAgreementPartyRoleView(AgreementPartyRole partyRole) {
+        return new AgreementPartyRoleView(
+            partyRole.getId(),
+            partyRole.getDescription(),
+            partyRole.getAgreementId(),
+            partyRole.getPartyId(),
+            partyRole.getRoleTypeId(),
+            partyRole.getExternalIdentifier(),
+            partyRole.getExternalIdSource(),
+            partyRole.getCreatedAt()
         );
     }
 

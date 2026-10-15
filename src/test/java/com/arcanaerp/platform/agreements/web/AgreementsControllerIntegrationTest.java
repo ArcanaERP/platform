@@ -204,6 +204,131 @@ class AgreementsControllerIntegrationTest {
     }
 
     @Test
+    void createsAndReadsAgreementRoleTypeAndPartyRole() throws Exception {
+        MvcResult roleTypeResult = mockMvc.perform(post("/api/agreements/role-types")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "parentId": 23,
+                  "left": 7,
+                  "right": 8,
+                  "description": "  Agreement Signatory ",
+                  "comments": "Legacy agreement role type",
+                  "internalIdentifier": " agreement_signatory ",
+                  "externalIdentifier": " EXT-AGR-ROLE-1 ",
+                  "externalIdSource": " legacy "
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.parentId").value(23))
+            .andExpect(jsonPath("$.left").value(7))
+            .andExpect(jsonPath("$.right").value(8))
+            .andExpect(jsonPath("$.description").value("Agreement Signatory"))
+            .andExpect(jsonPath("$.internalIdentifier").value("agreement_signatory"))
+            .andReturn();
+        String agreementRoleTypeId = com.jayway.jsonpath.JsonPath.read(
+            roleTypeResult.getResponse().getContentAsString(),
+            "$.id"
+        );
+
+        mockMvc.perform(get("/api/agreements/role-types/{id}", agreementRoleTypeId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(agreementRoleTypeId))
+            .andExpect(jsonPath("$.externalIdentifier").value("EXT-AGR-ROLE-1"));
+
+        mockMvc.perform(get("/api/agreements/role-types")
+            .param("parentId", "23")
+            .param("internalIdentifier", "agreement_signatory")
+            .param("page", "0")
+            .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(
+                "$.items[?(@.id=='" + agreementRoleTypeId + "')].description",
+                hasItem("Agreement Signatory")
+            ));
+
+        MvcResult agreementResult = mockMvc.perform(post("/api/agreements")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "tenant-agreement-party-roles",
+                  "agreementNumber": "agr-party-role-1",
+                  "name": "Agreement Party Role Parent",
+                  "agreementType": "service",
+                  "effectiveFrom": "2026-03-01T00:00:00Z"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andReturn();
+        String agreementId = com.jayway.jsonpath.JsonPath.read(
+            agreementResult.getResponse().getContentAsString(),
+            "$.id"
+        );
+
+        MvcResult partyRoleResult = mockMvc.perform(post("/api/agreements/party-roles")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "description": " Customer signatory ",
+                  "agreementId": "%s",
+                  "partyId": 401,
+                  "roleTypeId": 77,
+                  "externalIdentifier": " EXT-PARTY-ROLE-1 ",
+                  "externalIdSource": " legacy "
+                }
+                """.formatted(agreementId)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.description").value("Customer signatory"))
+            .andExpect(jsonPath("$.agreementId").value(agreementId))
+            .andExpect(jsonPath("$.partyId").value(401))
+            .andExpect(jsonPath("$.roleTypeId").value(77))
+            .andExpect(jsonPath("$.externalIdentifier").value("EXT-PARTY-ROLE-1"))
+            .andReturn();
+        String partyRoleId = com.jayway.jsonpath.JsonPath.read(
+            partyRoleResult.getResponse().getContentAsString(),
+            "$.id"
+        );
+
+        mockMvc.perform(get("/api/agreements/party-roles/{id}", partyRoleId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(partyRoleId))
+            .andExpect(jsonPath("$.partyId").value(401));
+
+        mockMvc.perform(get("/api/agreements/party-roles")
+            .param("agreementId", agreementId)
+            .param("partyId", "401")
+            .param("roleTypeId", "77")
+            .param("externalIdentifier", "EXT-PARTY-ROLE-1")
+            .param("externalIdSource", "legacy")
+            .param("page", "0")
+            .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(
+                "$.items[?(@.id=='" + partyRoleId + "')].description",
+                hasItem("Customer signatory")
+            ));
+    }
+
+    @Test
+    void allowsEmptyAgreementRoleTypeAndPartyRoleForLegacyParity() throws Exception {
+        mockMvc.perform(post("/api/agreements/role-types")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.description").value(nullValue()));
+
+        mockMvc.perform(post("/api/agreements/party-roles")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.agreementId").value(nullValue()))
+            .andExpect(jsonPath("$.partyId").value(nullValue()))
+            .andExpect(jsonPath("$.roleTypeId").value(nullValue()));
+    }
+
+    @Test
     void createsAgreement() throws Exception {
         String payload = """
             {

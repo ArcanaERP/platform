@@ -3,6 +3,8 @@ package com.arcanaerp.platform.agreements.web;
 import com.arcanaerp.platform.agreements.AgreementManagement;
 import com.arcanaerp.platform.agreements.AgreementItemTypeView;
 import com.arcanaerp.platform.agreements.AgreementItemView;
+import com.arcanaerp.platform.agreements.AgreementPartyRoleView;
+import com.arcanaerp.platform.agreements.AgreementRoleTypeView;
 import com.arcanaerp.platform.agreements.AgreementStatus;
 import com.arcanaerp.platform.agreements.AgreementStatusChangeView;
 import com.arcanaerp.platform.agreements.AgreementTypeView;
@@ -15,6 +17,8 @@ import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivityByCurrent
 import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivitySummaryView;
 import com.arcanaerp.platform.agreements.RegisterAgreementItemCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementItemTypeCommand;
+import com.arcanaerp.platform.agreements.RegisterAgreementPartyRoleCommand;
+import com.arcanaerp.platform.agreements.RegisterAgreementRoleTypeCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementTypeCommand;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivitySummaryView;
@@ -171,6 +175,90 @@ public class AgreementsController {
             agreementItemTypeId,
             PageQuery.of(page, size)
         ).map(this::toAgreementItemResponse);
+    }
+
+    @PostMapping("/role-types")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AgreementRoleTypeResponse createAgreementRoleType(
+        @Valid @RequestBody CreateAgreementRoleTypeRequest request
+    ) {
+        return toAgreementRoleTypeResponse(agreementManagement.registerAgreementRoleType(
+            new RegisterAgreementRoleTypeCommand(
+                request.parentId(),
+                request.left(),
+                request.right(),
+                request.description(),
+                request.comments(),
+                request.internalIdentifier(),
+                request.externalIdentifier(),
+                request.externalIdSource()
+            )
+        ));
+    }
+
+    @GetMapping("/role-types/{id}")
+    public AgreementRoleTypeResponse agreementRoleTypeById(@PathVariable UUID id) {
+        return toAgreementRoleTypeResponse(agreementManagement.agreementRoleTypeById(id));
+    }
+
+    @GetMapping("/role-types")
+    public PageResult<AgreementRoleTypeResponse> listAgreementRoleTypes(
+        @RequestParam(required = false) Long parentId,
+        @RequestParam(required = false) String internalIdentifier,
+        @RequestParam(required = false) String externalIdentifier,
+        @RequestParam(required = false) String externalIdSource,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return agreementManagement.listAgreementRoleTypes(
+            parentId,
+            internalIdentifier,
+            externalIdentifier,
+            externalIdSource,
+            PageQuery.of(page, size)
+        ).map(this::toAgreementRoleTypeResponse);
+    }
+
+    @PostMapping("/party-roles")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AgreementPartyRoleResponse createAgreementPartyRole(
+        @Valid @RequestBody CreateAgreementPartyRoleRequest request
+    ) {
+        return toAgreementPartyRoleResponse(agreementManagement.registerAgreementPartyRole(
+            new RegisterAgreementPartyRoleCommand(
+                request.description(),
+                request.agreementId(),
+                request.partyId(),
+                request.roleTypeId(),
+                request.externalIdentifier(),
+                request.externalIdSource()
+            )
+        ));
+    }
+
+    @GetMapping("/party-roles/{id}")
+    public AgreementPartyRoleResponse agreementPartyRoleById(@PathVariable UUID id) {
+        return toAgreementPartyRoleResponse(agreementManagement.agreementPartyRoleById(id));
+    }
+
+    @GetMapping("/party-roles")
+    public PageResult<AgreementPartyRoleResponse> listAgreementPartyRoles(
+        @RequestParam(required = false) UUID agreementId,
+        @RequestParam(required = false) Long partyId,
+        @RequestParam(required = false) Long roleTypeId,
+        @RequestParam(required = false) String externalIdentifier,
+        @RequestParam(required = false) String externalIdSource,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return agreementManagement.listAgreementPartyRoles(
+            agreementId,
+            partyId,
+            roleTypeId,
+            externalIdentifier,
+            externalIdSource,
+            PageQuery.of(page, size)
+        ).map(this::toAgreementPartyRoleResponse);
     }
 
     @GetMapping("/{agreementNumber}")
@@ -437,6 +525,34 @@ public class AgreementsController {
             item.description(),
             item.agreementItemRuleString(),
             item.createdAt()
+        );
+    }
+
+    private AgreementRoleTypeResponse toAgreementRoleTypeResponse(AgreementRoleTypeView type) {
+        return new AgreementRoleTypeResponse(
+            type.id(),
+            type.parentId(),
+            type.left(),
+            type.right(),
+            type.description(),
+            type.comments(),
+            type.internalIdentifier(),
+            type.externalIdentifier(),
+            type.externalIdSource(),
+            type.createdAt()
+        );
+    }
+
+    private AgreementPartyRoleResponse toAgreementPartyRoleResponse(AgreementPartyRoleView partyRole) {
+        return new AgreementPartyRoleResponse(
+            partyRole.id(),
+            partyRole.description(),
+            partyRole.agreementId(),
+            partyRole.partyId(),
+            partyRole.roleTypeId(),
+            partyRole.externalIdentifier(),
+            partyRole.externalIdSource(),
+            partyRole.createdAt()
         );
     }
 

@@ -61,9 +61,32 @@ erDiagram
       STRING agreementItemRuleString
       INSTANT createdAt
     }
+    AGREEMENT_ROLE_TYPES {
+      UUID id PK
+      LONG parentId
+      INTEGER lft
+      INTEGER rgt
+      STRING description
+      STRING comments
+      STRING internalIdentifier
+      STRING externalIdentifier
+      STRING externalIdSource
+      INSTANT createdAt
+    }
+    AGREEMENT_PARTY_ROLES {
+      UUID id PK
+      STRING description
+      UUID agreementId
+      LONG partyId
+      LONG roleTypeId
+      STRING externalIdentifier
+      STRING externalIdSource
+      INSTANT createdAt
+    }
     AGREEMENTS ||--o{ AGREEMENT_STATUS_CHANGE_AUDITS : "status changes"
     AGREEMENTS o|--o{ AGREEMENT_ITEMS : "optional agreement"
     AGREEMENT_ITEM_TYPES o|--o{ AGREEMENT_ITEMS : "optional item type"
+    AGREEMENTS o|--o{ AGREEMENT_PARTY_ROLES : "optional agreement"
 ```
 
 ## Relationship Notes
@@ -115,6 +138,14 @@ erDiagram
   - preserve nullable agreement and item-type references because the legacy schema and model tests allow empty rows
   - validate agreement and item-type UUIDs when supplied
   - support direct lookup and filtered listing by agreement and item type
+- Legacy-compatible agreement role type catalog:
+  - maps the legacy `agreement_role_types` nested-set and identifier columns
+  - remains distinct from the shared base ERP `role_types` catalog referenced by party roles
+- Legacy-compatible agreement party roles:
+  - map `description`, `agreement_id`, `party_id`, `role_type_id`, `external_identifier`, and `external_id_source`
+  - preserve nullable fields and empty-row persistence from the legacy schema and model specs
+  - validate an agreement UUID when supplied; `partyId` and `roleTypeId` remain logical legacy `Long` references
+  - support direct lookup and filtered listing by agreement, party, role type, and external reference
 
 ## Constraint Notes
 
@@ -131,6 +162,12 @@ erDiagram
   - `agreement_item_types(externalIdentifier, externalIdSource)`
   - `agreement_items(agreementId)`
   - `agreement_items(agreementItemTypeId)`
+  - `agreement_role_types(parentId)`
+  - `agreement_role_types(internalIdentifier)`
+  - `agreement_role_types(externalIdentifier, externalIdSource)`
+  - `agreement_party_roles(agreementId)`
+  - `agreement_party_roles(partyId)`
+  - `agreement_party_roles(roleTypeId)`
 
 ## Minimal HTTP Surface
 
@@ -144,6 +181,12 @@ erDiagram
 - `POST /api/agreements/items`
 - `GET /api/agreements/items/{id}`
 - `GET /api/agreements/items?page=&size=&agreementId=&agreementItemTypeId=`
+- `POST /api/agreements/role-types`
+- `GET /api/agreements/role-types/{id}`
+- `GET /api/agreements/role-types?page=&size=&parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=`
+- `POST /api/agreements/party-roles`
+- `GET /api/agreements/party-roles/{id}`
+- `GET /api/agreements/party-roles?page=&size=&agreementId=&partyId=&roleTypeId=&externalIdentifier=&externalIdSource=`
 - `GET /api/agreements/{agreementNumber}`
 - `GET /api/agreements?page=&size=&tenantCode=&status=`
 - `GET /api/agreements/status-activity/daily-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
