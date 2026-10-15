@@ -4,6 +4,8 @@ import com.arcanaerp.platform.agreements.AgreementManagement;
 import com.arcanaerp.platform.agreements.AgreementItemTypeView;
 import com.arcanaerp.platform.agreements.AgreementItemView;
 import com.arcanaerp.platform.agreements.AgreementPartyRoleView;
+import com.arcanaerp.platform.agreements.AgreementRelationshipTypeView;
+import com.arcanaerp.platform.agreements.AgreementRelationshipView;
 import com.arcanaerp.platform.agreements.AgreementRoleTypeView;
 import com.arcanaerp.platform.agreements.AgreementStatus;
 import com.arcanaerp.platform.agreements.AgreementStatusChangeView;
@@ -18,6 +20,8 @@ import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivitySummaryVi
 import com.arcanaerp.platform.agreements.RegisterAgreementItemCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementItemTypeCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementPartyRoleCommand;
+import com.arcanaerp.platform.agreements.RegisterAgreementRelationshipCommand;
+import com.arcanaerp.platform.agreements.RegisterAgreementRelationshipTypeCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementRoleTypeCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementTypeCommand;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivityByCurrentStatusSummaryView;
@@ -26,6 +30,7 @@ import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import jakarta.validation.Valid;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -259,6 +264,105 @@ public class AgreementsController {
             externalIdSource,
             PageQuery.of(page, size)
         ).map(this::toAgreementPartyRoleResponse);
+    }
+
+    @PostMapping("/relationship-types")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AgreementRelationshipTypeResponse createAgreementRelationshipType(
+        @Valid @RequestBody CreateAgreementRelationshipTypeRequest request
+    ) {
+        return toAgreementRelationshipTypeResponse(agreementManagement.registerAgreementRelationshipType(
+            new RegisterAgreementRelationshipTypeCommand(
+                request.parentId(),
+                request.left(),
+                request.right(),
+                request.validFromRoleTypeId(),
+                request.validToRoleTypeId(),
+                request.name(),
+                request.description(),
+                request.internalIdentifier(),
+                request.externalIdentifier(),
+                request.externalIdSource()
+            )
+        ));
+    }
+
+    @GetMapping("/relationship-types/{id}")
+    public AgreementRelationshipTypeResponse agreementRelationshipTypeById(@PathVariable UUID id) {
+        return toAgreementRelationshipTypeResponse(agreementManagement.agreementRelationshipTypeById(id));
+    }
+
+    @GetMapping("/relationship-types")
+    public PageResult<AgreementRelationshipTypeResponse> listAgreementRelationshipTypes(
+        @RequestParam(required = false) Long parentId,
+        @RequestParam(required = false) UUID validFromRoleTypeId,
+        @RequestParam(required = false) UUID validToRoleTypeId,
+        @RequestParam(required = false) String internalIdentifier,
+        @RequestParam(required = false) String externalIdentifier,
+        @RequestParam(required = false) String externalIdSource,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return agreementManagement.listAgreementRelationshipTypes(
+            parentId,
+            validFromRoleTypeId,
+            validToRoleTypeId,
+            internalIdentifier,
+            externalIdentifier,
+            externalIdSource,
+            PageQuery.of(page, size)
+        ).map(this::toAgreementRelationshipTypeResponse);
+    }
+
+    @PostMapping("/relationships")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AgreementRelationshipResponse createAgreementRelationship(
+        @Valid @RequestBody CreateAgreementRelationshipRequest request
+    ) {
+        return toAgreementRelationshipResponse(agreementManagement.registerAgreementRelationship(
+            new RegisterAgreementRelationshipCommand(
+                request.agreementRelationshipTypeId(),
+                request.description(),
+                request.agreementIdFrom(),
+                request.agreementIdTo(),
+                request.roleTypeIdFrom(),
+                request.roleTypeIdTo(),
+                request.statusTypeId(),
+                request.fromDate(),
+                request.thruDate()
+            )
+        ));
+    }
+
+    @GetMapping("/relationships/{id}")
+    public AgreementRelationshipResponse agreementRelationshipById(@PathVariable UUID id) {
+        return toAgreementRelationshipResponse(agreementManagement.agreementRelationshipById(id));
+    }
+
+    @GetMapping("/relationships")
+    public PageResult<AgreementRelationshipResponse> listAgreementRelationships(
+        @RequestParam(required = false) UUID agreementRelationshipTypeId,
+        @RequestParam(required = false) UUID agreementIdFrom,
+        @RequestParam(required = false) UUID agreementIdTo,
+        @RequestParam(required = false) UUID roleTypeIdFrom,
+        @RequestParam(required = false) UUID roleTypeIdTo,
+        @RequestParam(required = false) Long statusTypeId,
+        @RequestParam(required = false) LocalDate fromDate,
+        @RequestParam(required = false) LocalDate thruDate,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return agreementManagement.listAgreementRelationships(
+            agreementRelationshipTypeId,
+            agreementIdFrom,
+            agreementIdTo,
+            roleTypeIdFrom,
+            roleTypeIdTo,
+            statusTypeId,
+            fromDate,
+            thruDate,
+            PageQuery.of(page, size)
+        ).map(this::toAgreementRelationshipResponse);
     }
 
     @GetMapping("/{agreementNumber}")
@@ -553,6 +657,41 @@ public class AgreementsController {
             partyRole.externalIdentifier(),
             partyRole.externalIdSource(),
             partyRole.createdAt()
+        );
+    }
+
+    private AgreementRelationshipTypeResponse toAgreementRelationshipTypeResponse(
+        AgreementRelationshipTypeView type
+    ) {
+        return new AgreementRelationshipTypeResponse(
+            type.id(),
+            type.parentId(),
+            type.left(),
+            type.right(),
+            type.validFromRoleTypeId(),
+            type.validToRoleTypeId(),
+            type.name(),
+            type.description(),
+            type.internalIdentifier(),
+            type.externalIdentifier(),
+            type.externalIdSource(),
+            type.createdAt()
+        );
+    }
+
+    private AgreementRelationshipResponse toAgreementRelationshipResponse(AgreementRelationshipView relationship) {
+        return new AgreementRelationshipResponse(
+            relationship.id(),
+            relationship.agreementRelationshipTypeId(),
+            relationship.description(),
+            relationship.agreementIdFrom(),
+            relationship.agreementIdTo(),
+            relationship.roleTypeIdFrom(),
+            relationship.roleTypeIdTo(),
+            relationship.statusTypeId(),
+            relationship.fromDate(),
+            relationship.thruDate(),
+            relationship.createdAt()
         );
     }
 

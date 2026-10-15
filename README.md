@@ -420,6 +420,12 @@ Agreements:
 - `POST /api/agreements/party-roles`
 - `GET /api/agreements/party-roles/{id}`
 - `GET /api/agreements/party-roles?page=&size=&agreementId=&partyId=&roleTypeId=&externalIdentifier=&externalIdSource=`
+- `POST /api/agreements/relationship-types`
+- `GET /api/agreements/relationship-types/{id}`
+- `GET /api/agreements/relationship-types?page=&size=&parentId=&validFromRoleTypeId=&validToRoleTypeId=&internalIdentifier=&externalIdentifier=&externalIdSource=`
+- `POST /api/agreements/relationships`
+- `GET /api/agreements/relationships/{id}`
+- `GET /api/agreements/relationships?page=&size=&agreementRelationshipTypeId=&agreementIdFrom=&agreementIdTo=&roleTypeIdFrom=&roleTypeIdTo=&statusTypeId=&fromDate=&thruDate=`
 - `GET /api/agreements/{agreementNumber}`
 - `GET /api/agreements?page=&size=&tenantCode=&status=`
 - `GET /api/agreements/status-activity/daily-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`

@@ -329,6 +329,152 @@ class AgreementsControllerIntegrationTest {
     }
 
     @Test
+    void createsAndReadsAgreementRelationshipTypeAndRelationship() throws Exception {
+        String sellerRoleTypeId = createAgreementRoleType("seller", "Seller");
+        String buyerRoleTypeId = createAgreementRoleType("buyer", "Buyer");
+
+        MvcResult relationshipTypeResult = mockMvc.perform(post("/api/agreements/relationship-types")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "parentId": 31,
+                  "left": 9,
+                  "right": 10,
+                  "validFromRoleTypeId": "%s",
+                  "validToRoleTypeId": "%s",
+                  "name": " Buyer Seller ",
+                  "description": " Buyer seller agreement relationship ",
+                  "internalIdentifier": " buyer_seller ",
+                  "externalIdentifier": " EXT-RELN-TYPE-1 ",
+                  "externalIdSource": " legacy "
+                }
+                """.formatted(sellerRoleTypeId, buyerRoleTypeId)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.parentId").value(31))
+            .andExpect(jsonPath("$.left").value(9))
+            .andExpect(jsonPath("$.right").value(10))
+            .andExpect(jsonPath("$.validFromRoleTypeId").value(sellerRoleTypeId))
+            .andExpect(jsonPath("$.validToRoleTypeId").value(buyerRoleTypeId))
+            .andExpect(jsonPath("$.name").value("Buyer Seller"))
+            .andExpect(jsonPath("$.internalIdentifier").value("buyer_seller"))
+            .andReturn();
+        String relationshipTypeId = com.jayway.jsonpath.JsonPath.read(
+            relationshipTypeResult.getResponse().getContentAsString(),
+            "$.id"
+        );
+
+        mockMvc.perform(get("/api/agreements/relationship-types/{id}", relationshipTypeId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(relationshipTypeId))
+            .andExpect(jsonPath("$.externalIdentifier").value("EXT-RELN-TYPE-1"));
+
+        mockMvc.perform(get("/api/agreements/relationship-types")
+            .param("parentId", "31")
+            .param("validFromRoleTypeId", sellerRoleTypeId)
+            .param("validToRoleTypeId", buyerRoleTypeId)
+            .param("internalIdentifier", "buyer_seller")
+            .param("page", "0")
+            .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(
+                "$.items[?(@.id=='" + relationshipTypeId + "')].name",
+                hasItem("Buyer Seller")
+            ));
+
+        String agreementIdFrom = createAgreementAndReturnId(
+            "tenant-agreement-relationships",
+            "agr-reln-from-1",
+            "Relationship From Agreement"
+        );
+        String agreementIdTo = createAgreementAndReturnId(
+            "tenant-agreement-relationships",
+            "agr-reln-to-1",
+            "Relationship To Agreement"
+        );
+
+        MvcResult relationshipResult = mockMvc.perform(post("/api/agreements/relationships")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "agreementRelationshipTypeId": "%s",
+                  "description": " Buyer seller link ",
+                  "agreementIdFrom": "%s",
+                  "agreementIdTo": "%s",
+                  "roleTypeIdFrom": "%s",
+                  "roleTypeIdTo": "%s",
+                  "statusTypeId": 91,
+                  "fromDate": "2026-05-01",
+                  "thruDate": "2027-04-30"
+                }
+                """.formatted(
+                    relationshipTypeId,
+                    agreementIdFrom,
+                    agreementIdTo,
+                    sellerRoleTypeId,
+                    buyerRoleTypeId
+                )))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.agreementRelationshipTypeId").value(relationshipTypeId))
+            .andExpect(jsonPath("$.description").value("Buyer seller link"))
+            .andExpect(jsonPath("$.agreementIdFrom").value(agreementIdFrom))
+            .andExpect(jsonPath("$.agreementIdTo").value(agreementIdTo))
+            .andExpect(jsonPath("$.roleTypeIdFrom").value(sellerRoleTypeId))
+            .andExpect(jsonPath("$.roleTypeIdTo").value(buyerRoleTypeId))
+            .andExpect(jsonPath("$.statusTypeId").value(91))
+            .andExpect(jsonPath("$.fromDate").value("2026-05-01"))
+            .andExpect(jsonPath("$.thruDate").value("2027-04-30"))
+            .andReturn();
+        String relationshipId = com.jayway.jsonpath.JsonPath.read(
+            relationshipResult.getResponse().getContentAsString(),
+            "$.id"
+        );
+
+        mockMvc.perform(get("/api/agreements/relationships/{id}", relationshipId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(relationshipId))
+            .andExpect(jsonPath("$.description").value("Buyer seller link"));
+
+        mockMvc.perform(get("/api/agreements/relationships")
+            .param("agreementRelationshipTypeId", relationshipTypeId)
+            .param("agreementIdFrom", agreementIdFrom)
+            .param("agreementIdTo", agreementIdTo)
+            .param("roleTypeIdFrom", sellerRoleTypeId)
+            .param("roleTypeIdTo", buyerRoleTypeId)
+            .param("statusTypeId", "91")
+            .param("fromDate", "2026-05-01")
+            .param("thruDate", "2027-04-30")
+            .param("page", "0")
+            .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(
+                "$.items[?(@.id=='" + relationshipId + "')].description",
+                hasItem("Buyer seller link")
+            ));
+    }
+
+    @Test
+    void allowsEmptyAgreementRelationshipTypeAndRelationshipForLegacyParity() throws Exception {
+        mockMvc.perform(post("/api/agreements/relationship-types")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.validFromRoleTypeId").value(nullValue()))
+            .andExpect(jsonPath("$.validToRoleTypeId").value(nullValue()));
+
+        mockMvc.perform(post("/api/agreements/relationships")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.agreementRelationshipTypeId").value(nullValue()))
+            .andExpect(jsonPath("$.agreementIdFrom").value(nullValue()))
+            .andExpect(jsonPath("$.agreementIdTo").value(nullValue()))
+            .andExpect(jsonPath("$.fromDate").value(nullValue()))
+            .andExpect(jsonPath("$.thruDate").value(nullValue()));
+    }
+
+    @Test
     void createsAgreement() throws Exception {
         String payload = """
             {
@@ -895,6 +1041,37 @@ class AgreementsControllerIntegrationTest {
             .andExpect(jsonPath("$.error").value("Not Found"))
             .andExpect(jsonPath("$.message").value("Agreement not found: AGR-MISSING"))
             .andExpect(jsonPath("$.path").value("/api/agreements/agr-missing/status"));
+    }
+
+    private String createAgreementRoleType(String internalIdentifier, String description) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/agreements/role-types")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "description": "%s",
+                  "internalIdentifier": "%s"
+                }
+                """.formatted(description, internalIdentifier)))
+            .andExpect(status().isCreated())
+            .andReturn();
+        return com.jayway.jsonpath.JsonPath.read(result.getResponse().getContentAsString(), "$.id");
+    }
+
+    private String createAgreementAndReturnId(String tenantCode, String agreementNumber, String name) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/agreements")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "%s",
+                  "agreementNumber": "%s",
+                  "name": "%s",
+                  "agreementType": "service",
+                  "effectiveFrom": "2026-03-01T00:00:00Z"
+                }
+                """.formatted(tenantCode, agreementNumber, name)))
+            .andExpect(status().isCreated())
+            .andReturn();
+        return com.jayway.jsonpath.JsonPath.read(result.getResponse().getContentAsString(), "$.id");
     }
 
     private void registerActor(String tenantCode, String email) throws Exception {

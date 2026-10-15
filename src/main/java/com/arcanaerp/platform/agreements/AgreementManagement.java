@@ -3,6 +3,7 @@ package com.arcanaerp.platform.agreements;
 import com.arcanaerp.platform.core.pagination.PageQuery;
 import com.arcanaerp.platform.core.pagination.PageResult;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public interface AgreementManagement {
@@ -65,6 +66,38 @@ public interface AgreementManagement {
         Long roleTypeId,
         String externalIdentifier,
         String externalIdSource,
+        PageQuery pageQuery
+    );
+
+    AgreementRelationshipTypeView registerAgreementRelationshipType(
+        RegisterAgreementRelationshipTypeCommand command
+    );
+
+    AgreementRelationshipTypeView agreementRelationshipTypeById(UUID id);
+
+    PageResult<AgreementRelationshipTypeView> listAgreementRelationshipTypes(
+        Long parentId,
+        UUID validFromRoleTypeId,
+        UUID validToRoleTypeId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    );
+
+    AgreementRelationshipView registerAgreementRelationship(RegisterAgreementRelationshipCommand command);
+
+    AgreementRelationshipView agreementRelationshipById(UUID id);
+
+    PageResult<AgreementRelationshipView> listAgreementRelationships(
+        UUID agreementRelationshipTypeId,
+        UUID agreementIdFrom,
+        UUID agreementIdTo,
+        UUID roleTypeIdFrom,
+        UUID roleTypeIdTo,
+        Long statusTypeId,
+        LocalDate fromDate,
+        LocalDate thruDate,
         PageQuery pageQuery
     );
 

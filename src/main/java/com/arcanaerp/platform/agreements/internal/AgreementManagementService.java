@@ -4,6 +4,8 @@ import com.arcanaerp.platform.agreements.AgreementManagement;
 import com.arcanaerp.platform.agreements.AgreementItemTypeView;
 import com.arcanaerp.platform.agreements.AgreementItemView;
 import com.arcanaerp.platform.agreements.AgreementPartyRoleView;
+import com.arcanaerp.platform.agreements.AgreementRelationshipTypeView;
+import com.arcanaerp.platform.agreements.AgreementRelationshipView;
 import com.arcanaerp.platform.agreements.AgreementRoleTypeView;
 import com.arcanaerp.platform.agreements.AgreementStatus;
 import com.arcanaerp.platform.agreements.AgreementStatusChangeView;
@@ -18,6 +20,8 @@ import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivitySummaryVi
 import com.arcanaerp.platform.agreements.RegisterAgreementItemCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementItemTypeCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementPartyRoleCommand;
+import com.arcanaerp.platform.agreements.RegisterAgreementRelationshipCommand;
+import com.arcanaerp.platform.agreements.RegisterAgreementRelationshipTypeCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementRoleTypeCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementTypeCommand;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivityByCurrentStatusSummaryView;
@@ -28,6 +32,7 @@ import com.arcanaerp.platform.identity.IdentityActorLookup;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjusters;
@@ -55,6 +60,8 @@ class AgreementManagementService implements AgreementManagement {
     private final AgreementItemRepository agreementItemRepository;
     private final AgreementRoleTypeRepository agreementRoleTypeRepository;
     private final AgreementPartyRoleRepository agreementPartyRoleRepository;
+    private final AgreementRelationshipTypeRepository agreementRelationshipTypeRepository;
+    private final AgreementRelationshipRepository agreementRelationshipRepository;
     private final AgreementStatusChangeAuditRepository agreementStatusChangeAuditRepository;
     private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
@@ -331,6 +338,137 @@ class AgreementManagementService implements AgreementManagement {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toAgreementPartyRoleView);
+    }
+
+    @Override
+    public AgreementRelationshipTypeView registerAgreementRelationshipType(
+        RegisterAgreementRelationshipTypeCommand command
+    ) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        validateAgreementRoleTypeReference(command.validFromRoleTypeId());
+        validateAgreementRoleTypeReference(command.validToRoleTypeId());
+        return toAgreementRelationshipTypeView(agreementRelationshipTypeRepository.save(
+            AgreementRelationshipType.create(
+                command.parentId(),
+                command.left(),
+                command.right(),
+                command.validFromRoleTypeId(),
+                command.validToRoleTypeId(),
+                command.name(),
+                command.description(),
+                command.internalIdentifier(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AgreementRelationshipTypeView agreementRelationshipTypeById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toAgreementRelationshipTypeView(agreementRelationshipTypeRepository.findById(id)
+            .orElseThrow(() -> new java.util.NoSuchElementException(
+                "Agreement relationship type not found for id: " + id
+            )));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<AgreementRelationshipTypeView> listAgreementRelationshipTypes(
+        Long parentId,
+        UUID validFromRoleTypeId,
+        UUID validToRoleTypeId,
+        String internalIdentifier,
+        String externalIdentifier,
+        String externalIdSource,
+        PageQuery pageQuery
+    ) {
+        Page<AgreementRelationshipType> page = agreementRelationshipTypeRepository.findTypesFiltered(
+            parentId,
+            validFromRoleTypeId,
+            validToRoleTypeId,
+            normalizeOptional(internalIdentifier, "internalIdentifier"),
+            normalizeOptional(externalIdentifier, "externalIdentifier"),
+            normalizeOptional(externalIdSource, "externalIdSource"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toAgreementRelationshipTypeView);
+    }
+
+    @Override
+    public AgreementRelationshipView registerAgreementRelationship(RegisterAgreementRelationshipCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        if (command.agreementRelationshipTypeId() != null
+            && !agreementRelationshipTypeRepository.existsById(command.agreementRelationshipTypeId())) {
+            throw new java.util.NoSuchElementException(
+                "Agreement relationship type not found for id: " + command.agreementRelationshipTypeId()
+            );
+        }
+        validateAgreementReference(command.agreementIdFrom());
+        validateAgreementReference(command.agreementIdTo());
+        validateAgreementRoleTypeReference(command.roleTypeIdFrom());
+        validateAgreementRoleTypeReference(command.roleTypeIdTo());
+        return toAgreementRelationshipView(agreementRelationshipRepository.save(
+            AgreementRelationship.create(
+                command.agreementRelationshipTypeId(),
+                command.description(),
+                command.agreementIdFrom(),
+                command.agreementIdTo(),
+                command.roleTypeIdFrom(),
+                command.roleTypeIdTo(),
+                command.statusTypeId(),
+                command.fromDate(),
+                command.thruDate(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AgreementRelationshipView agreementRelationshipById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toAgreementRelationshipView(agreementRelationshipRepository.findById(id)
+            .orElseThrow(() -> new java.util.NoSuchElementException(
+                "Agreement relationship not found for id: " + id
+            )));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<AgreementRelationshipView> listAgreementRelationships(
+        UUID agreementRelationshipTypeId,
+        UUID agreementIdFrom,
+        UUID agreementIdTo,
+        UUID roleTypeIdFrom,
+        UUID roleTypeIdTo,
+        Long statusTypeId,
+        LocalDate fromDate,
+        LocalDate thruDate,
+        PageQuery pageQuery
+    ) {
+        Page<AgreementRelationship> page = agreementRelationshipRepository.findRelationshipsFiltered(
+            agreementRelationshipTypeId,
+            agreementIdFrom,
+            agreementIdTo,
+            roleTypeIdFrom,
+            roleTypeIdTo,
+            statusTypeId,
+            fromDate,
+            thruDate,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toAgreementRelationshipView);
     }
 
     @Override
@@ -626,6 +764,18 @@ class AgreementManagementService implements AgreementManagement {
         return normalized;
     }
 
+    private void validateAgreementReference(UUID agreementId) {
+        if (agreementId != null && !agreementRepository.existsById(agreementId)) {
+            throw new java.util.NoSuchElementException("Agreement not found for id: " + agreementId);
+        }
+    }
+
+    private void validateAgreementRoleTypeReference(UUID roleTypeId) {
+        if (roleTypeId != null && !agreementRoleTypeRepository.existsById(roleTypeId)) {
+            throw new java.util.NoSuchElementException("Agreement role type not found for id: " + roleTypeId);
+        }
+    }
+
     private Agreement findAgreementByNumber(String agreementNumber) {
         String normalizedAgreementNumber = normalizeRequired(agreementNumber, "agreementNumber").toUpperCase();
         return agreementRepository.findByAgreementNumber(normalizedAgreementNumber)
@@ -714,6 +864,39 @@ class AgreementManagementService implements AgreementManagement {
             partyRole.getExternalIdentifier(),
             partyRole.getExternalIdSource(),
             partyRole.getCreatedAt()
+        );
+    }
+
+    private AgreementRelationshipTypeView toAgreementRelationshipTypeView(AgreementRelationshipType type) {
+        return new AgreementRelationshipTypeView(
+            type.getId(),
+            type.getParentId(),
+            type.getLeft(),
+            type.getRight(),
+            type.getValidFromRoleTypeId(),
+            type.getValidToRoleTypeId(),
+            type.getName(),
+            type.getDescription(),
+            type.getInternalIdentifier(),
+            type.getExternalIdentifier(),
+            type.getExternalIdSource(),
+            type.getCreatedAt()
+        );
+    }
+
+    private AgreementRelationshipView toAgreementRelationshipView(AgreementRelationship relationship) {
+        return new AgreementRelationshipView(
+            relationship.getId(),
+            relationship.getAgreementRelationshipTypeId(),
+            relationship.getDescription(),
+            relationship.getAgreementIdFrom(),
+            relationship.getAgreementIdTo(),
+            relationship.getRoleTypeIdFrom(),
+            relationship.getRoleTypeIdTo(),
+            relationship.getStatusTypeId(),
+            relationship.getFromDate(),
+            relationship.getThruDate(),
+            relationship.getCreatedAt()
         );
     }
 

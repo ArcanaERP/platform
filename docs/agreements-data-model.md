@@ -83,10 +83,41 @@ erDiagram
       STRING externalIdSource
       INSTANT createdAt
     }
+    AGREEMENT_RELN_TYPES {
+      UUID id PK
+      LONG parentId
+      INTEGER lft
+      INTEGER rgt
+      UUID validFromRoleTypeId
+      UUID validToRoleTypeId
+      STRING name
+      STRING description
+      STRING internalIdentifier
+      STRING externalIdentifier
+      STRING externalIdSource
+      INSTANT createdAt
+    }
+    AGREEMENT_RELATIONSHIPS {
+      UUID id PK
+      UUID agreementRelationshipTypeId
+      STRING description
+      UUID agreementIdFrom
+      UUID agreementIdTo
+      UUID roleTypeIdFrom
+      UUID roleTypeIdTo
+      LONG statusTypeId
+      DATE fromDate
+      DATE thruDate
+      INSTANT createdAt
+    }
     AGREEMENTS ||--o{ AGREEMENT_STATUS_CHANGE_AUDITS : "status changes"
     AGREEMENTS o|--o{ AGREEMENT_ITEMS : "optional agreement"
     AGREEMENT_ITEM_TYPES o|--o{ AGREEMENT_ITEMS : "optional item type"
     AGREEMENTS o|--o{ AGREEMENT_PARTY_ROLES : "optional agreement"
+    AGREEMENT_ROLE_TYPES o|--o{ AGREEMENT_RELN_TYPES : "optional valid roles"
+    AGREEMENT_RELN_TYPES o|--o{ AGREEMENT_RELATIONSHIPS : "optional relationship type"
+    AGREEMENTS o|--o{ AGREEMENT_RELATIONSHIPS : "optional from/to agreements"
+    AGREEMENT_ROLE_TYPES o|--o{ AGREEMENT_RELATIONSHIPS : "optional from/to roles"
 ```
 
 ## Relationship Notes
@@ -146,6 +177,14 @@ erDiagram
   - preserve nullable fields and empty-row persistence from the legacy schema and model specs
   - validate an agreement UUID when supplied; `partyId` and `roleTypeId` remain logical legacy `Long` references
   - support direct lookup and filtered listing by agreement, party, role type, and external reference
+- Legacy-compatible agreement relationship types:
+  - map the legacy `agreement_reln_types` nested-set, valid from/to agreement-role UUIDs, name, description, and identifier fields
+  - validate supplied valid from/to agreement-role UUIDs while preserving nullable references
+- Legacy-compatible agreement relationships:
+  - map `agreement_reln_type_id`, description, from/to agreement UUIDs, from/to agreement-role UUIDs, logical status type id, and date-only validity fields
+  - use `LocalDate` for legacy `from_date` and `thru_date` semantics and do not impose range rules absent from the legacy model
+  - preserve nullable fields and empty-row persistence from the legacy schema and model specs
+  - validate supplied relationship-type, agreement, and agreement-role UUID references
 
 ## Constraint Notes
 
@@ -168,6 +207,17 @@ erDiagram
   - `agreement_party_roles(agreementId)`
   - `agreement_party_roles(partyId)`
   - `agreement_party_roles(roleTypeId)`
+  - `agreement_reln_types(parentId)`
+  - `agreement_reln_types(validFromRoleTypeId)`
+  - `agreement_reln_types(validToRoleTypeId)`
+  - `agreement_reln_types(internalIdentifier)`
+  - `agreement_reln_types(externalIdentifier, externalIdSource)`
+  - `agreement_relationships(agreementRelationshipTypeId)`
+  - `agreement_relationships(agreementIdFrom)`
+  - `agreement_relationships(agreementIdTo)`
+  - `agreement_relationships(roleTypeIdFrom)`
+  - `agreement_relationships(roleTypeIdTo)`
+  - `agreement_relationships(statusTypeId)`
 
 ## Minimal HTTP Surface
 
@@ -187,6 +237,12 @@ erDiagram
 - `POST /api/agreements/party-roles`
 - `GET /api/agreements/party-roles/{id}`
 - `GET /api/agreements/party-roles?page=&size=&agreementId=&partyId=&roleTypeId=&externalIdentifier=&externalIdSource=`
+- `POST /api/agreements/relationship-types`
+- `GET /api/agreements/relationship-types/{id}`
+- `GET /api/agreements/relationship-types?page=&size=&parentId=&validFromRoleTypeId=&validToRoleTypeId=&internalIdentifier=&externalIdentifier=&externalIdSource=`
+- `POST /api/agreements/relationships`
+- `GET /api/agreements/relationships/{id}`
+- `GET /api/agreements/relationships?page=&size=&agreementRelationshipTypeId=&agreementIdFrom=&agreementIdTo=&roleTypeIdFrom=&roleTypeIdTo=&statusTypeId=&fromDate=&thruDate=`
 - `GET /api/agreements/{agreementNumber}`
 - `GET /api/agreements?page=&size=&tenantCode=&status=`
 - `GET /api/agreements/status-activity/daily-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`
