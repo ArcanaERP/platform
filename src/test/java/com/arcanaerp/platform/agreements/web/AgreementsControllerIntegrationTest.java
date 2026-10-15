@@ -475,6 +475,61 @@ class AgreementsControllerIntegrationTest {
     }
 
     @Test
+    void createsAndReadsLoyaltyProgramCode() throws Exception {
+        String payload = """
+            {
+              "identifier": " loyalty-gold ",
+              "name": " Gold Loyalty Program ",
+              "description": " Preferred customer benefits "
+            }
+            """;
+
+        MvcResult result = mockMvc.perform(post("/api/agreements/loyalty-program-codes")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.identifier").value("loyalty-gold"))
+            .andExpect(jsonPath("$.name").value("Gold Loyalty Program"))
+            .andExpect(jsonPath("$.description").value("Preferred customer benefits"))
+            .andExpect(jsonPath("$.createdAt").isNotEmpty())
+            .andReturn();
+        String id = com.jayway.jsonpath.JsonPath.read(result.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(get("/api/agreements/loyalty-program-codes/{id}", id))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(id))
+            .andExpect(jsonPath("$.identifier").value("loyalty-gold"));
+
+        mockMvc.perform(get("/api/agreements/loyalty-program-codes")
+            .param("identifier", "loyalty-gold")
+            .param("name", "Gold Loyalty Program")
+            .param("page", "0")
+            .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(
+                "$.items[?(@.id=='" + id + "')].description",
+                hasItem("Preferred customer benefits")
+            ));
+
+        mockMvc.perform(post("/api/agreements/loyalty-program-codes")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated());
+    }
+
+    @Test
+    void allowsEmptyLoyaltyProgramCodeForLegacyParity() throws Exception {
+        mockMvc.perform(post("/api/agreements/loyalty-program-codes")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").isNotEmpty())
+            .andExpect(jsonPath("$.identifier").value(nullValue()))
+            .andExpect(jsonPath("$.name").value(nullValue()))
+            .andExpect(jsonPath("$.description").value(nullValue()));
+    }
+
+    @Test
     void createsAgreement() throws Exception {
         String payload = """
             {

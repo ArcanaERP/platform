@@ -110,6 +110,13 @@ erDiagram
       DATE thruDate
       INSTANT createdAt
     }
+    LOYALTY_PROGRAM_CODES {
+      UUID id PK
+      STRING identifier
+      STRING name
+      STRING description
+      INSTANT createdAt
+    }
     AGREEMENTS ||--o{ AGREEMENT_STATUS_CHANGE_AUDITS : "status changes"
     AGREEMENTS o|--o{ AGREEMENT_ITEMS : "optional agreement"
     AGREEMENT_ITEM_TYPES o|--o{ AGREEMENT_ITEMS : "optional item type"
@@ -185,6 +192,10 @@ erDiagram
   - use `LocalDate` for legacy `from_date` and `thru_date` semantics and do not impose range rules absent from the legacy model
   - preserve nullable fields and empty-row persistence from the legacy schema and model specs
   - validate supplied relationship-type, agreement, and agreement-role UUID references
+- Legacy-compatible loyalty program codes:
+  - map nullable `identifier`, `name`, and `description` fields from `loyalty_program_codes`
+  - preserve empty-row and duplicate-row persistence because the legacy migration defines no required or unique fields
+  - support direct lookup and exact filtered listing by identifier and name
 
 ## Constraint Notes
 
@@ -243,6 +254,9 @@ erDiagram
 - `POST /api/agreements/relationships`
 - `GET /api/agreements/relationships/{id}`
 - `GET /api/agreements/relationships?page=&size=&agreementRelationshipTypeId=&agreementIdFrom=&agreementIdTo=&roleTypeIdFrom=&roleTypeIdTo=&statusTypeId=&fromDate=&thruDate=`
+- `POST /api/agreements/loyalty-program-codes`
+- `GET /api/agreements/loyalty-program-codes/{id}`
+- `GET /api/agreements/loyalty-program-codes?page=&size=&identifier=&name=`
 - `GET /api/agreements/{agreementNumber}`
 - `GET /api/agreements?page=&size=&tenantCode=&status=`
 - `GET /api/agreements/status-activity/daily-summary?page=&size=&tenantCode=&previousStatus=&currentStatus=&changedBy=&changedAtFrom=&changedAtTo=`

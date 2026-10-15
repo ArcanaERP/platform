@@ -15,6 +15,7 @@ import com.arcanaerp.platform.agreements.ChangeAgreementStatusCommand;
 import com.arcanaerp.platform.agreements.CreateAgreementCommand;
 import com.arcanaerp.platform.agreements.DailyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.DailyAgreementStatusActivitySummaryView;
+import com.arcanaerp.platform.agreements.LoyaltyProgramCodeView;
 import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivitySummaryView;
 import com.arcanaerp.platform.agreements.RegisterAgreementItemCommand;
@@ -24,6 +25,7 @@ import com.arcanaerp.platform.agreements.RegisterAgreementRelationshipCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementRelationshipTypeCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementRoleTypeCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementTypeCommand;
+import com.arcanaerp.platform.agreements.RegisterLoyaltyProgramCodeCommand;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivitySummaryView;
 import com.arcanaerp.platform.core.pagination.PageQuery;
@@ -62,6 +64,7 @@ class AgreementManagementService implements AgreementManagement {
     private final AgreementPartyRoleRepository agreementPartyRoleRepository;
     private final AgreementRelationshipTypeRepository agreementRelationshipTypeRepository;
     private final AgreementRelationshipRepository agreementRelationshipRepository;
+    private final LoyaltyProgramCodeRepository loyaltyProgramCodeRepository;
     private final AgreementStatusChangeAuditRepository agreementStatusChangeAuditRepository;
     private final IdentityActorLookup identityActorLookup;
     private final Clock clock;
@@ -469,6 +472,48 @@ class AgreementManagementService implements AgreementManagement {
             pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         return PageResult.from(page).map(this::toAgreementRelationshipView);
+    }
+
+    @Override
+    public LoyaltyProgramCodeView registerLoyaltyProgramCode(RegisterLoyaltyProgramCodeCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("command is required");
+        }
+        return toLoyaltyProgramCodeView(loyaltyProgramCodeRepository.save(
+            LoyaltyProgramCode.create(
+                command.identifier(),
+                command.name(),
+                command.description(),
+                Instant.now(clock)
+            )
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LoyaltyProgramCodeView loyaltyProgramCodeById(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("id is required");
+        }
+        return toLoyaltyProgramCodeView(loyaltyProgramCodeRepository.findById(id)
+            .orElseThrow(() -> new java.util.NoSuchElementException(
+                "Loyalty program code not found for id: " + id
+            )));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<LoyaltyProgramCodeView> listLoyaltyProgramCodes(
+        String identifier,
+        String name,
+        PageQuery pageQuery
+    ) {
+        Page<LoyaltyProgramCode> page = loyaltyProgramCodeRepository.findCodesFiltered(
+            normalizeOptional(identifier, "identifier"),
+            normalizeOptional(name, "name"),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toLoyaltyProgramCodeView);
     }
 
     @Override
@@ -897,6 +942,16 @@ class AgreementManagementService implements AgreementManagement {
             relationship.getFromDate(),
             relationship.getThruDate(),
             relationship.getCreatedAt()
+        );
+    }
+
+    private LoyaltyProgramCodeView toLoyaltyProgramCodeView(LoyaltyProgramCode code) {
+        return new LoyaltyProgramCodeView(
+            code.getId(),
+            code.getIdentifier(),
+            code.getName(),
+            code.getDescription(),
+            code.getCreatedAt()
         );
     }
 

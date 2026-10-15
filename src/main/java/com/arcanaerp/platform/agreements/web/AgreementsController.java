@@ -15,6 +15,7 @@ import com.arcanaerp.platform.agreements.ChangeAgreementStatusCommand;
 import com.arcanaerp.platform.agreements.CreateAgreementCommand;
 import com.arcanaerp.platform.agreements.DailyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.DailyAgreementStatusActivitySummaryView;
+import com.arcanaerp.platform.agreements.LoyaltyProgramCodeView;
 import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.MonthlyAgreementStatusActivitySummaryView;
 import com.arcanaerp.platform.agreements.RegisterAgreementItemCommand;
@@ -24,6 +25,7 @@ import com.arcanaerp.platform.agreements.RegisterAgreementRelationshipCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementRelationshipTypeCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementRoleTypeCommand;
 import com.arcanaerp.platform.agreements.RegisterAgreementTypeCommand;
+import com.arcanaerp.platform.agreements.RegisterLoyaltyProgramCodeCommand;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivityByCurrentStatusSummaryView;
 import com.arcanaerp.platform.agreements.WeeklyAgreementStatusActivitySummaryView;
 import com.arcanaerp.platform.core.pagination.PageQuery;
@@ -365,6 +367,39 @@ public class AgreementsController {
         ).map(this::toAgreementRelationshipResponse);
     }
 
+    @PostMapping("/loyalty-program-codes")
+    @ResponseStatus(HttpStatus.CREATED)
+    public LoyaltyProgramCodeResponse createLoyaltyProgramCode(
+        @Valid @RequestBody CreateLoyaltyProgramCodeRequest request
+    ) {
+        return toLoyaltyProgramCodeResponse(agreementManagement.registerLoyaltyProgramCode(
+            new RegisterLoyaltyProgramCodeCommand(
+                request.identifier(),
+                request.name(),
+                request.description()
+            )
+        ));
+    }
+
+    @GetMapping("/loyalty-program-codes/{id}")
+    public LoyaltyProgramCodeResponse loyaltyProgramCodeById(@PathVariable UUID id) {
+        return toLoyaltyProgramCodeResponse(agreementManagement.loyaltyProgramCodeById(id));
+    }
+
+    @GetMapping("/loyalty-program-codes")
+    public PageResult<LoyaltyProgramCodeResponse> listLoyaltyProgramCodes(
+        @RequestParam(required = false) String identifier,
+        @RequestParam(required = false) String name,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return agreementManagement.listLoyaltyProgramCodes(
+            identifier,
+            name,
+            PageQuery.of(page, size)
+        ).map(this::toLoyaltyProgramCodeResponse);
+    }
+
     @GetMapping("/{agreementNumber}")
     public AgreementResponse getAgreement(@PathVariable String agreementNumber) {
         return toResponse(agreementManagement.getAgreement(agreementNumber));
@@ -692,6 +727,16 @@ public class AgreementsController {
             relationship.fromDate(),
             relationship.thruDate(),
             relationship.createdAt()
+        );
+    }
+
+    private LoyaltyProgramCodeResponse toLoyaltyProgramCodeResponse(LoyaltyProgramCodeView code) {
+        return new LoyaltyProgramCodeResponse(
+            code.id(),
+            code.identifier(),
+            code.name(),
+            code.description(),
+            code.createdAt()
         );
     }
 

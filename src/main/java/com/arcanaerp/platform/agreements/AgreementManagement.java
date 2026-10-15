@@ -101,6 +101,16 @@ public interface AgreementManagement {
         PageQuery pageQuery
     );
 
+    LoyaltyProgramCodeView registerLoyaltyProgramCode(RegisterLoyaltyProgramCodeCommand command);
+
+    LoyaltyProgramCodeView loyaltyProgramCodeById(UUID id);
+
+    PageResult<LoyaltyProgramCodeView> listLoyaltyProgramCodes(
+        String identifier,
+        String name,
+        PageQuery pageQuery
+    );
+
     AgreementView getAgreement(String agreementNumber);
 
     PageResult<AgreementView> listAgreements(PageQuery pageQuery, AgreementStatus status);
