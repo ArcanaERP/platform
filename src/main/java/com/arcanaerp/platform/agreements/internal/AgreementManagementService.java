@@ -467,24 +467,31 @@ class AgreementManagementService implements AgreementManagement {
         if (command == null) {
             throw new IllegalArgumentException("command is required");
         }
-        if (command.agreementRelationshipTypeId() != null
-            && !agreementRelationshipTypeRepository.existsById(command.agreementRelationshipTypeId())) {
-            throw new java.util.NoSuchElementException(
-                "Agreement relationship type not found for id: " + command.agreementRelationshipTypeId()
-            );
+        AgreementRelationshipType relationshipType = null;
+        if (command.agreementRelationshipTypeId() != null) {
+            relationshipType = agreementRelationshipTypeRepository.findById(command.agreementRelationshipTypeId())
+                .orElseThrow(() -> new java.util.NoSuchElementException(
+                    "Agreement relationship type not found for id: " + command.agreementRelationshipTypeId()
+                ));
+        }
+        UUID roleTypeIdFrom = command.roleTypeIdFrom();
+        UUID roleTypeIdTo = command.roleTypeIdTo();
+        if (relationshipType != null) {
+            roleTypeIdFrom = roleTypeIdFrom == null ? relationshipType.getValidFromRoleTypeId() : roleTypeIdFrom;
+            roleTypeIdTo = roleTypeIdTo == null ? relationshipType.getValidToRoleTypeId() : roleTypeIdTo;
         }
         validateAgreementReference(command.agreementIdFrom());
         validateAgreementReference(command.agreementIdTo());
-        validateAgreementRoleTypeReference(command.roleTypeIdFrom());
-        validateAgreementRoleTypeReference(command.roleTypeIdTo());
+        validateAgreementRoleTypeReference(roleTypeIdFrom);
+        validateAgreementRoleTypeReference(roleTypeIdTo);
         return toAgreementRelationshipView(agreementRelationshipRepository.save(
             AgreementRelationship.create(
                 command.agreementRelationshipTypeId(),
                 command.description(),
                 command.agreementIdFrom(),
                 command.agreementIdTo(),
-                command.roleTypeIdFrom(),
-                command.roleTypeIdTo(),
+                roleTypeIdFrom,
+                roleTypeIdTo,
                 command.statusTypeId(),
                 command.fromDate(),
                 command.thruDate(),

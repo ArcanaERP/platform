@@ -209,6 +209,7 @@ erDiagram
   - use `LocalDate` for legacy `from_date` and `thru_date` semantics and do not impose range rules absent from the legacy model
   - preserve nullable fields and empty-row persistence from the legacy schema and model specs
   - validate supplied relationship-type, agreement, and agreement-role UUID references
+  - default omitted from/to role ids independently from the selected relationship type's valid from/to roles
   - support agreement-scoped listing where the agreement is either the from or to endpoint
 - Legacy-compatible loyalty program codes:
   - map nullable `identifier`, `name`, and `description` fields from `loyalty_program_codes`

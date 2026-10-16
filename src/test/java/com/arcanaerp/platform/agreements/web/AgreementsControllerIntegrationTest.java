@@ -409,6 +409,7 @@ class AgreementsControllerIntegrationTest {
     void createsAndReadsAgreementRelationshipTypeAndRelationship() throws Exception {
         String sellerRoleTypeId = createAgreementRoleType("seller", "Seller");
         String buyerRoleTypeId = createAgreementRoleType("buyer", "Buyer");
+        String brokerRoleTypeId = createAgreementRoleType("broker", "Broker");
 
         MvcResult relationshipTypeResult = mockMvc.perform(post("/api/agreements/relationship-types")
             .contentType(MediaType.APPLICATION_JSON)
@@ -477,8 +478,6 @@ class AgreementsControllerIntegrationTest {
                   "description": " Buyer seller link ",
                   "agreementIdFrom": "%s",
                   "agreementIdTo": "%s",
-                  "roleTypeIdFrom": "%s",
-                  "roleTypeIdTo": "%s",
                   "statusTypeId": 91,
                   "fromDate": "2026-05-01",
                   "thruDate": "2027-04-30"
@@ -486,9 +485,7 @@ class AgreementsControllerIntegrationTest {
                 """.formatted(
                     relationshipTypeId,
                     agreementIdFrom,
-                    agreementIdTo,
-                    sellerRoleTypeId,
-                    buyerRoleTypeId
+                    agreementIdTo
                 )))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.agreementRelationshipTypeId").value(relationshipTypeId))
@@ -505,6 +502,21 @@ class AgreementsControllerIntegrationTest {
             relationshipResult.getResponse().getContentAsString(),
             "$.id"
         );
+
+        mockMvc.perform(post("/api/agreements/relationships")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "agreementRelationshipTypeId": "%s",
+                  "description": " Broker buyer link ",
+                  "agreementIdFrom": "%s",
+                  "agreementIdTo": "%s",
+                  "roleTypeIdFrom": "%s"
+                }
+                """.formatted(relationshipTypeId, agreementIdFrom, agreementIdTo, brokerRoleTypeId)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.roleTypeIdFrom").value(brokerRoleTypeId))
+            .andExpect(jsonPath("$.roleTypeIdTo").value(buyerRoleTypeId));
 
         mockMvc.perform(get("/api/agreements/relationships/{id}", relationshipId))
             .andExpect(status().isOk())
