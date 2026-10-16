@@ -65,6 +65,12 @@ public interface AgreementManagement {
 
     AgreementPartyRoleView agreementPartyRoleById(UUID id);
 
+    PageResult<AgreementPartyReferenceView> listAgreementPartiesByRole(
+        String agreementNumber,
+        Long roleTypeId,
+        PageQuery pageQuery
+    );
+
     PageResult<AgreementPartyRoleView> listAgreementPartyRoles(
         UUID agreementId,
         Long partyId,

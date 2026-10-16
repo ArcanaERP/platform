@@ -3,6 +3,7 @@ package com.arcanaerp.platform.agreements.internal;
 import com.arcanaerp.platform.agreements.AgreementManagement;
 import com.arcanaerp.platform.agreements.AgreementItemTypeView;
 import com.arcanaerp.platform.agreements.AgreementItemView;
+import com.arcanaerp.platform.agreements.AgreementPartyReferenceView;
 import com.arcanaerp.platform.agreements.AgreementPartyRoleView;
 import com.arcanaerp.platform.agreements.AgreementRelationshipTypeView;
 import com.arcanaerp.platform.agreements.AgreementRelationshipView;
@@ -358,6 +359,25 @@ class AgreementManagementService implements AgreementManagement {
         }
         return toAgreementPartyRoleView(agreementPartyRoleRepository.findById(id)
             .orElseThrow(() -> new java.util.NoSuchElementException("Agreement party role not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<AgreementPartyReferenceView> listAgreementPartiesByRole(
+        String agreementNumber,
+        Long roleTypeId,
+        PageQuery pageQuery
+    ) {
+        Agreement agreement = findAgreementByNumber(agreementNumber);
+        if (roleTypeId == null) {
+            throw new IllegalArgumentException("roleTypeId is required");
+        }
+        Page<AgreementPartyRole> page = agreementPartyRoleRepository.findPartiesByAgreementAndRole(
+            agreement.getId(),
+            roleTypeId,
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(partyRole -> new AgreementPartyReferenceView(partyRole.getPartyId()));
     }
 
     @Override

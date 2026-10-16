@@ -13,6 +13,21 @@ interface AgreementPartyRoleRepository extends JpaRepository<AgreementPartyRole,
         """
         select partyRole
         from AgreementPartyRole partyRole
+        where partyRole.agreementId = :agreementId
+          and partyRole.roleTypeId = :roleTypeId
+          and partyRole.partyId is not null
+        """
+    )
+    Page<AgreementPartyRole> findPartiesByAgreementAndRole(
+        @Param("agreementId") UUID agreementId,
+        @Param("roleTypeId") Long roleTypeId,
+        Pageable pageable
+    );
+
+    @Query(
+        """
+        select partyRole
+        from AgreementPartyRole partyRole
         where (:agreementId is null or partyRole.agreementId = :agreementId)
           and (:partyId is null or partyRole.partyId = :partyId)
           and (:roleTypeId is null or partyRole.roleTypeId = :roleTypeId)

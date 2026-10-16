@@ -3,6 +3,7 @@ package com.arcanaerp.platform.agreements.web;
 import com.arcanaerp.platform.agreements.AgreementManagement;
 import com.arcanaerp.platform.agreements.AgreementItemTypeView;
 import com.arcanaerp.platform.agreements.AgreementItemView;
+import com.arcanaerp.platform.agreements.AgreementPartyReferenceView;
 import com.arcanaerp.platform.agreements.AgreementPartyRoleView;
 import com.arcanaerp.platform.agreements.AgreementRelationshipTypeView;
 import com.arcanaerp.platform.agreements.AgreementRelationshipView;
@@ -266,6 +267,20 @@ public class AgreementsController {
     @GetMapping("/party-roles/{id}")
     public AgreementPartyRoleResponse agreementPartyRoleById(@PathVariable UUID id) {
         return toAgreementPartyRoleResponse(agreementManagement.agreementPartyRoleById(id));
+    }
+
+    @GetMapping("/{agreementNumber}/parties/by-role/{roleTypeId}")
+    public PageResult<AgreementPartyReferenceResponse> listAgreementPartiesByRole(
+        @PathVariable String agreementNumber,
+        @PathVariable Long roleTypeId,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return agreementManagement.listAgreementPartiesByRole(
+            agreementNumber,
+            roleTypeId,
+            PageQuery.of(page, size)
+        ).map(this::toAgreementPartyReferenceResponse);
     }
 
     @GetMapping("/party-roles")
@@ -734,6 +749,10 @@ public class AgreementsController {
             partyRole.externalIdSource(),
             partyRole.createdAt()
         );
+    }
+
+    private AgreementPartyReferenceResponse toAgreementPartyReferenceResponse(AgreementPartyReferenceView party) {
+        return new AgreementPartyReferenceResponse(party.id());
     }
 
     private AgreementRelationshipTypeResponse toAgreementRelationshipTypeResponse(

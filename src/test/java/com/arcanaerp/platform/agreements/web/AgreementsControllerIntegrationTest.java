@@ -343,6 +343,34 @@ class AgreementsControllerIntegrationTest {
             .andExpect(jsonPath("$.id").value(partyRoleId))
             .andExpect(jsonPath("$.partyId").value(401));
 
+        mockMvc.perform(get(
+            "/api/agreements/{agreementNumber}/parties/by-role/{roleTypeId}",
+            "agr-party-role-1",
+            77
+        )
+            .param("page", "0")
+            .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].id").value(401))
+            .andExpect(jsonPath("$.totalItems").value(1));
+
+        mockMvc.perform(get(
+            "/api/agreements/{agreementNumber}/parties/by-role/{roleTypeId}",
+            "agr-party-role-1",
+            78
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items").isEmpty())
+            .andExpect(jsonPath("$.totalItems").value(0));
+
+        mockMvc.perform(get(
+            "/api/agreements/{agreementNumber}/parties/by-role/{roleTypeId}",
+            "agr-party-role-missing",
+            77
+        ))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Agreement not found: AGR-PARTY-ROLE-MISSING"));
+
         mockMvc.perform(get("/api/agreements/party-roles")
             .param("agreementId", agreementId)
             .param("partyId", "401")

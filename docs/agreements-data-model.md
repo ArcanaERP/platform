@@ -200,6 +200,7 @@ erDiagram
   - preserve nullable fields and empty-row persistence from the legacy schema and model specs
   - validate an agreement UUID when supplied; `partyId` and `roleTypeId` remain logical legacy `Long` references
   - support direct lookup and filtered listing by agreement, party, role type, and external reference
+  - support agreement-scoped party identity lookup by shared role-type id; results expose legacy party ids because no compatible shared Java Party catalog exists yet
 - Legacy-compatible agreement relationship types:
   - map the legacy `agreement_reln_types` nested-set, valid from/to agreement-role UUIDs, name, description, and identifier fields
   - validate supplied valid from/to agreement-role UUIDs while preserving nullable references
@@ -268,6 +269,7 @@ erDiagram
 - `POST /api/agreements/party-roles`
 - `GET /api/agreements/party-roles/{id}`
 - `GET /api/agreements/party-roles?page=&size=&agreementId=&partyId=&roleTypeId=&externalIdentifier=&externalIdSource=`
+- `GET /api/agreements/{agreementNumber}/parties/by-role/{roleTypeId}?page=&size=`
 - `POST /api/agreements/relationship-types`
 - `GET /api/agreements/relationship-types/{id}`
 - `GET /api/agreements/relationship-types?page=&size=&parentId=&validFromRoleTypeId=&validToRoleTypeId=&internalIdentifier=&externalIdentifier=&externalIdSource=`
