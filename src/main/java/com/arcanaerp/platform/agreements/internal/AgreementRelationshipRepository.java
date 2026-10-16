@@ -14,6 +14,19 @@ interface AgreementRelationshipRepository extends JpaRepository<AgreementRelatio
         """
         select relationship
         from AgreementRelationship relationship
+        where relationship.agreementIdFrom = :agreementId
+           or relationship.agreementIdTo = :agreementId
+        """
+    )
+    Page<AgreementRelationship> findByAgreementAtEitherEndpoint(
+        @Param("agreementId") UUID agreementId,
+        Pageable pageable
+    );
+
+    @Query(
+        """
+        select relationship
+        from AgreementRelationship relationship
         where (:agreementRelationshipTypeId is null
                 or relationship.agreementRelationshipTypeId = :agreementRelationshipTypeId)
           and (:agreementIdFrom is null or relationship.agreementIdFrom = :agreementIdFrom)

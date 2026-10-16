@@ -361,6 +361,18 @@ public class AgreementsController {
         return toAgreementRelationshipResponse(agreementManagement.agreementRelationshipById(id));
     }
 
+    @GetMapping("/{agreementNumber}/relationships")
+    public PageResult<AgreementRelationshipResponse> listAgreementRelationshipsForAgreement(
+        @PathVariable String agreementNumber,
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
+    ) {
+        return agreementManagement.listAgreementRelationshipsForAgreement(
+            agreementNumber,
+            PageQuery.of(page, size)
+        ).map(this::toAgreementRelationshipResponse);
+    }
+
     @GetMapping("/relationships")
     public PageResult<AgreementRelationshipResponse> listAgreementRelationships(
         @RequestParam(required = false) UUID agreementRelationshipTypeId,

@@ -487,6 +487,20 @@ class AgreementManagementService implements AgreementManagement {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<AgreementRelationshipView> listAgreementRelationshipsForAgreement(
+        String agreementNumber,
+        PageQuery pageQuery
+    ) {
+        Agreement agreement = findAgreementByNumber(agreementNumber);
+        Page<AgreementRelationship> page = agreementRelationshipRepository.findByAgreementAtEitherEndpoint(
+            agreement.getId(),
+            pageQuery.toPageable(Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        return PageResult.from(page).map(this::toAgreementRelationshipView);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<AgreementRelationshipView> listAgreementRelationships(
         UUID agreementRelationshipTypeId,
         UUID agreementIdFrom,

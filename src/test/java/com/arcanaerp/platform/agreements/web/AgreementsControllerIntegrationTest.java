@@ -483,6 +483,28 @@ class AgreementsControllerIntegrationTest {
             .andExpect(jsonPath("$.id").value(relationshipId))
             .andExpect(jsonPath("$.description").value("Buyer seller link"));
 
+        mockMvc.perform(get("/api/agreements/{agreementNumber}/relationships", "agr-reln-from-1")
+            .param("page", "0")
+            .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(
+                "$.items[?(@.id=='" + relationshipId + "')].description",
+                hasItem("Buyer seller link")
+            ));
+
+        mockMvc.perform(get("/api/agreements/{agreementNumber}/relationships", "agr-reln-to-1")
+            .param("page", "0")
+            .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(
+                "$.items[?(@.id=='" + relationshipId + "')].description",
+                hasItem("Buyer seller link")
+            ));
+
+        mockMvc.perform(get("/api/agreements/{agreementNumber}/relationships", "agr-reln-missing"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Agreement not found: AGR-RELN-MISSING"));
+
         mockMvc.perform(get("/api/agreements/relationships")
             .param("agreementRelationshipTypeId", relationshipTypeId)
             .param("agreementIdFrom", agreementIdFrom)

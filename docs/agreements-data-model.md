@@ -208,6 +208,7 @@ erDiagram
   - use `LocalDate` for legacy `from_date` and `thru_date` semantics and do not impose range rules absent from the legacy model
   - preserve nullable fields and empty-row persistence from the legacy schema and model specs
   - validate supplied relationship-type, agreement, and agreement-role UUID references
+  - support agreement-scoped listing where the agreement is either the from or to endpoint
 - Legacy-compatible loyalty program codes:
   - map nullable `identifier`, `name`, and `description` fields from `loyalty_program_codes`
   - preserve empty-row and duplicate-row persistence because the legacy migration defines no required or unique fields
@@ -273,6 +274,7 @@ erDiagram
 - `POST /api/agreements/relationships`
 - `GET /api/agreements/relationships/{id}`
 - `GET /api/agreements/relationships?page=&size=&agreementRelationshipTypeId=&agreementIdFrom=&agreementIdTo=&roleTypeIdFrom=&roleTypeIdTo=&statusTypeId=&fromDate=&thruDate=`
+- `GET /api/agreements/{agreementNumber}/relationships?page=&size=`
 - `POST /api/agreements/loyalty-program-codes`
 - `GET /api/agreements/loyalty-program-codes/{id}`
 - `GET /api/agreements/loyalty-program-codes?page=&size=&identifier=&name=`

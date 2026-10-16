@@ -94,6 +94,11 @@ public interface AgreementManagement {
 
     AgreementRelationshipView agreementRelationshipById(UUID id);
 
+    PageResult<AgreementRelationshipView> listAgreementRelationshipsForAgreement(
+        String agreementNumber,
+        PageQuery pageQuery
+    );
+
     PageResult<AgreementRelationshipView> listAgreementRelationships(
         UUID agreementRelationshipTypeId,
         UUID agreementIdFrom,

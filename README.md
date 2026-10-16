@@ -427,6 +427,7 @@ Agreements:
 - `POST /api/agreements/relationships`
 - `GET /api/agreements/relationships/{id}`
 - `GET /api/agreements/relationships?page=&size=&agreementRelationshipTypeId=&agreementIdFrom=&agreementIdTo=&roleTypeIdFrom=&roleTypeIdTo=&statusTypeId=&fromDate=&thruDate=`
+- `GET /api/agreements/{agreementNumber}/relationships?page=&size=`
 - `POST /api/agreements/loyalty-program-codes`
 - `GET /api/agreements/loyalty-program-codes/{id}`
 - `GET /api/agreements/loyalty-program-codes?page=&size=&identifier=&name=`
