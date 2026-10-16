@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.arcanaerp.platform.agreements.AgreementStatus;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class AgreementDomainTest {
@@ -24,6 +26,39 @@ class AgreementDomainTest {
         assertThat(agreement.getAgreementNumber()).isEqualTo("AGR-1000");
         assertThat(agreement.getName()).isEqualTo("Master Supply Agreement");
         assertThat(agreement.getAgreementType()).isEqualTo("PURCHASE");
+        assertThat(agreement.getStatus()).isEqualTo(AgreementStatus.DRAFT);
+    }
+
+    @Test
+    void createPreservesLegacyAgreementMasterFields() {
+        UUID agreementTypeId = UUID.randomUUID();
+        Agreement agreement = Agreement.create(
+            "tenant-agreements",
+            "agr-legacy-1",
+            "Legacy Agreement",
+            "service",
+            Instant.parse("2026-03-01T00:00:00Z"),
+            "  Legacy description ",
+            agreementTypeId,
+            " pending review ",
+            42L,
+            LocalDate.parse("2026-02-01"),
+            LocalDate.parse("2026-03-01"),
+            LocalDate.parse("2027-03-01"),
+            " EXT-AGR-1 ",
+            " legacy ",
+            Instant.parse("2026-03-01T01:00:00Z")
+        );
+
+        assertThat(agreement.getDescription()).isEqualTo("Legacy description");
+        assertThat(agreement.getAgreementTypeId()).isEqualTo(agreementTypeId);
+        assertThat(agreement.getAgreementStatus()).isEqualTo("pending review");
+        assertThat(agreement.getProductId()).isEqualTo(42L);
+        assertThat(agreement.getAgreementDate()).isEqualTo(LocalDate.parse("2026-02-01"));
+        assertThat(agreement.getFromDate()).isEqualTo(LocalDate.parse("2026-03-01"));
+        assertThat(agreement.getThruDate()).isEqualTo(LocalDate.parse("2027-03-01"));
+        assertThat(agreement.getExternalIdentifier()).isEqualTo("EXT-AGR-1");
+        assertThat(agreement.getExternalIdSource()).isEqualTo("legacy");
         assertThat(agreement.getStatus()).isEqualTo(AgreementStatus.DRAFT);
     }
 

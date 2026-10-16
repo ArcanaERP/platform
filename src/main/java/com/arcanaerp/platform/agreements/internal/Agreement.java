@@ -8,9 +8,11 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -19,7 +21,11 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
     name = "agreements",
-    uniqueConstraints = @UniqueConstraint(name = "uk_agreements_agreement_number", columnNames = "agreementNumber")
+    uniqueConstraints = @UniqueConstraint(name = "uk_agreements_agreement_number", columnNames = "agreementNumber"),
+    indexes = {
+        @Index(name = "idx_agreement_type_id", columnList = "agreementTypeId"),
+        @Index(name = "idx_agreement_product_id", columnList = "productId")
+    }
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -41,6 +47,28 @@ class Agreement {
     @Column(nullable = false, length = 64)
     private String agreementType;
 
+    @Column(length = 512)
+    private String description;
+
+    private UUID agreementTypeId;
+
+    @Column(length = 128)
+    private String agreementStatus;
+
+    private Long productId;
+
+    private LocalDate agreementDate;
+
+    private LocalDate fromDate;
+
+    private LocalDate thruDate;
+
+    @Column(length = 128)
+    private String externalIdentifier;
+
+    @Column(length = 128)
+    private String externalIdSource;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private AgreementStatus status;
@@ -61,6 +89,15 @@ class Agreement {
         String agreementNumber,
         String name,
         String agreementType,
+        String description,
+        UUID agreementTypeId,
+        String agreementStatus,
+        Long productId,
+        LocalDate agreementDate,
+        LocalDate fromDate,
+        LocalDate thruDate,
+        String externalIdentifier,
+        String externalIdSource,
         AgreementStatus status,
         Instant effectiveFrom,
         Instant createdAt,
@@ -72,6 +109,15 @@ class Agreement {
         this.agreementNumber = agreementNumber;
         this.name = name;
         this.agreementType = agreementType;
+        this.description = description;
+        this.agreementTypeId = agreementTypeId;
+        this.agreementStatus = agreementStatus;
+        this.productId = productId;
+        this.agreementDate = agreementDate;
+        this.fromDate = fromDate;
+        this.thruDate = thruDate;
+        this.externalIdentifier = externalIdentifier;
+        this.externalIdSource = externalIdSource;
         this.status = status;
         this.effectiveFrom = effectiveFrom;
         this.createdAt = createdAt;
@@ -87,6 +133,42 @@ class Agreement {
         Instant effectiveFrom,
         Instant createdAt
     ) {
+        return create(
+            tenantCode,
+            agreementNumber,
+            name,
+            agreementType,
+            effectiveFrom,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            createdAt
+        );
+    }
+
+    static Agreement create(
+        String tenantCode,
+        String agreementNumber,
+        String name,
+        String agreementType,
+        Instant effectiveFrom,
+        String description,
+        UUID agreementTypeId,
+        String agreementStatus,
+        Long productId,
+        LocalDate agreementDate,
+        LocalDate fromDate,
+        LocalDate thruDate,
+        String externalIdentifier,
+        String externalIdSource,
+        Instant createdAt
+    ) {
         if (effectiveFrom == null) {
             throw new IllegalArgumentException("effectiveFrom is required");
         }
@@ -100,6 +182,15 @@ class Agreement {
             normalizeRequired(agreementNumber, "agreementNumber").toUpperCase(),
             normalizeRequired(name, "name"),
             normalizeRequired(agreementType, "agreementType").toUpperCase(),
+            normalizeOptional(description),
+            agreementTypeId,
+            normalizeOptional(agreementStatus),
+            productId,
+            agreementDate,
+            fromDate,
+            thruDate,
+            normalizeOptional(externalIdentifier),
+            normalizeOptional(externalIdSource),
             AgreementStatus.DRAFT,
             effectiveFrom,
             createdAt,
@@ -138,6 +229,13 @@ class Agreement {
     private static String normalizeRequired(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " is required");
+        }
+        return value.trim();
+    }
+
+    private static String normalizeOptional(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
         }
         return value.trim();
     }

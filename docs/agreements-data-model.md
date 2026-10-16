@@ -1,6 +1,6 @@
 # Agreements Module Data Model (High-Level)
 
-Updated: 2026-10-14
+Updated: 2026-10-15
 
 ## Entity Diagram
 
@@ -12,6 +12,15 @@ erDiagram
       STRING agreementNumber UK
       STRING name
       STRING agreementType
+      STRING description
+      UUID agreementTypeId
+      STRING agreementStatus
+      LONG productId
+      DATE agreementDate
+      DATE fromDate
+      DATE thruDate
+      STRING externalIdentifier
+      STRING externalIdSource
       STRING status
       INSTANT effectiveFrom
       INSTANT createdAt
@@ -118,6 +127,7 @@ erDiagram
       INSTANT createdAt
     }
     AGREEMENTS ||--o{ AGREEMENT_STATUS_CHANGE_AUDITS : "status changes"
+    AGREEMENT_TYPES o|--o{ AGREEMENTS : "optional legacy type"
     AGREEMENTS o|--o{ AGREEMENT_ITEMS : "optional agreement"
     AGREEMENT_ITEM_TYPES o|--o{ AGREEMENT_ITEMS : "optional item type"
     AGREEMENTS o|--o{ AGREEMENT_PARTY_ROLES : "optional agreement"
@@ -134,6 +144,11 @@ erDiagram
 - `agreementNumber` is the external business identifier and is normalized to uppercase.
 - `agreementNumber` is also the direct-read lookup key for `GET /api/agreements/{agreementNumber}`.
 - `agreementType` is stored as an uppercase normalized string for consistent filtering/parity expansion.
+- Legacy-compatible agreement master fields:
+  - map `description`, `agreement_type_id`, `agreement_status`, `product_id`, `agreement_date`, `from_date`, `thru_date`, `external_identifier`, and `external_id_source`
+  - preserve nullable legacy values alongside the required Java workflow fields
+  - validate `agreementTypeId` when supplied; `productId` remains a logical legacy `Long` reference
+  - use `LocalDate` for legacy date-only columns and do not impose range rules absent from the legacy model
 - `status` starts as `DRAFT` and currently supports transitions:
   - `DRAFT -> ACTIVE`
   - `DRAFT -> TERMINATED`
@@ -202,6 +217,8 @@ erDiagram
 - Unique constraints:
   - `agreements(agreementNumber)` remains globally unique during this early iteration
 - Indexes:
+  - `agreements(agreementTypeId)`
+  - `agreements(productId)`
   - `agreement_status_change_audits(agreementId, changedAt)`
   - `agreement_status_change_audits(agreementId, tenantCode, changedAt)`
   - `agreement_types(parentId)`

@@ -63,7 +63,16 @@ public class AgreementsController {
                 request.agreementNumber(),
                 request.name(),
                 request.agreementType(),
-                request.effectiveFrom()
+                request.effectiveFrom(),
+                request.description(),
+                request.agreementTypeId(),
+                request.agreementStatus(),
+                request.productId(),
+                request.agreementDate(),
+                request.fromDate(),
+                request.thruDate(),
+                request.externalIdentifier(),
+                request.externalIdSource()
             )
         );
         return toResponse(agreement);
@@ -621,7 +630,16 @@ public class AgreementsController {
                 agreement.effectiveFrom(),
                 agreement.createdAt(),
                 agreement.activatedAt(),
-                agreement.terminatedAt()
+                agreement.terminatedAt(),
+                agreement.description(),
+                agreement.agreementTypeId(),
+                agreement.agreementStatus(),
+                agreement.productId(),
+                agreement.agreementDate(),
+                agreement.fromDate(),
+                agreement.thruDate(),
+                agreement.externalIdentifier(),
+                agreement.externalIdSource()
             );
     }
 

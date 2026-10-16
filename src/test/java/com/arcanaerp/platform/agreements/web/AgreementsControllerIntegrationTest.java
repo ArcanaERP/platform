@@ -557,6 +557,89 @@ class AgreementsControllerIntegrationTest {
     }
 
     @Test
+    void createsAndReadsAgreementWithLegacyMasterFields() throws Exception {
+        MvcResult typeResult = mockMvc.perform(post("/api/agreements/types")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "description": "Service Agreement Type",
+                  "internalIdentifier": "service-agreement"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andReturn();
+        String agreementTypeId = com.jayway.jsonpath.JsonPath.read(
+            typeResult.getResponse().getContentAsString(),
+            "$.id"
+        );
+
+        String payload = """
+            {
+              "tenantCode": "tenant-agreements",
+              "agreementNumber": "agr-legacy-master-1",
+              "name": "Legacy Master Agreement",
+              "agreementType": "service",
+              "effectiveFrom": "2026-03-01T00:00:00Z",
+              "description": "  Legacy agreement description ",
+              "agreementTypeId": "%s",
+              "agreementStatus": " pending review ",
+              "productId": 42,
+              "agreementDate": "2026-02-01",
+              "fromDate": "2026-03-01",
+              "thruDate": "2027-03-01",
+              "externalIdentifier": " EXT-AGR-1 ",
+              "externalIdSource": " legacy "
+            }
+            """.formatted(agreementTypeId);
+
+        mockMvc.perform(post("/api/agreements")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.description").value("Legacy agreement description"))
+            .andExpect(jsonPath("$.agreementTypeId").value(agreementTypeId))
+            .andExpect(jsonPath("$.agreementStatus").value("pending review"))
+            .andExpect(jsonPath("$.productId").value(42))
+            .andExpect(jsonPath("$.agreementDate").value("2026-02-01"))
+            .andExpect(jsonPath("$.fromDate").value("2026-03-01"))
+            .andExpect(jsonPath("$.thruDate").value("2027-03-01"))
+            .andExpect(jsonPath("$.externalIdentifier").value("EXT-AGR-1"))
+            .andExpect(jsonPath("$.externalIdSource").value("legacy"))
+            .andExpect(jsonPath("$.status").value("DRAFT"));
+
+        mockMvc.perform(AgreementsWebIntegrationTestSupport.getAgreementRequest("agr-legacy-master-1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.agreementTypeId").value(agreementTypeId))
+            .andExpect(jsonPath("$.agreementStatus").value("pending review"))
+            .andExpect(jsonPath("$.productId").value(42))
+            .andExpect(jsonPath("$.agreementDate").value("2026-02-01"))
+            .andExpect(jsonPath("$.fromDate").value("2026-03-01"))
+            .andExpect(jsonPath("$.thruDate").value("2027-03-01"))
+            .andExpect(jsonPath("$.externalIdentifier").value("EXT-AGR-1"))
+            .andExpect(jsonPath("$.externalIdSource").value("legacy"));
+    }
+
+    @Test
+    void rejectsUnknownAgreementTypeReference() throws Exception {
+        String agreementTypeId = "00000000-0000-0000-0000-000000000099";
+
+        mockMvc.perform(post("/api/agreements")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "tenantCode": "tenant-agreements",
+                  "agreementNumber": "agr-unknown-type",
+                  "name": "Unknown Type Agreement",
+                  "agreementType": "service",
+                  "effectiveFrom": "2026-03-01T00:00:00Z",
+                  "agreementTypeId": "%s"
+                }
+                """.formatted(agreementTypeId)))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Agreement type not found for id: " + agreementTypeId));
+    }
+
+    @Test
     void returnsErrorEnvelopeForDuplicateAgreementNumber() throws Exception {
         String payload = """
             {

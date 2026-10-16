@@ -79,6 +79,9 @@ class AgreementManagementService implements AgreementManagement {
         if (agreementRepository.findByAgreementNumber(normalizedAgreementNumber).isPresent()) {
             throw new IllegalArgumentException("Agreement number already exists: " + normalizedAgreementNumber);
         }
+        if (command.agreementTypeId() != null && !agreementTypeRepository.existsById(command.agreementTypeId())) {
+            throw new java.util.NoSuchElementException("Agreement type not found for id: " + command.agreementTypeId());
+        }
 
         Agreement agreement = agreementRepository.save(
             Agreement.create(
@@ -87,6 +90,15 @@ class AgreementManagementService implements AgreementManagement {
                 command.name(),
                 command.agreementType(),
                 command.effectiveFrom(),
+                command.description(),
+                command.agreementTypeId(),
+                command.agreementStatus(),
+                command.productId(),
+                command.agreementDate(),
+                command.fromDate(),
+                command.thruDate(),
+                command.externalIdentifier(),
+                command.externalIdSource(),
                 Instant.now(clock)
             )
         );
@@ -838,7 +850,16 @@ class AgreementManagementService implements AgreementManagement {
             agreement.getEffectiveFrom(),
             agreement.getCreatedAt(),
             agreement.getActivatedAt(),
-            agreement.getTerminatedAt()
+            agreement.getTerminatedAt(),
+            agreement.getDescription(),
+            agreement.getAgreementTypeId(),
+            agreement.getAgreementStatus(),
+            agreement.getProductId(),
+            agreement.getAgreementDate(),
+            agreement.getFromDate(),
+            agreement.getThruDate(),
+            agreement.getExternalIdentifier(),
+            agreement.getExternalIdSource()
         );
     }
 

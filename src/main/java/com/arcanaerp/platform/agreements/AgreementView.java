@@ -1,6 +1,7 @@
 package com.arcanaerp.platform.agreements;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record AgreementView(
@@ -13,6 +14,15 @@ public record AgreementView(
     Instant effectiveFrom,
     Instant createdAt,
     Instant activatedAt,
-    Instant terminatedAt
+    Instant terminatedAt,
+    String description,
+    UUID agreementTypeId,
+    String agreementStatus,
+    Long productId,
+    LocalDate agreementDate,
+    LocalDate fromDate,
+    LocalDate thruDate,
+    String externalIdentifier,
+    String externalIdSource
 ) {
 }
