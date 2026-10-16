@@ -179,6 +179,17 @@ public class AgreementsController {
         return toAgreementItemResponse(agreementManagement.agreementItemById(id));
     }
 
+    @GetMapping("/{agreementNumber}/items/by-type/{itemTypeInternalIdentifier}")
+    public AgreementItemResponse agreementItemByTypeInternalIdentifier(
+        @PathVariable String agreementNumber,
+        @PathVariable String itemTypeInternalIdentifier
+    ) {
+        return toAgreementItemResponse(agreementManagement.agreementItemByTypeInternalIdentifier(
+            agreementNumber,
+            itemTypeInternalIdentifier
+        ));
+    }
+
     @GetMapping("/items")
     public PageResult<AgreementItemResponse> listAgreementItems(
         @RequestParam(required = false) UUID agreementId,

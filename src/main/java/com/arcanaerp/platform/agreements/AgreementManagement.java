@@ -38,6 +38,11 @@ public interface AgreementManagement {
 
     AgreementItemView agreementItemById(UUID id);
 
+    AgreementItemView agreementItemByTypeInternalIdentifier(
+        String agreementNumber,
+        String itemTypeInternalIdentifier
+    );
+
     PageResult<AgreementItemView> listAgreementItems(
         UUID agreementId,
         UUID agreementItemTypeId,

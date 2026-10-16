@@ -175,6 +175,55 @@ class AgreementsControllerIntegrationTest {
             .andExpect(jsonPath("$.id").value(itemId))
             .andExpect(jsonPath("$.agreementItemValue").value("1234ABCD"));
 
+        mockMvc.perform(get(
+            "/api/agreements/{agreementNumber}/items/by-type/{itemTypeInternalIdentifier}",
+            "agr-item-1",
+            "reference_number"
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(itemId))
+            .andExpect(jsonPath("$.agreementItemValue").value("1234ABCD"));
+
+        testClock.advance(Duration.ofSeconds(1));
+        mockMvc.perform(post("/api/agreements/items")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "agreementId": "%s",
+                  "agreementItemTypeId": "%s",
+                  "agreementItemValue": "SECOND"
+                }
+                """.formatted(agreementId, itemTypeId)))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(get(
+            "/api/agreements/{agreementNumber}/items/by-type/{itemTypeInternalIdentifier}",
+            "agr-item-1",
+            "reference_number"
+        ))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(itemId))
+            .andExpect(jsonPath("$.agreementItemValue").value("1234ABCD"));
+
+        mockMvc.perform(get(
+            "/api/agreements/{agreementNumber}/items/by-type/{itemTypeInternalIdentifier}",
+            "agr-item-1",
+            "REFERENCE_NUMBER"
+        ))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value(
+                "Agreement item not found for agreement AGR-ITEM-1"
+                    + " and item type internal identifier: REFERENCE_NUMBER"
+            ));
+
+        mockMvc.perform(get(
+            "/api/agreements/{agreementNumber}/items/by-type/{itemTypeInternalIdentifier}",
+            "agr-item-missing",
+            "reference_number"
+        ))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Agreement not found: AGR-ITEM-MISSING"));
+
         mockMvc.perform(get("/api/agreements/items")
             .param("agreementId", agreementId)
             .param("agreementItemTypeId", itemTypeId)

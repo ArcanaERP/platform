@@ -414,6 +414,7 @@ Agreements:
 - `POST /api/agreements/items`
 - `GET /api/agreements/items/{id}`
 - `GET /api/agreements/items?page=&size=&agreementId=&agreementItemTypeId=`
+- `GET /api/agreements/{agreementNumber}/items/by-type/{itemTypeInternalIdentifier}`
 - `POST /api/agreements/role-types`
 - `GET /api/agreements/role-types/{id}`
 - `GET /api/agreements/role-types?page=&size=&parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=`

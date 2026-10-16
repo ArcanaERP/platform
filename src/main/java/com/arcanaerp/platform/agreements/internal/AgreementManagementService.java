@@ -47,6 +47,7 @@ import java.util.TreeMap;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -237,6 +238,31 @@ class AgreementManagementService implements AgreementManagement {
         }
         return toAgreementItemView(agreementItemRepository.findById(id)
             .orElseThrow(() -> new java.util.NoSuchElementException("Agreement item not found for id: " + id)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AgreementItemView agreementItemByTypeInternalIdentifier(
+        String agreementNumber,
+        String itemTypeInternalIdentifier
+    ) {
+        Agreement agreement = findAgreementByNumber(agreementNumber);
+        String normalizedIdentifier = normalizeRequired(
+            itemTypeInternalIdentifier,
+            "itemTypeInternalIdentifier"
+        );
+        return agreementItemRepository.findByAgreementAndTypeInternalIdentifier(
+            agreement.getId(),
+            normalizedIdentifier,
+            PageRequest.of(0, 1)
+        )
+            .stream()
+            .findFirst()
+            .map(this::toAgreementItemView)
+            .orElseThrow(() -> new java.util.NoSuchElementException(
+                "Agreement item not found for agreement " + agreement.getAgreementNumber()
+                    + " and item type internal identifier: " + normalizedIdentifier
+            ));
     }
 
     @Override

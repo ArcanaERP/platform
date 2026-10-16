@@ -191,6 +191,7 @@ erDiagram
   - preserve nullable agreement and item-type references because the legacy schema and model tests allow empty rows
   - validate agreement and item-type UUIDs when supplied
   - support direct lookup and filtered listing by agreement and item type
+  - support the legacy agreement-scoped first-item lookup by exact item-type `internalIdentifier`
 - Legacy-compatible agreement role type catalog:
   - maps the legacy `agreement_role_types` nested-set and identifier columns
   - remains distinct from the shared base ERP `role_types` catalog referenced by party roles
@@ -259,6 +260,7 @@ erDiagram
 - `POST /api/agreements/items`
 - `GET /api/agreements/items/{id}`
 - `GET /api/agreements/items?page=&size=&agreementId=&agreementItemTypeId=`
+- `GET /api/agreements/{agreementNumber}/items/by-type/{itemTypeInternalIdentifier}`
 - `POST /api/agreements/role-types`
 - `GET /api/agreements/role-types/{id}`
 - `GET /api/agreements/role-types?page=&size=&parentId=&internalIdentifier=&externalIdentifier=&externalIdSource=`
